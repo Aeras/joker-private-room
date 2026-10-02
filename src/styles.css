@@ -5,20 +5,15 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ * JOKER design system — private card room.
+ * Felt playing surface, polished dark wood, restrained gold, warm ambience.
+ * All colors are oklch tokens. Components must use these tokens only.
  */
 
 @theme inline {
+  --font-display: "Literata", Georgia, serif;
+  --font-sans: "Commissioner", system-ui, sans-serif;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -59,86 +54,142 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-felt: var(--felt);
+  --color-felt-deep: var(--felt-deep);
+  --color-felt-line: var(--felt-line);
+  --color-wood: var(--wood);
+  --color-wood-deep: var(--wood-deep);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-card-face: var(--card-face);
+  --color-card-ink: var(--card-ink);
+  --color-card-red: var(--card-red);
+  --color-negative: var(--negative);
+  --color-positive: var(--positive);
+  --color-online: var(--online);
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
-}
+  --radius: 0.75rem;
 
-.dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --felt: oklch(0.42 0.075 155);
+  --felt-deep: oklch(0.26 0.05 158);
+  --felt-line: oklch(0.55 0.07 150 / 35%);
+  --wood: oklch(0.3 0.045 45);
+  --wood-deep: oklch(0.18 0.025 40);
+  --gold: oklch(0.8 0.11 82);
+  --gold-soft: oklch(0.8 0.11 82 / 18%);
+  --card-face: oklch(0.97 0.012 85);
+  --card-ink: oklch(0.22 0.02 260);
+  --card-red: oklch(0.52 0.19 25);
+  --negative: oklch(0.68 0.19 25);
+  --positive: oklch(0.85 0.1 150);
+  --online: oklch(0.78 0.16 150);
+
+  --background: oklch(0.16 0.02 45);
+  --foreground: oklch(0.94 0.02 80);
+  --card: oklch(0.2 0.022 45);
+  --card-foreground: oklch(0.94 0.02 80);
+  --popover: oklch(0.2 0.022 45);
+  --popover-foreground: oklch(0.94 0.02 80);
+  --primary: var(--gold);
+  --primary-foreground: oklch(0.2 0.03 60);
+  --secondary: oklch(0.26 0.025 45);
+  --secondary-foreground: oklch(0.94 0.02 80);
+  --muted: oklch(0.25 0.02 45);
+  --muted-foreground: oklch(0.72 0.03 75);
+  --accent: oklch(0.3 0.03 50);
+  --accent-foreground: oklch(0.94 0.02 80);
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.97 0.01 80);
+  --border: oklch(0.8 0.11 82 / 16%);
+  --input: oklch(0.8 0.11 82 / 22%);
+  --ring: var(--gold);
+  --chart-1: var(--gold);
+  --chart-2: var(--felt);
+  --chart-3: var(--card-red);
+  --chart-4: oklch(0.7 0.05 60);
+  --chart-5: oklch(0.6 0.05 200);
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--gold);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--gold);
+
+  --shadow-panel: 0 18px 50px -20px oklch(0 0 0 / 70%), inset 0 1px 0 oklch(1 0 0 / 5%);
+  --shadow-card: 0 4px 10px -2px oklch(0 0 0 / 45%);
+  --shadow-gold: 0 0 0 2px var(--gold), 0 0 22px -4px var(--gold);
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
   }
-
+  html,
+  body {
+    overscroll-behavior: none;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
   }
+}
+
+@utility surface-felt {
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 45%, var(--felt) 0%, var(--felt-deep) 80%);
+}
+@utility surface-wood {
+  background:
+    repeating-linear-gradient(
+      100deg,
+      oklch(1 0 0 / 0%) 0px,
+      oklch(1 0 0 / 2%) 3px,
+      oklch(0 0 0 / 4%) 7px
+    ),
+    linear-gradient(180deg, var(--wood) 0%, var(--wood-deep) 100%);
+}
+@utility surface-room {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, oklch(0.8 0.11 82 / 10%), transparent 70%),
+    linear-gradient(180deg, var(--wood-deep), var(--background));
+}
+@utility panel {
+  background: linear-gradient(180deg, oklch(0.22 0.024 45), var(--card));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-panel);
+}
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+@utility ring-gold {
+  box-shadow: var(--shadow-gold);
+}
+@utility card-back-pattern {
+  background:
+    repeating-linear-gradient(45deg, oklch(0.8 0.11 82 / 22%) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(-45deg, oklch(0.8 0.11 82 / 22%) 0 2px, transparent 2px 7px),
+    linear-gradient(160deg, oklch(0.32 0.08 25), oklch(0.22 0.06 25));
+}
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@utility animate-bubble {
+  animation: bubble-in 0.25s ease-out;
+}
+@keyframes card-drop {
+  from { opacity: 0; transform: translateY(40px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@utility animate-card-drop {
+  animation: card-drop 0.3s ease-out;
 }
