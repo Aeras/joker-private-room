@@ -17,3 +17,4 @@
 - Never put PINs/secrets or authoritative game logic (deal, legality, scoring of record) in client code for production — why: clients are untrusted.
 - Visual assets are resolved via `src/assets/registry.ts`; components fall back to placeholders — why: final artwork supplied later.
 - UI strings live in `src/i18n/el.ts` — why: easy future localization.
+- The only backend is the owner's external Supabase via `src/integrations/external-supabase/client.ts`; never import `src/integrations/supabase/*` (Lovable Cloud, auto-generated, unused) — why: owner's explicit choice. Schema changes are SQL files the owner runs himself.
