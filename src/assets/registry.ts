@@ -12,7 +12,7 @@ export const assets = {
   cardBack: undefined as string | undefined,
   tableArt: undefined as string | undefined,
   cardFace: (_card: Card): string | undefined => undefined,
-  /** Stable real-player artwork is keyed by display name; bots can still use id-based assets later. */
+  /** Permanent real-player artwork is keyed by display name. */
   avatar: (_id: string, displayName?: string): string | undefined => {
     const key = displayName?.trim().toLowerCase();
     return key ? avatarByName[key] : undefined;
