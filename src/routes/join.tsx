@@ -2,13 +2,13 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { JButton } from "@/components/joker/JButton";
 import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
-import { DEMO_PLAYERS, mockIdentityService } from "@/demo/mockIdentity";
+import { DEMO_FRIEND, DEMO_PLAYERS, mockIdentityService } from "@/demo/mockIdentity";
 import { mockRoomService } from "@/demo/mockRooms";
 import { t } from "@/i18n/el";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/join")({
-  validateSearch: (s: Record<string, unknown>) => ({ code: typeof s.code === "string" ? s.code : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({ code: typeof s["code"] === "string" ? s["code"] : undefined }),
   head: () => ({
     meta: [
       { title: "Συμμετοχή σε παιχνίδι — JOKER" },
@@ -27,7 +27,7 @@ function JoinGame() {
   const { code: initialCode } = Route.useSearch();
   const navigate = useNavigate();
   const [code, setCode] = useState(initialCode ?? "");
-  const [playerId, setPlayerId] = useState(DEMO_PLAYERS[1].id);
+  const [playerId, setPlayerId] = useState(DEMO_FRIEND.id);
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
 

@@ -12,7 +12,8 @@ export const DEMO_PLAYERS: PublicPlayer[] = [
   { id: "demo-panagiotis", displayName: "Παναγιώτης", role: "player" },
 ];
 
-export const DEMO_HOST = DEMO_PLAYERS[0];
+export const DEMO_HOST: PublicPlayer = DEMO_PLAYERS[0]!;
+export const DEMO_FRIEND: PublicPlayer = DEMO_PLAYERS[1]!;
 
 export const mockIdentityService: IdentityService = {
   async listPlayers() {

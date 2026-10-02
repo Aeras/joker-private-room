@@ -16,9 +16,9 @@ const DEMO_RESULTS: [number, number][][] = [
 export function createDemoScoreSheet(): ScoreSheet {
   return {
     deals: DEMO_RESULTS.map((row, i) => ({
-      dealNumber: DEALS[i].dealNumber,
+      dealNumber: DEALS[i]!.dealNumber,
       scores: row.map(([declared, taken]) =>
-        scoreDeal({ declared, taken, tricksInDeal: DEALS[i].cardsPerPlayer }),
+        scoreDeal({ declared, taken, tricksInDeal: DEALS[i]!.cardsPerPlayer }),
       ),
     })),
     special: [],

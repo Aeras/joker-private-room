@@ -26,7 +26,7 @@ export function computeTotals(sheet: ScoreSheet): number[] {
   const totals = Array<number>(SEAT_COUNT).fill(0);
   for (const row of [...sheet.deals.map((d) => d.scores), ...sheet.special.map((s) => s.values)]) {
     row.forEach((v, i) => {
-      if (v != null) totals[i] += v;
+      if (v != null) totals[i] = (totals[i] ?? 0) + v;
     });
   }
   return totals;

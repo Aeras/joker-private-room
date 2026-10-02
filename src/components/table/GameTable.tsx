@@ -41,6 +41,7 @@ export function GameTable({ room, localPlayerId }: { room: Room; localPlayerId: 
   const channel = useMemo(() => createLocalEphemeralChannel(), []);
   const bubbles = useEphemeralBubbles(channel);
   const names = room.seats.map((s) => occupantName(s.occupant) ?? t.emptySeat);
+  const nameAt = (i: number) => names[i] ?? "";
   const seatAt = (pos: Pos) => (localSeat + pos) % SEAT_COUNT;
   const posOf = (seat: number) => ((seat - localSeat + SEAT_COUNT) % SEAT_COUNT) as Pos;
 
@@ -54,7 +55,7 @@ export function GameTable({ room, localPlayerId }: { room: Room; localPlayerId: 
         if (!bot || bot.occupant.type !== "bot") return;
         const reply = pickBotReply(bot.occupant.bot.personalityId, room.botSettings, {
           type: "message_received",
-          fromName: names[localSeat],
+          fromName: nameAt(localSeat),
         });
         if (reply) setTimeout(() => channel.send({ fromSeat: bot.index, to: localSeat, text: reply }), 1200);
       }),
@@ -64,7 +65,7 @@ export function GameTable({ room, localPlayerId }: { room: Room; localPlayerId: 
   const bubbleFor = (seat: number) => {
     const b = bubbles.find((x) => x.fromSeat === seat);
     if (!b) return null;
-    return <SpeechBubble text={b.text} toLabel={b.to === "all" ? t.everyone : names[b.to]} />;
+    return <SpeechBubble text={b.text} toLabel={b.to === "all" ? t.everyone : nameAt(b.to)} />;
   };
 
   const seatBlock = (pos: Pos, orientation: "horizontal" | "vertical") => {
@@ -72,7 +73,7 @@ export function GameTable({ room, localPlayerId }: { room: Room; localPlayerId: 
     return (
       <div className="relative flex flex-col items-center gap-1">
         {pos !== 2 && <div className="absolute bottom-full mb-1">{bubbleFor(seat)}</div>}
-        <TableSeat seat={room.seats[seat]} stats={demo.seatStats(seat)} orientation={orientation} showCards={pos !== 0} />
+        <TableSeat seat={room.seats[seat]!} stats={demo.seatStats(seat)} orientation={orientation} showCards={pos !== 0} />
         {pos === 2 && <div className="absolute top-full mt-1">{bubbleFor(seat)}</div>}
       </div>
     );
@@ -142,7 +143,7 @@ export function GameTable({ room, localPlayerId }: { room: Room; localPlayerId: 
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         recipients={[
-          ...[1, 2, 3].map((p) => ({ value: seatAt(p as Pos), label: names[seatAt(p as Pos)] })),
+          ...[1, 2, 3].map((p) => ({ value: seatAt(p as Pos), label: nameAt(seatAt(p as Pos)) })),
           { value: "all" as const, label: t.everyone },
         ]}
         onSend={(to, text) => channel.send({ fromSeat: localSeat, to, text })}

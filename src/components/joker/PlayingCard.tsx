@@ -16,7 +16,7 @@ export function PlayingCard({
   card?: Card;
   faceDown?: boolean;
   selected?: boolean;
-  onClick?: () => void;
+  onClick?: (() => void) | undefined;
   className?: string;
 }) {
   const base = cn(

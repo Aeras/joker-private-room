@@ -15,5 +15,5 @@ export interface BotStrategy {
 export const placeholderStrategy: BotStrategy = {
   id: "placeholder",
   chooseDeclaration: () => 0,
-  chooseCard: (_view, legal) => legal[0],
+  chooseCard: (_view, legal) => legal[0]!,
 };

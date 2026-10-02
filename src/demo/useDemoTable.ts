@@ -16,7 +16,9 @@ function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    const tmp = a[i]!;
+    a[i] = a[j]!;
+    a[j] = tmp;
   }
   return a;
 }
@@ -80,12 +82,12 @@ export function useDemoTable(room: Room, localSeat: number) {
     turnKey,
     sheet,
     seatStats: (seat: number) => ({
-      totalScore: totals[seat],
-      declaration: declarations[seat],
-      tricksTaken: tricksTaken[seat],
+      totalScore: totals[seat] ?? 0,
+      declaration: declarations[seat] ?? null,
+      tricksTaken: tricksTaken[seat] ?? 0,
       isDealer: seat === dealerSeat,
       isActive: seat === activeSeat,
-      cardCount: seat === localSeat ? myHand.length : otherCounts[seat],
+      cardCount: seat === localSeat ? myHand.length : (otherCounts[seat] ?? 0),
     }),
   };
 }

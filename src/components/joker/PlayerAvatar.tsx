@@ -10,7 +10,7 @@ export function PlayerAvatar({
   className,
 }: {
   name: string;
-  imageUrl?: string;
+  imageUrl?: string | undefined;
   isBot?: boolean;
   size?: "sm" | "md" | "lg";
   className?: string;

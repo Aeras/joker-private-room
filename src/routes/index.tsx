@@ -42,7 +42,7 @@ function Home() {
           <Link to="/create" className={jButton({ size: "lg" })}>
             {t.createGame}
           </Link>
-          <Link to="/join" className={jButton({ variant: "secondary", size: "lg" })}>
+          <Link to="/join" search={{ code: undefined }} className={jButton({ variant: "secondary", size: "lg" })}>
             {t.joinGame}
           </Link>
         </div>
