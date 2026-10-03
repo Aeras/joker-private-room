@@ -28,7 +28,8 @@ export async function resolveOverdueTimeoutBeforeRead(gameId: string): Promise<L
 
   const now = serverNow();
   const transition = applyOverdueTimeout(loaded.canonicalState, now);
-  if (!transition.ok || !transition.changed) return loaded;
+  if (!transition.ok) return { ok: false, code: "SERVICE_UNAVAILABLE" };
+  if (!transition.changed) return loaded;
 
   const persisted = await persistCanonicalGameState({
     gameId,
@@ -62,7 +63,12 @@ export async function reclaimGameControl(args: {
 
   const seat = loaded.viewerSeat as SeatIndex;
   const transition = applyReclaimControl(loaded.canonicalState, seat, serverNow());
-  if (!transition.ok) return { ok: false, code: transition.code };
+  if (!transition.ok) {
+    return {
+      ok: false,
+      code: transition.code === "RECLAIM_NOT_AVAILABLE" ? "RECLAIM_NOT_AVAILABLE" : "SERVICE_UNAVAILABLE",
+    };
+  }
   if (!transition.changed) return { ok: false, code: "RECLAIM_NOT_AVAILABLE" };
 
   const persisted = await persistCanonicalGameState({
@@ -75,11 +81,13 @@ export async function reclaimGameControl(args: {
   });
 
   if (!persisted.ok) {
-    return {
-      ok: false,
-      code: persisted.code,
-      currentStateVersion: persisted.currentStateVersion,
-    };
+    return persisted.currentStateVersion == null
+      ? { ok: false, code: persisted.code }
+      : {
+          ok: false,
+          code: persisted.code,
+          currentStateVersion: persisted.currentStateVersion,
+        };
   }
   return { ok: true, stateVersion: persisted.stateVersion, replayed: persisted.replayed };
 }
