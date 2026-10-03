@@ -38,7 +38,9 @@ jobs:
         id: catalog_guard
         continue-on-error: true
         run: |
-          test "$(grep -c 'displayName:' supabase/functions/_shared/bot-catalog.ts)" -eq 6
+          for id in giorgos-nousios thomoulis theia-tamara mounara ka-monika archimandritis; do
+            test "$(grep -c "id: \"$id\"" supabase/functions/_shared/bot-catalog.ts)" -eq 1
+          done
           grep -q 'Γιώργος Νούσιος' supabase/functions/_shared/bot-catalog.ts
           grep -q 'Θωμούλης' supabase/functions/_shared/bot-catalog.ts
           grep -q 'Θεία Ταμάρα' supabase/functions/_shared/bot-catalog.ts
