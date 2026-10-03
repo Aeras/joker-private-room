@@ -41,7 +41,7 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
           {stats.isDealer && <span title={t.dealer} className="absolute -left-1 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[0.55rem] font-bold text-primary-foreground">D</span>}
         </div>
         <div className="-mt-1 min-w-20 max-w-32 rounded-md border border-primary/40 bg-black/85 px-2 py-0.5 text-center shadow-lg backdrop-blur-sm">
-          <div className="truncate text-[10px] font-semibold leading-tight text-foreground sm:text-xs">{name}{o.type === "bot" ? " · BOT" : ""}</div>
+          <div className="truncate text-[10px] font-semibold leading-tight text-foreground sm:text-xs">{name}</div>
           <div className={cn("font-display text-xs font-bold leading-tight tabular-nums sm:text-sm", stats.totalScore < 0 ? "text-negative" : "text-primary")}>{score}</div>
         </div>
       </div>
