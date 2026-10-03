@@ -1,18 +1,23 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Share2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CopyButton, copyText } from "@/components/joker/CopyButton";
 import { JButton, jButton } from "@/components/joker/JButton";
 import { LobbySeat } from "@/components/joker/LobbySeat";
 import { RoomCodeCard } from "@/components/joker/RoomCodeCard";
 import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
-import { DEMO_HOST } from "@/demo/mockIdentity";
-import { mockRoomService } from "@/demo/mockRooms";
-import { demoStore, useDemoState } from "@/demo/store";
+import type { PublicPlayer, Room } from "@/domain/players";
 import { RULESETS } from "@/domain/rulesets";
 import { t } from "@/i18n/el";
+import { roomFailureMessage } from "@/lib/room-feedback";
+import { getCurrentPlayer } from "@/services/authFunctions";
+import { getProductionRoom, startProductionRoom } from "@/services/roomFunctions";
 import { roomInviteUrl } from "@/services/rooms";
 
 export const Route = createFileRoute("/lobby")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    code: typeof s["code"] === "string" ? s["code"].toUpperCase() : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Lobby — JOKER" },
@@ -25,23 +30,72 @@ export const Route = createFileRoute("/lobby")({
 });
 
 function Lobby() {
-  const { hydrated, room, localPlayer } = useDemoState();
-  const navigate = useNavigate();
-  if (!hydrated) return <div className="surface-room min-h-dvh" />;
-  if (!room || !localPlayer) {
+  const { code } = Route.useSearch();
+  const [room, setRoom] = useState<Room | null>(null);
+  const [localPlayer, setLocalPlayer] = useState<PublicPlayer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+  const startActionId = useRef<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!code || code.length !== 4) {
+      setLoading(false);
+      return;
+    }
+    const [player, result] = await Promise.all([
+      getCurrentPlayer(),
+      getProductionRoom({ data: { code } }),
+    ]);
+    setLocalPlayer(player);
+    if (!result.ok) {
+      setError(roomFailureMessage(result));
+      setLoading(false);
+      return;
+    }
+    setRoom(result.room);
+    setError(null);
+    setLoading(false);
+  }, [code]);
+
+  useEffect(() => {
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 2000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
+
+  if (loading) return <div className="surface-room min-h-dvh" />;
+  if (!code || !room || !localPlayer) {
     return (
       <ScreenShell title={t.lobby}>
-        <p className="text-muted-foreground">{t.noRoom}</p>
+        <p className="text-muted-foreground">{error ?? t.noRoom}</p>
         <Link to="/" className={jButton({ className: "mt-4" })}>{t.home}</Link>
       </ScreenShell>
     );
   }
+
   const isHost = room.hostId === localPlayer.id;
   const hasEmpty = room.seats.some((s) => s.occupant.type === "empty");
 
   const start = async () => {
-    await mockRoomService.startGame(room.code, localPlayer.id);
-    navigate({ to: "/table" });
+    if (!isHost || starting || room.status !== "lobby") return;
+    setStarting(true);
+    setError(null);
+    startActionId.current ??= crypto.randomUUID();
+    try {
+      const result = await startProductionRoom({
+        data: { actionId: startActionId.current, code: room.code },
+      });
+      if (!result.ok) {
+        setError(roomFailureMessage(result));
+        if (result.code !== "SERVICE_UNAVAILABLE") startActionId.current = null;
+        return;
+      }
+      startActionId.current = null;
+      setRoom(result.room);
+    } finally {
+      setStarting(false);
+    }
   };
 
   const invite = async () => {
@@ -62,16 +116,18 @@ function Lobby() {
       title={t.lobby}
       footer={
         <div className="space-y-2">
-          <JButton size="lg" className="w-full text-lg" disabled={!isHost} onClick={start}>
-            {t.startGame}
-          </JButton>
-          <p className="text-center text-xs text-muted-foreground">
-            {isHost ? hasEmpty && t.emptySeatsBecomeBots : t.hostOnly}
-          </p>
-          {!isHost && (
-            <button className="w-full text-center text-xs text-primary underline" onClick={() => demoStore.set({ localPlayer: DEMO_HOST })}>
-              {t.demoMode}: συνέχεια ως host
-            </button>
+          {error && <p className="text-center text-sm text-negative">{error}</p>}
+          {room.status === "lobby" ? (
+            <>
+              <JButton size="lg" className="w-full text-lg" disabled={!isHost || starting} onClick={start}>
+                {t.startGame}
+              </JButton>
+              <p className="text-center text-xs text-muted-foreground">
+                {isHost ? hasEmpty && t.emptySeatsBecomeBots : t.hostOnly}
+              </p>
+            </>
+          ) : (
+            <div className="panel p-4 text-center text-sm text-muted-foreground">{t.gameStarting}</div>
           )}
         </div>
       }
