@@ -20,6 +20,11 @@ export type RoomFailureCode =
   | "ACTION_ID_CONFLICT"
   | "RULESET_NOT_IMPLEMENTED"
   | "INVALID_ROOM_STATE"
+  | "BOT_NOT_FOUND"
+  | "BOT_ALREADY_ASSIGNED"
+  | "SEAT_NOT_EMPTY"
+  | "BOT_ASSIGNMENT_NOT_ALLOWED"
+  | "STALE_ROOM_VERSION"
   | "SERVICE_UNAVAILABLE";
 
 export type RoomCommandResult =
@@ -59,6 +64,9 @@ async function callRoomEdge(body: Record<string, unknown>): Promise<RoomCommandR
 
 const roomCode = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{4}$/);
 const actionId = z.string().uuid();
+const roomVersion = z.number().int().nonnegative();
+const seatIndex = z.number().int().min(0).max(3);
+const botId = z.string().min(1).max(64);
 
 export const createProductionRoom = createServerFn({ method: "POST" })
   .validator(
@@ -83,9 +91,54 @@ export const joinProductionRoom = createServerFn({ method: "POST" })
   .validator(z.object({ actionId, code: roomCode }))
   .handler(async ({ data }) => callRoomEdge({ action: "join", actionId: data.actionId, code: data.code }));
 
+export const assignProductionBot = createServerFn({ method: "POST" })
+  .validator(z.object({ actionId, code: roomCode, seatIndex, botId, expectedRoomVersion: roomVersion }))
+  .handler(async ({ data }) =>
+    callRoomEdge({
+      action: "assign_bot",
+      actionId: data.actionId,
+      code: data.code,
+      seatIndex: data.seatIndex,
+      botId: data.botId,
+      expectedRoomVersion: data.expectedRoomVersion,
+    }),
+  );
+
+export const clearProductionBot = createServerFn({ method: "POST" })
+  .validator(z.object({ actionId, code: roomCode, seatIndex, expectedRoomVersion: roomVersion }))
+  .handler(async ({ data }) =>
+    callRoomEdge({
+      action: "clear_bot",
+      actionId: data.actionId,
+      code: data.code,
+      seatIndex: data.seatIndex,
+      expectedRoomVersion: data.expectedRoomVersion,
+    }),
+  );
+
+export const replaceProductionBot = createServerFn({ method: "POST" })
+  .validator(z.object({ actionId, code: roomCode, seatIndex, botId, expectedRoomVersion: roomVersion }))
+  .handler(async ({ data }) =>
+    callRoomEdge({
+      action: "replace_bot",
+      actionId: data.actionId,
+      code: data.code,
+      seatIndex: data.seatIndex,
+      botId: data.botId,
+      expectedRoomVersion: data.expectedRoomVersion,
+    }),
+  );
+
 export const startProductionRoom = createServerFn({ method: "POST" })
-  .validator(z.object({ actionId, code: roomCode }))
-  .handler(async ({ data }) => callRoomEdge({ action: "start", actionId: data.actionId, code: data.code }));
+  .validator(z.object({ actionId, code: roomCode, expectedRoomVersion: roomVersion }))
+  .handler(async ({ data }) =>
+    callRoomEdge({
+      action: "start",
+      actionId: data.actionId,
+      code: data.code,
+      expectedRoomVersion: data.expectedRoomVersion,
+    }),
+  );
 
 export const getProductionRoom = createServerFn({ method: "GET" })
   .validator(z.object({ code: roomCode }))
