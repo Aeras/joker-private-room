@@ -1,0 +1,73 @@
+name: JK-001 Phase 5 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+      - name: Phase 5 lint
+        id: phase5_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/domain/projection.ts
+          src/domain/projection.test.ts
+          src/services/gameProjectionFunctions.ts
+          src/server/gamePersistence.ts
+          --rule 'prettier/prettier: off'
+      - name: Projection must not copy canonical state wholesale
+        id: projection_boundary
+        continue-on-error: true
+        run: |
+          ! grep -n "\.\.\.state" src/domain/projection.ts
+          ! grep -n "canonicalState:" src/services/gameProjectionFunctions.ts
+          grep -q "projectGameForSeat" src/services/gameProjectionFunctions.ts
+      - name: Browser projection identity is server-derived
+        id: server_derived_seat
+        continue-on-error: true
+        run: |
+          grep -q 'validator(z.object({ gameId: z.string().uuid() }))' src/services/gameProjectionFunctions.ts
+          ! grep -n 'validator.*seat' src/services/gameProjectionFunctions.ts
+          grep -q 'viewerSeat' supabase/migrations/20261003194000_jk001_phase5_projection_viewer_seat.sql
+          grep -q "game_participants" supabase/migrations/20261003194000_jk001_phase5_projection_viewer_seat.sql
+      - name: Hidden-information negative tests are present
+        id: privacy_tests
+        continue-on-error: true
+        run: |
+          grep -q "SECRET-DECK-0" src/domain/projection.test.ts
+          grep -q "SECRET-OPPONENT" src/domain/projection.test.ts
+          grep -q "HIDDEN-OWN-1A" src/domain/projection.test.ts
+          grep -q "ownHandVisible" src/domain/projection.test.ts
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build
+      - name: Require Phase 5 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.phase5_lint.outcome }}" = "success"
+          test "${{ steps.projection_boundary.outcome }}" = "success"
+          test "${{ steps.server_derived_seat.outcome }}" = "success"
+          test "${{ steps.privacy_tests.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
