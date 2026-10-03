@@ -43,6 +43,10 @@ export interface Room {
   botSettings: BotSettings;
   seats: Seat[];
   status: RoomStatus;
+  /** Monotonic server-side room version used for polling/reconciliation. */
+  version?: number;
+  /** Present after authoritative Start Game creates the game shell. */
+  gameId?: string | null;
 }
 
 export const occupantName = (o: SeatOccupant): string | null =>
