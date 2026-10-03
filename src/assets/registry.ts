@@ -1,15 +1,20 @@
-/**
- * Visual asset registry. Final artwork (avatars, card faces, card back,
- * Joker, table art) will be supplied later — set URLs/imports here and
- * components pick them up automatically. undefined = use placeholder.
- */
+/** Visual asset registry for the private Joker room. */
 import type { Card } from "@/domain/cards";
+
+const avatarByName: Record<string, string> = {
+  giobis: "/avatars/giobis.webp",
+  mixalis: "/avatars/mixalis.webp",
+  git: "/avatars/git.webp",
+  panagiotis: "/avatars/git.webp",
+};
 
 export const assets = {
   cardBack: undefined as string | undefined,
   tableArt: undefined as string | undefined,
-  /** Return an image for a card face, or undefined for the placeholder. */
   cardFace: (_card: Card): string | undefined => undefined,
-  /** Player/bot avatar by id, or undefined for the placeholder. */
-  avatar: (_id: string): string | undefined => undefined,
+  /** Permanent real-player artwork is resolved by normalized display name. */
+  avatar: (_id: string, displayName?: string): string | undefined => {
+    const key = displayName?.trim().toLowerCase();
+    return key ? avatarByName[key] : undefined;
+  },
 };
