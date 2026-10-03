@@ -84,7 +84,11 @@ function Lobby() {
     startActionId.current ??= crypto.randomUUID();
     try {
       const result = await startProductionRoom({
-        data: { actionId: startActionId.current, code: room.code },
+        data: {
+          actionId: startActionId.current,
+          code: room.code,
+          expectedRoomVersion: room.version ?? 0,
+        },
       });
       if (!result.ok) {
         setError(roomFailureMessage(result));

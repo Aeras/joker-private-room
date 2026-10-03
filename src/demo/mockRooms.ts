@@ -2,10 +2,10 @@
  * DEMO ONLY. Local mock room service. Room codes, seats and bot filling are
  * generated client-side here purely for exploration.
  */
-import { BOT_PERSONALITIES } from "@/bots/personality";
 import { SEAT_COUNT } from "@/domain/gameConfig";
 import type { PublicPlayer, Room, Seat } from "@/domain/players";
 import type { RoomService } from "@/services/rooms";
+import { CANONICAL_BOTS } from "../../supabase/functions/_shared/bot-catalog";
 import { DEMO_HOST } from "./mockIdentity";
 import { demoStore } from "./store";
 
@@ -71,12 +71,19 @@ export const mockRoomService: RoomService = {
     let botN = 0;
     const seats = room.seats.map((s) => {
       if (s.occupant.type !== "empty") return s;
-      const p = BOT_PERSONALITIES[botN++ % BOT_PERSONALITIES.length]!;
+      const bot = CANONICAL_BOTS[botN++ % CANONICAL_BOTS.length]!;
       return {
         ...s,
         occupant: {
           type: "bot" as const,
-          bot: { id: `bot-${s.index}`, displayName: p.defaultName, personalityId: p.id },
+          bot: {
+            id: bot.id,
+            displayName: bot.displayName,
+            avatarUrl: bot.avatarUrl,
+            personalityId: bot.personalityId,
+            strategyProfileId: bot.strategyProfileId,
+            catalogVersion: bot.catalogVersion,
+          },
         },
       };
     });

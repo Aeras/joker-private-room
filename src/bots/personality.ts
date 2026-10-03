@@ -1,53 +1,27 @@
 /**
  * Bot personality + reactions. Affects ONLY conversational output,
- * never strategy or rules.
+ * never strategy, tier selection or rules. Canonical identity metadata lives
+ * in the versioned bot catalog, not in this presentation module.
  */
 import type { BotSettings } from "@/domain/players";
 
 export interface BotPersonality {
   id: string;
-  defaultName: string;
   replies: string[];
   spicyReplies: string[];
 }
 
 export const BOT_PERSONALITIES: BotPersonality[] = [
+  { id: "giorgos-nousios", replies: [], spicyReplies: [] },
+  { id: "thomoulis", replies: [], spicyReplies: [] },
   {
-    id: "tamara",
-    defaultName: "Θεία Ταμάρα",
+    id: "theia-tamara",
     replies: ["Εγώ σας τα έλεγα.", "Άντε να δούμε τι κρατάτε.", "Μη βιάζεσαι, παιδί μου."],
     spicyReplies: ["Άσε τα κόλπα και παίξε φύλλο."],
   },
-  {
-    id: "grisha",
-    defaultName: "Γκρίσα ο Ύποπτος",
-    replies: ["Κάτι δεν μου αρέσει εδώ...", "Σε παρακολουθώ.", "Χμ. Πολύ βολικό."],
-    spicyReplies: ["Μη μου κάνεις τον αθώο τώρα."],
-  },
-  {
-    id: "serge",
-    defaultName: "Σερζ ο Μαθηματικός",
-    replies: ["Οι πιθανότητες είναι μαζί μου.", "Το υπολόγισα.", "Στατιστικά, αυτό ήταν αναμενόμενο."],
-    spicyReplies: ["Τα μαθηματικά δεν συγχωρούν."],
-  },
-  {
-    id: "valeria",
-    defaultName: "Βαλέρια η Επικίνδυνη",
-    replies: ["Ρίσκαρέ το.", "Μου αρέσει αυτό το φύλλο.", "Τώρα αρχίζει το ενδιαφέρον."],
-    spicyReplies: ["Θα το μετανιώσεις αυτό."],
-  },
-  {
-    id: "babis",
-    defaultName: "Μπάμπης ο Χαλαρός",
-    replies: ["Χαλαρά, έχουμε χρόνο.", "Μια χαρά πάει.", "Παίξε και βλέπουμε."],
-    spicyReplies: ["Μην το ζορίζεις τόσο."],
-  },
-  {
-    id: "captain",
-    defaultName: "Καπετάνιος",
-    replies: ["Πρόσω ολοταχώς.", "Κρατάμε πορεία.", "Έχω δει χειρότερες φουρτούνες."],
-    spicyReplies: ["Θα σε ρίξω στη θάλασσα με αυτά που παίζεις."],
-  },
+  { id: "mounara", replies: [], spicyReplies: [] },
+  { id: "ka-monika", replies: [], spicyReplies: [] },
+  { id: "archimandritis", replies: [], spicyReplies: [] },
 ];
 
 export type ReactionEvent = { type: "message_received"; fromName: string };

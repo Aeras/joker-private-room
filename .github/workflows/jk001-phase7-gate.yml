@@ -1,0 +1,96 @@
+name: JK-001 Phase 7 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+      - name: Phase 7 lint
+        id: phase7_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          supabase/functions/_shared/bot-catalog.ts
+          supabase/functions/room-commands/index.ts
+          src/domain/players.ts
+          src/services/roomFunctions.ts
+          src/routes/lobby.tsx
+          src/bots/personality.ts
+          src/demo/mockRooms.ts
+          src/test/bot-catalog.test.ts
+          --rule 'prettier/prettier: off'
+      - name: Canonical six guard
+        id: catalog_guard
+        continue-on-error: true
+        run: |
+          for id in giorgos-nousios thomoulis theia-tamara mounara ka-monika archimandritis; do
+            test "$(grep -c "id: \"$id\"" supabase/functions/_shared/bot-catalog.ts)" -eq 1
+          done
+          grep -q 'Γιώργος Νούσιος' supabase/functions/_shared/bot-catalog.ts
+          grep -q 'Θωμούλης' supabase/functions/_shared/bot-catalog.ts
+          grep -q 'Θεία Ταμάρα' supabase/functions/_shared/bot-catalog.ts
+          grep -q 'Μουνάρα' supabase/functions/_shared/bot-catalog.ts
+          grep -q 'κα. Μόνικα' supabase/functions/_shared/bot-catalog.ts
+          grep -q 'Αρχι...μανδρίτης' supabase/functions/_shared/bot-catalog.ts
+          ! grep -E -q 'grisha|serge|valeria|babis|captain' supabase/functions/_shared/bot-catalog.ts src/bots/personality.ts
+      - name: Authoritative assignment and uniqueness guard
+        id: assignment_guard
+        continue-on-error: true
+        run: |
+          grep -q 'assign_bot_to_seat_internal' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'clear_bot_seat_internal' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'replace_bot_seat_internal' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'room_seats_unique_bot_per_room' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'game_participants_unique_bot_per_game' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'STALE_ROOM_VERSION' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+      - name: Retry-stable Start guard
+        id: start_guard
+        continue-on-error: true
+        run: |
+          grep -q 'deterministicBotOrder' supabase/functions/room-commands/index.ts
+          grep -q 'p_expected_room_version' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'p_ordered_bot_catalog' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q "occupant_type = 'empty'" supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q "command_type.*'start_game'" supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+      - name: Trusted catalog boundary guard
+        id: trust_guard
+        continue-on-error: true
+        run: |
+          grep -q 'getCanonicalBot' supabase/functions/room-commands/index.ts
+          grep -q 'p_bot_strategy_profile_id: bot.strategyProfileId' supabase/functions/room-commands/index.ts
+          ! grep -q 'botDisplayName' src/services/roomFunctions.ts
+          ! grep -q 'strategyProfileId' src/services/roomFunctions.ts
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build
+      - name: Require Phase 7 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.phase7_lint.outcome }}" = "success"
+          test "${{ steps.catalog_guard.outcome }}" = "success"
+          test "${{ steps.assignment_guard.outcome }}" = "success"
+          test "${{ steps.start_guard.outcome }}" = "success"
+          test "${{ steps.trust_guard.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
