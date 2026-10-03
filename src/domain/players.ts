@@ -11,11 +11,32 @@ export interface PublicPlayer {
   avatarUrl?: string;
 }
 
+export type BotStrengthTier = 1 | 2 | 3;
+
 export interface BotIdentity {
   id: string;
   displayName: string;
   personalityId: string;
   avatarUrl?: string;
+  /** Immutable/versioned strategy snapshot for permanent production bots. */
+  strategyProfileId?: string;
+  /** Immutable catalog version pinned when the permanent bot is assigned. */
+  catalogVersion?: string;
+}
+
+export interface PublicBotDefinition {
+  id: string;
+  displayName: string;
+  avatarUrl: string;
+  tier: BotStrengthTier;
+  strategyProfileId: string;
+  available: boolean;
+}
+
+export interface PublicBotCatalog {
+  version: string;
+  rulesVersion: string;
+  bots: PublicBotDefinition[];
 }
 
 export type SeatOccupant =
@@ -47,6 +68,10 @@ export interface Room {
   version?: number;
   /** Present after authoritative Start Game creates the game shell. */
   gameId?: string | null;
+  /** Durable catalog reference persisted with the room. */
+  botCatalogVersion?: string;
+  /** Sanitized catalog projection added by the trusted room-command boundary. */
+  botCatalog?: PublicBotCatalog;
 }
 
 export const occupantName = (o: SeatOccupant): string | null =>
