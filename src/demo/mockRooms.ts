@@ -6,7 +6,7 @@ import { BOT_PERSONALITIES } from "@/bots/personality";
 import { SEAT_COUNT } from "@/domain/gameConfig";
 import type { PublicPlayer, Room, Seat } from "@/domain/players";
 import type { RoomService } from "@/services/rooms";
-import { DEMO_FRIEND, DEMO_HOST } from "./mockIdentity";
+import { DEMO_HOST } from "./mockIdentity";
 import { demoStore } from "./store";
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -38,9 +38,9 @@ export const mockRoomService: RoomService = {
       seats: emptySeats(),
       status: "lobby",
     };
+    // Only the host is present initially. Every other seat remains genuinely
+    // empty until another human joins; startGame fills only what is still empty.
     room = seatPlayer(room, host);
-    // Demo: a friend already connected, matching the lobby example.
-    room = seatPlayer(room, DEMO_FRIEND);
     demoStore.set({ room, localPlayer: host });
     return room;
   },
