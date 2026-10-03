@@ -70,6 +70,15 @@ function validateRoundOutcomes(
     ) {
       throw new Error("Invalid declaration or trick count in round outcome");
     }
+
+    const declaredTotal = outcome.declarations.reduce((sum, value) => sum + value, 0);
+    const tricksTotal = outcome.tricksTaken.reduce((sum, value) => sum + value, 0);
+    if (declaredTotal === deal.cardsPerPlayer) {
+      throw new Error("Declaration total may not equal available tricks");
+    }
+    if (tricksTotal !== deal.cardsPerPlayer) {
+      throw new Error("Taken tricks must equal available tricks");
+    }
   });
 }
 
