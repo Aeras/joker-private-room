@@ -76,7 +76,7 @@ export async function loadCanonicalGameState(gameId: string): Promise<LoadGameSt
 
 /**
  * Persist a TypeScript-computed transition through the single atomic Postgres CAS primitive.
- * This helper is intentionally not a createServerFn and is not a browser API.
+ * This helper is intentionally server-internal and is not a browser API.
  */
 export async function persistCanonicalGameState(args: {
   gameId: string;
