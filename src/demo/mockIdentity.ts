@@ -21,7 +21,7 @@ export const mockIdentityService: IdentityService = {
   },
   async verifyPin(playerId, pin) {
     const player = DEMO_PLAYERS.find((p) => p.id === playerId);
-    if (!player || !/^\d{4}$/.test(pin)) return null;
-    return { player, token: `demo-${playerId}` };
+    if (!player || !/^\d{4}$/.test(pin)) return { ok: false, code: "INVALID_CREDENTIALS" };
+    return { ok: true, player };
   },
 };
