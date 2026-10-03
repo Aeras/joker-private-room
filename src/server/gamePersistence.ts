@@ -4,6 +4,7 @@ import {
   GAME_STATE_SCHEMA_VERSION,
   type CanonicalGameState,
 } from "@/domain/gameState";
+import type { SeatIndex } from "@/domain/dealing";
 import {
   EXTERNAL_SUPABASE_PUBLISHABLE_KEY,
   EXTERNAL_SUPABASE_URL,
@@ -29,6 +30,7 @@ export type LoadGameStateResult =
       ok: true;
       gameId: string;
       roomId: string;
+      viewerSeat: SeatIndex;
       rulesetId: "popular";
       rulesVersion: string;
       stateSchemaVersion: number;
