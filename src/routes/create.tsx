@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { JButton } from "@/components/joker/JButton";
 import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
 import type { PublicPlayer } from "@/domain/players";
-import { mockRoomService } from "@/demo/mockRooms";
 import { RULESET_LIST, type RulesetId } from "@/domain/rulesets";
 import { t } from "@/i18n/el";
 import { authFailureMessage } from "@/lib/auth-feedback";
+import { roomFailureMessage } from "@/lib/room-feedback";
 import { cn } from "@/lib/utils";
 import { realIdentityService } from "@/services/realIdentity";
+import { createProductionRoom } from "@/services/roomFunctions";
 
 export const Route = createFileRoute("/create")({
   head: () => ({ meta: [{ title: "Δημιουργία παιχνιδιού — JOKER" }] }),
@@ -55,6 +56,7 @@ function CreateGame() {
   const [botsTalk, setBotsTalk] = useState(false);
   const [allowProfanity, setAllowProfanity] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [roomError, setRoomError] = useState<string | null>(null);
 
   useEffect(() => {
     realIdentityService
@@ -85,14 +87,30 @@ function CreateGame() {
   };
 
   const create = async () => {
-    if (!verifiedHost) return;
+    if (!verifiedHost || busy) return;
     setBusy(true);
-    await mockRoomService.createRoom({
-      host: verifiedHost,
-      rulesetId,
-      botSettings: { botsTalk, allowProfanity: botsTalk && allowProfanity },
-    });
-    navigate({ to: "/lobby" });
+    setRoomError(null);
+    try {
+      const result = await createProductionRoom({
+        data: {
+          actionId: crypto.randomUUID(),
+          rulesetId,
+          botsTalk,
+          allowProfanity: botsTalk && allowProfanity,
+        },
+      });
+      if (!result.ok) {
+        if (result.code === "ACTIVE_GAME_EXISTS" && result.activeGame?.roomCode) {
+          navigate({ to: "/lobby", search: { code: result.activeGame.roomCode } });
+          return;
+        }
+        setRoomError(roomFailureMessage(result));
+        return;
+      }
+      navigate({ to: "/lobby", search: { code: result.room.code } });
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (!verifiedHost) {
@@ -116,12 +134,7 @@ function CreateGame() {
             />
           </div>
           {authError && <p className="text-sm text-negative">{authError}</p>}
-          <JButton
-            size="lg"
-            className="w-full"
-            onClick={unlock}
-            disabled={!host || pin.length !== 4 || authBusy}
-          >
+          <JButton size="lg" className="w-full" onClick={unlock} disabled={!host || pin.length !== 4 || authBusy}>
             Συνέχεια
           </JButton>
         </div>
@@ -133,29 +146,39 @@ function CreateGame() {
     <ScreenShell
       title={t.createGame}
       footer={
-        <JButton size="lg" className="w-full" onClick={create} disabled={busy}>
-          {t.createRoom}
-        </JButton>
+        <div className="space-y-2">
+          {roomError && <p className="text-sm text-negative">{roomError}</p>}
+          <JButton size="lg" className="w-full" onClick={create} disabled={busy || rulesetId !== "popular"}>
+            {t.createRoom}
+          </JButton>
+        </div>
       }
     >
       <SectionLabel>{t.chooseGame}</SectionLabel>
       <div role="radiogroup" className="space-y-3">
         {RULESET_LIST.map((r) => {
           const active = r.id === rulesetId;
+          const available = r.id === "popular";
           return (
             <button
               key={r.id}
               role="radio"
               aria-checked={active}
-              onClick={() => setRulesetId(r.id)}
-              className={cn("panel flex w-full items-center gap-4 p-4 text-left transition-shadow", active && "ring-gold")}
+              aria-disabled={!available}
+              disabled={!available}
+              onClick={() => available && setRulesetId(r.id)}
+              className={cn(
+                "panel flex w-full items-center gap-4 p-4 text-left transition-shadow",
+                active && "ring-gold",
+                !available && "cursor-not-allowed opacity-45",
+              )}
             >
               <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", active ? "border-primary" : "border-muted-foreground")}>
                 {active && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
               </span>
               <span>
                 <span className="block font-display text-lg text-foreground">{r.name}</span>
-                <span className="block text-sm text-muted-foreground">{r.description}</span>
+                <span className="block text-sm text-muted-foreground">{available ? r.description : t.rulesetNotImplemented}</span>
               </span>
             </button>
           );
