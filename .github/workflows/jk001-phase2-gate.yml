@@ -1,0 +1,64 @@
+name: JK-001 Phase 2 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+      - name: Phase 2 lint
+        id: phase2_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/domain/players.ts
+          src/i18n/el.ts
+          src/lib/room-feedback.ts
+          src/services/roomFunctions.ts
+          src/routes/create.tsx
+          src/routes/join.tsx
+          src/routes/lobby.tsx
+          src/integrations/supabase/types.ts
+          --rule 'prettier/prettier: off'
+      - name: No demo room authority in production room routes
+        id: no_demo_rooms
+        continue-on-error: true
+        run: '! grep -E "mockRoomService|useDemoState|demoStore" src/routes/create.tsx src/routes/join.tsx src/routes/lobby.tsx'
+      - name: No client authority token
+        id: no_fake_token
+        continue-on-error: true
+        run: '! grep -R "verified:" src'
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build
+      - name: Global lint baseline
+        continue-on-error: true
+        run: bun run lint
+      - name: Require Phase 2 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.phase2_lint.outcome }}" = "success"
+          test "${{ steps.no_demo_rooms.outcome }}" = "success"
+          test "${{ steps.no_fake_token.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
