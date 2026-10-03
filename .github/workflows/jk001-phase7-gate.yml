@@ -52,21 +52,21 @@ jobs:
         id: assignment_guard
         continue-on-error: true
         run: |
-          grep -q 'assign_bot_to_seat_internal' supabase/migrations/20261003210000_jk001_phase7_bot_roster_authority.sql
-          grep -q 'clear_bot_seat_internal' supabase/migrations/20261003210000_jk001_phase7_bot_roster_authority.sql
-          grep -q 'replace_bot_seat_internal' supabase/migrations/20261003210000_jk001_phase7_bot_roster_authority.sql
-          grep -q 'room_seats_unique_bot_per_room' supabase/migrations/20261003210000_jk001_phase7_bot_roster_authority.sql
-          grep -q 'game_participants_unique_bot_per_game' supabase/migrations/20261003210000_jk001_phase7_bot_roster_authority.sql
-          grep -q 'STALE_ROOM_VERSION' supabase/migrations/20261003210000_jk001_phase7_bot_roster_authority.sql
+          grep -q 'assign_bot_to_seat_internal' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'clear_bot_seat_internal' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'replace_bot_seat_internal' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'room_seats_unique_bot_per_room' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'game_participants_unique_bot_per_game' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'STALE_ROOM_VERSION' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
       - name: Retry-stable Start guard
         id: start_guard
         continue-on-error: true
         run: |
           grep -q 'deterministicBotOrder' supabase/functions/room-commands/index.ts
-          grep -q 'p_expected_room_version' supabase/migrations/20261003210000_jk001_phase7_bot_roster_authority.sql
-          grep -q 'p_ordered_bot_catalog' supabase/migrations/20261003210000_jk001_phase7_bot_roster_authority.sql
-          grep -q "occupant_type = 'empty'" supabase/migrations/20261003210000_jk001_phase7_bot_roster_authority.sql
-          grep -q "command_type.*'start_game'" supabase/migrations/20261003210000_jk001_phase7_bot_roster_authority.sql
+          grep -q 'p_expected_room_version' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q 'p_ordered_bot_catalog' supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q "occupant_type = 'empty'" supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
+          grep -q "command_type.*'start_game'" supabase/migrations/20261003211612_jk001_phase7_bot_roster_authority.sql
       - name: Trusted catalog boundary guard
         id: trust_guard
         continue-on-error: true
