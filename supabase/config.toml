@@ -2,3 +2,6 @@ project_id = "wubrgnzbvtrzbvvqalfw"
 
 [functions.verify-player-pin]
 verify_jwt = false
+
+[functions.room-commands]
+verify_jwt = false
