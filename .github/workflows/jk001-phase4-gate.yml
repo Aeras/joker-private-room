@@ -1,0 +1,63 @@
+name: JK-001 Phase 4 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+      - name: Phase 4 lint
+        id: phase4_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/domain/gameState.ts
+          src/lib/stableFingerprint.ts
+          src/server/gamePersistence.ts
+          src/test/game-persistence-foundation.test.ts
+          supabase/functions/game-state/index.ts
+          --rule 'prettier/prettier: off'
+      - name: Server-only persistence boundary
+        id: server_only
+        continue-on-error: true
+        run: '! grep -n "createServerFn" src/server/gamePersistence.ts'
+      - name: Atomic CAS migration guards
+        id: cas_guards
+        continue-on-error: true
+        run: |
+          grep -q "for update" supabase/migrations/20261003192500_jk001_phase4_game_state_cas.sql
+          grep -q "private.game_command_ledger" supabase/migrations/20261003192500_jk001_phase4_game_state_cas.sql
+          grep -q "expected_state_version" supabase/migrations/20261003192500_jk001_phase4_game_state_cas.sql
+          grep -q "request_fingerprint" supabase/migrations/20261003192500_jk001_phase4_game_state_cas.sql
+          grep -q "revoke all on function public.persist_game_state_internal" supabase/migrations/20261003192500_jk001_phase4_game_state_cas.sql
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build
+      - name: Require Phase 4 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.phase4_lint.outcome }}" = "success"
+          test "${{ steps.server_only.outcome }}" = "success"
+          test "${{ steps.cas_guards.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
