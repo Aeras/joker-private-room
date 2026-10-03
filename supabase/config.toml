@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.room-commands]
 verify_jwt = false
+
+[functions.game-state]
+verify_jwt = false
