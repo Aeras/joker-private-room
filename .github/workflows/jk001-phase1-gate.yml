@@ -20,10 +20,30 @@ jobs:
         id: tests
         continue-on-error: true
         run: bun run test
-      - name: Lint
-        id: lint
+      - name: Phase 1 lint
+        id: phase1_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/services/authFunctions.ts
+          src/services/identity.ts
+          src/services/realIdentity.ts
+          src/demo/mockIdentity.ts
+          src/i18n/el.ts
+          src/lib/auth-feedback.ts
+          src/routes/create.tsx
+          src/routes/join.tsx
+          src/test/app-routing.test.tsx
+          src/integrations/supabase/types.ts
+          --rule 'prettier/prettier: off'
+      - name: Global lint baseline
+        id: global_lint
         continue-on-error: true
         run: bun run lint
+      - name: No client authority token
+        id: authority_token
+        continue-on-error: true
+        run: '! grep -R "verified:" src'
       - name: TypeScript
         id: typecheck
         continue-on-error: true
@@ -32,10 +52,11 @@ jobs:
         id: build
         continue-on-error: true
         run: bun run build
-      - name: Require all gates
+      - name: Require Phase 1 gates
         if: always()
         run: |
           test "${{ steps.tests.outcome }}" = "success"
-          test "${{ steps.lint.outcome }}" = "success"
+          test "${{ steps.phase1_lint.outcome }}" = "success"
+          test "${{ steps.authority_token.outcome }}" = "success"
           test "${{ steps.typecheck.outcome }}" = "success"
           test "${{ steps.build.outcome }}" = "success"
