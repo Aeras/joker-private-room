@@ -1,0 +1,72 @@
+name: JK-001 Phase 6 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+      - name: Phase 6 lint
+        id: phase6_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/domain/controller.ts
+          src/domain/controller.test.ts
+          src/server/gameControl.ts
+          src/services/gameProjectionFunctions.ts
+          --rule 'prettier/prettier: off'
+      - name: Server authoritative timeout guard
+        id: timeout_guard
+        continue-on-error: true
+        run: |
+          grep -q 'HUMAN_TURN_TIMEOUT_MS = 30_000' src/domain/controller.ts
+          grep -q 'resolveOverdueTimeoutBeforeRead' src/services/gameProjectionFunctions.ts
+          ! grep -R -n 'setTimeout.*timeoutTakeover' src || true
+      - name: Reclaim identity and CAS guard
+        id: reclaim_guard
+        continue-on-error: true
+        run: |
+          grep -q 'loaded.viewerSeat' src/server/gameControl.ts
+          grep -q 'commandType: "reclaim_control"' src/server/gameControl.ts
+          grep -q 'expectedStateVersion' src/services/gameProjectionFunctions.ts
+          ! grep -n 'seatIndex' src/services/gameProjectionFunctions.ts | grep 'validator'
+      - name: Fair bounded bot guard
+        id: bot_guard
+        continue-on-error: true
+        run: |
+          grep -q 'MAX_SYNCHRONOUS_BOT_STEPS' src/domain/controller.ts
+          grep -q 'projectGameForSeat(state, actor)' src/domain/controller.ts
+          grep -q 'STEP_BOUND' src/domain/controller.test.ts
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build
+      - name: Require Phase 6 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.phase6_lint.outcome }}" = "success"
+          test "${{ steps.timeout_guard.outcome }}" = "success"
+          test "${{ steps.reclaim_guard.outcome }}" = "success"
+          test "${{ steps.bot_guard.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
