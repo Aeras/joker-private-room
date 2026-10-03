@@ -122,7 +122,7 @@ begin
      or p_expected_state_version is null
      or p_expected_state_version < 0
      or p_new_state is null
-     or jsonb_typeof(p_new_state) <> 'object' then
+     or jsonb_typeof(p_new_state) is distinct from 'object' then
     return jsonb_build_object('ok', false, 'code', 'INVALID_REQUEST');
   end if;
 
@@ -172,15 +172,15 @@ begin
   v_next_version := v_game.state_version + 1;
   v_new_lifecycle := p_new_state->>'lifecycle';
 
-  if p_new_state->>'gameId' <> v_game.id::text
-     or p_new_state->>'roomId' <> v_game.room_id::text
-     or p_new_state->>'rulesetId' <> v_game.ruleset_id
-     or p_new_state->>'rulesVersion' <> v_game.rules_version
+  if (p_new_state->>'gameId') is distinct from v_game.id::text
+     or (p_new_state->>'roomId') is distinct from v_game.room_id::text
+     or (p_new_state->>'rulesetId') is distinct from v_game.ruleset_id
+     or (p_new_state->>'rulesVersion') is distinct from v_game.rules_version
      or coalesce(p_new_state->>'stateSchemaVersion', '') !~ '^[0-9]+$'
      or (p_new_state->>'stateSchemaVersion')::integer <> v_game.state_schema_version
      or coalesce(p_new_state->>'stateVersion', '') !~ '^[0-9]+$'
      or (p_new_state->>'stateVersion')::bigint <> v_next_version
-     or v_new_lifecycle not in ('starting', 'active', 'complete') then
+     or coalesce(v_new_lifecycle, '') not in ('starting', 'active', 'complete') then
     return jsonb_build_object('ok', false, 'code', 'INVALID_CANONICAL_STATE');
   end if;
 
