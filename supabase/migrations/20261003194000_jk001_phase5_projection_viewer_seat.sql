@@ -20,15 +20,21 @@ begin
     return jsonb_build_object('ok', false, 'code', 'NOT_AUTHENTICATED');
   end if;
 
-  select g.*, gp.seat_index
-    into v_game, v_viewer_seat
-  from public.games g
-  join public.game_participants gp on gp.game_id = g.id
-  where g.id = p_game_id
+  select gp.seat_index into v_viewer_seat
+  from public.game_participants gp
+  where gp.game_id = p_game_id
     and gp.owner_type = 'human'
     and gp.player_id = v_player_id
     and gp.status = 'active'
   limit 1;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'code', 'GAME_NOT_FOUND');
+  end if;
+
+  select g.* into v_game
+  from public.games g
+  where g.id = p_game_id;
 
   if not found then
     return jsonb_build_object('ok', false, 'code', 'GAME_NOT_FOUND');
