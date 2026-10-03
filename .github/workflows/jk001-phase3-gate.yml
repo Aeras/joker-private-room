@@ -1,0 +1,56 @@
+name: JK-001 Phase 3 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+      - name: Phase 3 lint
+        id: phase3_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/domain/cards.ts
+          src/domain/dealing.ts
+          src/domain/declarations.ts
+          src/domain/engine.ts
+          src/domain/premia.ts
+          src/domain/ranking.ts
+          src/domain/rulesets.ts
+          src/domain/canonicalEngine.test.ts
+          --rule 'prettier/prettier: off'
+      - name: No unrestricted legal-move placeholder
+        id: no_unrestricted
+        continue-on-error: true
+        run: '! grep -R "unrestrictedLegalMoves" src/domain'
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build
+      - name: Require Phase 3 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.phase3_lint.outcome }}" = "success"
+          test "${{ steps.no_unrestricted.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"

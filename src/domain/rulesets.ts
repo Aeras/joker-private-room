@@ -1,6 +1,7 @@
+import { type PhaseConfig } from "./gameConfig";
+import { resolvePremia, type RoundDealOutcome } from "./premia";
 import { scoreDeal, type DealResultInput } from "./scoring";
-import type { ScoreSheet, SpecialRowKind } from "./scoreSheet";
-import type { PhaseConfig } from "./gameConfig";
+import type { SpecialRowKind } from "./scoreSheet";
 
 export type RulesetId = "popular" | "classic" | "panagiotis";
 
@@ -10,13 +11,9 @@ export interface PhaseBonusEntry {
   values: (number | null)[];
 }
 
-/**
- * Ruleset-specific phase/premia bonus calculation.
- * The real rules are not yet documented — implementations return [] for now.
- */
 export type PhaseBonusCalculator = (args: {
   phase: PhaseConfig["phase"];
-  sheet: ScoreSheet;
+  outcomes: readonly RoundDealOutcome[];
 }) => PhaseBonusEntry[];
 
 export interface Ruleset {
@@ -27,6 +24,13 @@ export interface Ruleset {
   calculatePhaseBonus: PhaseBonusCalculator;
 }
 
+const popularPremia: PhaseBonusCalculator = ({ phase, outcomes }) => {
+  const resolution = resolvePremia(phase, outcomes);
+  if (resolution.adjustments.every((value) => value === 0)) return [];
+  return [{ kind: "premia", values: resolution.adjustments }];
+};
+
+/** Classic/Panagiotis differences remain deliberately unspecified. */
 const notYetSpecified: PhaseBonusCalculator = () => [];
 
 export const RULESETS: Record<RulesetId, Ruleset> = {
@@ -35,7 +39,7 @@ export const RULESETS: Record<RulesetId, Ruleset> = {
     name: "Popular — Our Rules",
     description: "Η βασική έκδοση που παίζουμε συνήθως.",
     scoreDeal,
-    calculatePhaseBonus: notYetSpecified,
+    calculatePhaseBonus: popularPremia,
   },
   classic: {
     id: "classic",
