@@ -3,11 +3,12 @@ import { useEffect, useState } from "react";
 import { JButton } from "@/components/joker/JButton";
 import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
 import type { PublicPlayer } from "@/domain/players";
-import { mockRoomService } from "@/demo/mockRooms";
 import { t } from "@/i18n/el";
 import { authFailureMessage } from "@/lib/auth-feedback";
+import { roomFailureMessage } from "@/lib/room-feedback";
 import { cn } from "@/lib/utils";
 import { realIdentityService } from "@/services/realIdentity";
+import { joinProductionRoom } from "@/services/roomFunctions";
 
 export const Route = createFileRoute("/join")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -58,13 +59,25 @@ function JoinGame() {
 
     setAuthBusy(true);
     try {
-      const result = await realIdentityService.verifyPin(playerId, pin);
-      if (!result.ok) {
-        setError(authFailureMessage(result));
+      const auth = await realIdentityService.verifyPin(playerId, pin);
+      if (!auth.ok) {
+        setError(authFailureMessage(auth));
         return;
       }
-      await mockRoomService.joinRoom(code, result.player);
-      navigate({ to: "/lobby" });
+
+      const result = await joinProductionRoom({
+        data: { actionId: crypto.randomUUID(), code: code.trim().toUpperCase() },
+      });
+      if (!result.ok) {
+        if (result.code === "ACTIVE_GAME_EXISTS" && result.activeGame?.roomCode) {
+          navigate({ to: "/lobby", search: { code: result.activeGame.roomCode } });
+          return;
+        }
+        setError(roomFailureMessage(result));
+        return;
+      }
+
+      navigate({ to: "/lobby", search: { code: result.room.code } });
     } finally {
       setAuthBusy(false);
     }
@@ -77,7 +90,7 @@ function JoinGame() {
           <SectionLabel>{t.roomCode}</SectionLabel>
           <input
             value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 4))}
+            onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))}
             placeholder="J7K4"
             autoCapitalize="characters"
             className={cn(inputCls, "text-center font-display text-2xl tracking-[0.4em]")}
