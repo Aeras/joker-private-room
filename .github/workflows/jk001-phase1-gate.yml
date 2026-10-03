@@ -1,0 +1,62 @@
+name: JK-001 Phase 1 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+      - name: Phase 1 lint
+        id: phase1_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/services/authFunctions.ts
+          src/services/identity.ts
+          src/services/realIdentity.ts
+          src/demo/mockIdentity.ts
+          src/i18n/el.ts
+          src/lib/auth-feedback.ts
+          src/routes/create.tsx
+          src/routes/join.tsx
+          src/test/app-routing.test.tsx
+          src/integrations/supabase/types.ts
+          --rule 'prettier/prettier: off'
+      - name: Global lint baseline
+        id: global_lint
+        continue-on-error: true
+        run: bun run lint
+      - name: No client authority token
+        id: authority_token
+        continue-on-error: true
+        run: '! grep -R "verified:" src'
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build
+      - name: Require Phase 1 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.phase1_lint.outcome }}" = "success"
+          test "${{ steps.authority_token.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
