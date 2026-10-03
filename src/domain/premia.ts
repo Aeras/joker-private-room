@@ -131,8 +131,10 @@ export function resolvePremia(
     if (qualified[targetSeat]) throw new Error("Premia target must be the next non-premia seat");
 
     const removal = bestEligibleScore(outcomes, targetSeat);
-    adjustments[selectedBonus.seat] += selectedBonus.amount;
-    if (removal) adjustments[targetSeat] -= removal.amount;
+    adjustments[selectedBonus.seat] = (adjustments[selectedBonus.seat] ?? 0) + selectedBonus.amount;
+    if (removal) {
+      adjustments[targetSeat] = (adjustments[targetSeat] ?? 0) - removal.amount;
+    }
 
     transfers.push({
       bonusSeat: selectedBonus.seat,
@@ -144,5 +146,7 @@ export function resolvePremia(
     });
   }
 
+  // Metadata order is not a gameplay rule; keep it stable for snapshots/tests.
+  transfers.sort((a, b) => a.bonusSeat - b.bonusSeat);
   return { qualified, adjustments, transfers };
 }
