@@ -37,7 +37,7 @@ export function legalDeclarationValues(args: {
 
   const others = declarations.filter((_, index) => index !== dealerSeat);
   if (others.some((value) => value == null)) return [];
-  const declaredByOthers = others.reduce((sum, value) => sum + (value ?? 0), 0);
+  const declaredByOthers = others.reduce<number>((sum, value) => sum + (value ?? 0), 0);
   const forbidden = cardsPerPlayer - declaredByOthers;
   return values.filter((value) => value !== forbidden);
 }
