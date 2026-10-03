@@ -39,11 +39,11 @@ jobs:
         id: cas_guards
         continue-on-error: true
         run: |
-          grep -q "for update" supabase/migrations/20261003192500_jk001_phase4_game_state_cas.sql
-          grep -q "private.game_command_ledger" supabase/migrations/20261003192500_jk001_phase4_game_state_cas.sql
-          grep -q "expected_state_version" supabase/migrations/20261003192500_jk001_phase4_game_state_cas.sql
-          grep -q "request_fingerprint" supabase/migrations/20261003192500_jk001_phase4_game_state_cas.sql
-          grep -q "revoke all on function public.persist_game_state_internal" supabase/migrations/20261003192500_jk001_phase4_game_state_cas.sql
+          grep -q "for update" supabase/migrations/20261003191742_jk001_phase4_game_state_cas.sql
+          grep -q "private.game_command_ledger" supabase/migrations/20261003191742_jk001_phase4_game_state_cas.sql
+          grep -q "expected_state_version" supabase/migrations/20261003191742_jk001_phase4_game_state_cas.sql
+          grep -q "request_fingerprint" supabase/migrations/20261003191742_jk001_phase4_game_state_cas.sql
+          grep -q "revoke all on function public.persist_game_state_internal" supabase/migrations/20261003191742_jk001_phase4_game_state_cas.sql
       - name: TypeScript
         id: typecheck
         continue-on-error: true
