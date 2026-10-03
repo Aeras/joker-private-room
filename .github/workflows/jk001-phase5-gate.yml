@@ -43,8 +43,8 @@ jobs:
         run: |
           grep -q 'validator(z.object({ gameId: z.string().uuid() }))' src/services/gameProjectionFunctions.ts
           ! grep -n 'validator.*seat' src/services/gameProjectionFunctions.ts
-          grep -q 'viewerSeat' supabase/migrations/20261003194000_jk001_phase5_projection_viewer_seat.sql
-          grep -q "game_participants" supabase/migrations/20261003194000_jk001_phase5_projection_viewer_seat.sql
+          grep -q 'viewerSeat' supabase/migrations/20261003194500_jk001_phase5_projection_viewer_seat.sql
+          grep -q "game_participants" supabase/migrations/20261003194500_jk001_phase5_projection_viewer_seat.sql
       - name: Hidden-information negative tests are present
         id: privacy_tests
         continue-on-error: true
