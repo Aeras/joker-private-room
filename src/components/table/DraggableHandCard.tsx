@@ -59,7 +59,7 @@ export function DraggableHandCard({
   const sample = useMemo(() => drag ? {
     deltaX: drag.currentX - drag.startX,
     deltaY: drag.currentY - drag.startY,
-    durationMs: Date.now() - drag.startedAt,
+    durationMs: performance.now() - drag.startedAt,
   } : null, [drag]);
   const commitReady = sample ? shouldCommitCardGesture(sample) : false;
 
