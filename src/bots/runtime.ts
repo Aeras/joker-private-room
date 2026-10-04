@@ -6,13 +6,21 @@ import type { LocalLegalAction, PlayerGameProjection } from "@/domain/projection
 import type { BotStrategyProfileId } from "../../supabase/functions/_shared/bot-catalog";
 import {
   resolveBotStrategy,
-  temporaryControllerStrategy,
+  strongBasicStrategy,
   type BotStrategy,
 } from "./strategy";
 
+export const TEMPORARY_CONTROLLER_STRATEGY_ID = "temporary-controller-v1" as const;
+
 export interface AutomaticCommandSelection {
   command: GameplayCommand;
-  strategyId: string;
+  strategyId: BotStrategyProfileId | typeof TEMPORARY_CONTROLLER_STRATEGY_ID;
+  controller: Exclude<ControllerType, "human">;
+}
+
+interface SelectedStrategy {
+  strategy: BotStrategy;
+  strategyId: AutomaticCommandSelection["strategyId"];
   controller: Exclude<ControllerType, "human">;
 }
 
@@ -40,21 +48,28 @@ function permanentStrategy(profileId: string): BotStrategy | null {
   return resolveBotStrategy(profileId as BotStrategyProfileId);
 }
 
-function strategyForProjection(projection: PlayerGameProjection): {
-  strategy: BotStrategy;
-  controller: Exclude<ControllerType, "human">;
-} | null {
+function strategyForProjection(projection: PlayerGameProjection): SelectedStrategy | null {
   const seat = projection.seats[projection.viewerSeat];
   if (seat.controller === "human") return null;
 
   if (seat.controller === "temporary_bot") {
     if (seat.owner.type !== "human") return null;
-    return { strategy: temporaryControllerStrategy, controller: "temporary_bot" };
+    return {
+      strategy: strongBasicStrategy,
+      strategyId: TEMPORARY_CONTROLLER_STRATEGY_ID,
+      controller: "temporary_bot",
+    };
   }
 
   if (seat.owner.type !== "bot") return null;
   const strategy = permanentStrategy(seat.owner.strategyProfileId);
-  return strategy ? { strategy, controller: "permanent_bot" } : null;
+  return strategy
+    ? {
+        strategy,
+        strategyId: strategy.id,
+        controller: "permanent_bot",
+      }
+    : null;
 }
 
 function cardChoices(
@@ -122,7 +137,7 @@ export function selectAutomaticGameplayCommand(
 
   return {
     command,
-    strategyId: selected.strategy.id,
+    strategyId: selected.strategyId,
     controller: selected.controller,
   };
 }
