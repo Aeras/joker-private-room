@@ -2,8 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { History, Settings } from "lucide-react";
 import { JButton, jButton } from "@/components/joker/JButton";
 import { t } from "@/i18n/el";
-import { SUIT_SYMBOL } from "@/domain/cards";
 import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
+
+const HOME_BACKGROUND = "/home/file_00000000ff708210a91f5598803905f3.png";
+const CREATE_GAME_ART = "/home/file_0000000025f481f49e4f8c88502ea288.png";
+const JOIN_GAME_ART = "/home/file_000000000c548243815079f73a1f05cb.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -17,67 +20,91 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
+function HomeArtButton({
+  to,
+  search,
+  image,
+  label,
+  tone,
+}: {
+  to: "/create" | "/join";
+  search?: { code: undefined };
+  image: string;
+  label: string;
+  tone: "primary" | "secondary";
+}) {
+  return (
+    <Link
+      to={to}
+      search={search}
+      aria-label={label}
+      className={`home-art-button home-art-button--${tone} group`}
+    >
+      <img src={image} alt="" aria-hidden="true" className="home-art-button__image" draggable={false} />
+      <span className="sr-only">{label}</span>
+    </Link>
+  );
+}
+
 function Home() {
   const activeLookup = useCurrentActiveGame();
 
   return (
-    <div className="surface-room relative flex min-h-dvh flex-col items-center justify-center px-6">
-      <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] flex gap-1">
+    <div className="home-premium relative flex min-h-dvh flex-col overflow-hidden px-5">
+      <img src={HOME_BACKGROUND} alt="" aria-hidden="true" className="home-premium__background" draggable={false} />
+      <div className="home-premium__veil" aria-hidden="true" />
+
+      <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 flex gap-2">
         <Link
           to="/history"
           aria-label="Ιστορικό"
-          className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="home-utility-button"
         >
           <History className="h-5 w-5" />
         </Link>
         <Link
           to="/settings"
           aria-label={t.settings}
-          className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="home-utility-button"
         >
           <Settings className="h-5 w-5" />
         </Link>
       </div>
 
-      <div className="flex w-full max-w-sm flex-col items-center text-center">
-        <div className="mb-6 flex gap-3 text-2xl text-primary/70">
-          <span>{SUIT_SYMBOL.spades}</span>
-          <span className="text-card-red">{SUIT_SYMBOL.hearts}</span>
-          <span className="text-card-red">{SUIT_SYMBOL.diamonds}</span>
-          <span>{SUIT_SYMBOL.clubs}</span>
+      <main className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-end pb-[max(2rem,env(safe-area-inset-bottom))] pt-28 text-center sm:justify-center sm:pb-8">
+        <div className="home-brand mb-8">
+          <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.42em] text-primary/80">Private card room</p>
+          <h1 className="font-display text-6xl font-semibold tracking-[0.16em] text-[#f6e8c2] drop-shadow-[0_5px_24px_rgba(0,0,0,0.7)] sm:text-7xl">
+            {t.appName}
+          </h1>
+          <div className="mx-auto my-4 h-px w-28 bg-gradient-to-r from-transparent via-primary/80 to-transparent" />
+          <p className="text-xs uppercase tracking-[0.28em] text-[#d7c6ad]/80">{t.subtitle}</p>
         </div>
-        <h1 className="font-display text-7xl font-semibold tracking-[0.15em] text-primary sm:text-8xl">{t.appName}</h1>
-        <div className="my-4 h-px w-24 bg-gradient-to-r from-transparent via-primary to-transparent" />
-        <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">{t.subtitle}</p>
 
-        <div className="mt-12 flex w-full flex-col gap-3">
+        <div className="w-full space-y-3">
           {activeLookup.status === "loading" ? (
-            <div className="panel p-4 text-sm text-muted-foreground">Έλεγχος ενεργού παιχνιδιού…</div>
+            <div className="pregame-glass-panel p-4 text-sm text-muted-foreground">Έλεγχος ενεργού παιχνιδιού…</div>
           ) : activeLookup.status === "error" ? (
-            <div className="panel space-y-3 p-4">
+            <div className="pregame-glass-panel space-y-3 p-4">
               <p className="text-sm text-negative">Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού.</p>
-              <JButton className="w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
+              <JButton className="pregame-primary-button w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
             </div>
           ) : activeLookup.status === "active" ? (
             <Link
               to="/table"
               search={{ code: activeLookup.activeGame.roomCode, gameId: activeLookup.activeGame.gameId }}
-              className={jButton({ size: "lg" })}
+              className={jButton({ size: "lg", className: "pregame-primary-button w-full text-base" })}
             >
               Επιστροφή στο παιχνίδι
             </Link>
           ) : (
-            <>
-              <Link to="/create" className={jButton({ size: "lg" })}>
-                {t.createGame}
-              </Link>
-              <Link to="/join" search={{ code: undefined }} className={jButton({ variant: "secondary", size: "lg" })}>
-                {t.joinGame}
-              </Link>
-            </>
+            <div className="space-y-3">
+              <HomeArtButton to="/create" image={CREATE_GAME_ART} label={t.createGame} tone="primary" />
+              <HomeArtButton to="/join" search={{ code: undefined }} image={JOIN_GAME_ART} label={t.joinGame} tone="secondary" />
+            </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
