@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { History, Settings } from "lucide-react";
-import { jButton } from "@/components/joker/JButton";
+import { JButton, jButton } from "@/components/joker/JButton";
 import { t } from "@/i18n/el";
 import { SUIT_SYMBOL } from "@/domain/cards";
+import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -17,6 +18,8 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
+  const activeLookup = useCurrentActiveGame();
+
   return (
     <div className="surface-room relative flex min-h-dvh flex-col items-center justify-center px-6">
       <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] flex gap-1">
@@ -48,12 +51,31 @@ function Home() {
         <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">{t.subtitle}</p>
 
         <div className="mt-12 flex w-full flex-col gap-3">
-          <Link to="/create" className={jButton({ size: "lg" })}>
-            {t.createGame}
-          </Link>
-          <Link to="/join" search={{ code: undefined }} className={jButton({ variant: "secondary", size: "lg" })}>
-            {t.joinGame}
-          </Link>
+          {activeLookup.status === "loading" ? (
+            <div className="panel p-4 text-sm text-muted-foreground">Έλεγχος ενεργού παιχνιδιού…</div>
+          ) : activeLookup.status === "error" ? (
+            <div className="panel space-y-3 p-4">
+              <p className="text-sm text-negative">Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού.</p>
+              <JButton className="w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
+            </div>
+          ) : activeLookup.status === "active" ? (
+            <Link
+              to="/table"
+              search={{ code: activeLookup.activeGame.roomCode, gameId: activeLookup.activeGame.gameId }}
+              className={jButton({ size: "lg" })}
+            >
+              Επιστροφή στο παιχνίδι
+            </Link>
+          ) : (
+            <>
+              <Link to="/create" className={jButton({ size: "lg" })}>
+                {t.createGame}
+              </Link>
+              <Link to="/join" search={{ code: undefined }} className={jButton({ variant: "secondary", size: "lg" })}>
+                {t.joinGame}
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>
