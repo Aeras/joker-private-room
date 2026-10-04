@@ -30,6 +30,7 @@ jobs:
           src/bots/runtime.test.ts
           src/server/botProgression.ts
           src/services/gameProjectionFunctions.ts
+          src/services/roomFunctions.ts
           --rule 'prettier/prettier: off'
       - name: Permanent profile resolution guard
         id: permanent_profiles
@@ -67,6 +68,7 @@ jobs:
           grep -q 'settleAutomaticState' src/services/gameProjectionFunctions.ts
           grep -q 'progressAutomaticGameplay' src/services/gameProjectionFunctions.ts
           grep -q 'resolveOverdueTimeoutBeforeRead' src/services/gameProjectionFunctions.ts
+          grep -q 'progressAutomaticGameplay(result.gameId)' src/services/roomFunctions.ts
       - name: No Phase 12 scope guard
         id: no_phase12
         continue-on-error: true
