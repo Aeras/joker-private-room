@@ -4,7 +4,7 @@ import type { SeatIndex } from "./dealing";
 import type { JokerSemantic, PlayedCard } from "./engine";
 import type { PhaseConfig } from "./gameConfig";
 
-export const GAME_STATE_SCHEMA_VERSION = 2 as const;
+export const GAME_STATE_SCHEMA_VERSION = 3 as const;
 export const POPULAR_RULES_VERSION = "popular-v1" as const;
 
 export type GameLifecycle = "starting" | "active" | "complete";
@@ -107,11 +107,43 @@ export interface CanonicalJokerState {
   semantic: JokerSemantic | null;
 }
 
+export interface CanonicalDealScoreRecord {
+  dealNumber: number;
+  round: PhaseConfig["phase"];
+  indexInPhase: number;
+  cardsPerPlayer: number;
+  declarations: [number, number, number, number];
+  tricksTaken: [number, number, number, number];
+  dealScores: [number, number, number, number];
+  totalsAfterDeal: [number, number, number, number];
+}
+
+export interface CanonicalPremiaTransferRecord {
+  bonusSeat: number;
+  bonusDealIndex: number;
+  bonusAmount: number;
+  targetSeat: number;
+  removedDealIndex: number | null;
+  removedAmount: number;
+}
+
+export interface CanonicalRoundPremiaRecord {
+  round: PhaseConfig["phase"];
+  qualified: [boolean, boolean, boolean, boolean];
+  adjustments: [number, number, number, number];
+  transfers: CanonicalPremiaTransferRecord[];
+  totalsAfterPremia: [number, number, number, number];
+}
+
 export interface CanonicalScoreState {
   tricksTaken: [number, number, number, number];
   currentDealScores: [number | null, number | null, number | null, number | null];
   cumulativeTotals: [number, number, number, number];
   finalPlacements: [number | null, number | null, number | null, number | null];
+  /** Required in persisted schema-v3 snapshots. Optional only for legacy test fixtures. */
+  completedDeals?: CanonicalDealScoreRecord[];
+  /** Required in persisted schema-v3 snapshots. Optional only for legacy test fixtures. */
+  roundPremia?: CanonicalRoundPremiaRecord[];
 }
 
 export interface CanonicalTimingState {
@@ -132,8 +164,14 @@ export interface CanonicalGameState {
   stateSchemaVersion: typeof GAME_STATE_SCHEMA_VERSION;
   stateVersion: number;
   lifecycle: GameLifecycle;
+  /**
+   * Private per-game entropy. It is generated with cryptographic server entropy,
+   * persisted only inside the server-only canonical snapshot and never projected.
+   * It makes shuffle retries stable without making deck order derivable from gameId.
+   */
+  serverEntropySeed?: string;
   progression: CanonicalProgressionState;
-  /** Required on every persisted schema-v2 production snapshot. Optional only for legacy test fixtures. */
+  /** Required on every persisted schema-v2+ production snapshot. Optional only for legacy test fixtures. */
   initialDealerSelection?: InitialDealerSelectionState;
   seats: [CanonicalSeatState, CanonicalSeatState, CanonicalSeatState, CanonicalSeatState];
   cards: CanonicalCardsState;
@@ -167,6 +205,14 @@ export function assertCanonicalGameStateIdentity(
     throw new Error("Canonical state version must be a positive safe integer");
   }
   if (state.stateSchemaVersion >= 2 && !state.initialDealerSelection) {
-    throw new Error("Schema-v2 canonical state requires initial dealer selection metadata");
+    throw new Error("Schema-v2+ canonical state requires initial dealer selection metadata");
+  }
+  if (state.stateSchemaVersion >= 3) {
+    if (!state.serverEntropySeed || !/^[0-9a-f]{64}$/i.test(state.serverEntropySeed)) {
+      throw new Error("Schema-v3 canonical state requires private server entropy");
+    }
+    if (!Array.isArray(state.score.completedDeals) || !Array.isArray(state.score.roundPremia)) {
+      throw new Error("Schema-v3 canonical state requires authoritative score history");
+    }
   }
 }
