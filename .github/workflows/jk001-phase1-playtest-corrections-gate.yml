@@ -1,0 +1,41 @@
+name: JK-001 Phase 1 Playtest Corrections Gate
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Phase 1 playtest correction tests
+        run: >-
+          bunx vitest run
+          src/components/table/cardGesture.test.ts
+          src/test/phase1-seat-timer-declaration.test.ts
+          src/test/phase1-card-gesture-contract.test.ts
+          src/test/phase1-presentation-audio-contract.test.ts
+          src/test/phase1-integrated-release-gates.test.ts
+      - name: Phase 1 playtest correction lint
+        run: >-
+          bunx eslint
+          src/components/table/GameTable.tsx
+          src/components/table/TableSeat.tsx
+          src/components/table/DraggableHandCard.tsx
+          src/components/table/DealPresentation.tsx
+          src/components/table/TrickPresentation.tsx
+          src/components/table/cardGesture.ts
+          src/lib/gameAudio.ts
+          src/domain/projection.ts
+          --rule 'prettier/prettier: off'
+      - name: Strict TypeScript
+        run: bunx tsc --noEmit
+      - name: Production build
+        run: bun run build
