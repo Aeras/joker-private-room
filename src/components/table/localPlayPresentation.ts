@@ -12,14 +12,16 @@ export type LocalPlayPresentation = {
   acceptedStateVersion: number | null;
   geometryEpoch: number;
   releaseRect: RectLike;
-  status: "submitted" | "accepted";
+  status: "submitted" | "accepted" | "rejected";
 };
 
-export function projectionContainsPendingCardInCurrentTrick(
+export function projectionContainsPendingCard(
   presentation: LocalPlayPresentation,
   currentTrick: readonly { seatIndex: number; card: Card }[],
+  completedTricks: readonly { cards: readonly { seatIndex: number; card: Card }[] }[],
 ): boolean {
-  return currentTrick.some(
-    (play) => play.seatIndex === presentation.actorSeat && play.card.id === presentation.cardId,
-  );
+  const matches = (play: { seatIndex: number; card: Card }) =>
+    play.seatIndex === presentation.actorSeat && play.card.id === presentation.cardId;
+  if (currentTrick.some(matches)) return true;
+  return completedTricks.some((trick) => trick.cards.some(matches));
 }
