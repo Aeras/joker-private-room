@@ -1,0 +1,96 @@
+name: Targeted PR Verification
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Classify changed surface
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" > /tmp/changed-files.txt
+          else
+            git diff-tree --no-commit-id --name-only --diff-filter=ACMR -r HEAD > /tmp/changed-files.txt
+          fi
+
+          echo "Changed files:"
+          cat /tmp/changed-files.txt
+
+          if grep -Eq '^(src/|supabase/functions/|package.json$|bun\.lockb?$|vite\.config\.|tsconfig.*\.json$)' /tmp/changed-files.txt; then
+            echo "build_required=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_required=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -Eq '^src/domain/(cards|controller|dealerBootstrap|dealing|declarations|engine|gameConfig|gameLifecycle|gameplayCommands|gameState|premia|ranking|rulesets|scoring)\.ts$' /tmp/changed-files.txt; then
+            echo "risk=canonical-gameplay"
+          elif grep -Eq '^(supabase/migrations/|src/services/authFunctions\.ts$|src/services/(identity|realIdentity)\.ts$|supabase/functions/(verify-player-pin|game-state)/)' /tmp/changed-files.txt; then
+            echo "risk=security-or-data"
+          elif grep -Eq '^(src/bots/|src/domain/dialoguePolicy|supabase/functions/room-commands/)' /tmp/changed-files.txt; then
+            echo "risk=feature-domain"
+          elif grep -Eq '^(src/components/|src/routes/|public/)' /tmp/changed-files.txt; then
+            echo "risk=presentation"
+          else
+            echo "risk=local-or-docs"
+          fi
+
+      - name: Changed tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t TESTS < <(grep -E '\.(test|spec)\.(ts|tsx|js|jsx)$' /tmp/changed-files.txt || true)
+          if (( ${#TESTS[@]} == 0 )); then
+            echo "No directly changed test files."
+            exit 0
+          fi
+          bunx vitest run "${TESTS[@]}"
+
+      - name: Related tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t SOURCES < <(grep -E '^src/.*\.(ts|tsx)$' /tmp/changed-files.txt | grep -Ev '\.(test|spec)\.(ts|tsx)$' || true)
+          if (( ${#SOURCES[@]} == 0 )); then
+            echo "No changed application source files for dependency-based tests."
+            exit 0
+          fi
+          bunx vitest related "${SOURCES[@]}" --run --passWithNoTests
+
+      - name: Affected-scope lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t LINT_FILES < <(grep -E '^(src/|supabase/functions/).*\.(ts|tsx|js|jsx)$' /tmp/changed-files.txt || true)
+          if (( ${#LINT_FILES[@]} == 0 )); then
+            echo "No changed lintable application files."
+            exit 0
+          fi
+          bunx eslint "${LINT_FILES[@]}" --rule 'prettier/prettier: off'
+
+      - name: Strict TypeScript
+        run: bunx tsc --noEmit
+
+      - name: Production build
+        if: steps.changes.outputs.build_required == 'true'
+        run: bun run build
