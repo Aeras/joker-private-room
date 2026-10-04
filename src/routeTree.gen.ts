@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CreateRouteImport } from './routes/create'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as LobbyRouteImport } from './routes/lobby'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -24,6 +25,11 @@ const IndexRoute = IndexRouteImport.update({
 const CreateRoute = CreateRouteImport.update({
   id: '/create',
   path: '/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinRoute = JoinRouteImport.update({
@@ -50,6 +56,7 @@ const TableRoute = TableRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
+  '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
   '/lobby': typeof LobbyRoute
   '/settings': typeof SettingsRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
+  '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
   '/lobby': typeof LobbyRoute
   '/settings': typeof SettingsRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
+  '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
   '/lobby': typeof LobbyRoute
   '/settings': typeof SettingsRoute
@@ -74,15 +83,16 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/create' | '/join' | '/lobby' | '/settings' | '/table'
+  fullPaths: '/' | '/create' | '/history' | '/join' | '/lobby' | '/settings' | '/table'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/create' | '/join' | '/lobby' | '/settings' | '/table'
-  id: '__root__' | '/' | '/create' | '/join' | '/lobby' | '/settings' | '/table'
+  to: '/' | '/create' | '/history' | '/join' | '/lobby' | '/settings' | '/table'
+  id: '__root__' | '/' | '/create' | '/history' | '/join' | '/lobby' | '/settings' | '/table'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CreateRoute: typeof CreateRoute
+  HistoryRoute: typeof HistoryRoute
   JoinRoute: typeof JoinRoute
   LobbyRoute: typeof LobbyRoute
   SettingsRoute: typeof SettingsRoute
@@ -103,6 +113,13 @@ declare module '@tanstack/react-router' {
       path: '/create'
       fullPath: '/create'
       preLoaderRoute: typeof CreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join': {
@@ -139,6 +156,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CreateRoute: CreateRoute,
+  HistoryRoute: HistoryRoute,
   JoinRoute: JoinRoute,
   LobbyRoute: LobbyRoute,
   SettingsRoute: SettingsRoute,
