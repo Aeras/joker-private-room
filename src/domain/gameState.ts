@@ -9,6 +9,7 @@ export const GAME_STATE_SCHEMA_VERSION = 4 as const;
 export const POPULAR_RULES_VERSION = "popular-v1" as const;
 
 export type GameLifecycle = "starting" | "active" | "complete";
+export type CanonicalGameTermination = { kind: "host_ended"; endedAt: string };
 export type CanonicalGamePhase =
   | "INITIAL_DEALER_SELECTION"
   | "DEAL_SETUP"
@@ -50,39 +51,28 @@ export interface CanonicalProgressionState {
   dealNumber: number;
   indexInPhase: number;
   cardsPerPlayer: number;
-  /** Null only while the initial-dealer ritual is unresolved. */
   dealerSeat: SeatIndex | null;
-  /** Null only while the initial-dealer ritual is unresolved. */
   firstDeclarerSeat: SeatIndex | null;
-  /** Null only while the initial-dealer ritual is unresolved. */
   firstLeaderSeat: SeatIndex | null;
   currentActorSeat: SeatIndex | null;
   phase: CanonicalGamePhase;
 }
 
 export type InitialDealerSelectionState =
-  | {
-      status: "pending";
-      /** Stable server-owned identity for the dealer-bootstrap transition. */
-      bootstrapActionId: string;
-    }
+  | { status: "pending"; bootstrapActionId: string }
   | {
       status: "resolved";
       bootstrapActionId: string;
       firstRecipientSeat: SeatIndex;
-      /** Public ritual prefix through and including the first Ace. */
       revealedSelectionCards: Card[];
       selectedDealerSeat: SeatIndex;
       resolvedAtStateVersion: number;
     };
 
 export interface CanonicalCardsState {
-  /** Server-only complete shuffled deck for the current deal. Never serialize directly to a player. */
   deck: Card[];
   drawCursor: number;
-  /** Server-only owner hands, indexed by seat. */
   hands: [Card[], Card[], Card[], Card[]];
-  /** True only during the corrected 9-card first-three chooser stage. */
   hiddenPartialNineCardHands: boolean;
   exposedTrumpCard: Card | null;
   currentTrick: PlayedCard[];
@@ -141,9 +131,7 @@ export interface CanonicalScoreState {
   currentDealScores: [number | null, number | null, number | null, number | null];
   cumulativeTotals: [number, number, number, number];
   finalPlacements: [number | null, number | null, number | null, number | null];
-  /** Required in persisted schema-v3 snapshots. Optional only for legacy test fixtures. */
   completedDeals?: CanonicalDealScoreRecord[];
-  /** Required in persisted schema-v3 snapshots. Optional only for legacy test fixtures. */
   roundPremia?: CanonicalRoundPremiaRecord[];
 }
 
@@ -152,29 +140,18 @@ export interface CanonicalTimingState {
   timeoutTakeoverActive: boolean;
 }
 
-/**
- * The single server-only source of truth for an active or starting game.
- * Never send this object directly to a browser. Player-facing payloads must go
- * through the dedicated seat projection layer.
- */
 export interface CanonicalGameState {
   gameId: string;
   roomId: string;
   rulesetId: RulesetId;
   rulesVersion: RulesVersion;
   stateSchemaVersion: 3 | typeof GAME_STATE_SCHEMA_VERSION;
-  /** Server-only target resolved once from the immutable starting roster. */
   privateRulesetState?: { targetPlayerId: string | null };
   stateVersion: number;
   lifecycle: GameLifecycle;
-  /**
-   * Private per-game entropy. It is generated with cryptographic server entropy,
-   * persisted only inside the server-only canonical snapshot and never projected.
-   * It makes shuffle retries stable without making deck order derivable from gameId.
-   */
+  termination?: CanonicalGameTermination;
   serverEntropySeed?: string;
   progression: CanonicalProgressionState;
-  /** Required on every persisted schema-v2+ production snapshot. Optional only for legacy test fixtures. */
   initialDealerSelection?: InitialDealerSelectionState;
   seats: [CanonicalSeatState, CanonicalSeatState, CanonicalSeatState, CanonicalSeatState];
   cards: CanonicalCardsState;
@@ -198,24 +175,15 @@ export function assertCanonicalGameStateIdentity(
   if (state.gameId !== expected.gameId) throw new Error("Canonical state gameId mismatch");
   if (state.roomId !== expected.roomId) throw new Error("Canonical state roomId mismatch");
   if (state.rulesVersion !== expected.rulesVersion) throw new Error("Canonical state rulesVersion mismatch");
-  if (state.stateSchemaVersion !== expected.stateSchemaVersion) {
-    throw new Error("Canonical state schema version mismatch");
-  }
-  if (state.stateVersion !== expected.nextStateVersion) {
-    throw new Error("Canonical state version mismatch");
-  }
-  if (!Number.isSafeInteger(state.stateVersion) || state.stateVersion < 1) {
-    throw new Error("Canonical state version must be a positive safe integer");
-  }
-  if (state.stateSchemaVersion >= 2 && !state.initialDealerSelection) {
-    throw new Error("Schema-v2+ canonical state requires initial dealer selection metadata");
-  }
+  if (state.stateSchemaVersion !== expected.stateSchemaVersion) throw new Error("Canonical state schema version mismatch");
+  if (state.stateVersion !== expected.nextStateVersion) throw new Error("Canonical state version mismatch");
+  if (!Number.isSafeInteger(state.stateVersion) || state.stateVersion < 1) throw new Error("Canonical state version must be a positive safe integer");
+  if (state.stateSchemaVersion >= 2 && !state.initialDealerSelection) throw new Error("Schema-v2+ canonical state requires initial dealer selection metadata");
   if (state.stateSchemaVersion >= 3) {
-    if (!state.serverEntropySeed || !/^[0-9a-f]{64}$/i.test(state.serverEntropySeed)) {
-      throw new Error("Schema-v3 canonical state requires private server entropy");
-    }
-    if (!Array.isArray(state.score.completedDeals) || !Array.isArray(state.score.roundPremia)) {
-      throw new Error("Schema-v3 canonical state requires authoritative score history");
-    }
+    if (!state.serverEntropySeed || !/^[0-9a-f]{64}$/i.test(state.serverEntropySeed)) throw new Error("Schema-v3 canonical state requires private server entropy");
+    if (!Array.isArray(state.score.completedDeals) || !Array.isArray(state.score.roundPremia)) throw new Error("Schema-v3 canonical state requires authoritative score history");
+  }
+  if (state.termination?.kind === "host_ended" && state.lifecycle !== "complete") {
+    throw new Error("Host-ended game must be terminal");
   }
 }
