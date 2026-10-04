@@ -4,6 +4,8 @@ import {
   loadCanonicalGameState,
   persistCanonicalGameState,
   type GameStateFailureCode,
+  type LoadGameStateResult,
+  type PersistGameStateResult,
 } from "@/server/gamePersistence";
 import { stableInternalActionId } from "@/server/internalDeterminism";
 
@@ -21,9 +23,19 @@ export type AutomaticProgressionResult =
     }
   | { ok: false; code: GameStateFailureCode; currentStateVersion?: number };
 
-function serverNow(): string {
-  return new Date().toISOString();
+interface AutomaticProgressionDependencies {
+  load(gameId: string): Promise<LoadGameStateResult>;
+  persist(args: Parameters<typeof persistCanonicalGameState>[0]): Promise<PersistGameStateResult>;
+  actionId(gameId: string, label: string): Promise<string>;
+  now(): string;
 }
+
+const productionDependencies: AutomaticProgressionDependencies = {
+  load: loadCanonicalGameState,
+  persist: persistCanonicalGameState,
+  actionId: stableInternalActionId,
+  now: () => new Date().toISOString(),
+};
 
 function automaticCommandType(commandType: string): string {
   return `bot_${commandType}`;
@@ -34,9 +46,10 @@ function automaticCommandType(commandType: string): string {
  * A stale write means another authoritative command won the race; reload and
  * continue from that committed truth instead of rolling anything back.
  */
-export async function progressAutomaticGameplay(
+export async function progressAutomaticGameplayWithDependencies(
   gameId: string,
-  maxSteps = MAX_SYNCHRONOUS_BOT_STEPS,
+  maxSteps: number,
+  dependencies: AutomaticProgressionDependencies,
 ): Promise<AutomaticProgressionResult> {
   if (!Number.isInteger(maxSteps) || maxSteps < 1) {
     return { ok: false, code: "INVALID_REQUEST" };
@@ -46,10 +59,10 @@ export async function progressAutomaticGameplay(
   let staleRaces = 0;
 
   for (let attempt = 0; attempt < maxSteps; attempt += 1) {
-    const loaded = await loadCanonicalGameState(gameId);
+    const loaded = await dependencies.load(gameId);
     if (!loaded.ok) return loaded;
 
-    const plan = planAutomaticGameplayStep(loaded.canonicalState, serverNow());
+    const plan = planAutomaticGameplayStep(loaded.canonicalState, dependencies.now());
     if (!plan.ok) {
       return {
         ok: true,
@@ -59,7 +72,7 @@ export async function progressAutomaticGameplay(
       };
     }
 
-    const actionId = await stableInternalActionId(
+    const actionId = await dependencies.actionId(
       gameId,
       [
         "automatic-gameplay-v1",
@@ -70,7 +83,7 @@ export async function progressAutomaticGameplay(
       ].join(":"),
     );
 
-    const persisted = await persistCanonicalGameState({
+    const persisted = await dependencies.persist({
       gameId,
       actionId,
       commandType: automaticCommandType(plan.command.type),
@@ -102,7 +115,7 @@ export async function progressAutomaticGameplay(
     if (!persisted.replayed) committedSteps += 1;
   }
 
-  const final = await loadCanonicalGameState(gameId);
+  const final = await dependencies.load(gameId);
   if (!final.ok) return final;
   return {
     ok: true,
@@ -110,4 +123,11 @@ export async function progressAutomaticGameplay(
     stateVersion: final.stateVersion,
     stopReason: staleRaces > 0 ? "STALE_RACE" : "STEP_BOUND",
   };
+}
+
+export async function progressAutomaticGameplay(
+  gameId: string,
+  maxSteps = MAX_SYNCHRONOUS_BOT_STEPS,
+): Promise<AutomaticProgressionResult> {
+  return progressAutomaticGameplayWithDependencies(gameId, maxSteps, productionDependencies);
 }
