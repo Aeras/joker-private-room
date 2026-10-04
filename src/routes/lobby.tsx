@@ -73,9 +73,11 @@ function Lobby() {
   if (loading) return <div className="surface-room min-h-dvh" />;
   if (!code || !room || !localPlayer) {
     return (
-      <ScreenShell title={t.lobby}>
-        <p className="text-muted-foreground">{error ?? t.noRoom}</p>
-        <Link to="/" className={jButton({ className: "mt-4" })}>{t.home}</Link>
+      <ScreenShell title={t.lobby} variant="pregame">
+        <div className="panel p-4">
+          <p className="text-muted-foreground">{error ?? t.noRoom}</p>
+          <Link to="/" className={jButton({ className: "pregame-primary-button mt-4" })}>{t.home}</Link>
+        </div>
       </ScreenShell>
     );
   }
@@ -127,12 +129,13 @@ function Lobby() {
   return (
     <ScreenShell
       title={t.lobby}
+      variant="pregame"
       footer={
         <div className="space-y-2">
           {error && <p className="text-center text-sm text-negative">{error}</p>}
           {room.status === "lobby" ? (
             <>
-              <JButton size="lg" className="w-full text-lg" disabled={!isHost || starting} onClick={start}>
+              <JButton size="lg" className="pregame-primary-button w-full text-lg" disabled={!isHost || starting} onClick={start}>
                 {t.startGame}
               </JButton>
               <p className="text-center text-xs text-muted-foreground">
@@ -143,7 +146,7 @@ function Lobby() {
             <Link
               to="/table"
               search={{ code: room.code, gameId: room.gameId }}
-              className={jButton({ size: "lg", className: "w-full text-lg" })}
+              className={jButton({ size: "lg", className: "pregame-primary-button w-full text-lg" })}
             >
               Μετάβαση στο τραπέζι
             </Link>
@@ -153,8 +156,10 @@ function Lobby() {
         </div>
       }
     >
-      <RoomCodeCard code={room.code} />
-      <p className="mt-3 text-center text-sm text-muted-foreground">{room.rulesetName ?? publicRulesetName(room.rulesetId)}</p>
+      <div className="panel p-4">
+        <RoomCodeCard code={room.code} />
+        <p className="mt-3 text-center text-sm text-muted-foreground">{room.rulesetName ?? publicRulesetName(room.rulesetId)}</p>
+      </div>
 
       <div className="mt-6">
         <SectionLabel>Παίκτες</SectionLabel>
@@ -166,7 +171,7 @@ function Lobby() {
       </div>
 
       <div className="mt-6 flex gap-2">
-        <JButton variant="outlineGold" className="flex-1" onClick={invite}>
+        <JButton variant="outlineGold" className="pregame-secondary-button flex-1" onClick={invite}>
           <Share2 className="h-4 w-4" />
           {t.inviteFriends}
         </JButton>
