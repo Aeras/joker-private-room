@@ -77,6 +77,52 @@ export type PersistGameStateResult =
     }
   | { ok: false; code: GameStateFailureCode; currentStateVersion?: number };
 
+export interface CompletedGameParticipant {
+  seatIndex: number;
+  ownerType: "human" | "bot";
+  playerId?: string;
+  playerDisplayName?: string;
+  botId?: string;
+  botDisplayName?: string;
+  botAvatarUrl?: string;
+  botStrategyProfileId?: string;
+  botCatalogVersion?: string;
+  finalScore: number;
+  finalPlacement: number;
+}
+
+export interface CompletedGameSummary {
+  gameId: string;
+  completedAt: string;
+  rulesetId: string;
+  rulesVersion: string;
+  participants: CompletedGameParticipant[];
+}
+
+export interface ObjectivePlacementStats {
+  totalGames: number;
+  firstPlaceCount: number;
+  secondPlaceCount: number;
+  thirdPlaceCount: number;
+  fourthPlaceCount: number;
+  /** Intentionally null until Product defines whether shared first counts as a win. */
+  winPercentage: null;
+}
+
+export interface BotPlacementStats extends ObjectivePlacementStats {
+  botId: string;
+  displayName: string;
+}
+
+export type GameHistoryResult =
+  | {
+      ok: true;
+      history: CompletedGameSummary[];
+      stats: ObjectivePlacementStats;
+      botStats: BotPlacementStats[];
+    }
+  | { ok: false; code: GameStateFailureCode };
+
 async function callGameStateEdge(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const sessionToken = getCookie(SESSION_COOKIE);
   if (!sessionToken) return { ok: false, code: "NOT_AUTHENTICATED" };
@@ -106,6 +152,11 @@ export async function loadCanonicalGameState(gameId: string): Promise<LoadGameSt
 /** Server-only roster/room metadata used only while canonical_state is still null. */
 export async function loadGameBootstrap(gameId: string): Promise<LoadGameBootstrapResult> {
   return (await callGameStateEdge({ action: "bootstrap", gameId })) as LoadGameBootstrapResult;
+}
+
+/** Private utility history; the Edge/RPC derives the viewer exclusively from the session. */
+export async function loadCompletedGameHistory(limit = 50): Promise<GameHistoryResult> {
+  return (await callGameStateEdge({ action: "history", limit })) as GameHistoryResult;
 }
 
 function assertPersistableState(gameId: string, expectedStateVersion: number, newState: CanonicalGameState) {
