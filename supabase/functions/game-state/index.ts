@@ -11,10 +11,12 @@ function json(body: unknown, status = 200) {
 function statusFor(code?: string) {
   switch (code) {
     case "NOT_AUTHENTICATED": return 401;
+    case "NOT_HOST": return 403;
     case "GAME_NOT_FOUND": return 404;
     case "ACTION_ID_CONFLICT":
     case "STALE_STATE":
-    case "GAME_ALREADY_INITIALIZED": return 409;
+    case "GAME_ALREADY_INITIALIZED":
+    case "GAME_NOT_ACTIVE": return 409;
     case "GAME_STATE_NOT_INITIALIZED":
     case "INVALID_REQUEST":
     case "INVALID_CANONICAL_STATE":
@@ -122,6 +124,26 @@ Deno.serve(async (req: Request) => {
     if (action === "load") {
       rpcName = "load_game_state_internal";
       args = { p_session_token: sessionToken, p_game_id: gameId };
+    } else if (action === "terminate") {
+      const actionId = typeof body?.actionId === "string" ? body.actionId : "";
+      const commandType = typeof body?.commandType === "string" ? body.commandType : "";
+      const fingerprint = typeof body?.requestFingerprint === "string" ? body.requestFingerprint : "";
+      const expectedStateVersion = body?.expectedStateVersion;
+      if (
+        !uuidPattern.test(actionId) ||
+        commandType !== "host_end_game" ||
+        !fingerprintPattern.test(fingerprint) ||
+        !Number.isSafeInteger(expectedStateVersion) ||
+        expectedStateVersion < 0
+      ) return json({ ok: false, code: "INVALID_REQUEST" }, 400);
+      rpcName = "terminate_game_by_host_internal";
+      args = {
+        p_session_token: sessionToken,
+        p_game_id: gameId,
+        p_action_id: actionId,
+        p_expected_state_version: expectedStateVersion,
+        p_request_fingerprint: fingerprint.toLowerCase(),
+      };
     } else if (action === "persist" || action === "finalize") {
       const actionId = typeof body?.actionId === "string" ? body.actionId : "";
       const commandType = typeof body?.commandType === "string" ? body.commandType : "";
