@@ -6,6 +6,7 @@ import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
 import { DIALOGUE_INTENSITIES, type DialogueIntensity } from "@/domain/dialoguePolicy";
 import type { PublicPlayer } from "@/domain/players";
 import { RULESET_LIST, type RulesetId } from "@/domain/rulesets";
+import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
 import { t } from "@/i18n/el";
 import { authFailureMessage } from "@/lib/auth-feedback";
 import { roomFailureMessage } from "@/lib/room-feedback";
@@ -38,6 +39,7 @@ const intensityLabels: Record<DialogueIntensity, string> = {
 
 function CreateGame() {
   const navigate = useNavigate();
+  const activeLookup = useCurrentActiveGame();
   const [host, setHost] = useState<PublicPlayer | null>(null);
   const [verifiedHost, setVerifiedHost] = useState<PublicPlayer | null>(null);
   const [pin, setPin] = useState("");
@@ -56,6 +58,14 @@ function CreateGame() {
     realIdentityService.listPlayers().then((list) => setHost(list.find((p) => p.role === "host") ?? null)).catch(() => setAuthError(t.authUnavailable));
   }, []);
 
+  useEffect(() => {
+    if (activeLookup.status !== "active") return;
+    void navigate({
+      to: "/table",
+      search: { code: activeLookup.activeGame.roomCode, gameId: activeLookup.activeGame.gameId },
+    });
+  }, [activeLookup.activeGame, activeLookup.status, navigate]);
+
   const unlock = async () => {
     if (!host || authBusy) return;
     setAuthError(null);
@@ -64,6 +74,17 @@ function CreateGame() {
       const result = await realIdentityService.verifyPin(host.id, pin);
       if (!result.ok) { setAuthError(authFailureMessage(result)); return; }
       if (result.player.role !== "host") { setAuthError(t.invalidPin); return; }
+
+      const current = await activeLookup.refresh();
+      if (current.ok && current.activeGame) {
+        void navigate({ to: "/table", search: { code: current.activeGame.roomCode, gameId: current.activeGame.gameId } });
+        return;
+      }
+      if (!current.ok && current.code === "SERVICE_UNAVAILABLE") {
+        setAuthError("Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού. Δοκίμασε ξανά.");
+        return;
+      }
+
       setVerifiedHost(result.player);
       setPin("");
     } finally { setAuthBusy(false); }
@@ -99,6 +120,21 @@ function CreateGame() {
       navigate({ to: "/lobby", search: { code: result.room.code } });
     } finally { setBusy(false); }
   };
+
+  if (activeLookup.status === "loading" || activeLookup.status === "active") {
+    return <div className="surface-room min-h-dvh" />;
+  }
+
+  if (activeLookup.status === "error") {
+    return (
+      <ScreenShell title={t.createGame}>
+        <div className="panel space-y-3 p-4">
+          <p className="text-sm text-negative">Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού.</p>
+          <JButton className="w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
+        </div>
+      </ScreenShell>
+    );
+  }
 
   if (!verifiedHost) {
     return (

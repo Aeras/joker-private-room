@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { JButton } from "@/components/joker/JButton";
 import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
 import type { PublicPlayer } from "@/domain/players";
+import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
 import { t } from "@/i18n/el";
 import { authFailureMessage } from "@/lib/auth-feedback";
 import { roomFailureMessage } from "@/lib/room-feedback";
@@ -21,6 +22,7 @@ const inputCls = "h-12 w-full rounded-xl border border-input bg-secondary px-4 t
 function JoinGame() {
   const { code: initialCode } = Route.useSearch();
   const navigate = useNavigate();
+  const activeLookup = useCurrentActiveGame();
   const [code, setCode] = useState(initialCode ?? "");
   const [players, setPlayers] = useState<PublicPlayer[]>([]);
   const [playerId, setPlayerId] = useState("");
@@ -38,6 +40,14 @@ function JoinGame() {
     }).catch(() => setError(t.authUnavailable)).finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (activeLookup.status !== "active") return;
+    void navigate({
+      to: "/table",
+      search: { code: activeLookup.activeGame.roomCode, gameId: activeLookup.activeGame.gameId },
+    });
+  }, [activeLookup.activeGame, activeLookup.status, navigate]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -47,6 +57,16 @@ function JoinGame() {
     try {
       const auth = await realIdentityService.verifyPin(playerId, pin);
       if (!auth.ok) { setError(authFailureMessage(auth)); return; }
+
+      const current = await activeLookup.refresh();
+      if (current.ok && current.activeGame) {
+        void navigate({ to: "/table", search: { code: current.activeGame.roomCode, gameId: current.activeGame.gameId } });
+        return;
+      }
+      if (!current.ok && current.code === "SERVICE_UNAVAILABLE") {
+        setError("Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού. Δοκίμασε ξανά.");
+        return;
+      }
 
       joinActionId.current ??= crypto.randomUUID();
       const result = await joinProductionRoom({ data: { actionId: joinActionId.current, code: code.trim().toUpperCase() } });
@@ -65,6 +85,21 @@ function JoinGame() {
       navigate({ to: "/lobby", search: { code: result.room.code } });
     } finally { setAuthBusy(false); }
   };
+
+  if (activeLookup.status === "loading" || activeLookup.status === "active") {
+    return <div className="surface-room min-h-dvh" />;
+  }
+
+  if (activeLookup.status === "error") {
+    return (
+      <ScreenShell title={t.joinGame}>
+        <div className="panel space-y-3 p-4">
+          <p className="text-sm text-negative">Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού.</p>
+          <JButton className="w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
+        </div>
+      </ScreenShell>
+    );
+  }
 
   return (
     <ScreenShell title={t.joinGame}>

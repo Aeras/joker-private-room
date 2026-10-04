@@ -37,7 +37,20 @@ export type RoomCommandResult =
       activeGame?: { gameId: string; roomCode: string };
     };
 
+export type ActiveGameSummary = {
+  gameId: string;
+  roomCode: string;
+  seatIndex: number;
+  lifecycle: "starting" | "active";
+  stateVersion: number;
+};
+
+export type CurrentActiveGameResult =
+  | { ok: true; activeGame: ActiveGameSummary | null }
+  | { ok: false; code: "NOT_AUTHENTICATED" | "SERVICE_UNAVAILABLE" };
+
 type EdgePayload = RoomCommandResult | { ok?: false; code?: string };
+type ActiveGameEdgePayload = CurrentActiveGameResult | { ok?: false; code?: string };
 
 async function callRoomEdge(body: Record<string, unknown>): Promise<RoomCommandResult> {
   const sessionToken = getCookie(SESSION_COOKIE);
@@ -64,12 +77,42 @@ async function callRoomEdge(body: Record<string, unknown>): Promise<RoomCommandR
   return { ok: false, code: "SERVICE_UNAVAILABLE" };
 }
 
+async function callActiveGameEdge(): Promise<CurrentActiveGameResult> {
+  const sessionToken = getCookie(SESSION_COOKIE);
+  if (!sessionToken) return { ok: false, code: "NOT_AUTHENTICATED" };
+
+  try {
+    const response = await fetch(`${EXTERNAL_SUPABASE_URL}/functions/v1/room-commands`, {
+      method: "POST",
+      headers: {
+        apikey: EXTERNAL_SUPABASE_PUBLISHABLE_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "active_game", sessionToken }),
+    });
+
+    const payload = (await response.json()) as ActiveGameEdgePayload;
+    if (payload && typeof payload === "object" && "ok" in payload) {
+      if (payload.ok === true) return payload;
+      if (payload.code === "NOT_AUTHENTICATED") return { ok: false, code: "NOT_AUTHENTICATED" };
+    }
+  } catch {
+    // Stable service error below.
+  }
+
+  return { ok: false, code: "SERVICE_UNAVAILABLE" };
+}
+
 const roomCode = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{4}$/);
 const actionId = z.string().uuid();
 const roomVersion = z.number().int().nonnegative();
 const seatIndex = z.number().int().min(0).max(3);
 const botId = z.string().min(1).max(64);
 const dialogueIntensity = z.enum(["conservative", "normal", "chaos"]);
+
+export const getCurrentActiveGame = createServerFn({ method: "GET" }).handler(
+  async (): Promise<CurrentActiveGameResult> => callActiveGameEdge(),
+);
 
 export const createProductionRoom = createServerFn({ method: "POST" })
   .validator(
@@ -106,7 +149,6 @@ export const assignProductionBot = createServerFn({ method: "POST" })
       actionId: data.actionId,
       code: data.code,
       seatIndex: data.seatIndex,
-      botId: data.botId,
       expectedRoomVersion: data.expectedRoomVersion,
     }),
   );
@@ -131,8 +173,8 @@ export const replaceProductionBot = createServerFn({ method: "POST" })
       actionId: data.actionId,
       code: data.code,
       seatIndex: data.seatIndex,
-      botId: data.botId,
       expectedRoomVersion: data.expectedRoomVersion,
+      botId: data.botId,
     }),
   );
 
