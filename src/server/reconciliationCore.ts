@@ -7,6 +7,7 @@ import { randomIterator } from "@/server/internalDeterminism";
 export type ReconciliationFailureCode =
   | "GAME_NOT_FOUND"
   | "GAME_STATE_NOT_INITIALIZED"
+  | "GAME_ALREADY_INITIALIZED"
   | "ACTION_ID_CONFLICT"
   | "STALE_STATE"
   | "INVALID_REQUEST"
