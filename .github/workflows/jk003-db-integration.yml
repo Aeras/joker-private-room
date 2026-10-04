@@ -28,7 +28,7 @@ jobs:
             20261003211612_jk001_phase7_bot_roster_authority \
             20261004053000_jk001_phase12_atomic_finalization_history \
             20261004095255_jk001_ai_banter_phase_a_policy_authority \
-            20261004193700_jk003_versioned_ruleset_policies
+            20261004200838_jk003_versioned_ruleset_policies
           do
             psql -h localhost -U postgres -d jk003 -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration.sql"
           done
