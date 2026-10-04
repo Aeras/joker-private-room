@@ -18,7 +18,6 @@ export type GameStateFailureCode =
   | "NOT_AUTHENTICATED"
   | "GAME_NOT_FOUND"
   | "GAME_STATE_NOT_INITIALIZED"
-  | "GAME_ALREADY_INITIALIZED"
   | "ACTION_ID_CONFLICT"
   | "STALE_STATE"
   | "INVALID_REQUEST"
@@ -38,33 +37,6 @@ export type LoadGameStateResult =
       stateVersion: number;
       lifecycle: CanonicalGameState["lifecycle"];
       canonicalState: CanonicalGameState;
-    }
-  | { ok: false; code: GameStateFailureCode; stateVersion?: number };
-
-export interface GameBootstrapParticipant {
-  seat_index: number;
-  owner_type: "human" | "bot";
-  player_id: string | null;
-  bot_id: string | null;
-  bot_display_name: string | null;
-  bot_avatar_url: string | null;
-  bot_personality_id: string | null;
-  bot_strategy_profile_id: string | null;
-  bot_catalog_version: string | null;
-  status: string;
-}
-
-export type LoadGameBootstrapResult =
-  | {
-      ok: true;
-      gameId: string;
-      roomId: string;
-      rulesetId: "popular";
-      rulesVersion: string;
-      stateSchemaVersion: number;
-      stateVersion: number;
-      lifecycle: CanonicalGameState["lifecycle"];
-      participants: GameBootstrapParticipant[];
     }
   | { ok: false; code: GameStateFailureCode; stateVersion?: number };
 
@@ -102,15 +74,6 @@ async function callGameStateEdge(body: Record<string, unknown>): Promise<Record<
 /** Server-only raw load. Never return its canonicalState directly from a route. */
 export async function loadCanonicalGameState(gameId: string): Promise<LoadGameStateResult> {
   return (await callGameStateEdge({ action: "load", gameId })) as LoadGameStateResult;
-}
-
-/**
- * Server-only trusted bootstrap metadata for a Start-created game whose
- * canonical_state is still null. Never expose participants/bootstrap payloads
- * directly to browser code.
- */
-export async function loadGameBootstrap(gameId: string): Promise<LoadGameBootstrapResult> {
-  return (await callGameStateEdge({ action: "bootstrap", gameId })) as LoadGameBootstrapResult;
 }
 
 /**
