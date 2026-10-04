@@ -83,7 +83,7 @@ jobs:
         id: no_provider
         continue-on-error: true
         run: |
-          ! grep -R -q 'GEMINI_API_KEY' src supabase/functions || true
+          ! grep -R -q 'GEMINI_API_KEY' src supabase/functions
           ! test -e supabase/functions/ai-banter/index.ts
 
       - name: TypeScript
