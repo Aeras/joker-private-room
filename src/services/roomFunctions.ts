@@ -7,6 +7,7 @@ import {
   EXTERNAL_SUPABASE_PUBLISHABLE_KEY,
   EXTERNAL_SUPABASE_URL,
 } from "@/integrations/external-supabase/client";
+import { ensureInitialDealerBootstrap } from "@/server/dealerBootstrap";
 
 const SESSION_COOKIE = "__Host-joker_session";
 
@@ -131,14 +132,25 @@ export const replaceProductionBot = createServerFn({ method: "POST" })
 
 export const startProductionRoom = createServerFn({ method: "POST" })
   .validator(z.object({ actionId, code: roomCode, expectedRoomVersion: roomVersion }))
-  .handler(async ({ data }) =>
-    callRoomEdge({
+  .handler(async ({ data }): Promise<RoomCommandResult> => {
+    const result = await callRoomEdge({
       action: "start",
       actionId: data.actionId,
       code: data.code,
       expectedRoomVersion: data.expectedRoomVersion,
-    }),
-  );
+    });
+    if (!result.ok) return result;
+    if (!result.gameId) return { ok: false, code: "INVALID_ROOM_STATE" };
+
+    const bootstrap = await ensureInitialDealerBootstrap(result.gameId);
+    if (!bootstrap.ok) {
+      if (bootstrap.code === "NOT_AUTHENTICATED") return { ok: false, code: "NOT_AUTHENTICATED" };
+      if (bootstrap.code === "INVALID_CANONICAL_STATE") return { ok: false, code: "INVALID_ROOM_STATE" };
+      return { ok: false, code: "SERVICE_UNAVAILABLE" };
+    }
+
+    return result;
+  });
 
 export const getProductionRoom = createServerFn({ method: "GET" })
   .validator(z.object({ code: roomCode }))
