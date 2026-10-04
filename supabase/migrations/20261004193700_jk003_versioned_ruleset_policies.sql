@@ -605,7 +605,7 @@ create trigger rooms_immutable_ruleset before update of ruleset_id, rules_versio
 
 -- Reject corrupted schema-v4 policy snapshots at the persistence boundary too.
 create or replace function private.validate_ruleset_snapshot_internal()
-returns trigger language plpgsql security invoker set search_path = pg_catalog, public as $
+returns trigger language plpgsql security invoker set search_path = pg_catalog, public as $$
 declare s jsonb := new.canonical_state; deck jsonb; card jsonb; target text; present boolean; unused text;
 begin
  if s is null or new.state_schema_version <> 4 then return new; end if;
@@ -644,7 +644,7 @@ begin
   end if;
  end if;
  return new;
-end $;
+end $$;
 revoke all on function private.validate_ruleset_snapshot_internal() from public, anon, authenticated;
 create trigger games_validate_ruleset_snapshot before insert or update of canonical_state on public.games for each row execute function private.validate_ruleset_snapshot_internal();
 commit;

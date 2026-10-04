@@ -26,7 +26,6 @@ export interface Ruleset {
   scoreDeal: (input: DealResultInput) => number;
   calculatePhaseBonus: PhaseBonusCalculator;
   resolvePremia: typeof resolvePremia;
-  resolvePremia: typeof resolvePremia;
 }
 const popularPremia: PhaseBonusCalculator = ({ phase, outcomes }) => {
   const resolution = resolvePremia(phase, outcomes);
@@ -44,7 +43,6 @@ const base = {
   allocation: "uniform",
   scoreDeal,
   calculatePhaseBonus: popularPremia,
-  resolvePremia,
   resolvePremia,
 } as const;
 export const RULESETS: Record<RulesetId, Ruleset> = {
