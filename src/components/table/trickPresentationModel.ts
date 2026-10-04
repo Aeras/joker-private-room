@@ -1,5 +1,7 @@
 import type { PlayedCard } from "@/domain/engine";
 
+export const NORMAL_TRICK_PLAY_SPACING_MS = 500;
+export const REDUCED_TRICK_PLAY_SPACING_MS = 100;
 export const NORMAL_TRICK_HOLD_MS = 850;
 export const NORMAL_TRICK_COLLECT_MS = 260;
 export const REDUCED_TRICK_HOLD_MS = 180;
@@ -26,7 +28,8 @@ export function completedTrickPresentationId(input: {
 }
 
 export function trickPresentationTiming(reducedMotion: boolean) {
+  const playSpacingMs = reducedMotion ? REDUCED_TRICK_PLAY_SPACING_MS : NORMAL_TRICK_PLAY_SPACING_MS;
   const holdMs = reducedMotion ? REDUCED_TRICK_HOLD_MS : NORMAL_TRICK_HOLD_MS;
   const collectMs = reducedMotion ? REDUCED_TRICK_COLLECT_MS : NORMAL_TRICK_COLLECT_MS;
-  return { holdMs, clearMs: holdMs + collectMs };
+  return { playSpacingMs, holdMs, clearMs: holdMs + collectMs };
 }
