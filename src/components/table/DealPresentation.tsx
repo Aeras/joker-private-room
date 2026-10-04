@@ -63,12 +63,9 @@ function TravelingBack({
   reducedMotion: boolean;
   geometry: TableGeometry | null;
 }) {
-  const [arrived, setArrived] = useState(reducedMotion);
+  const [arrived, setArrived] = useState(false);
   useEffect(() => {
-    if (reducedMotion) {
-      setArrived(true);
-      return;
-    }
+    setArrived(false);
     const frame = window.requestAnimationFrame(() => setArrived(true));
     return () => window.cancelAnimationFrame(frame);
   }, [beat.id, reducedMotion]);
