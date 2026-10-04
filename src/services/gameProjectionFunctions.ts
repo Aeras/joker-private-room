@@ -4,10 +4,8 @@ import { z } from "zod";
 import type { SeatIndex } from "@/domain/dealing";
 import { projectGameForSeat, type PlayerGameProjection } from "@/domain/projection";
 import type { GameplayCommand } from "@/domain/gameplayCommands";
-import { progressAutomaticGameplay } from "@/server/botProgression";
 import {
   reclaimGameControl,
-  resolveOverdueTimeoutBeforeRead,
   type GameControlFailureCode,
 } from "@/server/gameControl";
 import { ensureInitialDealerBootstrap } from "@/server/dealerBootstrap";
@@ -15,7 +13,8 @@ import {
   submitHumanGameplayCommand,
   type SubmitGameplayCommandFailureCode,
 } from "@/server/gameplayCommands";
-import type { GameStateFailureCode, LoadGameStateResult } from "@/server/gamePersistence";
+import { loadCanonicalGameState, type GameStateFailureCode, type LoadGameStateResult } from "@/server/gamePersistence";
+import { advanceGameUntilBlocked } from "@/server/reconciliation";
 
 export type ProjectedGameStateResult =
   | { ok: true; projection: PlayerGameProjection }
@@ -55,17 +54,13 @@ async function ensureBootstrapIfNeeded(gameId: string): Promise<GameStateFailure
 }
 
 async function settleAutomaticState(gameId: string): Promise<LoadGameStateResult> {
-  const timed = await resolveOverdueTimeoutBeforeRead(gameId);
-  if (!timed.ok) return timed;
-
-  const progression = await progressAutomaticGameplay(gameId);
-  if (!progression.ok) {
-    return progression.currentStateVersion == null
-      ? { ok: false, code: progression.code }
-      : { ok: false, code: progression.code, stateVersion: progression.currentStateVersion };
+  const reconciliation = await advanceGameUntilBlocked(gameId);
+  if (!reconciliation.ok) {
+    return reconciliation.currentStateVersion == null
+      ? { ok: false, code: reconciliation.code }
+      : { ok: false, code: reconciliation.code, stateVersion: reconciliation.currentStateVersion };
   }
-
-  return resolveOverdueTimeoutBeforeRead(gameId);
+  return loadCanonicalGameState(gameId);
 }
 
 export const getProjectedGameState = createServerFn({ method: "GET" })
