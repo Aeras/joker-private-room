@@ -201,7 +201,11 @@ export function GameTable({
 
   const finalRows = projection.lifecycle === "complete"
     ? projection.score.finalPlacements
-        .map((placement, seat) => ({ seat, placement, score: projection.score.cumulativeTotals[seat] }))
+        .map((placement, seat) => ({
+          seat,
+          placement,
+          score: projection.score.cumulativeTotals[seat] ?? 0,
+        }))
         .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99) || b.score - a.score)
     : [];
 
