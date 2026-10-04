@@ -15,13 +15,24 @@ export type LocalPlayPresentation = {
   status: "submitted" | "accepted" | "rejected";
 };
 
+export function projectionContainsPendingCardInCurrentTrick(
+  presentation: LocalPlayPresentation,
+  currentTrick: readonly { seatIndex: number; card: Card }[],
+): boolean {
+  return currentTrick.some(
+    (play) => play.seatIndex === presentation.actorSeat && play.card.id === presentation.cardId,
+  );
+}
+
 export function projectionContainsPendingCard(
   presentation: LocalPlayPresentation,
   currentTrick: readonly { seatIndex: number; card: Card }[],
   completedTricks: readonly { cards: readonly { seatIndex: number; card: Card }[] }[],
 ): boolean {
-  const matches = (play: { seatIndex: number; card: Card }) =>
-    play.seatIndex === presentation.actorSeat && play.card.id === presentation.cardId;
-  if (currentTrick.some(matches)) return true;
-  return completedTricks.some((trick) => trick.cards.some(matches));
+  if (projectionContainsPendingCardInCurrentTrick(presentation, currentTrick)) return true;
+  return completedTricks.some((trick) =>
+    trick.cards.some(
+      (play) => play.seatIndex === presentation.actorSeat && play.card.id === presentation.cardId,
+    ),
+  );
 }
