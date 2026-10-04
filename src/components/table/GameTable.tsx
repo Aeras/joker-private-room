@@ -13,7 +13,6 @@ import { JButton } from "../joker/JButton";
 import { PlayingCard } from "../joker/PlayingCard";
 import { Scoreboard } from "./Scoreboard";
 import { TableSeat } from "./TableSeat";
-import { TurnTimer } from "./TurnTimer";
 
 type Pos = 0 | 1 | 2 | 3;
 type OrientationLock = ScreenOrientation & { lock?: (orientation: "landscape") => Promise<void> };
@@ -114,7 +113,6 @@ export function GameTable({
   const [fullscreen, setFullscreen] = useState(false);
   const [portrait, setPortrait] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [now, setNow] = useState(() => Date.now());
 
   const names = room.seats.map((seat) => {
     const occupant = seat.occupant;
@@ -128,6 +126,9 @@ export function GameTable({
   const trumpAction = legalAction(projection, "choose_trump");
   const jokerAction = legalAction(projection, "choose_joker_semantic");
   const reclaimAction = legalAction(projection, "reclaim_control");
+  const declarationValues = declarationAction
+    ? Array.from({ length: projection.progression.cardsPerPlayer + 1 }, (_, value) => value)
+    : [];
 
   const nameAt = (seat: number) => names[seat] ?? `Θέση ${seat + 1}`;
   const seatAt = (pos: Pos) => ((localSeat + pos) % SEAT_COUNT) as Pos;
@@ -151,17 +152,8 @@ export function GameTable({
   }, []);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 250);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     if (!selectedId || !playAction?.cardIds.includes(selectedId)) setSelectedId(null);
   }, [selectedId, playAction]);
-
-  const seconds = projection.local.humanDeadline
-    ? Math.max(0, Math.ceil((Date.parse(projection.local.humanDeadline) - now) / 1000))
-    : 0;
 
   const toggleFullscreen = async () => {
     try {
@@ -181,6 +173,7 @@ export function GameTable({
     const seat = seatAt(pos);
     const roomSeat = room.seats[seat];
     if (!roomSeat) return null;
+    const publicDeadline = projection.timing?.currentHumanDeadline ?? projection.local.humanDeadline;
     return (
       <TableSeat
         seat={roomSeat}
@@ -194,6 +187,7 @@ export function GameTable({
           isDealer: projection.progression.dealerSeat === seat,
           isActive: projection.progression.currentActorSeat === seat,
           cardCount: publicCardCount(projection, seat),
+          humanDeadline: projection.progression.currentActorSeat === seat ? publicDeadline : null,
         }}
       />
     );
@@ -237,7 +231,6 @@ export function GameTable({
           Γύρος {projection.progression.round} · Μοιρασιά {projection.progression.dealNumber}/24 · {phaseMessage(projection)}
         </div>
         <div className="ml-auto flex items-center gap-1">
-          {projection.local.humanDeadline && <TurnTimer seconds={seconds} />}
           <JButton variant="outlineGold" size="sm" className="h-8 px-2 bg-black/60" onClick={() => setScoreOpen(true)} aria-label="Σκορ">
             <Trophy className="h-4 w-4" /><span className="hidden lg:inline">Σκορ</span>
           </JButton>
@@ -253,7 +246,7 @@ export function GameTable({
           <div className="absolute left-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(1, "vertical")}</div>
           <div className="absolute right-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(3, "vertical")}</div>
 
-          <div className="absolute left-1/2 top-[55%] z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center [--card-w:clamp(2.2rem,4.7vw,4rem)]">
+          <div className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center [--card-w:clamp(3rem,6vw,5rem)]">
             {projection.cards.currentTrick.map((play) => (
               <div key={`${play.seatIndex}-${play.card.id}`} className={cn("animate-card-drop absolute", TRICK_OFFSET[posOf(play.seatIndex)])}>
                 <PlayingCard card={play.card} />
@@ -262,7 +255,7 @@ export function GameTable({
           </div>
 
           {projection.cards.exposedTrumpCard && (
-            <div className="absolute left-[58%] top-[54%] -translate-y-1/2 [--card-w:clamp(1.8rem,3.7vw,3rem)]">
+            <div className="absolute left-[59%] top-[54%] -translate-y-1/2 [--card-w:clamp(2rem,4vw,3.4rem)]">
               <div className="mb-1 text-center text-[10px] uppercase tracking-wider text-white/60">Ατού</div>
               <PlayingCard card={projection.cards.exposedTrumpCard} />
             </div>
@@ -274,10 +267,26 @@ export function GameTable({
         {error && <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>}
 
         {declarationAction && (
-          <div className="mb-2 flex max-w-[90vw] flex-wrap justify-center gap-1 rounded-xl bg-black/70 p-2 backdrop-blur">
-            {declarationAction.values.map((value) => (
-              <JButton key={value} size="sm" disabled={busy} onClick={() => onCommand({ type: "declare", value })}>{value}</JButton>
-            ))}
+          <div className="mb-3 max-w-[94vw] rounded-2xl border border-primary/30 bg-black/80 p-3 text-center shadow-2xl backdrop-blur">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Δήλωσε μπάζες</div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {declarationValues.map((value) => {
+                const allowed = declarationAction.values.includes(value);
+                return (
+                  <JButton
+                    key={value}
+                    size="sm"
+                    className="h-12 min-w-12 px-4 text-base font-bold"
+                    disabled={busy || !allowed}
+                    aria-disabled={busy || !allowed}
+                    title={!allowed ? "Μη επιτρεπτή δήλωση για τον dealer" : `Δήλωση ${value}`}
+                    onClick={() => allowed && onCommand({ type: "declare", value })}
+                  >
+                    {value}
+                  </JButton>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -307,10 +316,10 @@ export function GameTable({
           </JButton>
         )}
 
-        <div className="flex w-full items-end justify-center gap-2 px-3">
-          <div className="flex justify-center overflow-visible pt-2 [--card-w:clamp(2.35rem,5.8vw,4rem)]">
+        <div className="flex w-full items-end justify-center px-3 pl-[clamp(7rem,17vw,11rem)]">
+          <div className="flex justify-center overflow-visible pt-2 [--card-w:clamp(3rem,7.2vw,5rem)]">
             {projection.cards.ownHandVisible ? projection.cards.ownHand.map((card, index) => (
-              <div key={card.id} className={cn(index > 0 && "-ml-[calc(var(--card-w)*0.30)]")} style={{ zIndex: index }}>
+              <div key={card.id} className={cn(index > 0 && "-ml-[calc(var(--card-w)*0.36)]")} style={{ zIndex: index }}>
                 <PlayingCard
                   card={card}
                   selected={selectedId === card.id}
@@ -324,7 +333,7 @@ export function GameTable({
           {playAction && (
             <JButton
               size="sm"
-              className="mb-2 shrink-0"
+              className="mb-2 ml-2 shrink-0"
               disabled={!selectedId || busy || !playAction.cardIds.includes(selectedId)}
               onClick={async () => {
                 if (!selectedId) return;
@@ -336,7 +345,7 @@ export function GameTable({
             </JButton>
           )}
         </div>
-        <div className="-mt-1">{seatBlock(0, "horizontal")}</div>
+        <div className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
       </footer>
 
       {projection.lifecycle === "complete" && (
