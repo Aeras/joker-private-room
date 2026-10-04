@@ -206,9 +206,21 @@ Deno.serve(async (req: Request) => {
         p_source: generated.source === "gemini" ? "gemini" : "preset",
         p_reply_depth: event.replyDepth,
       });
-      if (publishError || published?.ok !== true) {
-        return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+      if (publishError) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+      if (published?.ok !== true) {
+        const code = String(published?.code ?? "SERVICE_UNAVAILABLE");
+        if (code === "STALE_DIALOGUE_RESULT" || code === "DUPLICATE_DIALOGUE_LINE") {
+          return json({
+            ok: true,
+            text: null,
+            source: "silence",
+            providerAttempted: generated.providerAttempted,
+            providerReason: code,
+          });
+        }
+        return json({ ok: false, code }, 409);
       }
+
       return json({
         ok: true,
         message: published.message,
