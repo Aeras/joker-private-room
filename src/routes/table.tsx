@@ -9,6 +9,7 @@ import type { Room } from "@/domain/players";
 import type { PlayerGameProjection } from "@/domain/projection";
 import {
   getDialogueMessages,
+  requestBotDialogueReply,
   requestDialogueReaction,
   sendHumanMessageToBot,
   type DialogueMessage,
@@ -80,7 +81,7 @@ function TablePage() {
     if (!currentRoom?.botSettings.botsTalk) return;
     const events = derivePublicDialogueEvents(previous, next, currentRoom);
     for (const dialogueEvent of events) {
-      void requestDialogueReaction({ data: { gameId: next.gameId, event: dialogueEvent } }).catch(() => undefined);
+      void requestDialogueReaction({ data: { gameId: next.gameId, eventId: dialogueEvent.id } }).catch(() => undefined);
     }
   }, []);
 
@@ -117,17 +118,11 @@ function TablePage() {
       if (bucket >= threshold) continue;
       const responder = bots.find((bot) => bot.id !== message.speakerBotId);
       if (!responder) continue;
-      void requestDialogueReaction({
+      void requestBotDialogueReply({
         data: {
           gameId,
-          event: {
-            id: `reply:${message.eventId}:${responder.id}`,
-            type: "BOT_MESSAGE_TO_BOT",
-            createdAt: new Date().toISOString(),
-            speakerBotId: responder.id,
-            publicSummary: `${message.speakerBotId}: ${message.text}`,
-            replyDepth: 1,
-          },
+          sourceMessageId: message.id,
+          responderBotId: responder.id,
         },
       }).catch(() => undefined);
     }
