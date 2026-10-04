@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const migration = readFileSync(
-  resolve(process.cwd(), "supabase/migrations/20261004183000_jk002_durable_wake_state.sql"),
+  resolve(process.cwd(), "supabase/migrations/20261004161950_jk002_durable_wake_state.sql"),
   "utf8",
 );
 
