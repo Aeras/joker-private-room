@@ -12,7 +12,7 @@ const declaration = readFileSync("src/components/table/DeclarationPicker.tsx", "
 const controls = readFileSync("src/components/table/tableControlModel.ts", "utf8");
 const audio = readFileSync("src/lib/gameAudio.ts", "utf8");
 
-describe("JK-001 Phase 1 — integrated non-asset release gates", () => {
+describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
   it("keeps authoritative state and visual perspective separated", () => {
     expect(projection).toContain("viewerSeat: seat");
     expect(table).toContain("const seatAt = (pos: Pos) => ((localSeat + pos) % SEAT_COUNT)");
@@ -72,7 +72,7 @@ describe("JK-001 Phase 1 — integrated non-asset release gates", () => {
     expect(trick).toContain('window.addEventListener("orientationchange", interrupt)');
     expect(deal).toContain("prefers-reduced-motion: reduce");
     expect(trick).toContain("prefers-reduced-motion: reduce");
-    expect(deal).toContain("firstRender.current");
+    expect(deal).toContain("sessionStorage.getItem(presentationStorageKey(stageKey))");
     expect(trick).toContain("firstRender.current");
   });
 
