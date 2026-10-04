@@ -117,10 +117,12 @@ export function DealPresentation({
   projection,
   geometry = null,
   paused = false,
+  onActiveChange,
 }: {
   projection: PlayerGameProjection;
   geometry?: TableGeometry | null;
   paused?: boolean;
+  onActiveChange?: (active: boolean) => void;
 }) {
   const previousGameId = useRef(projection.gameId);
   const previousStageKey = useRef<string | null>(null);
@@ -151,6 +153,7 @@ export function DealPresentation({
     timers.current = [];
     setBeats([]);
     setVisibleIndex(-1);
+    onActiveChange?.(false);
   };
 
   useEffect(() => {
@@ -175,6 +178,7 @@ export function DealPresentation({
 
     previousStageKey.current = stageKey;
     markPresented(stageKey);
+    onActiveChange?.(true);
     setBeats(sequence);
     setVisibleIndex(-1);
     if (stage !== "remaining") playGameSound("shuffle", `${projection.gameId}:${projection.progression.dealNumber}`);
