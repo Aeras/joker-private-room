@@ -27,6 +27,7 @@ jobs:
           src/domain/controller.ts
           src/domain/controller.test.ts
           src/server/gameControl.ts
+          src/server/reconciliationCore.ts
           src/services/gameProjectionFunctions.ts
           --rule 'prettier/prettier: off'
       - name: Server authoritative timeout guard
@@ -34,7 +35,8 @@ jobs:
         continue-on-error: true
         run: |
           grep -q 'HUMAN_TURN_TIMEOUT_MS = 30_000' src/domain/controller.ts
-          grep -q 'resolveOverdueTimeoutBeforeRead' src/services/gameProjectionFunctions.ts
+          grep -q 'applyOverdueTimeout' src/server/reconciliationCore.ts
+          grep -q 'advanceGameUntilBlocked' src/services/gameProjectionFunctions.ts
           ! grep -R -n 'setTimeout.*timeoutTakeover' src || true
       - name: Reclaim identity and CAS guard
         id: reclaim_guard
