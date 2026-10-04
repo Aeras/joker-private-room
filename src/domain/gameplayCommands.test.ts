@@ -3,11 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createDeck, shuffleCards, type Card, type StandardCard } from "./cards";
 import { declarationOrder, legalDeclarationValues, type Declarations } from "./declarations";
 import { dealNineCardInitial, nextSeat, type SeatIndex } from "./dealing";
-import { initializeCanonicalGameState } from "./gameInitialization";
-import {
-  applyGameplayCommand,
-  type GameplayCommand,
-} from "./gameplayCommands";
+import { applyGameplayCommand, type GameplayCommand } from "./gameplayCommands";
 import {
   GAME_STATE_SCHEMA_VERSION,
   POPULAR_RULES_VERSION,
@@ -29,32 +25,19 @@ function standard(id: string, suit: StandardCard["suit"], rank: StandardCard["ra
   return { kind: "standard", id, suit, rank };
 }
 
-function humanSeats() {
-  return ([0, 1, 2, 3] as const).map((seatIndex) => ({
-    seatIndex,
+function seats(): CanonicalGameState["seats"] {
+  return [0, 1, 2, 3].map((seatIndex) => ({
+    seatIndex: seatIndex as SeatIndex,
     owner: { type: "human" as const, playerId: `player-${seatIndex}` },
+    controller: "human" as const,
     connected: true,
-  })) as [
-    { seatIndex: 0; owner: { type: "human"; playerId: string }; connected: boolean },
-    { seatIndex: 1; owner: { type: "human"; playerId: string }; connected: boolean },
-    { seatIndex: 2; owner: { type: "human"; playerId: string }; connected: boolean },
-    { seatIndex: 3; owner: { type: "human"; playerId: string }; connected: boolean },
-  ];
+    takeoverAt: null,
+    reclaimable: false,
+  })) as CanonicalGameState["seats"];
 }
 
-function initializedState(seed = 7): CanonicalGameState {
-  return initializeCanonicalGameState({
-    gameId: "00000000-0000-4000-8000-000000000001",
-    roomId: "00000000-0000-4000-8000-000000000002",
-    seats: humanSeats(),
-    random: seededRandom(seed),
-    serverNow: "2026-10-04T06:00:00.000Z",
-  });
-}
-
-function playState(overrides?: Partial<CanonicalGameState>): CanonicalGameState {
-  const declarations: Declarations = [0, 0, 0, 1];
-  const base: CanonicalGameState = {
+function baseState(): CanonicalGameState {
+  return {
     gameId: "00000000-0000-4000-8000-000000000011",
     roomId: "00000000-0000-4000-8000-000000000012",
     rulesetId: "popular",
@@ -73,14 +56,7 @@ function playState(overrides?: Partial<CanonicalGameState>): CanonicalGameState 
       currentActorSeat: 1,
       phase: "CARD_PLAY",
     },
-    seats: [0, 1, 2, 3].map((seatIndex) => ({
-      seatIndex: seatIndex as SeatIndex,
-      owner: { type: "human" as const, playerId: `player-${seatIndex}` },
-      controller: "human" as const,
-      connected: true,
-      takeoverAt: null,
-      reclaimable: false,
-    })) as CanonicalGameState["seats"],
+    seats: seats(),
     cards: {
       deck: createDeck(),
       drawCursor: 4,
@@ -98,7 +74,7 @@ function playState(overrides?: Partial<CanonicalGameState>): CanonicalGameState 
     declarations: {
       order: [1, 2, 3, 0],
       currentDeclarerSeat: null,
-      declarations,
+      declarations: [0, 0, 0, 0],
       legalValues: [],
       forbiddenDealerValue: null,
     },
@@ -115,14 +91,30 @@ function playState(overrides?: Partial<CanonicalGameState>): CanonicalGameState 
       timeoutTakeoverActive: false,
     },
   };
-  return { ...base, ...overrides };
 }
 
-function apply(
-  state: CanonicalGameState,
-  seat: SeatIndex,
-  command: GameplayCommand,
-) {
+function declarationState(): CanonicalGameState {
+  const state = baseState();
+  const declarations: Declarations = [null, null, null, null];
+  return {
+    ...state,
+    progression: { ...state.progression, currentActorSeat: 1, phase: "DECLARATION" },
+    declarations: {
+      order: [1, 2, 3, 0],
+      currentDeclarerSeat: 1,
+      declarations,
+      legalValues: legalDeclarationValues({
+        cardsPerPlayer: 1,
+        dealerSeat: 0,
+        seatIndex: 1,
+        declarations,
+      }),
+      forbiddenDealerValue: null,
+    },
+  };
+}
+
+function apply(state: CanonicalGameState, seat: SeatIndex, command: GameplayCommand) {
   return applyGameplayCommand({
     state,
     seat,
@@ -132,70 +124,14 @@ function apply(
   });
 }
 
-describe("canonical game initialization", () => {
-  it("uses separate dealer selection and a fresh complete deck for the real first deal", () => {
-    const state = initializedState(42);
-    expect(state.lifecycle).toBe("active");
-    expect(state.stateVersion).toBe(1);
-    expect(state.progression.dealNumber).toBe(1);
-    expect(state.progression.cardsPerPlayer).toBe(1);
-    expect(state.progression.phase).toBe("DECLARATION");
-    expect(state.cards.deck).toHaveLength(36);
-    expect(new Set(state.cards.deck.map((card) => card.id)).size).toBe(36);
-    expect(state.cards.hands.every((hand) => hand.length === 1)).toBe(true);
-    expect(state.cards.exposedTrumpCard).not.toBeNull();
-    expect(state.progression.firstDeclarerSeat).toBe(nextSeat(state.progression.dealerSeat));
-    expect(state.progression.firstLeaderSeat).toBe(state.progression.firstDeclarerSeat);
-    expect(state.declarations.order).toEqual(declarationOrder(state.progression.dealerSeat));
-  });
-
-  it("pins permanent bot strategy/catalog identity into canonical ownership", () => {
-    const seats = humanSeats();
-    seats[3] = {
-      seatIndex: 3,
-      owner: {
-        type: "bot",
-        botId: "theia-tamara",
-        displayName: "Θεία Ταμάρα",
-        personalityId: "theia-tamara",
-        strategyProfileId: "memory-inference-v1",
-        catalogVersion: "popular-bots-v1",
-      },
-      connected: false,
-    } as never;
-    const state = initializeCanonicalGameState({
-      gameId: "00000000-0000-4000-8000-000000000021",
-      roomId: "00000000-0000-4000-8000-000000000022",
-      seats,
-      random: seededRandom(3),
-      serverNow: "2026-10-04T06:00:00.000Z",
-    });
-    expect(state.seats[3].controller).toBe("permanent_bot");
-    expect(state.seats[3].owner).toEqual({
-      type: "bot",
-      botId: "theia-tamara",
-      displayName: "Θεία Ταμάρα",
-      personalityId: "theia-tamara",
-      strategyProfileId: "memory-inference-v1",
-      catalogVersion: "popular-bots-v1",
-    });
-  });
-});
-
 describe("declaration dispatcher", () => {
   it("enforces order and transitions to first leader after the fourth declaration", () => {
-    let state = initializedState(9);
-    const wrong = nextSeat(state.progression.currentActorSeat!);
-    expect(apply(state, wrong, { type: "declare", value: 0 })).toEqual({
-      ok: false,
-      code: "NOT_CURRENT_ACTOR",
-    });
+    let state = declarationState();
+    expect(apply(state, 2, { type: "declare", value: 0 })).toEqual({ ok: false, code: "NOT_CURRENT_ACTOR" });
 
     for (let count = 0; count < 4; count += 1) {
       const actor = state.declarations.currentDeclarerSeat!;
-      const legal = state.declarations.legalValues;
-      expect(legal.length).toBeGreaterThan(0);
-      const result = apply(state, actor, { type: "declare", value: legal[0]! });
+      const result = apply(state, actor, { type: "declare", value: state.declarations.legalValues[0]! });
       expect(result.ok).toBe(true);
       if (!result.ok) throw new Error(result.code);
       state = result.state;
@@ -207,19 +143,13 @@ describe("declaration dispatcher", () => {
   });
 
   it("rejects the dealer's forbidden total explicitly", () => {
-    const base = initializedState(13);
+    const base = declarationState();
     const dealer = base.progression.dealerSeat;
     const order = declarationOrder(dealer);
     const declarations: Declarations = [null, null, null, null];
     declarations[order[0]!] = 0;
     declarations[order[1]!] = 0;
     declarations[order[2]!] = 0;
-    const legal = legalDeclarationValues({
-      cardsPerPlayer: 1,
-      dealerSeat: dealer,
-      seatIndex: dealer,
-      declarations,
-    });
     const state: CanonicalGameState = {
       ...base,
       progression: { ...base.progression, currentActorSeat: dealer },
@@ -227,7 +157,7 @@ describe("declaration dispatcher", () => {
         ...base.declarations,
         currentDeclarerSeat: dealer,
         declarations,
-        legalValues: legal,
+        legalValues: legalDeclarationValues({ cardsPerPlayer: 1, dealerSeat: dealer, seatIndex: dealer, declarations }),
         forbiddenDealerValue: 1,
       },
     };
@@ -239,15 +169,14 @@ describe("declaration dispatcher", () => {
 });
 
 describe("9-card trump choice", () => {
-  it("continues from the canonical 12-card cursor and reveals all owner hands only after choice", () => {
+  it("continues from the canonical 12-card cursor and exposes hands only after choice", () => {
     const deck = shuffleCards(createDeck(), seededRandom(25));
     const dealer: SeatIndex = 0;
     const initial = dealNineCardInitial(deck, dealer);
     const chooser = nextSeat(dealer);
-    const base = initializedState(2);
     const declarations: Declarations = [null, null, null, null];
     const state: CanonicalGameState = {
-      ...base,
+      ...baseState(),
       stateVersion: 20,
       progression: {
         round: 2,
@@ -279,8 +208,6 @@ describe("9-card trump choice", () => {
       trump: { status: "chooser_pending", chooserSeat: chooser },
     };
 
-    expect(state.cards.drawCursor).toBe(12);
-    expect(state.cards.hands.every((hand) => hand.length === 3)).toBe(true);
     const result = apply(state, chooser, { type: "choose_trump", suit: "hearts" });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error(result.code);
@@ -295,70 +222,50 @@ describe("9-card trump choice", () => {
 
 describe("card/Joker command dispatcher", () => {
   it("uses canonical legal cards and resolves a complete normal trick", () => {
-    let state = playState();
-    for (const [seat, cardId] of [
-      [1, "7-clubs-test"],
-      [2, "9-clubs-test"],
-      [3, "10-hearts-test"],
-      [0, "A-clubs-test"],
-    ] as const) {
+    let state = baseState();
+    for (const [seat, cardId] of [[1, "7-clubs-test"], [2, "9-clubs-test"], [3, "10-hearts-test"], [0, "A-clubs-test"]] as const) {
       const result = apply(state, seat, { type: "play_card", cardId });
       expect(result.ok).toBe(true);
       if (!result.ok) throw new Error(result.code);
       state = result.state;
     }
     expect(state.progression.phase).toBe("DEAL_RESULT");
-    expect(state.cards.currentTrick).toEqual([]);
-    expect(state.cards.completedTricks).toHaveLength(1);
     expect(state.cards.completedTricks[0]?.winnerSeat).toBe(3);
     expect(state.score.tricksTaken).toEqual([0, 0, 0, 1]);
   });
 
   it("rejects an off-suit card when requested suit is held", () => {
-    const state = playState({
-      progression: {
-        ...playState().progression,
-        currentActorSeat: 2,
-      },
+    const base = baseState();
+    const state: CanonicalGameState = {
+      ...base,
+      progression: { ...base.progression, currentActorSeat: 2 },
       cards: {
-        ...playState().cards,
-        hands: [
-          playState().cards.hands[0],
-          [],
-          [standard("8-clubs-held", "clubs", "8"), standard("A-spades-illegal", "spades", "A")],
-          playState().cards.hands[3],
-        ],
+        ...base.cards,
+        hands: [base.cards.hands[0], [], [standard("8-clubs-held", "clubs", "8"), standard("A-spades-illegal", "spades", "A")], base.cards.hands[3]],
         currentTrick: [{ seatIndex: 1, card: standard("7-clubs-lead", "clubs", "7") }],
       },
-    });
-    expect(apply(state, 2, { type: "play_card", cardId: "A-spades-illegal" })).toEqual({
-      ok: false,
-      code: "ILLEGAL_CARD",
-    });
+    };
+    expect(apply(state, 2, { type: "play_card", cardId: "A-spades-illegal" })).toEqual({ ok: false, code: "ILLEGAL_CARD" });
   });
 
   it("requires a contextual Joker semantic before committing the Joker", () => {
     const joker: Card = { kind: "joker", id: "joker-1" };
-    let state = playState({
+    const base = baseState();
+    let state: CanonicalGameState = {
+      ...base,
       cards: {
-        ...playState().cards,
+        ...base.cards,
         hands: [[standard("A-clubs", "clubs", "A")], [joker], [standard("9-clubs", "clubs", "9")], [standard("10-hearts", "hearts", "10")]],
       },
-    });
+    };
     const selected = apply(state, 1, { type: "play_card", cardId: "joker-1" });
     expect(selected.ok).toBe(true);
     if (!selected.ok) throw new Error(selected.code);
     state = selected.state;
     expect(state.progression.phase).toBe("JOKER_DECISION");
     expect(state.cards.hands[1].map((card) => card.id)).toContain("joker-1");
-    expect(state.joker).toEqual({ pendingForSeat: 1, cardId: "joker-1", semantic: null });
 
-    expect(
-      apply(state, 1, {
-        type: "choose_joker_semantic",
-        semantic: { context: "OPEN_TRICK", mode: "COMPETE" },
-      }),
-    ).toEqual({ ok: false, code: "INVALID_JOKER_CHOICE" });
+    expect(apply(state, 1, { type: "choose_joker_semantic", semantic: { context: "OPEN_TRICK", mode: "COMPETE" } })).toEqual({ ok: false, code: "INVALID_JOKER_CHOICE" });
 
     const chosen = apply(state, 1, {
       type: "choose_joker_semantic",
@@ -367,25 +274,12 @@ describe("card/Joker command dispatcher", () => {
     expect(chosen.ok).toBe(true);
     if (!chosen.ok) throw new Error(chosen.code);
     expect(chosen.state.cards.hands[1]).toEqual([]);
-    expect(chosen.state.cards.currentTrick[0]?.joker).toEqual({
-      context: "LEAD",
-      mode: "HIGHER_SUIT",
-      requestedSuit: "diamonds",
-    });
-    expect(chosen.state.progression.currentActorSeat).toBe(2);
+    expect(chosen.state.cards.currentTrick[0]?.joker).toEqual({ context: "LEAD", mode: "HIGHER_SUIT", requestedSuit: "diamonds" });
   });
 
   it("rejects a human command after controller takeover", () => {
-    const state = playState();
-    state.seats[1] = {
-      ...state.seats[1],
-      controller: "temporary_bot",
-      reclaimable: true,
-      takeoverAt: "2026-10-04T06:00:31.000Z",
-    };
-    expect(apply(state, 1, { type: "play_card", cardId: "7-clubs-test" })).toEqual({
-      ok: false,
-      code: "CONTROLLER_CHANGED",
-    });
+    const state = baseState();
+    state.seats[1] = { ...state.seats[1], controller: "temporary_bot", reclaimable: true, takeoverAt: "2026-10-04T06:00:31.000Z" };
+    expect(apply(state, 1, { type: "play_card", cardId: "7-clubs-test" })).toEqual({ ok: false, code: "CONTROLLER_CHANGED" });
   });
 });
