@@ -1,5 +1,5 @@
 /** Visual asset registry for the private Joker room. */
-import type { Card } from "@/domain/cards";
+import type { Card, Rank } from "@/domain/cards";
 
 const avatarByName: Record<string, string> = {
   giobis: "/avatars/giobis.webp",
@@ -18,10 +18,32 @@ const avatarByName: Record<string, string> = {
   "καπετάνιος": "/avatars/bots/kapetanios.png",
 };
 
+const rankAssetName: Record<Rank, string> = {
+  "6": "6",
+  "7": "7",
+  "8": "8",
+  "9": "9",
+  "10": "10",
+  J: "jack",
+  Q: "queen",
+  K: "king",
+  A: "ace",
+};
+
+function canonicalCardFace(card: Card): string | undefined {
+  if (card.kind === "joker") {
+    if (card.id === "joker-1") return "/cards/joker_red.png";
+    if (card.id === "joker-2") return "/cards/joker_black.png";
+    return undefined;
+  }
+
+  return `/cards/${card.suit}_${rankAssetName[card.rank]}.png`;
+}
+
 export const assets = {
-  cardBack: undefined as string | undefined,
+  cardBack: "/cards/card_back.png",
   tableArt: "/table/table_background.png",
-  cardFace: (_card: Card): string | undefined => undefined,
+  cardFace: canonicalCardFace,
   avatar: (_id: string, displayName?: string): string | undefined => {
     const key = displayName?.trim().toLowerCase();
     return key ? avatarByName[key] : undefined;
