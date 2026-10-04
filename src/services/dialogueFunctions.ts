@@ -33,11 +33,37 @@ export type DialogueEdgeResult =
     }
   | { ok: false; code: string };
 
+const dialogueEventType = z.enum([
+  "PLAYER_DECLARED_ZERO",
+  "PLAYER_DECLARED_HIGH",
+  "PLAYER_HIT_EXACT_BID",
+  "PLAYER_MISSED_BID",
+  "BOT_HIT_EXACT_BID",
+  "BOT_MISSED_BID",
+  "BOT_GOT_MINUS_200",
+  "PLAYER_GOT_MINUS_200",
+  "PLAYER_STOLE_CRITICAL_TRICK",
+  "BOT_STOLE_CRITICAL_TRICK",
+  "JOKER_PLAYED",
+  "JOKER_CHANGED_TRICK_RESULT",
+  "FORCED_TRUMP",
+  "OVERTRICK",
+  "UNDERTRICK",
+  "PREMIA_ACHIEVED",
+  "PREMIA_LOST",
+  "COMEBACK",
+  "SCORE_COLLAPSE",
+  "BOT_REVENGE_SUCCESS",
+  "ROUND_END",
+  "GAME_END",
+  "HUMAN_MESSAGE_TO_BOT",
+  "BOT_MESSAGE_TO_BOT",
+]);
 const gameId = z.string().uuid();
 const botId = z.string().min(1).max(64);
 const event = z.object({
   id: z.string().min(1).max(128),
-  type: z.string().min(1).max(64),
+  type: dialogueEventType,
   createdAt: z.string().datetime(),
   speakerBotId: botId,
   targetName: z.string().max(40).optional(),
@@ -88,7 +114,14 @@ export const requestDialogueReaction = createServerFn({ method: "POST" })
   );
 
 export const sendHumanMessageToBot = createServerFn({ method: "POST" })
-  .validator(z.object({ gameId, actionId: z.string().uuid(), speakerBotId: botId, text: z.string().trim().min(1).max(160) }))
+  .validator(
+    z.object({
+      gameId,
+      actionId: z.string().uuid(),
+      speakerBotId: botId,
+      text: z.string().trim().min(1).max(160),
+    }),
+  )
   .handler(async ({ data }): Promise<DialogueEdgeResult> =>
     callDialogueEdge({
       action: "generate",
