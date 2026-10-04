@@ -48,7 +48,7 @@ export interface PlayerGameProjection {
   lifecycle: GameLifecycle;
   viewerSeat: SeatIndex;
   progression: CanonicalGameState["progression"];
-  initialDealerSelection: PublicInitialDealerSelection;
+  initialDealerSelection: PublicInitialDealerSelection | null;
   seats: [PublicSeatProjection, PublicSeatProjection, PublicSeatProjection, PublicSeatProjection];
   trump: CanonicalGameState["trump"];
   declarations: {
@@ -79,14 +79,16 @@ function publicSeat(seat: CanonicalSeatState): PublicSeatProjection {
   };
 }
 
-function publicDealerSelection(state: CanonicalGameState): PublicInitialDealerSelection {
-  if (state.initialDealerSelection.status === "pending") return { status: "pending" };
+function publicDealerSelection(state: CanonicalGameState): PublicInitialDealerSelection | null {
+  const selection = state.initialDealerSelection;
+  if (!selection) return null;
+  if (selection.status === "pending") return { status: "pending" };
   return {
     status: "resolved",
-    firstRecipientSeat: state.initialDealerSelection.firstRecipientSeat,
-    revealedSelectionCards: state.initialDealerSelection.revealedSelectionCards.slice(),
-    selectedDealerSeat: state.initialDealerSelection.selectedDealerSeat,
-    resolvedAtStateVersion: state.initialDealerSelection.resolvedAtStateVersion,
+    firstRecipientSeat: selection.firstRecipientSeat,
+    revealedSelectionCards: selection.revealedSelectionCards.slice(),
+    selectedDealerSeat: selection.selectedDealerSeat,
+    resolvedAtStateVersion: selection.resolvedAtStateVersion,
   };
 }
 
