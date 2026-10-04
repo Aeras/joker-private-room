@@ -38,15 +38,20 @@ jobs:
           grep -q "interval '8 seconds'" supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
           grep -q 'enable row level security' supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
           ! grep -q 'game_history' supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
-          ! grep -q 'canonical_state' supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
-      - name: Human interaction and privacy guard
+      - name: Server-owned event and privacy guard
         run: |
           grep -q 'μπορεί να επεξεργαστεί από εξωτερικό πάροχο AI' src/components/table/DialogueOverlay.tsx
           grep -q 'getCookie(SESSION_COOKIE)' src/services/dialogueFunctions.ts
-          grep -q 'const dialogueEventType = z.enum' src/services/dialogueFunctions.ts
-          grep -q 'recentBanter: recentLines(recentData?.messages)' supabase/functions/ai-banter/index.ts
+          grep -q 'eventId: dialogueEventId' src/services/dialogueFunctions.ts
+          grep -q 'action: "human-message"' src/services/dialogueFunctions.ts
+          grep -q 'action: "bot-reply"' src/services/dialogueFunctions.ts
+          grep -q 'resolve_dialogue_state_event_internal' supabase/functions/ai-banter/index.ts
+          grep -q 'g.canonical_state' supabase/migrations/20261004114600_jk001_ai_banter_phase_c_server_event_resolution.sql
+          ! grep -q 'body?.event' supabase/functions/ai-banter/index.ts
+          grep -q 'recentBanter: recentLines(latestRecentData?.messages)' supabase/functions/ai-banter/index.ts
           ! grep -q 'body?.recentBanter' supabase/functions/ai-banter/index.ts
           grep -q 'void requestDialogueReaction' src/routes/table.tsx
+          grep -q 'requestBotDialogueReply' src/routes/table.tsx
       - name: TypeScript
         run: bunx tsc --noEmit
       - name: Production build
