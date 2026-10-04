@@ -60,6 +60,13 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid credentials", code: "INVALID_CREDENTIALS" }, 400);
     }
 
+    const { error: reclaimError } = await admin.rpc("reclaim_stale_player_session_for_auth_internal", {
+      p_player_id: playerId,
+    });
+    if (reclaimError) {
+      return json({ error: "Service unavailable", code: "SERVICE_UNAVAILABLE" }, 503);
+    }
+
     const { data, error } = await admin.rpc("authenticate_player_pin_internal", {
       p_player_id: playerId,
       p_pin: pin,
