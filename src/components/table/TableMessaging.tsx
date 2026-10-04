@@ -7,6 +7,7 @@ import { mergeLiveTableMessages, type LiveTableMessage } from "@/lib/liveTableMe
 import { t } from "@/i18n/el";
 import { JButton } from "../joker/JButton";
 import { ChatPanel } from "./ChatPanel";
+
 export function TableMessaging({
   room,
   projection,
@@ -27,11 +28,10 @@ export function TableMessaging({
         ? s.occupant.bot.displayName
         : `${s.index + 1}`,
   );
+
   useEffect(() => {
     ++generation.current;
-    const invalidate = () => {
-      generation.current++;
-    };
+    const invalidate = () => { generation.current++; };
     let cancelled = false;
     let pending = false;
     setOpen(false);
@@ -51,16 +51,9 @@ export function TableMessaging({
       const currentGeneration = generation.current;
       try {
         const result = await getTableMessages({ data: { gameId: projection.gameId } });
-        if (!cancelled && currentGeneration === generation.current && result.ok)
-          setMessages((previous) =>
-            mergeLiveTableMessages(
-              previous,
-              result.messages,
-              result.serverNow,
-              started,
-              Date.now(),
-            ),
-          );
+        if (!cancelled && currentGeneration === generation.current && result.ok) {
+          setMessages((previous) => mergeLiveTableMessages(previous, result.messages, result.serverNow, started, Date.now()));
+        }
       } finally {
         pending = false;
       }
@@ -68,9 +61,7 @@ export function TableMessaging({
     const tick = setInterval(() => {
       setMessages((m) => m.filter((x) => x.localExpiresAt > Date.now()));
     }, 50);
-    const polling = setInterval(() => {
-      void poll().catch(() => undefined);
-    }, 1000);
+    const polling = setInterval(() => { void poll().catch(() => undefined); }, 1000);
     const visibility = () => {
       clear();
       if (!document.hidden) void poll().catch(() => undefined);
@@ -87,6 +78,7 @@ export function TableMessaging({
       window.removeEventListener("pagehide", clear);
     };
   }, [projection.gameId, projection.lifecycle]);
+
   if (projection.lifecycle === "complete") return null;
   const recipients = [
     { value: "all" as const, label: t.messageEveryone },
@@ -94,9 +86,10 @@ export function TableMessaging({
       .filter((s) => s.index !== projection.viewerSeat && s.occupant.type !== "empty")
       .map((s) => ({ value: s.index, label: names[s.index]! })),
   ];
+
   return (
     <>
-      <div className="absolute right-3 bottom-3 z-[60]">
+      <div className="absolute right-[max(.75rem,env(safe-area-inset-right))] bottom-[max(.75rem,env(safe-area-inset-bottom))] z-[70]">
         <JButton
           variant="outlineGold"
           className="min-h-11 min-w-11 bg-black/70"
@@ -111,16 +104,15 @@ export function TableMessaging({
       </div>
       <div
         aria-live="polite"
-        className="pointer-events-none absolute left-1/2 top-[16vh] z-[65] w-[min(90vw,32rem)] -translate-x-1/2 space-y-1"
+        className="pointer-events-none absolute left-1/2 top-[16vh] z-[75] w-[min(90vw,32rem)] -translate-x-1/2 space-y-1"
       >
         {messages.map((m) => (
           <div key={m.id} className="rounded-xl bg-black/85 px-3 py-2 text-sm text-white">
-            <strong>{names[m.fromSeat]}</strong> →{" "}
-            {m.to === "all" ? t.messageEveryone : names[m.to]}: {m.text}
+            <strong>{names[m.fromSeat]}</strong> → {m.to === "all" ? t.messageEveryone : names[m.to]}: {m.text}
           </div>
         ))}
       </div>
-      <div className="relative z-[110]">
+      <div className="relative z-[130]">
         <ChatPanel
           key={draftEpoch}
           open={open}
@@ -144,20 +136,10 @@ export function TableMessaging({
               });
               if (epoch !== generation.current) return false;
               if (!result.ok) {
-                setError(
-                  result.code === "RATE_LIMITED" ? t.messageRateLimited : t.messageUnavailable,
-                );
+                setError(result.code === "RATE_LIMITED" ? t.messageRateLimited : t.messageUnavailable);
                 return false;
               }
-              setMessages((previous) =>
-                mergeLiveTableMessages(
-                  previous,
-                  result.messages,
-                  result.serverNow,
-                  started,
-                  Date.now(),
-                ),
-              );
+              setMessages((previous) => mergeLiveTableMessages(previous, result.messages, result.serverNow, started, Date.now()));
               return true;
             } catch {
               setError(t.messageUnavailable);
