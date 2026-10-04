@@ -1,0 +1,62 @@
+name: Full Regression
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/functions/verify-player-pin/**'
+      - 'supabase/functions/game-state/**'
+      - 'src/services/authFunctions.ts'
+      - 'src/services/identity.ts'
+      - 'src/services/realIdentity.ts'
+      - 'src/services/gameProjectionFunctions.ts'
+      - 'src/domain/cards.ts'
+      - 'src/domain/controller.ts'
+      - 'src/domain/dealerBootstrap.ts'
+      - 'src/domain/dealing.ts'
+      - 'src/domain/declarations.ts'
+      - 'src/domain/engine.ts'
+      - 'src/domain/gameConfig.ts'
+      - 'src/domain/gameLifecycle.ts'
+      - 'src/domain/gameplayCommands.ts'
+      - 'src/domain/gameState.ts'
+      - 'src/domain/premia.ts'
+      - 'src/domain/ranking.ts'
+      - 'src/domain/rulesets.ts'
+      - 'src/domain/scoring.ts'
+      - 'src/integrations/supabase/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bun.lockb'
+      - 'tsconfig*.json'
+      - 'vite.config.*'
+
+jobs:
+  phase1:
+    uses: ./.github/workflows/jk001-phase1-gate.yml
+  phase2:
+    uses: ./.github/workflows/jk001-phase2-gate.yml
+  phase3:
+    uses: ./.github/workflows/jk001-phase3-gate.yml
+  phase4:
+    uses: ./.github/workflows/jk001-phase4-gate.yml
+  phase5:
+    uses: ./.github/workflows/jk001-phase5-gate.yml
+  phase6:
+    uses: ./.github/workflows/jk001-phase6-gate.yml
+  phase7:
+    uses: ./.github/workflows/jk001-phase7-gate.yml
+  phase8:
+    uses: ./.github/workflows/jk001-phase8-gate.yml
+  phase9:
+    uses: ./.github/workflows/jk001-phase9-gate.yml
+  phase10:
+    uses: ./.github/workflows/jk001-phase10-gate.yml
+  phase11:
+    uses: ./.github/workflows/jk001-phase11-gate.yml
+  phase12:
+    uses: ./.github/workflows/jk001-phase12-gate.yml
+  ai-banter-phase-a:
+    uses: ./.github/workflows/jk001-ai-banter-phase-a-gate.yml
