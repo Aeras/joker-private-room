@@ -80,10 +80,14 @@ function TablePage() {
       getProjectedGameState({ data: { gameId } }),
     ]);
     if (!mounted.current) return;
+
     if (roomResult.ok) setRoom(roomResult.room);
     if (gameResult.ok) setProjection(gameResult.projection);
-    if (!roomResult.ok || !gameResult.ok) {
-      setError(gameplayFailureMessage(!gameResult.ok ? gameResult.code : roomResult.code));
+
+    if (!gameResult.ok) {
+      setError(gameplayFailureMessage(gameResult.code));
+    } else if (!roomResult.ok) {
+      setError(gameplayFailureMessage(roomResult.code));
     } else {
       setError(null);
     }
