@@ -8,22 +8,16 @@ import { SEAT_COUNT } from "@/domain/gameConfig";
 import type { Room } from "@/domain/players";
 import type { LocalLegalAction, PlayerGameProjection } from "@/domain/projection";
 import type { ScoreSheet } from "@/domain/scoreSheet";
-import { cn } from "@/lib/utils";
 import { JButton } from "../joker/JButton";
 import { PlayingCard } from "../joker/PlayingCard";
+import { DealPresentation } from "./DealPresentation";
 import { DraggableHandCard } from "./DraggableHandCard";
 import { Scoreboard } from "./Scoreboard";
 import { TableSeat } from "./TableSeat";
+import { TrickPresentation } from "./TrickPresentation";
 
 type Pos = 0 | 1 | 2 | 3;
 type OrientationLock = ScreenOrientation & { lock?: (orientation: "landscape") => Promise<void> };
-
-const TRICK_OFFSET: Record<Pos, string> = {
-  0: "translate-y-[38%]",
-  1: "-translate-x-[58%] -rotate-6",
-  2: "-translate-y-[38%]",
-  3: "translate-x-[58%] rotate-6",
-};
 
 const SUIT_LABEL: Record<Suit, string> = {
   spades: "♠ Πίκες",
@@ -134,7 +128,6 @@ export function GameTable({
 
   const nameAt = (seat: number) => names[seat] ?? `Θέση ${seat + 1}`;
   const seatAt = (pos: Pos) => ((localSeat + pos) % SEAT_COUNT) as Pos;
-  const posOf = (seat: number) => ((seat - localSeat + SEAT_COUNT) % SEAT_COUNT) as Pos;
 
   useEffect(() => {
     const update = () => setPortrait(window.innerHeight > window.innerWidth);
@@ -252,13 +245,7 @@ export function GameTable({
           <div className="absolute left-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(1, "vertical")}</div>
           <div className="absolute right-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(3, "vertical")}</div>
 
-          <div className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center [--card-w:clamp(3rem,6vw,5rem)]">
-            {projection.cards.currentTrick.map((play) => (
-              <div key={`${play.seatIndex}-${play.card.id}`} className={cn("animate-card-drop absolute", TRICK_OFFSET[posOf(play.seatIndex)])}>
-                <PlayingCard card={play.card} />
-              </div>
-            ))}
-          </div>
+          <TrickPresentation projection={projection} />
 
           {projection.cards.exposedTrumpCard && (
             <div className="absolute left-[59%] top-[54%] -translate-y-1/2 [--card-w:clamp(2rem,4vw,3.4rem)]">
@@ -268,6 +255,8 @@ export function GameTable({
           )}
         </div>
       </main>
+
+      <DealPresentation projection={projection} />
 
       <footer className="absolute inset-x-0 bottom-[max(.15rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center">
         {error && <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>}
