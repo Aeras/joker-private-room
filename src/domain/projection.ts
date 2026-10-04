@@ -66,6 +66,10 @@ export interface PlayerGameProjection {
     completedDeals: NonNullable<CanonicalGameState["score"]["completedDeals"]>;
     roundPremia: NonNullable<CanonicalGameState["score"]["roundPremia"]>;
   };
+  /** Public presentation timing. It never grants timeout authority to the client. */
+  timing?: {
+    currentHumanDeadline: string | null;
+  };
   local: {
     legalActions: LocalLegalAction[];
     reclaimAvailable: boolean;
@@ -206,6 +210,9 @@ export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex): 
         transfers: record.transfers.map((transfer) => ({ ...transfer })),
         totalsAfterPremia: [...record.totalsAfterPremia],
       })),
+    },
+    timing: {
+      currentHumanDeadline: state.timing.currentHumanDeadline,
     },
     local: {
       legalActions: localLegalActions(state, seat, own.hand),
