@@ -38,10 +38,31 @@ function visualPosition(viewerSeat: SeatIndex, seat: SeatIndex): 0 | 1 | 2 | 3 {
 
 const TARGET: Record<0 | 1 | 2 | 3, string> = {
   0: "translate(-50%, 42vh)",
-  1: "translate(-43vw, 0)",
+  1: "translate(-43vw, -50%)",
   2: "translate(-50%, -38vh)",
-  3: "translate(38vw, 0)",
+  3: "translate(38vw, -50%)",
 };
+
+function TravelingBack({ beat, pos, reducedMotion }: { beat: DealBeat; pos: 0 | 1 | 2 | 3; reducedMotion: boolean }) {
+  const [arrived, setArrived] = useState(reducedMotion);
+  useEffect(() => {
+    if (reducedMotion) {
+      setArrived(true);
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => setArrived(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [beat.id, reducedMotion]);
+
+  return (
+    <div
+      className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform duration-200 ease-out motion-reduce:duration-75"
+      style={{ transform: arrived ? TARGET[pos] : "translate(-50%, -50%) scale(.58)" }}
+    >
+      <PlayingCard faceDown />
+    </div>
+  );
+}
 
 /**
  * Replays already-authoritative deal counts as backs only. It never receives deck order or hidden card identities.
@@ -49,6 +70,7 @@ const TARGET: Record<0 | 1 | 2 | 3, string> = {
  */
 export function DealPresentation({ projection }: { projection: PlayerGameProjection }) {
   const firstRender = useRef(true);
+  const previousGameId = useRef(projection.gameId);
   const previousStageKey = useRef<string | null>(null);
   const [beats, setBeats] = useState<DealBeat[]>([]);
   const [visibleIndex, setVisibleIndex] = useState(-1);
@@ -69,29 +91,33 @@ export function DealPresentation({ projection }: { projection: PlayerGameProject
       seat: recipientFor(dealer, index),
       index,
     }));
-  }, [projection, stage, stageKey]);
+  }, [projection.progression.cardsPerPlayer, projection.progression.dealerSeat, stage, stageKey]);
+
+  const interrupt = () => {
+    for (const timer of timers.current) window.clearTimeout(timer);
+    timers.current = [];
+    setBeats([]);
+    setVisibleIndex(-1);
+  };
 
   useEffect(() => {
-    const clearTimers = () => {
-      for (const timer of timers.current) window.clearTimeout(timer);
-      timers.current = [];
-    };
-    clearTimers();
+    interrupt();
 
-    if (firstRender.current) {
+    if (firstRender.current || previousGameId.current !== projection.gameId) {
       firstRender.current = false;
+      previousGameId.current = projection.gameId;
       previousStageKey.current = stageKey;
-      return clearTimers;
+      return interrupt;
     }
     if (!stageKey || stageKey === previousStageKey.current || sequence.length === 0) {
       previousStageKey.current = stageKey;
-      return clearTimers;
+      return interrupt;
     }
 
     previousStageKey.current = stageKey;
     setBeats(sequence);
     setVisibleIndex(-1);
-    playGameSound("shuffle", stageKey);
+    if (stage !== "remaining") playGameSound("shuffle", `${projection.gameId}:${projection.progression.dealNumber}`);
 
     const stagger = reducedMotion ? 28 : 72;
     sequence.forEach((beat, index) => {
@@ -100,13 +126,25 @@ export function DealPresentation({ projection }: { projection: PlayerGameProject
         playGameSound("deal", beat.id);
       }, index * stagger));
     });
-    timers.current.push(window.setTimeout(() => {
-      setBeats([]);
-      setVisibleIndex(-1);
-    }, sequence.length * stagger + (reducedMotion ? 120 : 360)));
+    timers.current.push(window.setTimeout(() => interrupt(), sequence.length * stagger + (reducedMotion ? 120 : 360)));
 
-    return clearTimers;
-  }, [reducedMotion, sequence, stageKey]);
+    return interrupt;
+  }, [projection.gameId, projection.progression.dealNumber, reducedMotion, sequence, stage, stageKey]);
+
+  useEffect(() => {
+    const visibility = () => {
+      if (document.visibilityState !== "visible") interrupt();
+    };
+    window.addEventListener("orientationchange", interrupt);
+    window.addEventListener("blur", interrupt);
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      window.removeEventListener("orientationchange", interrupt);
+      window.removeEventListener("blur", interrupt);
+      document.removeEventListener("visibilitychange", visibility);
+      interrupt();
+    };
+  }, []);
 
   if (beats.length === 0 || visibleIndex < 0) return null;
 
@@ -116,13 +154,7 @@ export function DealPresentation({ projection }: { projection: PlayerGameProject
 
   return (
     <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true">
-      <div
-        key={beat.id}
-        className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform duration-200 ease-out motion-reduce:duration-75"
-        style={{ transform: TARGET[pos] }}
-      >
-        <PlayingCard faceDown />
-      </div>
+      <TravelingBack key={beat.id} beat={beat} pos={pos} reducedMotion={reducedMotion} />
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/55 px-2 py-1 text-[10px] tabular-nums text-white/70">
         {Math.min(visibleIndex + 1, beats.length)} / {beats.length}
       </div>
