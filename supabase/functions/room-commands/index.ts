@@ -107,6 +107,9 @@ Deno.serve(async (req: Request) => {
     if (action === "get") {
       rpcName = "get_room_for_session_internal";
       args = { p_session_token: sessionToken, p_code: String(body?.code ?? "") };
+    } else if (action === "active_game") {
+      rpcName = "get_current_active_game_internal";
+      args = { p_session_token: sessionToken };
     } else {
       const actionId = typeof body?.actionId === "string" ? body.actionId : "";
       if (!/^[0-9a-f-]{36}$/i.test(actionId)) {
