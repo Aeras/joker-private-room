@@ -46,7 +46,7 @@ jobs:
           grep -q 'action: "human-message"' src/services/dialogueFunctions.ts
           grep -q 'action: "bot-reply"' src/services/dialogueFunctions.ts
           grep -q 'resolve_dialogue_state_event_internal' supabase/functions/ai-banter/index.ts
-          grep -q 'g.canonical_state' supabase/migrations/20261004114600_jk001_ai_banter_phase_c_server_event_resolution.sql
+          grep -q 'g.canonical_state' supabase/migrations/20261004115502_jk001_ai_banter_phase_c_server_event_resolution.sql
           ! grep -q 'body?.event' supabase/functions/ai-banter/index.ts
           grep -q 'recentBanter: recentLines(latestRecentData?.messages)' supabase/functions/ai-banter/index.ts
           ! grep -q 'body?.recentBanter' supabase/functions/ai-banter/index.ts
