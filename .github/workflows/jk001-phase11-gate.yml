@@ -28,6 +28,8 @@ jobs:
           src/bots/progression.ts
           src/bots/runtime.test.ts
           src/server/botProgression.ts
+          src/server/reconciliationCore.ts
+          src/server/reconciliation.ts
           src/services/gameProjectionFunctions.ts
           src/services/roomFunctions.ts
           --rule 'prettier/prettier: off'
@@ -57,23 +59,24 @@ jobs:
         continue-on-error: true
         run: |
           grep -q 'persistCanonicalGameState' src/server/botProgression.ts
-          grep -q 'expectedStateVersion: loaded.stateVersion' src/server/botProgression.ts
-          grep -q 'stableInternalActionId' src/server/botProgression.ts
-          grep -q 'STALE_STATE' src/server/botProgression.ts
+          grep -q 'expectedStateVersion: loaded.stateVersion' src/server/reconciliationCore.ts
+          grep -q 'stableInternalActionId' src/server/reconciliation.ts
+          grep -q 'STALE_STATE' src/server/reconciliationCore.ts
       - name: Authoritative entry-point progression guard
         id: entry_points
         continue-on-error: true
         run: |
           grep -q 'settleAutomaticState' src/services/gameProjectionFunctions.ts
-          grep -q 'progressAutomaticGameplay' src/services/gameProjectionFunctions.ts
-          grep -q 'resolveOverdueTimeoutBeforeRead' src/services/gameProjectionFunctions.ts
-          grep -q 'progressAutomaticGameplay(result.gameId)' src/services/roomFunctions.ts
+          grep -q 'advanceGameUntilBlocked' src/services/gameProjectionFunctions.ts
+          ! grep -q 'progressAutomaticGameplay' src/services/gameProjectionFunctions.ts
+          ! grep -q 'resolveOverdueTimeoutBeforeRead' src/services/gameProjectionFunctions.ts
+          grep -q 'advanceGameUntilBlocked(result.gameId)' src/services/roomFunctions.ts
       - name: No Phase 12 scope guard
         id: no_phase12
         continue-on-error: true
         run: |
           ! grep -qi 'history\|statistics\|finalization' src/server/botProgression.ts
-          ! grep -qi 'openai\|gemini\|anthropic\|llm' src/bots/runtime.ts src/bots/progression.ts src/server/botProgression.ts
+          ! grep -qi 'openai\|gemini\|anthropic\|llm' src/bots/runtime.ts src/bots/progression.ts src/server/botProgression.ts src/server/reconciliationCore.ts
       - name: TypeScript
         id: typecheck
         continue-on-error: true
