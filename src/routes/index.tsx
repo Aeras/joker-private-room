@@ -22,26 +22,34 @@ export const Route = createFileRoute("/")({
 
 function HomeArtButton({
   to,
-  search,
   image,
   label,
   tone,
 }: {
   to: "/create" | "/join";
-  search?: { code: undefined };
   image: string;
   label: string;
   tone: "primary" | "secondary";
 }) {
-  return (
-    <Link
-      to={to}
-      search={search}
-      aria-label={label}
-      className={`home-art-button home-art-button--${tone} group`}
-    >
+  const content = (
+    <>
       <img src={image} alt="" aria-hidden="true" className="home-art-button__image" draggable={false} />
       <span className="sr-only">{label}</span>
+    </>
+  );
+  const className = `home-art-button home-art-button--${tone} group`;
+
+  if (to === "/join") {
+    return (
+      <Link to="/join" search={{ code: undefined }} aria-label={label} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <Link to="/create" aria-label={label} className={className}>
+      {content}
     </Link>
   );
 }
@@ -55,18 +63,10 @@ function Home() {
       <div className="home-premium__veil" aria-hidden="true" />
 
       <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 flex gap-2">
-        <Link
-          to="/history"
-          aria-label="Ιστορικό"
-          className="home-utility-button"
-        >
+        <Link to="/history" aria-label="Ιστορικό" className="home-utility-button">
           <History className="h-5 w-5" />
         </Link>
-        <Link
-          to="/settings"
-          aria-label={t.settings}
-          className="home-utility-button"
-        >
+        <Link to="/settings" aria-label={t.settings} className="home-utility-button">
           <Settings className="h-5 w-5" />
         </Link>
       </div>
@@ -100,7 +100,7 @@ function Home() {
           ) : (
             <div className="space-y-3">
               <HomeArtButton to="/create" image={CREATE_GAME_ART} label={t.createGame} tone="primary" />
-              <HomeArtButton to="/join" search={{ code: undefined }} image={JOIN_GAME_ART} label={t.joinGame} tone="secondary" />
+              <HomeArtButton to="/join" image={JOIN_GAME_ART} label={t.joinGame} tone="secondary" />
             </div>
           )}
         </div>
