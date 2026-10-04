@@ -20,6 +20,7 @@ export interface CreateDealerBootstrapStateArgs {
   gameId: string;
   roomId: string;
   bootstrapActionId: string;
+  serverEntropySeed: string;
   seats: [InitialSeatInput, InitialSeatInput, InitialSeatInput, InitialSeatInput];
 }
 
@@ -61,6 +62,9 @@ export function createInitialDealerBootstrapState(
   if (!args.gameId || !args.roomId || !args.bootstrapActionId) {
     throw new Error("Dealer bootstrap identity is incomplete");
   }
+  if (!/^[0-9a-f]{64}$/i.test(args.serverEntropySeed)) {
+    throw new Error("Dealer bootstrap requires private server entropy");
+  }
   if (args.seats.some((seat, index) => seat.seatIndex !== index)) {
     throw new Error("Initial seats must contain canonical indexes 0..3 in order");
   }
@@ -73,6 +77,7 @@ export function createInitialDealerBootstrapState(
     stateSchemaVersion: GAME_STATE_SCHEMA_VERSION,
     stateVersion: 1,
     lifecycle: "starting",
+    serverEntropySeed: args.serverEntropySeed.toLowerCase(),
     progression: {
       round: 1,
       dealNumber: 1,
@@ -109,6 +114,8 @@ export function createInitialDealerBootstrapState(
       currentDealScores: [null, null, null, null],
       cumulativeTotals: [0, 0, 0, 0],
       finalPlacements: [null, null, null, null],
+      completedDeals: [],
+      roundPremia: [],
     },
     timing: { currentHumanDeadline: null, timeoutTakeoverActive: false },
   };
@@ -131,6 +138,9 @@ export function resolveDealerBootstrapAndInitializeDealOne(
     pendingSelection.status !== "pending"
   ) {
     throw new Error("Initial dealer bootstrap is not pending");
+  }
+  if (!state.serverEntropySeed || !/^[0-9a-f]{64}$/i.test(state.serverEntropySeed)) {
+    throw new Error("Initial dealer bootstrap is missing private server entropy");
   }
 
   const firstRecipientSeat = chooseUniformFirstRecipient(args.firstRecipientRandom);
@@ -205,6 +215,8 @@ export function resolveDealerBootstrapAndInitializeDealOne(
       currentDealScores: [null, null, null, null],
       cumulativeTotals: [0, 0, 0, 0],
       finalPlacements: [null, null, null, null],
+      completedDeals: state.score.completedDeals ?? [],
+      roundPremia: state.score.roundPremia ?? [],
     },
     timing: {
       currentHumanDeadline:
