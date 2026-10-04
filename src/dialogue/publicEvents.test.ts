@@ -62,7 +62,7 @@ describe("derivePublicDialogueEvents", () => {
   });
 
   it("derives provider-facing events without serializing local private hand data", () => {
-    const previous = projection({ cards: { ownHand: [{ id: "SECRET-HAND", kind: "normal", rank: "A", suit: "spades" }], ownHandVisible: true, exposedTrumpCard: null, currentTrick: [], completedTricks: [] } });
+    const previous = projection({ cards: { ownHand: [{ id: "SECRET-HAND", kind: "standard", rank: "A", suit: "spades" }], ownHandVisible: true, exposedTrumpCard: null, currentTrick: [], completedTricks: [] } });
     const next = projection({ stateVersion: 11, declarations: { currentDeclarerSeat: 1, values: [0, null, null, null] }, cards: previous.cards });
     const serialized = JSON.stringify(derivePublicDialogueEvents(previous, next, room));
     expect(serialized).not.toContain("SECRET-HAND");
