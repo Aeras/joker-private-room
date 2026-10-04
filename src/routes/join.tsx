@@ -92,23 +92,23 @@ function JoinGame() {
 
   if (activeLookup.status === "error") {
     return (
-      <ScreenShell title={t.joinGame}>
+      <ScreenShell title={t.joinGame} variant="pregame">
         <div className="panel space-y-3 p-4">
           <p className="text-sm text-negative">Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού.</p>
-          <JButton className="w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
+          <JButton className="pregame-primary-button w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
         </div>
       </ScreenShell>
     );
   }
 
   return (
-    <ScreenShell title={t.joinGame}>
+    <ScreenShell title={t.joinGame} variant="pregame">
       <form onSubmit={submit} className="space-y-6">
         <div><SectionLabel>{t.roomCode}</SectionLabel><input value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))} placeholder="J7K4" autoCapitalize="characters" className={cn(inputCls, "text-center font-display text-2xl tracking-[0.4em]")} /></div>
-        <div><SectionLabel>{t.playerName}</SectionLabel><div className="grid grid-cols-2 gap-2">{players.map((p) => <button type="button" key={p.id} onClick={() => { setPlayerId(p.id); joinActionId.current = null; }} className={cn("h-12 rounded-xl border text-sm transition-colors", playerId === p.id ? "border-primary bg-gold-soft text-primary" : "border-border bg-secondary text-foreground")}>{p.displayName}</button>)}</div></div>
+        <div><SectionLabel>{t.playerName}</SectionLabel><div className="grid grid-cols-2 gap-2">{players.map((p) => <button type="button" key={p.id} onClick={() => { setPlayerId(p.id); joinActionId.current = null; }} className={cn("h-12 rounded-xl border text-sm transition-all active:scale-[0.98]", playerId === p.id ? "border-primary bg-gold-soft text-primary" : "border-border bg-secondary text-foreground")}>{p.displayName}</button>)}</div></div>
         <div><SectionLabel>{t.pin}</SectionLabel><input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className={cn(inputCls, "text-center text-2xl tracking-[0.5em]")} /></div>
         {error && <p className="text-sm text-negative">{error}</p>}
-        <JButton type="submit" size="lg" className="w-full" disabled={loading || authBusy}>{t.enterGame}</JButton>
+        <JButton type="submit" size="lg" className="pregame-primary-button w-full" disabled={loading || authBusy}>{t.enterGame}</JButton>
       </form>
     </ScreenShell>
   );

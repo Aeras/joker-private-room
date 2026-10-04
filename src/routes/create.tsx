@@ -132,10 +132,10 @@ function CreateGame() {
 
   if (activeLookup.status === "error") {
     return (
-      <ScreenShell title={t.createGame}>
+      <ScreenShell title={t.createGame} variant="pregame">
         <div className="panel space-y-3 p-4">
           <p className="text-sm text-negative">Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού.</p>
-          <JButton className="w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
+          <JButton className="pregame-primary-button w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
         </div>
       </ScreenShell>
     );
@@ -143,25 +143,25 @@ function CreateGame() {
 
   if (!verifiedHost) {
     return (
-      <ScreenShell title={t.createGame}>
+      <ScreenShell title={t.createGame} variant="pregame">
         <div className="space-y-6">
           <div><SectionLabel>Host</SectionLabel><div className="panel p-4 text-center font-display text-xl">{host?.displayName ?? "Φόρτωση…"}</div></div>
           <div><SectionLabel>{t.pin}</SectionLabel><input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className="h-12 w-full rounded-xl border border-input bg-secondary px-4 text-center text-2xl tracking-[0.5em] text-foreground focus:outline-none focus:ring-2 focus:ring-ring" /></div>
           {authError && <p className="text-sm text-negative">{authError}</p>}
-          <JButton size="lg" className="w-full" onClick={unlock} disabled={!host || pin.length !== 4 || authBusy}>Συνέχεια</JButton>
+          <JButton size="lg" className="pregame-primary-button w-full" onClick={unlock} disabled={!host || pin.length !== 4 || authBusy}>Συνέχεια</JButton>
         </div>
       </ScreenShell>
     );
   }
 
   return (
-    <ScreenShell title={t.createGame} footer={<div className="space-y-2">{roomError && <p className="text-sm text-negative">{roomError}</p>}<JButton size="lg" className="w-full" onClick={create} disabled={busy}>{t.createRoom}</JButton></div>}>
+    <ScreenShell title={t.createGame} variant="pregame" footer={<div className="space-y-2">{roomError && <p className="text-sm text-negative">{roomError}</p>}<JButton size="lg" className="pregame-primary-button w-full" onClick={create} disabled={busy}>{t.createRoom}</JButton></div>}>
       <SectionLabel>{t.chooseGame}</SectionLabel>
       <div role="radiogroup" className="space-y-3">
         {options.map((r) => {
           const active = r.id === rulesetId;
           const available = true;
-          return <button key={r.id} role="radio" aria-checked={active} aria-disabled={!available} disabled={!available} onClick={() => available && setRulesetId(r.id)} className={cn("panel flex w-full items-center gap-4 p-4 text-left transition-shadow", active && "ring-gold", !available && "cursor-not-allowed opacity-45")}><span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", active ? "border-primary" : "border-muted-foreground")}>{active && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}</span><span><span className="block font-display text-lg text-foreground">{r.name}</span><span className="block text-sm text-muted-foreground">{available ? r.description : t.rulesetNotImplemented}</span></span></button>;
+          return <button key={r.id} role="radio" aria-checked={active} aria-disabled={!available} disabled={!available} onClick={() => available && setRulesetId(r.id)} className={cn("panel flex w-full items-center gap-4 p-4 text-left transition-all active:scale-[0.99]", active && "ring-gold", !available && "cursor-not-allowed opacity-45")}><span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", active ? "border-primary" : "border-muted-foreground")}>{active && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}</span><span><span className="block font-display text-lg text-foreground">{r.name}</span><span className="block text-sm text-muted-foreground">{available ? r.description : t.rulesetNotImplemented}</span></span></button>;
         })}
       </div>
       <div className="mt-8">
@@ -193,7 +193,7 @@ function CreateGame() {
                       aria-checked={intensity === value}
                       onClick={() => setIntensity(value)}
                       className={cn(
-                        "min-h-10 rounded-lg border px-2 text-sm",
+                        "min-h-10 rounded-lg border px-2 text-sm transition-all active:scale-[0.98]",
                         intensity === value ? "border-primary bg-gold-soft text-primary" : "border-border text-muted-foreground",
                       )}
                     >
