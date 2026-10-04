@@ -1,8 +1,7 @@
 name: JK-001 AI Banter Phase A Gate
 
 on:
-  pull_request:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 jobs:
