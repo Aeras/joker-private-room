@@ -11,7 +11,8 @@ import type { ScoreSheet } from "@/domain/scoreSheet";
 import { JButton } from "../joker/JButton";
 import { PlayingCard } from "../joker/PlayingCard";
 import { DealPresentation } from "./DealPresentation";
-import { DraggableHandCard } from "./DraggableHandCard";
+import { DeclarationPicker } from "./DeclarationPicker";
+import { LocalHandRow } from "./LocalHandRow";
 import {
   projectionContainsPendingCardInCurrentTrick,
   type LocalPlayPresentation,
@@ -367,7 +368,7 @@ export function GameTable({
         </div>
       </main>
 
-      <DealPresentation projection={projection} />
+      <DealPresentation projection={projection} geometry={tableGeometry.geometry} />
 
       <footer className="absolute inset-x-0 bottom-[max(.15rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center">
         {error && (
@@ -375,29 +376,12 @@ export function GameTable({
         )}
 
         {declarationAction && (
-          <div className="mb-3 max-w-[94vw] rounded-2xl border border-primary/30 bg-black/80 p-3 text-center shadow-2xl backdrop-blur">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              Δήλωσε μπάζες
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              {declarationValues.map((value) => {
-                const allowed = declarationAction.values.includes(value);
-                return (
-                  <JButton
-                    key={value}
-                    size="sm"
-                    className="h-12 min-w-12 px-4 text-base font-bold"
-                    disabled={busy || !allowed}
-                    aria-disabled={busy || !allowed}
-                    title={!allowed ? "Μη επιτρεπτή δήλωση για τον dealer" : `Δήλωση ${value}`}
-                    onClick={() => allowed && onCommand({ type: "declare", value })}
-                  >
-                    {value}
-                  </JButton>
-                );
-              })}
-            </div>
-          </div>
+          <DeclarationPicker
+            values={declarationValues}
+            legalValues={declarationAction.values}
+            busy={busy}
+            onSelect={(value) => { void onCommand({ type: "declare", value }); }}
+          />
         )}
 
         {trumpAction && (
@@ -442,29 +426,16 @@ export function GameTable({
           </JButton>
         )}
 
-        <div className="flex w-full items-end justify-center px-3 pl-[clamp(7rem,17vw,11rem)]">
-          <div className="flex justify-center overflow-visible pt-2 [--card-w:clamp(3rem,7.2vw,5rem)]">
-            {projection.cards.ownHandVisible ? (
-              projection.cards.ownHand.map((card, index) => (
-                <DraggableHandCard
-                  key={card.id}
-                  card={card}
-                  legal={Boolean(playAction?.cardIds.includes(card.id))}
-                  blocked={busy || Boolean(submittingCardId)}
-                  pending={localPlayPresentation?.cardId === card.id}
-                  authorityKey={handAuthorityKey}
-                  zIndex={index}
-                  overlap={index > 0}
-                  onCommit={commitCard}
-                />
-              ))
-            ) : (
-              <div className="rounded-lg bg-black/65 px-4 py-2 text-xs text-white/65">
-                Τα φύλλα σου δεν είναι ακόμη ορατά.
-              </div>
-            )}
-          </div>
-        </div>
+        <LocalHandRow
+          cards={projection.cards.ownHand}
+          visible={projection.cards.ownHandVisible}
+          legalCardIds={playAction?.cardIds ?? []}
+          blocked={busy || Boolean(submittingCardId)}
+          pendingCardId={localPlayPresentation?.cardId ?? null}
+          authorityKey={handAuthorityKey}
+          geometry={tableGeometry.geometry}
+          onCommit={commitCard}
+        />
         <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">
           {seatBlock(0, "horizontal")}
         </div>
