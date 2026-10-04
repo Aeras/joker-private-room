@@ -6,23 +6,30 @@ const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("JK-005 pregame visual identity", () => {
-  it("uses the user-confirmed home asset mapping without flattening navigation into a screenshot", () => {
+  it("uses only the user-confirmed background and image CTA assets on the normal Home state", () => {
     const home = read("src/routes/index.tsx");
 
     expect(home).toContain('HOME_BACKGROUND = "/home/file_00000000ff708210a91f5598803905f3.png"');
     expect(home).toContain('CREATE_GAME_ART = "/home/file_0000000025f481f49e4f8c88502ea288.png"');
     expect(home).toContain('JOIN_GAME_ART = "/home/file_000000000c548243815079f73a1f05cb.png"');
     expect(home).toContain("function HomeArtButton");
-    expect(home).toContain("<Link");
+    expect(home).toContain("function HomeActions");
     expect(home).toContain("aria-label={label}");
-    expect(home).toContain('to="/history"');
-    expect(home).toContain('to="/settings"');
+    expect(home).not.toContain("Private card room");
+    expect(home).not.toContain("home-brand");
+    expect(home).not.toContain('to="/history"');
+    expect(home).not.toContain('to="/settings"');
     expect(home).toContain("Επιστροφή στο παιχνίδι");
   });
 
-  it("keeps a visible press response on the approved image CTAs", () => {
+  it("keeps the approved image CTAs unframed, close together and visibly pressable", () => {
     const css = read("src/pregame.css");
 
+    expect(css).toContain(".home-actions");
+    expect(css).toContain("gap: 0.65rem");
+    expect(css).toContain("top: 63.5%");
+    expect(css).not.toContain(".home-art-button--primary");
+    expect(css).not.toContain(".home-art-button--secondary");
     expect(css).toContain(".home-art-button:active");
     expect(css).toContain("translateY(3px) scale(0.975)");
     expect(css).toContain(".home-art-button:focus-visible");
