@@ -1,0 +1,59 @@
+name: JK-001 AI Banter Phase D Gate
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: AI Banter release-gate tests
+        run: >-
+          bunx vitest run
+          src/dialogue/publicEvents.test.ts
+          src/test/dialogue-generation.test.ts
+          src/test/dialogue-delivery-contract.test.ts
+          src/test/dialogue-release-gates.test.ts
+      - name: AI Banter affected-scope lint
+        run: >-
+          bunx eslint
+          src/components/table/DialogueOverlay.tsx
+          src/dialogue/publicEvents.ts
+          src/dialogue/publicEvents.test.ts
+          src/routes/table.tsx
+          src/services/dialogueFunctions.ts
+          supabase/functions/ai-banter/index.ts
+          supabase/functions/_shared/dialogue-core.ts
+          supabase/functions/_shared/gemini-dialogue.ts
+          src/test/dialogue-generation.test.ts
+          src/test/dialogue-delivery-contract.test.ts
+          src/test/dialogue-release-gates.test.ts
+          --rule 'prettier/prettier: off'
+      - name: Security and cost contract guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'Deno.env.get("GEMINI_API_KEY")' supabase/functions/ai-banter/index.ts
+          ! grep -R -q 'VITE_GEMINI' src supabase/functions
+          ! grep -q 'body?.event' supabase/functions/ai-banter/index.ts
+          ! grep -q 'body?.recentBanter' supabase/functions/ai-banter/index.ts
+          grep -q 'resolve_dialogue_state_event_internal' supabase/functions/ai-banter/index.ts
+          grep -q 'recentBanter: recentLines(latestRecentData?.messages)' supabase/functions/ai-banter/index.ts
+          grep -q 'DIALOGUE_CONCURRENCY_LIMIT' supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
+          grep -q 'DIALOGUE_BUDGET_EXHAUSTED' supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
+          grep -q 'HUMAN_MESSAGE_RATE_LIMITED' supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
+          grep -q 'STALE_DIALOGUE_RESULT' supabase/migrations/20261004112919_jk001_ai_banter_phase_c_delivery_hardening.sql
+          grep -q 'to service_role' supabase/migrations/20261004115502_jk001_ai_banter_phase_c_server_event_resolution.sql
+          ! grep -q 'game_history' supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
+      - name: Strict TypeScript
+        run: bunx tsc --noEmit
+      - name: Production build
+        run: bun run build
