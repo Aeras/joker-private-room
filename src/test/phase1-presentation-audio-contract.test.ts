@@ -20,25 +20,37 @@ describe("JK-001 Phase 1 — deal/trick/audio presentation authority", () => {
     expect(deal).toContain('if (stage === "remaining") return 24');
     expect(deal).toContain('projection.progression.phase === "NINE_CARD_TRUMP_CHOICE"');
     expect(deal).toContain('projection.progression.phase === "DECLARATION"');
+    expect(deal).toContain('if (stage !== "remaining") playGameSound("shuffle"');
   });
 
-  it("skips historical deal replay on first mount/reconnect and bounds one sequence with cleared timers", () => {
-    expect(deal).toContain("if (firstRender.current)");
-    expect(deal).toContain("return clearTimers");
+  it("skips historical deal replay and clears presentation on reconnect/interruption", () => {
+    expect(deal).toContain("if (firstRender.current || previousGameId.current !== projection.gameId)");
     expect(deal).toContain("for (const timer of timers.current) window.clearTimeout(timer)");
+    expect(deal).toContain('window.addEventListener("orientationchange", interrupt)');
+    expect(deal).toContain('document.addEventListener("visibilitychange", visibility)');
+  });
+
+  it("animates deal backs and accepted cards from origin toward their viewer-relative seat/center", () => {
+    expect(deal).toContain("window.requestAnimationFrame(() => setArrived(true))");
+    expect(deal).toContain('"translate(-50%, -50%) scale(.58)"');
+    expect(trick).toContain("const ORIGIN: Record<Pos, string>");
+    expect(trick).toContain("window.requestAnimationFrame(() => setArrived(true))");
   });
 
   it("derives departing trick winner only from authoritative completedTricks", () => {
     expect(trick).toContain("projection.cards.completedTricks[completedCount - 1]");
     expect(trick).toContain("winnerSeat: trick.winnerSeat");
     expect(trick).not.toMatch(/resolveTrick|calculateWinner/);
-    expect(trick).toContain("departing?.winnerSeat === play.seatIndex");
+    expect(trick).toContain("winnerSeat === play.seatIndex");
     expect(trick).toContain("setDeparting");
     expect(trick).toContain("setDeparting((value) => value?.id === id ? null : value)");
   });
 
-  it("triggers play audio from accepted projection changes, not gesture release", () => {
-    expect(trick).toContain('playGameSound("play"');
+  it("uses stable accepted-play event identities so polling jumps cannot duplicate play audio", () => {
+    expect(trick).toContain("function acceptedPlayEventId");
+    expect(trick).toContain("for (const play of trick.cards)");
+    expect(trick).toContain("for (const play of projection.cards.currentTrick)");
+    expect(trick).toContain('playGameSound("play", acceptedPlayEventId');
     expect(table).not.toContain('playGameSound("play"');
     const draggable = readFileSync("src/components/table/DraggableHandCard.tsx", "utf8");
     expect(draggable).not.toContain("playGameSound");
