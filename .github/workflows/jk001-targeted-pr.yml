@@ -1,0 +1,105 @@
+name: JK-001 Targeted PR Verification
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Classify changed surface
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='${{ github.event.pull_request.base.sha }}'
+          HEAD='${{ github.event.pull_request.head.sha }}'
+          git diff --name-only "$BASE" "$HEAD" | tee /tmp/changed-files.txt
+
+          changed() { grep -Eq "$1" /tmp/changed-files.txt; }
+          set_output() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
+
+          set_output domain false
+          set_output projection false
+          set_output controller false
+          set_output bots false
+          set_output dealer false
+          set_output persistence false
+          set_output ui false
+          set_output dialogue false
+          set_output unclassified_source false
+
+          changed '^src/domain/(cards|dealing|declarations|engine|gameConfig|scoring|premia|ranking|gameLifecycle|gameplayCommands)\.(ts|tsx)$' && set_output domain true || true
+          changed '^src/domain/projection(\.test)?\.ts$' && set_output projection true || true
+          changed '^src/domain/controller(\.test)?\.ts$' && set_output controller true || true
+          changed '^src/bots/|^src/test/bot-catalog\.test\.ts$|^src/test/full-game-simulation\.test\.ts$' && set_output bots true || true
+          changed '^src/(domain/dealerBootstrap|server/dealerBootstrap|server/internalDeterminism)(\.test)?\.ts$' && set_output dealer true || true
+          changed '^src/(server/gamePersistence|test/game-persistence-foundation)(\.test)?\.ts$' && set_output persistence true || true
+          changed '^src/(routes|components|ui|i18n)/|^public/' && set_output ui true || true
+          changed '^src/domain/dialoguePolicy(\.test)?\.ts$|^src/.+dialogue|^supabase/functions/ai-banter/' && set_output dialogue true || true
+
+          if grep -Eq '^src/.*\.(ts|tsx)$' /tmp/changed-files.txt && \
+             ! grep -Eq '^src/(domain/(cards|dealing|declarations|engine|gameConfig|scoring|premia|ranking|gameLifecycle|gameplayCommands|projection|controller|dealerBootstrap)|bots/|server/(dealerBootstrap|internalDeterminism|gamePersistence)|test/(bot-catalog|full-game-simulation|game-persistence-foundation)|routes/|components/|ui/|i18n/)' /tmp/changed-files.txt; then
+            set_output unclassified_source true
+          fi
+
+      - name: Targeted tests — canonical gameplay
+        if: steps.changes.outputs.domain == 'true'
+        run: bunx vitest run src/domain/canonicalEngine.test.ts src/domain/gameplayCommands.test.ts src/domain/gameLifecycle.test.ts
+
+      - name: Targeted tests — projection/controller
+        if: steps.changes.outputs.projection == 'true' || steps.changes.outputs.controller == 'true'
+        run: bunx vitest run src/domain/projection.test.ts src/domain/controller.test.ts
+
+      - name: Targeted tests — bots
+        if: steps.changes.outputs.bots == 'true'
+        run: bunx vitest run src/bots/strategy.test.ts src/bots/runtime.test.ts src/test/bot-catalog.test.ts src/test/full-game-simulation.test.ts
+
+      - name: Targeted tests — dealer bootstrap
+        if: steps.changes.outputs.dealer == 'true'
+        run: bunx vitest run src/domain/dealerBootstrap.test.ts src/server/internalDeterminism.test.ts
+
+      - name: Targeted tests — persistence
+        if: steps.changes.outputs.persistence == 'true'
+        run: bunx vitest run src/test/game-persistence-foundation.test.ts
+
+      - name: Targeted tests — UI/routes
+        if: steps.changes.outputs.ui == 'true'
+        run: bunx vitest run src/test/app-routing.test.tsx
+
+      - name: Targeted tests — dialogue policy
+        if: steps.changes.outputs.dialogue == 'true'
+        run: bunx vitest run src/domain/dialoguePolicy.test.ts
+
+      - name: Safety fallback for unclassified source changes
+        if: steps.changes.outputs.unclassified_source == 'true'
+        run: bun run test
+
+      - name: Lint affected source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='${{ github.event.pull_request.base.sha }}'
+          HEAD='${{ github.event.pull_request.head.sha }}'
+          mapfile -t FILES < <(git diff --name-only "$BASE" "$HEAD" | grep -E '\.(ts|tsx|js|jsx)$' || true)
+          if [ "${#FILES[@]}" -gt 0 ]; then
+            bunx eslint "${FILES[@]}" --rule 'prettier/prettier: off'
+          fi
+
+      - name: TypeScript
+        run: bunx tsc --noEmit
+
+      - name: Production build
+        run: bun run build
