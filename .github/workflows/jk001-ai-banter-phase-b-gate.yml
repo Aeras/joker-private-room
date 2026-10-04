@@ -1,0 +1,37 @@
+name: JK-001 AI Banter Phase B Gate
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Dialogue generation tests
+        run: bunx vitest run src/test/dialogue-generation.test.ts
+      - name: Dialogue provider lint
+        run: >-
+          bunx eslint
+          supabase/functions/_shared/dialogue-core.ts
+          supabase/functions/_shared/gemini-dialogue.ts
+          supabase/functions/ai-banter/index.ts
+          src/test/dialogue-generation.test.ts
+          --rule 'prettier/prettier: off'
+      - name: Public-only provider boundary guard
+        run: |
+          ! grep -q 'CanonicalGameState' supabase/functions/_shared/dialogue-core.ts supabase/functions/_shared/gemini-dialogue.ts supabase/functions/ai-banter/index.ts
+          ! grep -q 'PlayerView' supabase/functions/_shared/dialogue-core.ts supabase/functions/_shared/gemini-dialogue.ts supabase/functions/ai-banter/index.ts
+          grep -q 'gemini-3.8-flash' supabase/functions/_shared/gemini-dialogue.ts
+          grep -q 'thinkingLevel: "low"' supabase/functions/_shared/gemini-dialogue.ts
+          grep -q 'GEMINI_API_KEY' supabase/functions/ai-banter/index.ts
+          ! grep -q 'VITE_.*GEMINI' supabase/functions/ai-banter/index.ts
+      - name: TypeScript
+        run: bunx tsc --noEmit
