@@ -16,6 +16,7 @@ import { SoundToggle } from "./SoundToggle";
 import { Scoreboard } from "./Scoreboard";
 import { TableSeat } from "./TableSeat";
 import { TrickPresentation } from "./TrickPresentation";
+import { useTableGeometry } from "./useTableGeometry";
 
 type Pos = 0 | 1 | 2 | 3;
 type OrientationLock = ScreenOrientation & { lock?: (orientation: "landscape") => Promise<void> };
@@ -107,6 +108,7 @@ export function GameTable({
 }) {
   const tableRootRef = useRef<HTMLDivElement>(null);
   const playSubmissionLock = useRef(false);
+  const tableGeometry = useTableGeometry();
   const localSeat = projection.viewerSeat;
   const [scoreOpen, setScoreOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -287,18 +289,18 @@ export function GameTable({
       </header>
 
       <main className="absolute inset-x-[5vw] top-[10vh] bottom-[27vh]">
-        <div className="relative h-full w-full">
-          <div className="absolute left-1/2 top-[1%] z-20 -translate-x-1/2">
+        <div ref={tableGeometry.feltRef} className="relative h-full w-full">
+          <div ref={tableGeometry.topSeatRef} className="absolute left-1/2 top-[1%] z-20 -translate-x-1/2">
             {seatBlock(2, "horizontal")}
           </div>
-          <div className="absolute left-[2%] top-[50%] z-20 -translate-y-1/2">
+          <div ref={tableGeometry.leftSeatRef} className="absolute left-[2%] top-[50%] z-20 -translate-y-1/2">
             {seatBlock(1, "vertical")}
           </div>
-          <div className="absolute right-[2%] top-[50%] z-20 -translate-y-1/2">
+          <div ref={tableGeometry.rightSeatRef} className="absolute right-[2%] top-[50%] z-20 -translate-y-1/2">
             {seatBlock(3, "vertical")}
           </div>
 
-          <TrickPresentation projection={projection} />
+          <TrickPresentation projection={projection} geometry={tableGeometry.geometry} />
 
           {projection.cards.exposedTrumpCard && (
             <div className="absolute left-[59%] top-[54%] -translate-y-1/2 [--card-w:clamp(2rem,4vw,3.4rem)]">
@@ -409,7 +411,7 @@ export function GameTable({
             )}
           </div>
         </div>
-        <div className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">
+        <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">
           {seatBlock(0, "horizontal")}
         </div>
       </footer>
