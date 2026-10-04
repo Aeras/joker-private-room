@@ -44,8 +44,14 @@ function statusFor(code?: string) {
 
 type JsonRecord = Record<string, unknown>;
 
+type DialogueIntensity = "conservative" | "normal" | "chaos";
+
 function integer(value: unknown): number | null {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function dialogueIntensity(value: unknown): DialogueIntensity | null {
+  return value === "conservative" || value === "normal" || value === "chaos" ? value : null;
 }
 
 function decorateRoomResult(result: JsonRecord): JsonRecord {
@@ -108,13 +114,23 @@ Deno.serve(async (req: Request) => {
       }
 
       if (action === "create") {
+        const intensity = dialogueIntensity(body?.intensity);
+        const botsTalk = Boolean(body?.botsTalk);
+        const allowProfanity = Boolean(body?.allowProfanity);
+        const aiEnabled = Boolean(body?.aiEnabled);
+        if (!intensity || ((!botsTalk) && (allowProfanity || aiEnabled))) {
+          return json({ ok: false, code: "INVALID_ROOM_STATE" }, 400);
+        }
+
         rpcName = "create_room_internal";
         args = {
           p_session_token: sessionToken,
           p_action_id: actionId,
           p_ruleset_id: String(body?.rulesetId ?? ""),
-          p_bots_talk: Boolean(body?.botsTalk),
-          p_allow_profanity: Boolean(body?.allowProfanity),
+          p_bots_talk: botsTalk,
+          p_allow_profanity: botsTalk && allowProfanity,
+          p_ai_enabled: botsTalk && aiEnabled,
+          p_dialogue_intensity: intensity,
         };
       } else if (action === "join") {
         rpcName = "join_room_internal";
