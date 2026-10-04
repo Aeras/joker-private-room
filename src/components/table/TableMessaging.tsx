@@ -1,0 +1,173 @@
+import { useEffect, useRef, useState } from "react";
+import { MessageCircle } from "lucide-react";
+import type { Room } from "@/domain/players";
+import type { PlayerGameProjection } from "@/domain/projection";
+import { getTableMessages, sendTableMessage } from "@/services/tableMessageFunctions";
+import { mergeLiveTableMessages, type LiveTableMessage } from "@/lib/liveTableMessages";
+import { t } from "@/i18n/el";
+import { JButton } from "../joker/JButton";
+import { ChatPanel } from "./ChatPanel";
+export function TableMessaging({
+  room,
+  projection,
+}: {
+  room: Room;
+  projection: PlayerGameProjection;
+}) {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<LiveTableMessage[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [draftEpoch, setDraftEpoch] = useState(0);
+  const generation = useRef(0);
+  const names = room.seats.map((s) =>
+    s.occupant.type === "human"
+      ? s.occupant.player.displayName
+      : s.occupant.type === "bot"
+        ? s.occupant.bot.displayName
+        : `${s.index + 1}`,
+  );
+  useEffect(() => {
+    ++generation.current;
+    const invalidate = () => {
+      generation.current++;
+    };
+    let cancelled = false;
+    let pending = false;
+    setOpen(false);
+    setMessages([]);
+    setError(null);
+    setDraftEpoch((v) => v + 1);
+    const clear = () => {
+      setMessages([]);
+      setOpen(false);
+      setDraftEpoch((v) => v + 1);
+      generation.current++;
+    };
+    const poll = async () => {
+      if (cancelled || pending || document.hidden || projection.lifecycle === "complete") return;
+      pending = true;
+      const started = Date.now();
+      const currentGeneration = generation.current;
+      try {
+        const result = await getTableMessages({ data: { gameId: projection.gameId } });
+        if (!cancelled && currentGeneration === generation.current && result.ok)
+          setMessages((previous) =>
+            mergeLiveTableMessages(
+              previous,
+              result.messages,
+              result.serverNow,
+              started,
+              Date.now(),
+            ),
+          );
+      } finally {
+        pending = false;
+      }
+    };
+    const tick = setInterval(() => {
+      setMessages((m) => m.filter((x) => x.localExpiresAt > Date.now()));
+    }, 50);
+    const polling = setInterval(() => {
+      void poll().catch(() => undefined);
+    }, 1000);
+    const visibility = () => {
+      clear();
+      if (!document.hidden) void poll().catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("pagehide", clear);
+    void poll().catch(() => undefined);
+    return () => {
+      cancelled = true;
+      invalidate();
+      clearInterval(tick);
+      clearInterval(polling);
+      document.removeEventListener("visibilitychange", visibility);
+      window.removeEventListener("pagehide", clear);
+    };
+  }, [projection.gameId, projection.lifecycle]);
+  if (projection.lifecycle === "complete") return null;
+  const recipients = [
+    { value: "all" as const, label: t.messageEveryone },
+    ...room.seats
+      .filter((s) => s.index !== projection.viewerSeat && s.occupant.type !== "empty")
+      .map((s) => ({ value: s.index, label: names[s.index]! })),
+  ];
+  return (
+    <>
+      <div className="absolute right-3 bottom-3 z-[60]">
+        <JButton
+          variant="outlineGold"
+          className="min-h-11 min-w-11 bg-black/70"
+          aria-label={t.chat}
+          onClick={() => {
+            setError(null);
+            setOpen(true);
+          }}
+        >
+          <MessageCircle className="h-4 w-4" />
+        </JButton>
+      </div>
+      <div
+        aria-live="polite"
+        className="pointer-events-none absolute left-1/2 top-[16vh] z-[65] w-[min(90vw,32rem)] -translate-x-1/2 space-y-1"
+      >
+        {messages.map((m) => (
+          <div key={m.id} className="rounded-xl bg-black/85 px-3 py-2 text-sm text-white">
+            <strong>{names[m.fromSeat]}</strong> →{" "}
+            {m.to === "all" ? t.messageEveryone : names[m.to]}: {m.text}
+          </div>
+        ))}
+      </div>
+      <div className="relative z-[110]">
+        <ChatPanel
+          key={draftEpoch}
+          open={open}
+          onClose={() => setOpen(false)}
+          recipients={recipients}
+          busy={sending}
+          error={error}
+          onSend={async (to, text) => {
+            if (sending) return false;
+            setSending(true);
+            setError(null);
+            const started = Date.now();
+            const epoch = generation.current;
+            try {
+              if (navigator.onLine === false) {
+                setError(t.messageUnavailable);
+                return false;
+              }
+              const result = await sendTableMessage({
+                data: { gameId: projection.gameId, messageId: crypto.randomUUID(), to, text },
+              });
+              if (epoch !== generation.current) return false;
+              if (!result.ok) {
+                setError(
+                  result.code === "RATE_LIMITED" ? t.messageRateLimited : t.messageUnavailable,
+                );
+                return false;
+              }
+              setMessages((previous) =>
+                mergeLiveTableMessages(
+                  previous,
+                  result.messages,
+                  result.serverNow,
+                  started,
+                  Date.now(),
+                ),
+              );
+              return true;
+            } catch {
+              setError(t.messageUnavailable);
+              return false;
+            } finally {
+              setSending(false);
+            }
+          }}
+        />
+      </div>
+    </>
+  );
+}

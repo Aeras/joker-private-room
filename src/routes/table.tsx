@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { jButton } from "@/components/joker/JButton";
 import { DialogueOverlay } from "@/components/table/DialogueOverlay";
+import { TableMessaging } from "@/components/table/TableMessaging";
 import { GameTable } from "@/components/table/GameTable";
 import { derivePublicDialogueEvents } from "@/dialogue/publicEvents";
 import type { GameplayCommand } from "@/domain/gameplayCommands";
@@ -236,6 +237,7 @@ function TablePage() {
   return (
     <div className="relative h-dvh overflow-hidden">
       <GameTable room={room} projection={projection} busy={busy} error={error} onCommand={submit} onReclaim={reclaim} />
+      <TableMessaging key={projection.gameId} room={room} projection={projection} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} onSend={sendDialogue} />
     </div>
   );

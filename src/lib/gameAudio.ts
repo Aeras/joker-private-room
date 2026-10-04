@@ -1,3 +1,4 @@
+import { getSoundEnabled } from "./soundPreference";
 export type GameSound = "shuffle" | "deal" | "play";
 
 const SOUND_PATH: Record<GameSound, string> = {
@@ -40,12 +41,13 @@ function poolFor(kind: GameSound): HTMLAudioElement[] {
 /** Best-effort, event-deduplicated presentation audio. Gameplay never awaits this. */
 export function playGameSound(kind: GameSound, eventId: string): void {
   if (!eventId || !remember(`${kind}:${eventId}`)) return;
-  const pool = poolFor(kind);
-  if (pool.length === 0) return;
-  const index = cursor.get(kind) ?? 0;
-  cursor.set(kind, (index + 1) % pool.length);
-  const audio = pool[index]!;
+  if (!getSoundEnabled()) return;
   try {
+    const pool = poolFor(kind);
+    if (pool.length === 0) return;
+    const index = cursor.get(kind) ?? 0;
+    cursor.set(kind, (index + 1) % pool.length);
+    const audio = pool[index]!;
     audio.currentTime = 0;
     void audio.play().catch(() => undefined);
   } catch {

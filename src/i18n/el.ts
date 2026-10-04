@@ -68,4 +68,11 @@ export const t = {
   bonus: "Μπόνους",
   penalty: "Ποινή",
   premia: "Πρέμιο",
+  sound: "Ήχος",
+  messageEveryone: "Σε όλους",
+  messageUnavailable: "Το μήνυμα δεν στάλθηκε. Δοκίμασε ξανά.",
+  messageRateLimited: "Περίμενε λίγο πριν στείλεις άλλο μήνυμα.",
+  scorePending: "Εκκρεμεί",
+  scoreLive: "Το παιχνίδι συνεχίζεται",
+  scoreCumulative: "Σύνολο μετά τη μοιρασιά",
 } as const;

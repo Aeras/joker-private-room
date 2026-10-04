@@ -1,0 +1,33 @@
+name: JK-002 DB Integration
+on:
+  workflow_call:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'tests/integration/**'
+      - '.github/workflows/jk002-db-integration.yml'
+jobs:
+  messages:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: jk002
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: ci-only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolated message transport DB integration
+        run: |
+          psql -h localhost -U postgres -d jk002 -v ON_ERROR_STOP=1 -f tests/integration/table-messages-setup.sql
+          psql -h localhost -U postgres -d jk002 -v ON_ERROR_STOP=1 -f supabase/migrations/20261004183758_jk002_ephemeral_table_messages.sql
+          psql -h localhost -U postgres -d jk002 -v ON_ERROR_STOP=1 -f tests/integration/table-messages.sql

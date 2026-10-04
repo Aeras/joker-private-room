@@ -8,3 +8,10 @@ verify_jwt = false
 
 [functions.game-state]
 verify_jwt = false
+
+# Both endpoints validate custom server-issued credentials before privileged access.
+[functions.game-reconciler]
+verify_jwt = false
+
+[functions.table-messages]
+verify_jwt = false
