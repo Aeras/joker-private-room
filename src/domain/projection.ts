@@ -62,7 +62,10 @@ export interface PlayerGameProjection {
     currentTrick: PlayedCard[];
     completedTricks: CanonicalGameState["cards"]["completedTricks"];
   };
-  score: CanonicalGameState["score"];
+  score: CanonicalGameState["score"] & {
+    completedDeals: NonNullable<CanonicalGameState["score"]["completedDeals"]>;
+    roundPremia: NonNullable<CanonicalGameState["score"]["roundPremia"]>;
+  };
   local: {
     legalActions: LocalLegalAction[];
     reclaimAvailable: boolean;
