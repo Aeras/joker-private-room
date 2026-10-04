@@ -13,16 +13,27 @@ export async function stableInternalActionId(gameId: string, label: string): Pro
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-export async function deterministicRandomUnits(
-  gameId: string,
+export function secureServerEntropySeed(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Retry-stable random units derived from private per-game entropy, never from
+ * browser-visible identifiers alone. The private seed must never be projected.
+ */
+export async function deterministicRandomUnitsFromSeed(
+  seedHex: string,
   label: string,
   count: number,
 ): Promise<number[]> {
+  if (!/^[0-9a-f]{64}$/i.test(seedHex)) throw new Error("Invalid private entropy seed");
   if (!Number.isInteger(count) || count < 1) throw new Error("count must be a positive integer");
   const result: number[] = [];
   let counter = 0;
   while (result.length < count) {
-    const bytes = await digest(`jk001:${label}:${gameId}:${counter}`);
+    const bytes = await digest(`jk001-private:${seedHex.toLowerCase()}:${label}:${counter}`);
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     for (let offset = 0; offset + 4 <= bytes.byteLength && result.length < count; offset += 4) {
       result.push(view.getUint32(offset, false) / UINT32_RANGE);
@@ -30,6 +41,19 @@ export async function deterministicRandomUnits(
     counter += 1;
   }
   return result;
+}
+
+/** @deprecated Deck/game randomness must use deterministicRandomUnitsFromSeed. */
+export async function deterministicRandomUnits(
+  gameId: string,
+  label: string,
+  count: number,
+): Promise<number[]> {
+  return deterministicRandomUnitsFromSeed(
+    Array.from(await digest(`legacy:${gameId}`), (value) => value.toString(16).padStart(2, "0")).join(""),
+    label,
+    count,
+  );
 }
 
 export function randomIterator(values: readonly number[]): () => number {

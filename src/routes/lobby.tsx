@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Share2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CopyButton, copyText } from "@/components/joker/CopyButton";
@@ -31,6 +31,7 @@ export const Route = createFileRoute("/lobby")({
 
 function Lobby() {
   const { code } = Route.useSearch();
+  const navigate = useNavigate();
   const [room, setRoom] = useState<Room | null>(null);
   const [localPlayer, setLocalPlayer] = useState<PublicPlayer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,6 +64,11 @@ function Lobby() {
     const timer = window.setInterval(() => void refresh(), 2000);
     return () => window.clearInterval(timer);
   }, [refresh]);
+
+  useEffect(() => {
+    if (room?.status !== "playing" || !room.gameId) return;
+    void navigate({ to: "/table", search: { code: room.code, gameId: room.gameId } });
+  }, [navigate, room]);
 
   if (loading) return <div className="surface-room min-h-dvh" />;
   if (!code || !room || !localPlayer) {
@@ -97,6 +103,9 @@ function Lobby() {
       }
       startActionId.current = null;
       setRoom(result.room);
+      if (result.room.gameId) {
+        void navigate({ to: "/table", search: { code: result.room.code, gameId: result.room.gameId } });
+      }
     } finally {
       setStarting(false);
     }
@@ -130,6 +139,14 @@ function Lobby() {
                 {isHost ? hasEmpty && t.emptySeatsBecomeBots : t.hostOnly}
               </p>
             </>
+          ) : room.gameId ? (
+            <Link
+              to="/table"
+              search={{ code: room.code, gameId: room.gameId }}
+              className={jButton({ size: "lg", className: "w-full text-lg" })}
+            >
+              Μετάβαση στο τραπέζι
+            </Link>
           ) : (
             <div className="panel p-4 text-center text-sm text-muted-foreground">{t.gameStarting}</div>
           )}

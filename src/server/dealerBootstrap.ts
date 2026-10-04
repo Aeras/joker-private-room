@@ -13,8 +13,9 @@ import {
   type GameStateFailureCode,
 } from "@/server/gamePersistence";
 import {
-  deterministicRandomUnits,
+  deterministicRandomUnitsFromSeed,
   randomIterator,
+  secureServerEntropySeed,
   stableInternalActionId,
 } from "@/server/internalDeterminism";
 
@@ -78,10 +79,7 @@ async function loadResolvedWinner(gameId: string): Promise<DealerBootstrapResult
   };
 }
 
-/**
- * Ensures exactly one canonical initial-dealer result. All identities and
- * randomness are server-owned and stable from the server-generated game UUID.
- */
+/** Ensures exactly one canonical initial-dealer result using private server entropy. */
 export async function ensureInitialDealerBootstrap(gameId: string): Promise<DealerBootstrapResult> {
   const existing = await loadCanonicalGameState(gameId);
   if (existing.ok) {
@@ -115,7 +113,7 @@ export async function ensureInitialDealerBootstrap(gameId: string): Promise<Deal
     if (
       bootstrap.rulesetId !== "popular" ||
       bootstrap.rulesVersion !== "popular-v1" ||
-      bootstrap.stateSchemaVersion !== 2 ||
+      bootstrap.stateSchemaVersion !== 3 ||
       bootstrap.stateVersion !== 0 ||
       bootstrap.lifecycle !== "starting"
     ) {
@@ -128,6 +126,7 @@ export async function ensureInitialDealerBootstrap(gameId: string): Promise<Deal
       gameId,
       roomId: bootstrap.roomId,
       bootstrapActionId,
+      serverEntropySeed: secureServerEntropySeed(),
       seats,
     });
 
@@ -158,7 +157,8 @@ export async function ensureInitialDealerBootstrap(gameId: string): Promise<Deal
   }
 
   const existingSelection = pendingState.initialDealerSelection;
-  if (!existingSelection) return { ok: false, code: "INVALID_CANONICAL_STATE" };
+  const entropySeed = pendingState.serverEntropySeed;
+  if (!existingSelection || !entropySeed) return { ok: false, code: "INVALID_CANONICAL_STATE" };
   if (existingSelection.status === "resolved") {
     return {
       ok: true,
@@ -177,9 +177,9 @@ export async function ensureInitialDealerBootstrap(gameId: string): Promise<Deal
   }
 
   const [recipientUnits, selectionUnits, dealUnits] = await Promise.all([
-    deterministicRandomUnits(gameId, "dealer-first-recipient-v1", 1),
-    deterministicRandomUnits(gameId, "dealer-selection-shuffle-v1", 35),
-    deterministicRandomUnits(gameId, "deal-one-shuffle-v1", 35),
+    deterministicRandomUnitsFromSeed(entropySeed, "dealer-first-recipient-v1", 1),
+    deterministicRandomUnitsFromSeed(entropySeed, "dealer-selection-shuffle-v1", 35),
+    deterministicRandomUnitsFromSeed(entropySeed, "deal-1-shuffle-v1", 35),
   ]);
   const resolved = resolveDealerBootstrapAndInitializeDealOne({
     state: pendingState,

@@ -77,6 +77,52 @@ export type PersistGameStateResult =
     }
   | { ok: false; code: GameStateFailureCode; currentStateVersion?: number };
 
+export interface CompletedGameParticipant {
+  seatIndex: number;
+  ownerType: "human" | "bot";
+  playerId?: string;
+  playerDisplayName?: string;
+  botId?: string;
+  botDisplayName?: string;
+  botAvatarUrl?: string;
+  botStrategyProfileId?: string;
+  botCatalogVersion?: string;
+  finalScore: number;
+  finalPlacement: number;
+}
+
+export interface CompletedGameSummary {
+  gameId: string;
+  completedAt: string;
+  rulesetId: string;
+  rulesVersion: string;
+  participants: CompletedGameParticipant[];
+}
+
+export interface ObjectivePlacementStats {
+  totalGames: number;
+  firstPlaceCount: number;
+  secondPlaceCount: number;
+  thirdPlaceCount: number;
+  fourthPlaceCount: number;
+  /** Intentionally null until Product defines whether shared first counts as a win. */
+  winPercentage: null;
+}
+
+export interface BotPlacementStats extends ObjectivePlacementStats {
+  botId: string;
+  displayName: string;
+}
+
+export type GameHistoryResult =
+  | {
+      ok: true;
+      history: CompletedGameSummary[];
+      stats: ObjectivePlacementStats;
+      botStats: BotPlacementStats[];
+    }
+  | { ok: false; code: GameStateFailureCode };
+
 async function callGameStateEdge(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const sessionToken = getCookie(SESSION_COOKIE);
   if (!sessionToken) return { ok: false, code: "NOT_AUTHENTICATED" };
@@ -108,7 +154,29 @@ export async function loadGameBootstrap(gameId: string): Promise<LoadGameBootstr
   return (await callGameStateEdge({ action: "bootstrap", gameId })) as LoadGameBootstrapResult;
 }
 
-/** Persist a TypeScript-computed transition through the single atomic Postgres CAS primitive. */
+/** Private utility history; the Edge/RPC derives the viewer exclusively from the session. */
+export async function loadCompletedGameHistory(limit = 50): Promise<GameHistoryResult> {
+  return (await callGameStateEdge({ action: "history", limit })) as GameHistoryResult;
+}
+
+function assertPersistableState(gameId: string, expectedStateVersion: number, newState: CanonicalGameState) {
+  if (newState.gameId !== gameId) throw new Error("Canonical state gameId mismatch before persistence");
+  if (newState.stateSchemaVersion !== GAME_STATE_SCHEMA_VERSION) {
+    throw new Error("Unsupported canonical state schema version");
+  }
+  if (newState.stateVersion !== expectedStateVersion + 1) {
+    throw new Error("Canonical state version must be expectedStateVersion + 1");
+  }
+  if (!newState.initialDealerSelection) throw new Error("Canonical state requires dealer-selection metadata");
+  if (!newState.serverEntropySeed || !/^[0-9a-f]{64}$/i.test(newState.serverEntropySeed)) {
+    throw new Error("Canonical state requires private server entropy");
+  }
+  if (!Array.isArray(newState.score.completedDeals) || !Array.isArray(newState.score.roundPremia)) {
+    throw new Error("Canonical state requires authoritative score history");
+  }
+}
+
+/** Persist a non-final TypeScript-computed transition through the atomic Postgres CAS primitive. */
 export async function persistCanonicalGameState(args: {
   gameId: string;
   actionId: string;
@@ -118,27 +186,49 @@ export async function persistCanonicalGameState(args: {
   newState: CanonicalGameState;
 }): Promise<PersistGameStateResult> {
   const { gameId, actionId, commandType, expectedStateVersion, commandPayload, newState } = args;
+  assertPersistableState(gameId, expectedStateVersion, newState);
 
-  if (newState.gameId !== gameId) throw new Error("Canonical state gameId mismatch before persistence");
-  if (newState.stateSchemaVersion !== GAME_STATE_SCHEMA_VERSION) {
-    throw new Error("Unsupported canonical state schema version");
+  const requestFingerprint = await fingerprintJson({ gameId, commandType, expectedStateVersion, payload: commandPayload });
+  return (await callGameStateEdge({
+    action: "persist",
+    gameId,
+    actionId,
+    commandType,
+    expectedStateVersion,
+    requestFingerprint,
+    newState,
+  })) as PersistGameStateResult;
+}
+
+/**
+ * GAME_COMPLETE uses a dedicated database transaction so state, participant
+ * results, immutable history and active-game release commit atomically.
+ */
+export async function finalizeCanonicalGameState(args: {
+  gameId: string;
+  actionId: string;
+  expectedStateVersion: number;
+  newState: CanonicalGameState;
+}): Promise<PersistGameStateResult> {
+  const { gameId, actionId, expectedStateVersion, newState } = args;
+  assertPersistableState(gameId, expectedStateVersion, newState);
+  if (newState.lifecycle !== "complete" || newState.progression.phase !== "GAME_COMPLETE") {
+    throw new Error("Finalization requires GAME_COMPLETE canonical state");
   }
-  if (newState.stateVersion !== expectedStateVersion + 1) {
-    throw new Error("Canonical state version must be expectedStateVersion + 1");
-  }
-  if (!newState.initialDealerSelection) {
-    throw new Error("Schema-v2 canonical state requires dealer-selection metadata");
+  if (newState.score.finalPlacements.some((value) => value == null)) {
+    throw new Error("Finalization requires all placements");
   }
 
+  const commandType = "finalize_game";
   const requestFingerprint = await fingerprintJson({
     gameId,
     commandType,
     expectedStateVersion,
-    payload: commandPayload,
+    totals: newState.score.cumulativeTotals,
+    placements: newState.score.finalPlacements,
   });
-
   return (await callGameStateEdge({
-    action: "persist",
+    action: "finalize",
     gameId,
     actionId,
     commandType,

@@ -7,6 +7,7 @@ import {
   type LoadGameStateResult,
   type PersistGameStateResult,
 } from "@/server/gamePersistence";
+import { settleGameLifecycle, type LifecycleSettlementResult } from "@/server/gameLifecycle";
 import { stableInternalActionId } from "@/server/internalDeterminism";
 
 export type AutomaticProgressionStopReason =
@@ -28,6 +29,7 @@ interface AutomaticProgressionDependencies {
   persist(args: Parameters<typeof persistCanonicalGameState>[0]): Promise<PersistGameStateResult>;
   actionId(gameId: string, label: string): Promise<string>;
   now(): string;
+  settleLifecycle?(gameId: string): Promise<LifecycleSettlementResult>;
 }
 
 const productionDependencies: AutomaticProgressionDependencies = {
@@ -35,6 +37,7 @@ const productionDependencies: AutomaticProgressionDependencies = {
   persist: persistCanonicalGameState,
   actionId: stableInternalActionId,
   now: () => new Date().toISOString(),
+  settleLifecycle: settleGameLifecycle,
 };
 
 function automaticCommandType(commandType: string): string {
@@ -43,22 +46,33 @@ function automaticCommandType(commandType: string): string {
 
 /**
  * Persist automatic actions one-by-one through the canonical CAS primitive.
- * A stale write means another authoritative command won the race; reload and
- * continue from that committed truth instead of rolling anything back.
+ * Before every next decision, settle any DEAL_RESULT/PHASE_RESULT boundary so
+ * bot chains can continue across deals and rounds without browser authority.
  */
 export async function progressAutomaticGameplayWithDependencies(
   gameId: string,
   maxSteps: number,
   dependencies: AutomaticProgressionDependencies,
 ): Promise<AutomaticProgressionResult> {
-  if (!Number.isInteger(maxSteps) || maxSteps < 1) {
-    return { ok: false, code: "INVALID_REQUEST" };
-  }
+  if (!Number.isInteger(maxSteps) || maxSteps < 1) return { ok: false, code: "INVALID_REQUEST" };
 
   let committedSteps = 0;
   let staleRaces = 0;
 
   for (let attempt = 0; attempt < maxSteps; attempt += 1) {
+    if (dependencies.settleLifecycle) {
+      const settled = await dependencies.settleLifecycle(gameId);
+      if (!settled.ok) return settled;
+      if (settled.lifecycle === "complete") {
+        return {
+          ok: true,
+          steps: committedSteps,
+          stateVersion: settled.stateVersion,
+          stopReason: "GAME_NOT_ACTIVE",
+        };
+      }
+    }
+
     const loaded = await dependencies.load(gameId);
     if (!loaded.ok) return loaded;
 
@@ -105,16 +119,15 @@ export async function progressAutomaticGameplayWithDependencies(
       }
       return persisted.currentStateVersion == null
         ? { ok: false, code: persisted.code }
-        : {
-            ok: false,
-            code: persisted.code,
-            currentStateVersion: persisted.currentStateVersion,
-          };
+        : { ok: false, code: persisted.code, currentStateVersion: persisted.currentStateVersion };
     }
-
     if (!persisted.replayed) committedSteps += 1;
   }
 
+  if (dependencies.settleLifecycle) {
+    const settled = await dependencies.settleLifecycle(gameId);
+    if (!settled.ok) return settled;
+  }
   const final = await dependencies.load(gameId);
   if (!final.ok) return final;
   return {

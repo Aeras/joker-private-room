@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Settings } from "lucide-react";
+import { History, Settings } from "lucide-react";
 import { jButton } from "@/components/joker/JButton";
 import { t } from "@/i18n/el";
 import { SUIT_SYMBOL } from "@/domain/cards";
@@ -19,13 +19,22 @@ export const Route = createFileRoute("/")({
 function Home() {
   return (
     <div className="surface-room relative flex min-h-dvh flex-col items-center justify-center px-6">
-      <Link
-        to="/settings"
-        aria-label={t.settings}
-        className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground"
-      >
-        <Settings className="h-5 w-5" />
-      </Link>
+      <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] flex gap-1">
+        <Link
+          to="/history"
+          aria-label="Ιστορικό"
+          className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <History className="h-5 w-5" />
+        </Link>
+        <Link
+          to="/settings"
+          aria-label={t.settings}
+          className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Settings className="h-5 w-5" />
+        </Link>
+      </div>
 
       <div className="flex w-full max-w-sm flex-col items-center text-center">
         <div className="mb-6 flex gap-3 text-2xl text-primary/70">
