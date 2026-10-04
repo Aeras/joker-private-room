@@ -7,7 +7,6 @@ import {
   EXTERNAL_SUPABASE_PUBLISHABLE_KEY,
   EXTERNAL_SUPABASE_URL,
 } from "@/integrations/external-supabase/client";
-import { ensureCanonicalGameInitialized } from "@/server/gameInitialization";
 
 const SESSION_COOKIE = "__Host-joker_session";
 
@@ -132,25 +131,14 @@ export const replaceProductionBot = createServerFn({ method: "POST" })
 
 export const startProductionRoom = createServerFn({ method: "POST" })
   .validator(z.object({ actionId, code: roomCode, expectedRoomVersion: roomVersion }))
-  .handler(async ({ data }): Promise<RoomCommandResult> => {
-    const result = await callRoomEdge({
+  .handler(async ({ data }) =>
+    callRoomEdge({
       action: "start",
       actionId: data.actionId,
       code: data.code,
       expectedRoomVersion: data.expectedRoomVersion,
-    });
-    if (!result.ok) return result;
-    if (!result.gameId) return { ok: false, code: "INVALID_ROOM_STATE" };
-
-    const initialized = await ensureCanonicalGameInitialized(result.gameId);
-    if (!initialized.ok) {
-      if (initialized.code === "NOT_AUTHENTICATED") return { ok: false, code: "NOT_AUTHENTICATED" };
-      if (initialized.code === "INVALID_CANONICAL_STATE") return { ok: false, code: "INVALID_ROOM_STATE" };
-      return { ok: false, code: "SERVICE_UNAVAILABLE" };
-    }
-
-    return result;
-  });
+    }),
+  );
 
 export const getProductionRoom = createServerFn({ method: "GET" })
   .validator(z.object({ code: roomCode }))
