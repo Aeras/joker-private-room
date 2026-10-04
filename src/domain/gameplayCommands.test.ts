@@ -145,6 +145,7 @@ describe("declaration dispatcher", () => {
   it("rejects the dealer's forbidden total explicitly", () => {
     const base = declarationState();
     const dealer = base.progression.dealerSeat;
+    if (dealer == null) throw new Error("test fixture requires resolved dealer");
     const order = declarationOrder(dealer);
     const declarations: Declarations = [null, null, null, null];
     declarations[order[0]!] = 0;
