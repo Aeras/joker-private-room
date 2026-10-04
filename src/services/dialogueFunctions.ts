@@ -33,50 +33,9 @@ export type DialogueEdgeResult =
     }
   | { ok: false; code: string };
 
-const dialogueEventType = z.enum([
-  "PLAYER_DECLARED_ZERO",
-  "PLAYER_DECLARED_HIGH",
-  "PLAYER_HIT_EXACT_BID",
-  "PLAYER_MISSED_BID",
-  "BOT_HIT_EXACT_BID",
-  "BOT_MISSED_BID",
-  "BOT_GOT_MINUS_200",
-  "PLAYER_GOT_MINUS_200",
-  "PLAYER_STOLE_CRITICAL_TRICK",
-  "BOT_STOLE_CRITICAL_TRICK",
-  "JOKER_PLAYED",
-  "JOKER_CHANGED_TRICK_RESULT",
-  "FORCED_TRUMP",
-  "OVERTRICK",
-  "UNDERTRICK",
-  "PREMIA_ACHIEVED",
-  "PREMIA_LOST",
-  "COMEBACK",
-  "SCORE_COLLAPSE",
-  "BOT_REVENGE_SUCCESS",
-  "ROUND_END",
-  "GAME_END",
-  "HUMAN_MESSAGE_TO_BOT",
-  "BOT_MESSAGE_TO_BOT",
-]);
 const gameId = z.string().uuid();
 const botId = z.string().min(1).max(64);
-const event = z.object({
-  id: z.string().min(1).max(128),
-  type: dialogueEventType,
-  createdAt: z.string().datetime(),
-  speakerBotId: botId,
-  targetName: z.string().max(40).optional(),
-  targetSeat: z.number().int().min(0).max(3).optional(),
-  declared: z.number().int().min(0).max(9).optional(),
-  actualTricks: z.number().int().min(0).max(9).optional(),
-  scoreDelta: z.number().int().min(-1000).max(1000).optional(),
-  round: z.number().int().min(1).max(4).optional(),
-  deal: z.number().int().min(1).max(24).optional(),
-  publicSummary: z.string().max(160).optional(),
-  humanMessage: z.string().max(160).optional(),
-  replyDepth: z.union([z.literal(0), z.literal(1)]),
-});
+const dialogueEventId = z.string().min(1).max(128).regex(/^state-\d+:[A-Z0-9_]+:(?:all|[0-3]):\d+$/);
 
 async function callDialogueEdge(body: Record<string, unknown>): Promise<DialogueEdgeResult> {
   const sessionToken = getCookie(SESSION_COOKIE);
@@ -108,9 +67,26 @@ export const getDialogueMessages = createServerFn({ method: "GET" })
   });
 
 export const requestDialogueReaction = createServerFn({ method: "POST" })
-  .validator(z.object({ gameId, event }))
+  .validator(z.object({ gameId, eventId: dialogueEventId }))
   .handler(async ({ data }): Promise<DialogueEdgeResult> =>
-    callDialogueEdge({ action: "generate", gameId: data.gameId, event: data.event }),
+    callDialogueEdge({ action: "generate-state", gameId: data.gameId, eventId: data.eventId }),
+  );
+
+export const requestBotDialogueReply = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      gameId,
+      sourceMessageId: z.string().uuid(),
+      responderBotId: botId,
+    }),
+  )
+  .handler(async ({ data }): Promise<DialogueEdgeResult> =>
+    callDialogueEdge({
+      action: "bot-reply",
+      gameId: data.gameId,
+      sourceMessageId: data.sourceMessageId,
+      responderBotId: data.responderBotId,
+    }),
   );
 
 export const sendHumanMessageToBot = createServerFn({ method: "POST" })
@@ -124,15 +100,10 @@ export const sendHumanMessageToBot = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }): Promise<DialogueEdgeResult> =>
     callDialogueEdge({
-      action: "generate",
+      action: "human-message",
       gameId: data.gameId,
-      event: {
-        id: `human:${data.actionId}`,
-        type: "HUMAN_MESSAGE_TO_BOT",
-        createdAt: new Date().toISOString(),
-        speakerBotId: data.speakerBotId,
-        humanMessage: data.text,
-        replyDepth: 0,
-      },
+      actionId: data.actionId,
+      speakerBotId: data.speakerBotId,
+      text: data.text,
     }),
   );
