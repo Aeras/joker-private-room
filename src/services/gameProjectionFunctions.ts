@@ -13,6 +13,7 @@ import {
 } from "@/server/gameplayCommands";
 import {
   loadCanonicalGameState,
+  terminateCanonicalGameByHost,
   type GameStateFailureCode,
   type LoadGameStateResult,
 } from "@/server/gamePersistence";
@@ -28,6 +29,10 @@ export type ReclaimGameControlResult =
 export type SubmitProjectedGameplayCommandResult =
   | { ok: true; projection: PlayerGameProjection; replayed: boolean }
   | { ok: false; code: SubmitGameplayCommandFailureCode; currentStateVersion?: number };
+
+export type TerminateProjectedGameResult =
+  | { ok: true; projection: PlayerGameProjection; replayed: boolean }
+  | { ok: false; code: GameStateFailureCode; currentStateVersion?: number };
 
 function isSeatIndex(value: number): value is SeatIndex {
   return Number.isInteger(value) && value >= 0 && value <= 3;
@@ -64,69 +69,51 @@ async function settleAutomaticState(gameId: string): Promise<LoadGameStateResult
   return loadCanonicalGameState(gameId);
 }
 
+function projected(loaded: Extract<LoadGameStateResult, { ok: true }>): PlayerGameProjection | null {
+  if (!isSeatIndex(loaded.viewerSeat)) return null;
+  return projectGameForSeat(
+    loaded.canonicalState,
+    loaded.viewerSeat,
+    loaded.canonicalState.seats[loaded.viewerSeat].owner.type === "human" &&
+      (loaded.canonicalState.seats[loaded.viewerSeat].owner as { playerId: string }).playerId === RESTRICTED_HOST_ID,
+  );
+}
+
 export const getProjectedGameState = createServerFn({ method: "GET" })
   .validator(z.object({ gameId: z.string().uuid() }))
   .handler(async ({ data }): Promise<ProjectedGameStateResult> => {
     const bootstrapFailure = await ensureBootstrapIfNeeded(data.gameId);
     if (bootstrapFailure) return { ok: false, code: bootstrapFailure };
-
     const loaded = await settleAutomaticState(data.gameId);
     if (!loaded.ok) return { ok: false, code: loaded.code };
-
-    if (!isSeatIndex(loaded.viewerSeat)) {
-      return { ok: false, code: "SERVICE_UNAVAILABLE" };
-    }
-
-    return {
-      ok: true,
-      projection: projectGameForSeat(
-        loaded.canonicalState,
-        loaded.viewerSeat,
-        loaded.canonicalState.seats[loaded.viewerSeat].owner.type === "human" &&
-          (loaded.canonicalState.seats[loaded.viewerSeat].owner as { playerId: string })
-            .playerId === RESTRICTED_HOST_ID,
-      ),
-    };
+    const projection = projected(loaded);
+    return projection ? { ok: true, projection } : { ok: false, code: "SERVICE_UNAVAILABLE" };
   });
 
 export const reclaimProjectedGameControl = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      gameId: z.string().uuid(),
-      actionId: z.string().uuid(),
-      expectedStateVersion: z.number().int().nonnegative(),
-    }),
-  )
+  .validator(z.object({
+    gameId: z.string().uuid(),
+    actionId: z.string().uuid(),
+    expectedStateVersion: z.number().int().nonnegative(),
+  }))
   .handler(async ({ data }): Promise<ReclaimGameControlResult> => {
     const result = await reclaimGameControl(data);
     if (!result.ok) return result;
-
     const loaded = await settleAutomaticState(data.gameId);
     if (!loaded.ok) return { ok: false, code: loaded.code };
-    if (!isSeatIndex(loaded.viewerSeat)) return { ok: false, code: "SERVICE_UNAVAILABLE" };
-
-    return {
-      ok: true,
-      replayed: result.replayed,
-      projection: projectGameForSeat(
-        loaded.canonicalState,
-        loaded.viewerSeat,
-        loaded.canonicalState.seats[loaded.viewerSeat].owner.type === "human" &&
-          (loaded.canonicalState.seats[loaded.viewerSeat].owner as { playerId: string })
-            .playerId === RESTRICTED_HOST_ID,
-      ),
-    };
+    const projection = projected(loaded);
+    return projection
+      ? { ok: true, replayed: result.replayed, projection }
+      : { ok: false, code: "SERVICE_UNAVAILABLE" };
   });
 
 export const submitProjectedGameplayCommand = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      gameId: z.string().uuid(),
-      actionId: z.string().uuid(),
-      expectedStateVersion: z.number().int().nonnegative(),
-      command: gameplayCommand,
-    }),
-  )
+  .validator(z.object({
+    gameId: z.string().uuid(),
+    actionId: z.string().uuid(),
+    expectedStateVersion: z.number().int().nonnegative(),
+    command: gameplayCommand,
+  }))
   .handler(async ({ data }): Promise<SubmitProjectedGameplayCommandResult> => {
     const result = await submitHumanGameplayCommand({
       gameId: data.gameId,
@@ -135,20 +122,27 @@ export const submitProjectedGameplayCommand = createServerFn({ method: "POST" })
       command: data.command as GameplayCommand,
     });
     if (!result.ok) return result;
-
     const loaded = await settleAutomaticState(data.gameId);
     if (!loaded.ok) return { ok: false, code: loaded.code };
-    if (!isSeatIndex(loaded.viewerSeat)) return { ok: false, code: "SERVICE_UNAVAILABLE" };
+    const projection = projected(loaded);
+    return projection
+      ? { ok: true, replayed: result.replayed, projection }
+      : { ok: false, code: "SERVICE_UNAVAILABLE" };
+  });
 
-    return {
-      ok: true,
-      replayed: result.replayed,
-      projection: projectGameForSeat(
-        loaded.canonicalState,
-        loaded.viewerSeat,
-        loaded.canonicalState.seats[loaded.viewerSeat].owner.type === "human" &&
-          (loaded.canonicalState.seats[loaded.viewerSeat].owner as { playerId: string })
-            .playerId === RESTRICTED_HOST_ID,
-      ),
-    };
+export const terminateProjectedGame = createServerFn({ method: "POST" })
+  .validator(z.object({
+    gameId: z.string().uuid(),
+    actionId: z.string().uuid(),
+    expectedStateVersion: z.number().int().nonnegative(),
+  }))
+  .handler(async ({ data }): Promise<TerminateProjectedGameResult> => {
+    const result = await terminateCanonicalGameByHost(data);
+    if (!result.ok) return result;
+    const loaded = await loadCanonicalGameState(data.gameId);
+    if (!loaded.ok) return { ok: false, code: loaded.code };
+    const projection = projected(loaded);
+    return projection
+      ? { ok: true, replayed: result.replayed, projection }
+      : { ok: false, code: "SERVICE_UNAVAILABLE" };
   });

@@ -23,6 +23,7 @@ import {
   getProjectedGameState,
   reclaimProjectedGameControl,
   submitProjectedGameplayCommand,
+  terminateProjectedGame,
 } from "@/services/gameProjectionFunctions";
 import { getProductionRoom } from "@/services/roomFunctions";
 
@@ -51,6 +52,8 @@ function gameplayFailureMessage(code: string): string {
     case "INVALID_DECLARATION":
     case "FORBIDDEN_DEALER_DECLARATION": return "Η δήλωση δεν επιτρέπεται.";
     case "CONTROLLER_CHANGED": return "Ο έλεγχος της θέσης άλλαξε. Έγινε συγχρονισμός.";
+    case "NOT_HOST": return "Μόνο ο host μπορεί να τερματίσει την παρτίδα.";
+    case "GAME_NOT_ACTIVE": return "Η παρτίδα δεν είναι πλέον ενεργή.";
     case "NOT_AUTHENTICATED": return "Η συνεδρία σου δεν είναι πλέον ενεργή.";
     default: return "Η ενέργεια δεν ολοκληρώθηκε. Έγινε νέος συγχρονισμός.";
   }
@@ -99,9 +102,7 @@ function TablePage() {
   }, []);
 
   const acceptSnapshot = useCallback((nextRoom: Room, nextProjection: PlayerGameProjection): boolean => {
-    if (!gameId || !isCoherentTableSnapshot({ room: nextRoom, projection: nextProjection, expectedGameId: gameId })) {
-      return false;
-    }
+    if (!gameId || !isCoherentTableSnapshot({ room: nextRoom, projection: nextProjection, expectedGameId: gameId })) return false;
     const restoring = connectionStatusRef.current !== "ready";
     roomRef.current = nextRoom;
     projectionRef.current = nextProjection;
@@ -129,7 +130,6 @@ function TablePage() {
       getProjectedGameState({ data: { gameId } }),
     ]);
     if (!mounted.current) return;
-
     if (!roomResult.ok) {
       markRefreshFailure(gameplayFailureMessage(roomResult.code));
       return;
@@ -148,12 +148,10 @@ function TablePage() {
     const result = await getDialogueMessages({ data: { gameId } });
     if (!mounted.current || !result.ok) return;
     setMessages(result.messages);
-
     const currentRoom = roomRef.current;
     if (!currentRoom || currentRoom.botSettings.intensity === "conservative") return;
     const bots = currentRoom.seats.flatMap((seat) => seat.occupant.type === "bot" ? [seat.occupant.bot] : []);
     if (bots.length < 2) return;
-
     for (const message of result.messages) {
       if (seenDialogueMessages.current.has(message.id)) continue;
       seenDialogueMessages.current.add(message.id);
@@ -164,11 +162,7 @@ function TablePage() {
       const responder = bots.find((bot) => bot.id !== message.speakerBotId);
       if (!responder) continue;
       void requestBotDialogueReply({
-        data: {
-          gameId,
-          sourceMessageId: message.id,
-          responderBotId: responder.id,
-        },
+        data: { gameId, sourceMessageId: message.id, responderBotId: responder.id },
       }).catch(() => undefined);
     }
   }, [gameId]);
@@ -230,13 +224,33 @@ function TablePage() {
     }
   };
 
+  const endGame = async (): Promise<boolean> => {
+    if (!projection || busy || connectionStatusRef.current !== "ready") return false;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await terminateProjectedGame({
+        data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion },
+      });
+      if (result.ok) {
+        const currentRoom = roomRef.current;
+        if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return true;
+        await refreshAll();
+        return true;
+      }
+      if (mounted.current) setError(gameplayFailureMessage(result.code));
+      await refreshAll();
+      return false;
+    } finally {
+      if (mounted.current) setBusy(false);
+    }
+  };
+
   const sendDialogue = async (speakerBotId: string, text: string) => {
     if (!projection || dialogueBusy) return;
     setDialogueBusy(true);
     try {
-      await sendHumanMessageToBot({
-        data: { gameId: projection.gameId, actionId: crypto.randomUUID(), speakerBotId, text },
-      });
+      await sendHumanMessageToBot({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), speakerBotId, text } });
       await refreshDialogue();
     } finally {
       if (mounted.current) setDialogueBusy(false);
@@ -265,7 +279,7 @@ function TablePage() {
 
   const uncertain = connectionStatus !== "ready";
   return (
-    <div className="relative h-dvh overflow-hidden">
+    <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
       <GameTable
         key={`${projection.gameId}:${tableEpoch}`}
         room={room}
@@ -274,6 +288,7 @@ function TablePage() {
         error={error}
         onCommand={submit}
         onReclaim={reclaim}
+        onEndGame={endGame}
       />
       <TableMessaging key={projection.gameId} room={room} projection={projection} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} onSend={sendDialogue} />

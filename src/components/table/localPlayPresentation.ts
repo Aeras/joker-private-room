@@ -12,7 +12,7 @@ export type LocalPlayPresentation = {
   acceptedStateVersion: number | null;
   geometryEpoch: number;
   releaseRect: RectLike;
-  status: "submitted" | "accepted";
+  status: "submitted" | "accepted" | "rejected";
 };
 
 export function projectionContainsPendingCardInCurrentTrick(
@@ -21,5 +21,18 @@ export function projectionContainsPendingCardInCurrentTrick(
 ): boolean {
   return currentTrick.some(
     (play) => play.seatIndex === presentation.actorSeat && play.card.id === presentation.cardId,
+  );
+}
+
+export function projectionContainsPendingCard(
+  presentation: LocalPlayPresentation,
+  currentTrick: readonly { seatIndex: number; card: Card }[],
+  completedTricks: readonly { cards: readonly { seatIndex: number; card: Card }[] }[],
+): boolean {
+  if (projectionContainsPendingCardInCurrentTrick(presentation, currentTrick)) return true;
+  return completedTricks.some((trick) =>
+    trick.cards.some(
+      (play) => play.seatIndex === presentation.actorSeat && play.card.id === presentation.cardId,
+    ),
   );
 }

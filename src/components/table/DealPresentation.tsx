@@ -52,15 +52,26 @@ function viewportPoint(geometry: TableGeometry, local: Point): Point {
   };
 }
 
+function presentationStorageKey(stageKey: string): string {
+  return `joker:deal-presented:${stageKey}`;
+}
+
+function alreadyPresented(stageKey: string): boolean {
+  return typeof window !== "undefined" && window.sessionStorage.getItem(presentationStorageKey(stageKey)) === "1";
+}
+
+function markPresented(stageKey: string): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(presentationStorageKey(stageKey), "1");
+}
+
 function TravelingBack({
   beat,
   pos,
-  reducedMotion,
   geometry,
 }: {
   beat: DealBeat;
   pos: VisualSeat;
-  reducedMotion: boolean;
   geometry: TableGeometry | null;
 }) {
   const [arrived, setArrived] = useState(false);
@@ -68,12 +79,12 @@ function TravelingBack({
     setArrived(false);
     const frame = window.requestAnimationFrame(() => setArrived(true));
     return () => window.cancelAnimationFrame(frame);
-  }, [beat.id, reducedMotion]);
+  }, [beat.id]);
 
   if (!geometry) {
     return (
       <div
-        className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform duration-200 ease-out motion-reduce:duration-75"
+        className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform duration-260 ease-out motion-reduce:duration-75"
         style={{ transform: arrived ? FALLBACK_TARGET[pos] : "translate(-50%, -50%) scale(.58)" }}
       >
         <PlayingCard faceDown />
@@ -85,7 +96,7 @@ function TravelingBack({
   const target = viewportPoint(geometry, geometry.seatOrigins[pos]);
   return (
     <div
-      className="absolute [--card-w:clamp(1.8rem,4vw,3rem)] transition-[left,top,transform] duration-200 ease-out motion-reduce:duration-75"
+      className="absolute [--card-w:clamp(1.8rem,4vw,3rem)] transition-[left,top,transform] duration-260 ease-out motion-reduce:duration-75"
       style={{
         left: arrived ? target.x : source.x,
         top: arrived ? target.y : source.y,
@@ -98,17 +109,19 @@ function TravelingBack({
 }
 
 /**
- * Replays already-authoritative deal counts as backs only. It never receives deck order or hidden card identities.
- * First render is intentionally skipped so reconnect/resume cannot replay a historical deal burst.
+ * Replays public deal counts as backs only. A session-scoped presentation marker
+ * prevents historical deal bursts from replaying after refresh/reconnect while
+ * still allowing the first live projection of a newly-created deal to animate.
  */
 export function DealPresentation({
   projection,
   geometry = null,
+  paused = false,
 }: {
   projection: PlayerGameProjection;
   geometry?: TableGeometry | null;
+  paused?: boolean;
 }) {
-  const firstRender = useRef(true);
   const previousGameId = useRef(projection.gameId);
   const previousStageKey = useRef<string | null>(null);
   const previousGeometryEpoch = useRef(geometry?.epoch ?? 0);
@@ -150,18 +163,18 @@ export function DealPresentation({
   useEffect(() => {
     interrupt();
 
-    if (firstRender.current || previousGameId.current !== projection.gameId) {
-      firstRender.current = false;
+    if (previousGameId.current !== projection.gameId) {
       previousGameId.current = projection.gameId;
+      previousStageKey.current = null;
+    }
+    if (paused || !stageKey || sequence.length === 0 || alreadyPresented(stageKey)) {
       previousStageKey.current = stageKey;
       return interrupt;
     }
-    if (!stageKey || stageKey === previousStageKey.current || sequence.length === 0) {
-      previousStageKey.current = stageKey;
-      return interrupt;
-    }
+    if (stageKey === previousStageKey.current && beats.length > 0) return interrupt;
 
     previousStageKey.current = stageKey;
+    markPresented(stageKey);
     setBeats(sequence);
     setVisibleIndex(-1);
     if (stage !== "remaining") playGameSound("shuffle", `${projection.gameId}:${projection.progression.dealNumber}`);
@@ -179,7 +192,7 @@ export function DealPresentation({
     ));
 
     return interrupt;
-  }, [projection.gameId, projection.progression.dealNumber, reducedMotion, sequence, stage, stageKey]);
+  }, [paused, projection.gameId, projection.progression.dealNumber, reducedMotion, sequence, stage, stageKey]);
 
   useEffect(() => {
     const visibility = () => {
@@ -208,7 +221,7 @@ export function DealPresentation({
       aria-hidden="true"
       data-deal-geometry-epoch={geometry?.epoch ?? 0}
     >
-      <TravelingBack key={beat.id} beat={beat} pos={pos} reducedMotion={reducedMotion} geometry={geometry} />
+      <TravelingBack key={beat.id} beat={beat} pos={pos} geometry={geometry} />
     </div>
   );
 }

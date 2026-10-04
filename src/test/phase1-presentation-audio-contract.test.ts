@@ -6,10 +6,10 @@ const trick = readFileSync("src/components/table/TrickPresentation.tsx", "utf8")
 const table = readFileSync("src/components/table/GameTable.tsx", "utf8");
 const audio = readFileSync("src/lib/gameAudio.ts", "utf8");
 
-describe("JK-001 Phase 1 — deal/trick/audio presentation authority", () => {
+describe("JK-001 Phase 1 / JK-006 presentation authority", () => {
   it("deals only backs from public deal metadata and never reads private deck/card identities", () => {
     expect(deal).toContain("<PlayingCard faceDown />");
-    expect(deal).toContain("nextSeat(dealerSeat)");
+    expect(deal).toContain("nextSeat(nextSeat(dealerSeat)");
     expect(deal).not.toContain("projection.cards.deck");
     expect(deal).not.toContain("ownHand.map");
     expect(deal).not.toContain("card.id");
@@ -23,14 +23,15 @@ describe("JK-001 Phase 1 — deal/trick/audio presentation authority", () => {
     expect(deal).toContain('if (stage !== "remaining") playGameSound("shuffle"');
   });
 
-  it("skips historical deal replay and clears presentation on reconnect/interruption", () => {
-    expect(deal).toContain("if (firstRender.current || previousGameId.current !== projection.gameId)");
+  it("uses session-scoped presentation markers and clears on reconnect/interruption", () => {
+    expect(deal).toContain("sessionStorage.getItem(presentationStorageKey(stageKey))");
+    expect(deal).toContain("sessionStorage.setItem(presentationStorageKey(stageKey), \"1\")");
     expect(deal).toContain("for (const timer of timers.current) window.clearTimeout(timer)");
     expect(deal).toContain('window.addEventListener("orientationchange", interrupt)');
     expect(deal).toContain('document.addEventListener("visibilitychange", visibility)');
   });
 
-  it("animates deal backs and accepted cards from measured origin toward viewer-relative destinations", () => {
+  it("animates deal backs and committed cards from measured origins toward viewer-relative destinations", () => {
     expect(deal).toContain("window.requestAnimationFrame(() => setArrived(true))");
     expect(deal).toContain("geometry.seatOrigins[pos]");
     expect(trick).toContain("geometry?.seatOrigins[pos]");
@@ -43,15 +44,15 @@ describe("JK-001 Phase 1 — deal/trick/audio presentation authority", () => {
     expect(trick).toContain("winnerSeat: trick.winnerSeat");
     expect(trick).not.toMatch(/resolveTrick|calculateWinner/);
     expect(trick).toContain("winnerSeat === play.seatIndex");
+    expect(trick).toContain("pendingCompletion.current");
     expect(trick).toContain("setDeparting");
-    expect(trick).toContain("setDeparting((value) => value?.id === id ? null : value)");
   });
 
-  it("uses stable accepted-play event identities so polling jumps cannot duplicate play audio", () => {
+  it("paces committed plays through one bounded queue and deduplicates play audio identities", () => {
     expect(trick).toContain("function acceptedPlayEventId");
-    expect(trick).toContain("for (const play of trick.cards)");
-    expect(trick).toContain("for (const play of projection.cards.currentTrick)");
-    expect(trick).toContain('playGameSound("play", acceptedPlayEventId');
+    expect(trick).toContain("queueRef.current");
+    expect(trick).toContain("playSpacingMs");
+    expect(trick).toContain('playGameSound(\n            "play",');
     expect(table).not.toContain('playGameSound("play"');
     const draggable = readFileSync("src/components/table/DraggableHandCard.tsx", "utf8");
     expect(draggable).not.toContain("playGameSound");
@@ -65,10 +66,10 @@ describe("JK-001 Phase 1 — deal/trick/audio presentation authority", () => {
     expect(audio).not.toContain("throw new Error");
   });
 
-  it("integrates the measured presentation layers without changing gameplay command semantics", () => {
+  it("integrates measured presentation layers without changing gameplay command semantics", () => {
     expect(table).toContain("<TrickPresentation");
     expect(table).toContain("geometry={tableGeometry.geometry}");
-    expect(table).toContain("<DealPresentation projection={projection} geometry={tableGeometry.geometry} />");
+    expect(table).toContain("<DealPresentation projection={projection} geometry={tableGeometry.geometry} paused={dealerIntroActive} />");
     expect(table).toContain('await onCommand({ type: "play_card", cardId })');
   });
 });

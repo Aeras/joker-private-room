@@ -16,7 +16,7 @@ import { fingerprintJson } from "@/lib/stableFingerprint";
 const SESSION_COOKIE = "__Host-joker_session";
 const GAME_STATE_ENDPOINT = `${EXTERNAL_SUPABASE_URL}/functions/v1/game-state`;
 
-export type GameStateFailureCode =
+export type CoreGameStateFailureCode =
   | "NOT_AUTHENTICATED"
   | "GAME_NOT_FOUND"
   | "GAME_STATE_NOT_INITIALIZED"
@@ -27,6 +27,8 @@ export type GameStateFailureCode =
   | "INVALID_CANONICAL_STATE"
   | "FINALIZATION_REQUIRED"
   | "SERVICE_UNAVAILABLE";
+
+export type GameStateFailureCode = CoreGameStateFailureCode | "NOT_HOST" | "GAME_NOT_ACTIVE";
 
 export type LoadGameStateResult =
   | {
@@ -41,7 +43,7 @@ export type LoadGameStateResult =
       lifecycle: CanonicalGameState["lifecycle"];
       canonicalState: CanonicalGameState;
     }
-  | { ok: false; code: GameStateFailureCode; stateVersion?: number };
+  | { ok: false; code: CoreGameStateFailureCode; stateVersion?: number };
 
 export interface GameBootstrapParticipant {
   seat_index: number;
@@ -67,7 +69,7 @@ export type LoadGameBootstrapResult =
       lifecycle: CanonicalGameState["lifecycle"];
       participants: GameBootstrapParticipant[];
     }
-  | { ok: false; code: GameStateFailureCode; stateVersion?: number };
+  | { ok: false; code: CoreGameStateFailureCode; stateVersion?: number };
 
 export type PersistGameStateResult =
   | {
@@ -75,6 +77,17 @@ export type PersistGameStateResult =
       gameId: string;
       stateVersion: number;
       lifecycle: CanonicalGameState["lifecycle"];
+      replayed: boolean;
+    }
+  | { ok: false; code: CoreGameStateFailureCode; currentStateVersion?: number };
+
+export type TerminateGameResult =
+  | {
+      ok: true;
+      gameId: string;
+      stateVersion: number;
+      lifecycle: "complete";
+      terminationReason: "host_ended";
       replayed: boolean;
     }
   | { ok: false; code: GameStateFailureCode; currentStateVersion?: number };
@@ -107,7 +120,6 @@ export interface ObjectivePlacementStats {
   secondPlaceCount: number;
   thirdPlaceCount: number;
   fourthPlaceCount: number;
-  /** Intentionally null until Product defines whether shared first counts as a win. */
   winPercentage: null;
 }
 
@@ -117,18 +129,12 @@ export interface BotPlacementStats extends ObjectivePlacementStats {
 }
 
 export type GameHistoryResult =
-  | {
-      ok: true;
-      history: CompletedGameSummary[];
-      stats: ObjectivePlacementStats;
-      botStats: BotPlacementStats[];
-    }
-  | { ok: false; code: GameStateFailureCode };
+  | { ok: true; history: CompletedGameSummary[]; stats: ObjectivePlacementStats; botStats: BotPlacementStats[] }
+  | { ok: false; code: CoreGameStateFailureCode };
 
 async function callGameStateEdge(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const sessionToken = getCookie(SESSION_COOKIE);
   if (!sessionToken) return { ok: false, code: "NOT_AUTHENTICATED" };
-
   try {
     const response = await fetch(GAME_STATE_ENDPOINT, {
       method: "POST",
@@ -146,19 +152,19 @@ async function callGameStateEdge(body: Record<string, unknown>): Promise<Record<
   return { ok: false, code: "SERVICE_UNAVAILABLE" };
 }
 
-/** Server-only raw load. Never return its canonicalState directly from a route. */
 export async function loadCanonicalGameState(gameId: string): Promise<LoadGameStateResult> {
   const result = (await callGameStateEdge({ action: "load", gameId })) as LoadGameStateResult;
-  if (result.ok) { try { assertRulesetState(result.canonicalState); } catch { return { ok: false, code: "INVALID_CANONICAL_STATE" }; } }
+  if (result.ok) {
+    try { assertRulesetState(result.canonicalState); }
+    catch { return { ok: false, code: "INVALID_CANONICAL_STATE" }; }
+  }
   return result;
 }
 
-/** Server-only roster/room metadata used only while canonical_state is still null. */
 export async function loadGameBootstrap(gameId: string): Promise<LoadGameBootstrapResult> {
   return (await callGameStateEdge({ action: "bootstrap", gameId })) as LoadGameBootstrapResult;
 }
 
-/** Private utility history; the Edge/RPC derives the viewer exclusively from the session. */
 export async function loadCompletedGameHistory(limit = 50): Promise<GameHistoryResult> {
   return (await callGameStateEdge({ action: "history", limit })) as GameHistoryResult;
 }
@@ -166,22 +172,13 @@ export async function loadCompletedGameHistory(limit = 50): Promise<GameHistoryR
 function assertPersistableState(gameId: string, expectedStateVersion: number, newState: CanonicalGameState) {
   if (newState.gameId !== gameId) throw new Error("Canonical state gameId mismatch before persistence");
   assertRulesetState(newState);
-  if (newState.stateSchemaVersion !== GAME_STATE_SCHEMA_VERSION && newState.stateSchemaVersion !== 3) {
-    throw new Error("Unsupported canonical state schema version");
-  }
-  if (newState.stateVersion !== expectedStateVersion + 1) {
-    throw new Error("Canonical state version must be expectedStateVersion + 1");
-  }
+  if (newState.stateSchemaVersion !== GAME_STATE_SCHEMA_VERSION && newState.stateSchemaVersion !== 3) throw new Error("Unsupported canonical state schema version");
+  if (newState.stateVersion !== expectedStateVersion + 1) throw new Error("Canonical state version must be expectedStateVersion + 1");
   if (!newState.initialDealerSelection) throw new Error("Canonical state requires dealer-selection metadata");
-  if (!newState.serverEntropySeed || !/^[0-9a-f]{64}$/i.test(newState.serverEntropySeed)) {
-    throw new Error("Canonical state requires private server entropy");
-  }
-  if (!Array.isArray(newState.score.completedDeals) || !Array.isArray(newState.score.roundPremia)) {
-    throw new Error("Canonical state requires authoritative score history");
-  }
+  if (!newState.serverEntropySeed || !/^[0-9a-f]{64}$/i.test(newState.serverEntropySeed)) throw new Error("Canonical state requires private server entropy");
+  if (!Array.isArray(newState.score.completedDeals) || !Array.isArray(newState.score.roundPremia)) throw new Error("Canonical state requires authoritative score history");
 }
 
-/** Persist a non-final TypeScript-computed transition through the atomic Postgres CAS primitive. */
 export async function persistCanonicalGameState(args: {
   gameId: string;
   actionId: string;
@@ -192,7 +189,6 @@ export async function persistCanonicalGameState(args: {
 }): Promise<PersistGameStateResult> {
   const { gameId, actionId, commandType, expectedStateVersion, commandPayload, newState } = args;
   assertPersistableState(gameId, expectedStateVersion, newState);
-
   const requestFingerprint = await fingerprintJson({ gameId, commandType, expectedStateVersion, payload: commandPayload });
   return (await callGameStateEdge({
     action: "persist",
@@ -205,10 +201,6 @@ export async function persistCanonicalGameState(args: {
   })) as PersistGameStateResult;
 }
 
-/**
- * GAME_COMPLETE uses a dedicated database transaction so state, participant
- * results, immutable history and active-game release commit atomically.
- */
 export async function finalizeCanonicalGameState(args: {
   gameId: string;
   actionId: string;
@@ -217,12 +209,8 @@ export async function finalizeCanonicalGameState(args: {
 }): Promise<PersistGameStateResult> {
   const { gameId, actionId, expectedStateVersion, newState } = args;
   assertPersistableState(gameId, expectedStateVersion, newState);
-  if (newState.lifecycle !== "complete" || newState.progression.phase !== "GAME_COMPLETE") {
-    throw new Error("Finalization requires GAME_COMPLETE canonical state");
-  }
-  if (newState.score.finalPlacements.some((value) => value == null)) {
-    throw new Error("Finalization requires all placements");
-  }
+  if (newState.lifecycle !== "complete" || newState.progression.phase !== "GAME_COMPLETE") throw new Error("Finalization requires GAME_COMPLETE canonical state");
+  if (newState.score.finalPlacements.some((value) => value == null)) throw new Error("Finalization requires all placements");
 
   const commandType = "finalize_game";
   const requestFingerprint = await fingerprintJson({
@@ -241,4 +229,25 @@ export async function finalizeCanonicalGameState(args: {
     requestFingerprint,
     newState,
   })) as PersistGameStateResult;
+}
+
+export async function terminateCanonicalGameByHost(args: {
+  gameId: string;
+  actionId: string;
+  expectedStateVersion: number;
+}): Promise<TerminateGameResult> {
+  const commandType = "host_end_game";
+  const requestFingerprint = await fingerprintJson({
+    gameId: args.gameId,
+    commandType,
+    expectedStateVersion: args.expectedStateVersion,
+  });
+  return (await callGameStateEdge({
+    action: "terminate",
+    gameId: args.gameId,
+    actionId: args.actionId,
+    commandType,
+    expectedStateVersion: args.expectedStateVersion,
+    requestFingerprint,
+  })) as TerminateGameResult;
 }
