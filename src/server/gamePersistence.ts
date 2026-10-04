@@ -16,11 +16,9 @@ import { fingerprintJson } from "@/lib/stableFingerprint";
 const SESSION_COOKIE = "__Host-joker_session";
 const GAME_STATE_ENDPOINT = `${EXTERNAL_SUPABASE_URL}/functions/v1/game-state`;
 
-export type GameStateFailureCode =
+export type CoreGameStateFailureCode =
   | "NOT_AUTHENTICATED"
-  | "NOT_HOST"
   | "GAME_NOT_FOUND"
-  | "GAME_NOT_ACTIVE"
   | "GAME_STATE_NOT_INITIALIZED"
   | "GAME_ALREADY_INITIALIZED"
   | "ACTION_ID_CONFLICT"
@@ -29,6 +27,8 @@ export type GameStateFailureCode =
   | "INVALID_CANONICAL_STATE"
   | "FINALIZATION_REQUIRED"
   | "SERVICE_UNAVAILABLE";
+
+export type GameStateFailureCode = CoreGameStateFailureCode | "NOT_HOST" | "GAME_NOT_ACTIVE";
 
 export type LoadGameStateResult =
   | {
@@ -43,7 +43,7 @@ export type LoadGameStateResult =
       lifecycle: CanonicalGameState["lifecycle"];
       canonicalState: CanonicalGameState;
     }
-  | { ok: false; code: GameStateFailureCode; stateVersion?: number };
+  | { ok: false; code: CoreGameStateFailureCode; stateVersion?: number };
 
 export interface GameBootstrapParticipant {
   seat_index: number;
@@ -69,7 +69,7 @@ export type LoadGameBootstrapResult =
       lifecycle: CanonicalGameState["lifecycle"];
       participants: GameBootstrapParticipant[];
     }
-  | { ok: false; code: GameStateFailureCode; stateVersion?: number };
+  | { ok: false; code: CoreGameStateFailureCode; stateVersion?: number };
 
 export type PersistGameStateResult =
   | {
@@ -79,7 +79,7 @@ export type PersistGameStateResult =
       lifecycle: CanonicalGameState["lifecycle"];
       replayed: boolean;
     }
-  | { ok: false; code: GameStateFailureCode; currentStateVersion?: number };
+  | { ok: false; code: CoreGameStateFailureCode; currentStateVersion?: number };
 
 export type TerminateGameResult =
   | {
@@ -130,7 +130,7 @@ export interface BotPlacementStats extends ObjectivePlacementStats {
 
 export type GameHistoryResult =
   | { ok: true; history: CompletedGameSummary[]; stats: ObjectivePlacementStats; botStats: BotPlacementStats[] }
-  | { ok: false; code: GameStateFailureCode };
+  | { ok: false; code: CoreGameStateFailureCode };
 
 async function callGameStateEdge(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const sessionToken = getCookie(SESSION_COOKIE);
