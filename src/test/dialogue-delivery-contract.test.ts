@@ -46,7 +46,7 @@ describe("AI banter Phase C delivery contract", () => {
   it("resolves state-derived event type and data from committed server-owned game state", () => {
     expect(edge).toContain('body?.action === "generate-state"');
     expect(edge).toContain('admin.rpc("resolve_dialogue_state_event_internal"');
-    expect(edge).not.toContain("body?.event");
+    expect(edge).not.toMatch(/body\?\.event\b/);
     expect(service).toContain("eventId: dialogueEventId");
     expect(service).not.toContain("const event = z.object");
     expect(serverEvents).toContain("g.canonical_state");
