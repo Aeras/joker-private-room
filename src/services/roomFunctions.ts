@@ -7,8 +7,8 @@ import {
   EXTERNAL_SUPABASE_PUBLISHABLE_KEY,
   EXTERNAL_SUPABASE_URL,
 } from "@/integrations/external-supabase/client";
-import { progressAutomaticGameplay } from "@/server/botProgression";
 import { ensureInitialDealerBootstrap } from "@/server/dealerBootstrap";
+import { advanceGameUntilBlocked } from "@/server/reconciliation";
 
 const SESSION_COOKIE = "__Host-joker_session";
 
@@ -197,7 +197,7 @@ export const startProductionRoom = createServerFn({ method: "POST" })
       return { ok: false, code: "SERVICE_UNAVAILABLE" };
     }
 
-    const automatic = await progressAutomaticGameplay(result.gameId);
+    const automatic = await advanceGameUntilBlocked(result.gameId);
     if (!automatic.ok) {
       if (automatic.code === "NOT_AUTHENTICATED") return { ok: false, code: "NOT_AUTHENTICATED" };
       if (automatic.code === "GAME_NOT_FOUND" || automatic.code === "INVALID_CANONICAL_STATE") {
