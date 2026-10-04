@@ -2,8 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { jButton } from "@/components/joker/JButton";
 import { DialogueOverlay } from "@/components/table/DialogueOverlay";
-import { TableMessaging } from "@/components/table/TableMessaging";
 import { GameTable } from "@/components/table/GameTable";
+import { TableMessaging } from "@/components/table/TableMessaging";
+import {
+  isCoherentTableSnapshot,
+  type TableConnectionStatus,
+} from "@/components/table/tableConnectionModel";
 import { derivePublicDialogueEvents } from "@/dialogue/publicEvents";
 import type { GameplayCommand } from "@/domain/gameplayCommands";
 import type { Room } from "@/domain/players";
@@ -66,14 +70,22 @@ function TablePage() {
   const [room, setRoom] = useState<Room | null>(null);
   const [projection, setProjection] = useState<PlayerGameProjection | null>(null);
   const [messages, setMessages] = useState<DialogueMessage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<TableConnectionStatus>("initial-loading");
+  const [tableEpoch, setTableEpoch] = useState(0);
   const [busy, setBusy] = useState(false);
   const [dialogueBusy, setDialogueBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
   const roomRef = useRef<Room | null>(null);
+  const projectionRef = useRef<PlayerGameProjection | null>(null);
+  const connectionStatusRef = useRef<TableConnectionStatus>("initial-loading");
   const previousProjectionRef = useRef<PlayerGameProjection | null>(null);
   const seenDialogueMessages = useRef(new Set<string>());
+
+  const updateConnectionStatus = useCallback((status: TableConnectionStatus) => {
+    connectionStatusRef.current = status;
+    setConnectionStatus(status);
+  }, []);
 
   const triggerPublicDialogue = useCallback((next: PlayerGameProjection) => {
     const currentRoom = roomRef.current;
@@ -86,18 +98,50 @@ function TablePage() {
     }
   }, []);
 
-  const refreshProjection = useCallback(async () => {
-    if (!gameId) return;
-    const result = await getProjectedGameState({ data: { gameId } });
-    if (!mounted.current) return;
-    if (!result.ok) {
-      setError(gameplayFailureMessage(result.code));
+  const acceptSnapshot = useCallback((nextRoom: Room, nextProjection: PlayerGameProjection): boolean => {
+    if (!gameId || !isCoherentTableSnapshot({ room: nextRoom, projection: nextProjection, expectedGameId: gameId })) {
+      return false;
+    }
+    const restoring = connectionStatusRef.current !== "ready";
+    roomRef.current = nextRoom;
+    projectionRef.current = nextProjection;
+    setRoom(nextRoom);
+    setProjection(nextProjection);
+    triggerPublicDialogue(nextProjection);
+    setError(null);
+    updateConnectionStatus("ready");
+    if (restoring) setTableEpoch((value) => value + 1);
+    return true;
+  }, [gameId, triggerPublicDialogue, updateConnectionStatus]);
+
+  const markRefreshFailure = useCallback((message: string) => {
+    setError(message);
+    updateConnectionStatus(roomRef.current && projectionRef.current ? "reconnecting" : "failed");
+  }, [updateConnectionStatus]);
+
+  const refreshAll = useCallback(async () => {
+    if (!code || !gameId) {
+      markRefreshFailure("Δεν βρέθηκε έγκυρη ενεργή παρτίδα.");
       return;
     }
-    setProjection(result.projection);
-    triggerPublicDialogue(result.projection);
-    setError(null);
-  }, [gameId, triggerPublicDialogue]);
+    const [roomResult, gameResult] = await Promise.all([
+      getProductionRoom({ data: { code } }),
+      getProjectedGameState({ data: { gameId } }),
+    ]);
+    if (!mounted.current) return;
+
+    if (!roomResult.ok) {
+      markRefreshFailure(gameplayFailureMessage(roomResult.code));
+      return;
+    }
+    if (!gameResult.ok) {
+      markRefreshFailure(gameplayFailureMessage(gameResult.code));
+      return;
+    }
+    if (!acceptSnapshot(roomResult.room, gameResult.projection)) {
+      markRefreshFailure("Η κατάσταση του δωματίου και της παρτίδας δεν συμφωνεί ακόμη. Γίνεται επανασύνδεση.");
+    }
+  }, [acceptSnapshot, code, gameId, markRefreshFailure]);
 
   const refreshDialogue = useCallback(async () => {
     if (!gameId || !roomRef.current?.botSettings.botsTalk) return;
@@ -129,46 +173,20 @@ function TablePage() {
     }
   }, [gameId]);
 
-  const refreshAll = useCallback(async () => {
-    if (!code || !gameId) {
-      setLoading(false);
-      return;
-    }
-    const [roomResult, gameResult] = await Promise.all([
-      getProductionRoom({ data: { code } }),
-      getProjectedGameState({ data: { gameId } }),
-    ]);
-    if (!mounted.current) return;
-
-    if (roomResult.ok) {
-      roomRef.current = roomResult.room;
-      setRoom(roomResult.room);
-    }
-    if (gameResult.ok) {
-      setProjection(gameResult.projection);
-      triggerPublicDialogue(gameResult.projection);
-    }
-
-    if (!gameResult.ok) setError(gameplayFailureMessage(gameResult.code));
-    else if (!roomResult.ok) setError(gameplayFailureMessage(roomResult.code));
-    else setError(null);
-    setLoading(false);
-  }, [code, gameId, triggerPublicDialogue]);
-
   useEffect(() => {
     mounted.current = true;
     void refreshAll();
-    const gameTimer = window.setInterval(() => void refreshProjection(), 1500);
+    const gameTimer = window.setInterval(() => void refreshAll(), 1500);
     const dialogueTimer = window.setInterval(() => void refreshDialogue(), 1000);
     return () => {
       mounted.current = false;
       window.clearInterval(gameTimer);
       window.clearInterval(dialogueTimer);
     };
-  }, [refreshAll, refreshDialogue, refreshProjection]);
+  }, [refreshAll, refreshDialogue]);
 
   const submit = async (command: GameplayCommand): Promise<PlayerGameProjection | null> => {
-    if (!projection || busy) return null;
+    if (!projection || busy || connectionStatusRef.current !== "ready") return null;
     setBusy(true);
     setError(null);
     try {
@@ -176,14 +194,14 @@ function TablePage() {
         data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion, command },
       });
       if (result.ok) {
-        if (mounted.current) {
-          setProjection(result.projection);
-          triggerPublicDialogue(result.projection);
-        }
-        return result.projection;
+        const currentRoom = roomRef.current;
+        if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return result.projection;
+        markRefreshFailure("Η παρτίδα προχώρησε, αλλά απαιτείται ασφαλής επανασύνδεση του τραπεζιού.");
+        await refreshAll();
+        return null;
       }
       if (mounted.current) setError(gameplayFailureMessage(result.code));
-      await refreshProjection();
+      await refreshAll();
       return null;
     } finally {
       if (mounted.current) setBusy(false);
@@ -191,7 +209,7 @@ function TablePage() {
   };
 
   const reclaim = async () => {
-    if (!projection || busy) return;
+    if (!projection || busy || connectionStatusRef.current !== "ready") return;
     setBusy(true);
     setError(null);
     try {
@@ -199,14 +217,14 @@ function TablePage() {
         data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion },
       });
       if (result.ok) {
-        if (mounted.current) {
-          setProjection(result.projection);
-          triggerPublicDialogue(result.projection);
-        }
+        const currentRoom = roomRef.current;
+        if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return;
+        markRefreshFailure("Ο έλεγχος άλλαξε, αλλά απαιτείται ασφαλής επανασύνδεση του τραπεζιού.");
+        await refreshAll();
         return;
       }
       if (mounted.current) setError(gameplayFailureMessage(result.code));
-      await refreshProjection();
+      await refreshAll();
     } finally {
       if (mounted.current) setBusy(false);
     }
@@ -225,7 +243,17 @@ function TablePage() {
     }
   };
 
-  if (loading) return <div className="surface-wood h-dvh" />;
+  if (connectionStatus === "initial-loading" && (!room || !projection)) {
+    return (
+      <div className="surface-wood flex h-dvh items-center justify-center p-6" role="status" aria-live="polite">
+        <div className="rounded-2xl border border-primary/30 bg-black/70 px-6 py-5 text-center shadow-2xl backdrop-blur">
+          <div className="font-display text-lg text-primary">Επιστροφή στο παιχνίδι</div>
+          <p className="mt-2 text-sm text-white/70">Φορτώνεται το τρέχον τραπέζι…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!code || !gameId || !room || !projection) {
     return (
       <div className="surface-room flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
@@ -235,11 +263,27 @@ function TablePage() {
     );
   }
 
+  const uncertain = connectionStatus !== "ready";
   return (
     <div className="relative h-dvh overflow-hidden">
-      <GameTable room={room} projection={projection} busy={busy} error={error} onCommand={submit} onReclaim={reclaim} />
+      <GameTable
+        key={`${projection.gameId}:${tableEpoch}`}
+        room={room}
+        projection={projection}
+        busy={busy || uncertain}
+        error={error}
+        onCommand={submit}
+        onReclaim={reclaim}
+      />
       <TableMessaging key={projection.gameId} room={room} projection={projection} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} onSend={sendDialogue} />
+      {uncertain && (
+        <div className="pointer-events-auto absolute inset-0 z-[110] flex items-start justify-center bg-black/15 pt-[max(4rem,env(safe-area-inset-top))]" role="status" aria-live="polite">
+          <div className="rounded-xl border border-primary/35 bg-black/85 px-4 py-2 text-sm text-white shadow-xl backdrop-blur">
+            {connectionStatus === "reconnecting" ? "Επανασύνδεση…" : "Η σύνδεση διακόπηκε — γίνεται νέα προσπάθεια…"}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
