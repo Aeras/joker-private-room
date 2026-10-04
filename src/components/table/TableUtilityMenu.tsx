@@ -1,5 +1,6 @@
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { exportTimingDiagnosticsFile } from "@/lib/timingDiagnostics";
 import { JButton } from "../joker/JButton";
 
 export function TableUtilityMenu({
@@ -49,7 +50,17 @@ export function TableUtilityMenu({
           <MoreHorizontal className="h-4 w-4" />
         </JButton>
         {open && (
-          <div className="absolute right-0 top-10 z-[85] min-w-44 rounded-xl border border-white/10 bg-black/90 p-1.5 text-sm shadow-2xl backdrop-blur">
+          <div className="absolute right-0 top-10 z-[85] min-w-52 rounded-xl border border-white/10 bg-black/90 p-1.5 text-sm shadow-2xl backdrop-blur">
+            <button
+              type="button"
+              className="w-full rounded-lg px-3 py-2 text-left text-white/80 hover:bg-white/10"
+              onClick={() => {
+                exportTimingDiagnosticsFile();
+                setOpen(false);
+              }}
+            >
+              Λήψη timing diagnostic
+            </button>
             {isHost ? (
               <button
                 type="button"
@@ -62,9 +73,7 @@ export function TableUtilityMenu({
               >
                 Τέλος παιχνιδιού
               </button>
-            ) : (
-              <div className="px-3 py-2 text-xs text-white/50">Δεν υπάρχουν διαθέσιμες ενέργειες.</div>
-            )}
+            ) : null}
           </div>
         )}
       </div>
