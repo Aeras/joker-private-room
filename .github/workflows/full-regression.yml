@@ -61,3 +61,7 @@ jobs:
     uses: ./.github/workflows/jk001-phase12-gate.yml
   ai-banter-phase-a:
     uses: ./.github/workflows/jk001-ai-banter-phase-a-gate.yml
+  ai-banter-phase-b:
+    uses: ./.github/workflows/jk001-ai-banter-phase-b-gate.yml
+  ai-banter-phase-c:
+    uses: ./.github/workflows/jk001-ai-banter-phase-c-gate.yml
