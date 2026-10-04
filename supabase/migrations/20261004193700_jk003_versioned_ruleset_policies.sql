@@ -615,7 +615,7 @@ begin
  if s#>>'{progression,phase}' = 'INITIAL_DEALER_SELECTION' then
   if jsonb_array_length(deck) <> 0 then raise exception 'Starting deck must be empty'; end if;
  else
-  if jsonb_array_length(deck) <> case when new.ruleset_id = 'classic' then 38 else 36 end or (select count(distinct value->>'id') from jsonb_array_elements(deck)) <> jsonb_array_length(deck) then raise exception 'Invalid policy deck composition'; end if;
+  if jsonb_array_length(deck) <> (case when new.ruleset_id = 'classic' then 38 else 36 end) or (select count(distinct value->>'id') from jsonb_array_elements(deck)) <> jsonb_array_length(deck) then raise exception 'Invalid policy deck composition'; end if;
   for card in select value from jsonb_array_elements(deck) loop
    if card->>'kind' = 'joker' then
     if card->>'id' not in ('joker-1','joker-2') then raise exception 'Invalid Joker'; end if;

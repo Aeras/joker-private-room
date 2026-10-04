@@ -46,6 +46,26 @@ export function assertRulesetState(state: CanonicalGameState): void {
     ...state.cards.completedTricks.flatMap((trick) => trick.cards.map((play) => play.card)),
   ];
   live.forEach(valid);
+  const count = state.progression.cardsPerPlayer;
+  if (!Number.isInteger(count) || count < 1 || count > 9) throw new Error("Invalid deal size");
+  const expectedCursor =
+    state.progression.phase === "INITIAL_DEALER_SELECTION"
+      ? 0
+      : state.cards.hiddenPartialNineCardHands
+        ? 12
+        : count * 4;
+  if (state.cards.drawCursor !== expectedCursor || live.length !== expectedCursor)
+    throw new Error("Invalid dealt-card accounting");
+  const dealtIds = new Set(state.cards.deck.slice(0, expectedCursor).map((card) => card.id));
+  if (live.some((card) => !dealtIds.has(card.id))) throw new Error("Undealt card entered play");
+  if (
+    policy.nineCardTrump === "reveal" &&
+    count === 9 &&
+    state.progression.phase !== "INITIAL_DEALER_SELECTION" &&
+    state.cards.exposedTrumpCard?.id !== state.cards.deck[36]?.id
+  )
+    throw new Error("Classic must reveal card 37");
+
   if (new Set(live.map((card) => card.id)).size !== live.length)
     throw new Error("Duplicate live cards");
   if (state.cards.exposedTrumpCard) {

@@ -178,7 +178,7 @@ export function derivePublicInference(view: PlayerView): PublicInference {
     }
   };
 
-  if (view.exposedTrumpCard) playedCardIds.add(view.exposedTrumpCard.id);
+  if (view.deckProfile === "classic38" && view.exposedTrumpCard) playedCardIds.add(view.exposedTrumpCard.id);
   for (const trick of view.history.completedTricks) observeTrick(trick.cards);
   observeTrick(view.currentTrick);
 

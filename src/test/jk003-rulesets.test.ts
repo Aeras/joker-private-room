@@ -16,10 +16,10 @@ import { projectGameForSeat } from "@/domain/projection";
 import { applyGameplayCommand } from "@/domain/gameplayCommands";
 import { settleCanonicalLifecycle } from "@/domain/gameLifecycle";
 import { applyReclaimControl } from "@/domain/controller";
-import { derivePublicInference, fairUnknownCards } from "@/bots/strategy";
+import { derivePublicInference, fairUnknownCards, strongBasicStrategy, memoryInferenceStrategy, probabilitySimulationStrategy } from "@/bots/strategy";
 import { reconciliationFixture } from "./fixtures/reconciliationGame";
 import { existsSync } from "node:fs";
-import type { PlayerView } from "@/domain/engine";
+import { legalMoves, type PlayerView } from "@/domain/engine";
 
 function rng(seed: number) {
   let x = seed;
@@ -255,6 +255,19 @@ describe("JK-003 private Panagiotis cyclic allocation", () => {
 });
 
 describe("JK-003 safe persisted compatibility", () => {
+  it("preserves all three Popular bot strategies when public ruleset context is added", () => {
+    const deck = createDeck();
+    for (let seed=1;seed<=20;seed++) {
+      const view: PlayerView = { seatIndex: 0, hand: deck.slice(seed,seed+9), cardsPerPlayer: 9, trump: "hearts", declarations: [2,3,1,0], tricksTaken: [0,0,0,0], currentTrick: [], history: {completedTricks: []} };
+      const enriched: PlayerView = {...view, deckProfile: "popular36", scoringProfile: "popular", exposedTrumpCard: deck[(seed+15)%36]!};
+      const legal = legalMoves(view);
+      for (const strategy of [strongBasicStrategy,memoryInferenceStrategy,probabilitySimulationStrategy]) {
+        expect(strategy.chooseCard(enriched,legal)).toEqual(strategy.chooseCard(view,legal));
+        expect(strategy.chooseDeclaration(enriched,[0,1,2,3,4,5,6,7,8,9])).toBe(strategy.chooseDeclaration(view,[0,1,2,3,4,5,6,7,8,9]));
+        expect(strategy.chooseTrump(enriched,["spades","hearts","diamonds","clubs",null])).toBe(strategy.chooseTrump(view,["spades","hearts","diamonds","clubs",null]));
+      }
+    }
+  });
   it("continues genuine schema-v3 Popular snapshots without changing their identity", () => {
     const state = reconciliationFixture();
     state.stateSchemaVersion = 3;
@@ -288,6 +301,13 @@ describe("JK-003 safe persisted compatibility", () => {
       mutate(copy);
       expect(() => assertRulesetState(copy)).toThrow();
     }
+    const classicNine = nextNine("classic");
+    const substituted = structuredClone(classicNine);
+    substituted.cards.hands[0][0] = substituted.cards.deck[37]!;
+    expect(() => assertRulesetState(substituted)).toThrow("Undealt card entered play");
+    const wrongReveal = structuredClone(classicNine);
+    wrongReveal.cards.exposedTrumpCard = wrongReveal.cards.deck[37]!;
+    expect(() => assertRulesetState(wrongReveal)).toThrow("Classic must reveal card 37");
     const pan = reconciliationFixture("panagiotis", true);
     delete pan.privateRulesetState;
     expect(() => assertRulesetState(pan)).toThrow();

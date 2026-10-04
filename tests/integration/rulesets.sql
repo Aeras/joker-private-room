@@ -1,7 +1,7 @@
 begin;
 do $$
 #variable_conflict use_variable
-declare result jsonb; room_id uuid; game_id uuid; code text; kind text; token text; action uuid; before_count integer; catalog jsonb; snapshot jsonb; caught boolean;
+declare result jsonb; room_id uuid; game_id uuid; code text; kind text; token text; action uuid; before_count integer; catalog jsonb; snapshot jsonb; caught boolean; deck jsonb; hands jsonb; hand jsonb; seat integer;
 begin
  if has_function_privilege('anon','public.get_available_rulesets_internal(text)','execute') or has_function_privilege('authenticated','public.get_available_rulesets_internal(text)','execute') then raise exception 'Restricted options exposed'; end if;
  if (public.get_available_rulesets_internal(repeat('a',64))->'options')->3->>'id' <> 'panagiotis' then raise exception 'Stable authorized host missing option'; end if;
@@ -48,5 +48,33 @@ begin
  if result::text like '%panagiotis%' then raise exception 'Other participant history identity leaked'; end if;
  if public.get_game_history_internal(repeat('b',64),50)->'history' <> '[]'::jsonb then raise exception 'Outsider history exposed'; end if;
  if public.get_game_history_internal(repeat('a',64),50)#>>'{history,0,rulesetId}' <> 'panagiotis' then raise exception 'Host history identity lost'; end if;
+ -- Every selectable policy can Start with the same pinned bot catalog.
+ foreach kind in array array['popular','classic','minus'] loop
+  result := public.create_room_internal(repeat('b',64),gen_random_uuid(),kind,false,false,false,'normal');
+  code := result#>>'{room,code}'; select id into room_id from public.rooms where public.rooms.code=code;
+  result := public.start_room_internal(repeat('b',64),gen_random_uuid(),code,(select room_version from public.rooms where id=room_id),catalog);
+  if result->>'ok' <> 'true' then raise exception 'Start failed for %: %',kind,result; end if;
+  game_id := (result->>'gameId')::uuid;
+  if not exists(select 1 from public.games where id=game_id and ruleset_id=kind and rules_version=kind || '-v1' and state_schema_version=4) then raise exception 'Start snapshot lost selected policy'; end if;
+  if kind='classic' then
+   select jsonb_agg(jsonb_build_object('kind','standard','id',rank || '-' || suit,'rank',rank,'suit',suit) order by suits.ordinality,ranks.ordinality) into deck
+   from unnest(array['spades','hearts','diamonds','clubs']) with ordinality suits(suit,ordinality)
+   cross join unnest(array['6','7','8','9','10','J','Q','K','A']) with ordinality ranks(rank,ordinality);
+   deck := deck || '[{"kind":"joker","id":"joker-1"},{"kind":"joker","id":"joker-2"}]'::jsonb;
+   hands := '[]'::jsonb;
+   for seat in 0..3 loop
+    select jsonb_agg(deck->index order by index) into hand from generate_series(seat,35,4) index;
+    hands := hands || jsonb_build_array(hand);
+   end loop;
+   snapshot := jsonb_build_object('rulesetId','classic','rulesVersion','classic-v1','stateSchemaVersion',4,'progression',jsonb_build_object('phase','DECLARATION','cardsPerPlayer',9),'cards',jsonb_build_object('deck',deck,'hands',hands,'hiddenPartialNineCardHands',false,'exposedTrumpCard',deck->36),'trump',jsonb_build_object('status','resolved','suit',null));
+   update public.games set canonical_state=snapshot where id=game_id;
+   caught:=false; begin update public.games set canonical_state=jsonb_set(snapshot,'{cards,exposedTrumpCard}',deck->37) where id=game_id; exception when others then caught:=true; end;
+   if not caught then raise exception 'Wrong Classic reveal accepted'; end if;
+   caught:=false; begin update public.games set canonical_state=jsonb_set(snapshot,'{cards,hands,0,0}',deck->37) where id=game_id; exception when others then caught:=true; end;
+   if not caught then raise exception 'Unused Classic card entered play'; end if;
+  end if;
+  update public.game_participants set status='completed' where public.game_participants.game_id=game_id;
+  update public.games set lifecycle='complete' where id=game_id;
+ end loop;
 end $$;
 rollback;
