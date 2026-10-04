@@ -111,12 +111,18 @@ export function DealerSelectionPresentation({
     setCueVisible(false);
     setVisibleCount(0);
 
-    if (!geometry || !selection || beats.length === 0 || !dealerSelectionNeedsPresentation(projection)) {
+    const needsPresentation = Boolean(selection && beats.length > 0 && dealerSelectionNeedsPresentation(projection));
+    if (!needsPresentation) {
       onActiveChange(false);
       return clear;
     }
 
+    // Keep the gameplay UI blocked while the table geometry is still being measured.
+    // Previously this branch reported inactive for one or more frames, exposing the
+    // already-authoritative hand/declaration before the dealer ritual had started.
     onActiveChange(true);
+    if (!geometry) return clear;
+
     setCueVisible(true);
     playGameSound("shuffle", `${projection.gameId}:dealer-selection`);
 
