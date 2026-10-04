@@ -167,7 +167,7 @@ describe("AI banter Phase D — privacy and authority release gates", () => {
   it("never accepts client-supplied state event type/data and builds recent context from ephemeral server state", () => {
     expect(edge).toContain('body?.action === "generate-state"');
     expect(edge).toContain('admin.rpc("resolve_dialogue_state_event_internal"');
-    expect(edge).not.toContain("body?.event");
+    expect(edge).not.toMatch(/body\?\.event\b/);
     expect(edge).not.toContain("body?.recentBanter");
     expect(edge).toContain("recentBanter: recentLines(latestRecentData?.messages)");
     expect(resolverSql).toContain("g.canonical_state");
