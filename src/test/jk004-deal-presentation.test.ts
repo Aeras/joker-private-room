@@ -5,10 +5,10 @@ import {
   dealPresentationTiming,
 } from "@/components/table/dealPresentationModel";
 
-describe("JK-004 deal presentation cadence", () => {
-  it("keeps normal deal beats inside the locked human-readable target", () => {
-    expect(NORMAL_DEAL_STAGGER_MS).toBeGreaterThanOrEqual(110);
-    expect(NORMAL_DEAL_STAGGER_MS).toBeLessThanOrEqual(160);
+describe("JK-004/JK-006 deal presentation cadence", () => {
+  it("keeps normal deal beats at the JK-006 readable baseline", () => {
+    expect(NORMAL_DEAL_STAGGER_MS).toBeGreaterThanOrEqual(330);
+    expect(NORMAL_DEAL_STAGGER_MS).toBeLessThanOrEqual(370);
     expect(dealPresentationTiming(false).staggerMs).toBe(NORMAL_DEAL_STAGGER_MS);
   });
 
