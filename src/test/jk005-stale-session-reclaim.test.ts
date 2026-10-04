@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
-const migrationPath = "supabase/migrations/20261004222000_jk005_stale_session_reclaim.sql";
+const migrationPath = "supabase/migrations/20261004221111_jk005_stale_session_reclaim.sql";
 
 describe("JK-005 stale session reclaim", () => {
   it("reclaims only stale sessions for players without a real active game", () => {
