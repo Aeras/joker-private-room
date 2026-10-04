@@ -21,7 +21,6 @@ function occupantName(room: Room, seat: number): string {
 }
 
 function event(
-  previous: PlayerGameProjection,
   next: PlayerGameProjection,
   room: Room,
   type: DialogueEventType,
@@ -43,10 +42,7 @@ function event(
   };
 }
 
-/**
- * Derives only from PlayerGameProjection + public room identities.
- * No canonical state, hands other than the local projection, deck order or future cards are accepted.
- */
+/** Public projection only: this helper cannot see canonical hands, deck order or future cards. */
 export function derivePublicDialogueEvents(
   previous: PlayerGameProjection | null,
   next: PlayerGameProjection,
@@ -57,13 +53,15 @@ export function derivePublicDialogueEvents(
 
   next.declarations.values.forEach((value, seat) => {
     if (value == null || value === previous.declarations.values[seat]) return;
-    const type: DialogueEventType = value === 0 ? "PLAYER_DECLARED_ZERO" : value >= Math.max(4, next.progression.cardsPerPlayer - 1) ? "PLAYER_DECLARED_HIGH" : "PLAYER_DECLARED_HIGH";
-    const derived = event(previous, next, room, type, seat, { declared: value }, seat);
+    let type: DialogueEventType | null = null;
+    if (value === 0) type = "PLAYER_DECLARED_ZERO";
+    else if (value >= Math.max(4, next.progression.cardsPerPlayer - 1)) type = "PLAYER_DECLARED_HIGH";
+    if (!type) return;
+    const derived = event(next, room, type, seat, { declared: value }, seat);
     if (derived) events.push(derived);
   });
 
-  const oldDeals = previous.score.completedDeals.length;
-  if (next.score.completedDeals.length > oldDeals) {
+  if (next.score.completedDeals.length > previous.score.completedDeals.length) {
     const deal = next.score.completedDeals.at(-1);
     if (deal) {
       deal.dealScores.forEach((scoreDelta, seat) => {
@@ -75,7 +73,7 @@ export function derivePublicDialogueEvents(
         else if (actualTricks > declared) type = "OVERTRICK";
         else if (actualTricks < declared) type = "UNDERTRICK";
         if (!type) return;
-        const derived = event(previous, next, room, type, seat, {
+        const derived = event(next, room, type, seat, {
           declared,
           actualTricks,
           scoreDelta,
@@ -88,11 +86,10 @@ export function derivePublicDialogueEvents(
     }
   }
 
-  const oldTricks = previous.cards.completedTricks.length;
-  if (next.cards.completedTricks.length > oldTricks) {
+  if (next.cards.completedTricks.length > previous.cards.completedTricks.length) {
     const trick = next.cards.completedTricks.at(-1);
     if (trick?.cards.some((play) => play.card.kind === "joker")) {
-      const derived = event(previous, next, room, "JOKER_PLAYED", trick.winnerSeat, {
+      const derived = event(next, room, "JOKER_PLAYED", trick.winnerSeat, {
         round: next.progression.round,
         deal: next.progression.dealNumber,
       }, 30);
@@ -103,14 +100,14 @@ export function derivePublicDialogueEvents(
   if (next.score.roundPremia.length > previous.score.roundPremia.length) {
     const premia = next.score.roundPremia.at(-1);
     const winner = premia?.adjustments.findIndex((value) => value > 0) ?? -1;
-    const derived = event(previous, next, room, "PREMIA_ACHIEVED", winner >= 0 ? winner : undefined, {
+    const derived = event(next, room, "PREMIA_ACHIEVED", winner >= 0 ? winner : undefined, {
       round: next.progression.round,
     }, 40);
     if (derived) events.push(derived);
   }
 
   if (previous.lifecycle !== "complete" && next.lifecycle === "complete") {
-    const derived = event(previous, next, room, "GAME_END", undefined, {
+    const derived = event(next, room, "GAME_END", undefined, {
       publicSummary: `Τελικό σκορ: ${next.score.cumulativeTotals.join(", ")}.`,
     }, 50);
     if (derived) events.push(derived);
