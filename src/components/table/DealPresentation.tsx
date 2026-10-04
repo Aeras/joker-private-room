@@ -14,6 +14,13 @@ type DealBeat = {
 
 type Stage = "initial" | "remaining" | "full";
 
+const FALLBACK_TARGET: Record<VisualSeat, string> = {
+  0: "translate(-50%, 42vh)",
+  1: "translate(-43vw, -50%)",
+  2: "translate(-50%, -38vh)",
+  3: "translate(38vw, -50%)",
+};
+
 function stageFor(projection: PlayerGameProjection): Stage | null {
   if (projection.progression.cardsPerPlayer === 9 && projection.rulesetId !== "classic") {
     if (projection.progression.phase === "NINE_CARD_TRUMP_CHOICE") return "initial";
@@ -56,20 +63,29 @@ function TravelingBack({
   reducedMotion: boolean;
   geometry: TableGeometry | null;
 }) {
-  const [arrived, setArrived] = useState(reducedMotion || !geometry);
+  const [arrived, setArrived] = useState(reducedMotion);
   useEffect(() => {
-    if (reducedMotion || !geometry) {
+    if (reducedMotion) {
       setArrived(true);
       return;
     }
     const frame = window.requestAnimationFrame(() => setArrived(true));
     return () => window.cancelAnimationFrame(frame);
-  }, [beat.id, geometry, reducedMotion]);
+  }, [beat.id, reducedMotion]);
 
-  if (!geometry) return null;
+  if (!geometry) {
+    return (
+      <div
+        className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform duration-200 ease-out motion-reduce:duration-75"
+        style={{ transform: arrived ? FALLBACK_TARGET[pos] : "translate(-50%, -50%) scale(.58)" }}
+      >
+        <PlayingCard faceDown />
+      </div>
+    );
+  }
+
   const source = viewportPoint(geometry, geometry.usableCenter);
   const target = viewportPoint(geometry, geometry.seatOrigins[pos]);
-
   return (
     <div
       className="absolute [--card-w:clamp(1.8rem,4vw,3rem)] transition-[left,top,transform] duration-200 ease-out motion-reduce:duration-75"
@@ -90,10 +106,10 @@ function TravelingBack({
  */
 export function DealPresentation({
   projection,
-  geometry,
+  geometry = null,
 }: {
   projection: PlayerGameProjection;
-  geometry: TableGeometry | null;
+  geometry?: TableGeometry | null;
 }) {
   const firstRender = useRef(true);
   const previousGameId = useRef(projection.gameId);
@@ -131,8 +147,6 @@ export function DealPresentation({
     const nextEpoch = geometry?.epoch ?? 0;
     if (previousGeometryEpoch.current === nextEpoch) return;
     previousGeometryEpoch.current = nextEpoch;
-    // Do not continue an in-flight deal toward obsolete coordinates. Canonical
-    // ownership is already settled, so snapping presentation away is safe.
     interrupt();
   }, [geometry?.epoch]);
 
@@ -145,7 +159,7 @@ export function DealPresentation({
       previousStageKey.current = stageKey;
       return interrupt;
     }
-    if (!stageKey || stageKey === previousStageKey.current || sequence.length === 0 || !geometry) {
+    if (!stageKey || stageKey === previousStageKey.current || sequence.length === 0) {
       previousStageKey.current = stageKey;
       return interrupt;
     }
@@ -168,7 +182,7 @@ export function DealPresentation({
     ));
 
     return interrupt;
-  }, [geometry, projection.gameId, projection.progression.dealNumber, reducedMotion, sequence, stage, stageKey]);
+  }, [projection.gameId, projection.progression.dealNumber, reducedMotion, sequence, stage, stageKey]);
 
   useEffect(() => {
     const visibility = () => {
@@ -185,7 +199,7 @@ export function DealPresentation({
     };
   }, []);
 
-  if (beats.length === 0 || visibleIndex < 0 || !geometry) return null;
+  if (beats.length === 0 || visibleIndex < 0) return null;
 
   const beat = beats[Math.min(visibleIndex, beats.length - 1)];
   if (!beat) return null;
@@ -195,7 +209,7 @@ export function DealPresentation({
     <div
       className="pointer-events-none absolute inset-0 z-30 overflow-hidden"
       aria-hidden="true"
-      data-deal-geometry-epoch={geometry.epoch}
+      data-deal-geometry-epoch={geometry?.epoch ?? 0}
     >
       <TravelingBack key={beat.id} beat={beat} pos={pos} reducedMotion={reducedMotion} geometry={geometry} />
     </div>
