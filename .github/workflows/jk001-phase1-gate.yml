@@ -3,6 +3,30 @@ name: JK-001 Phase 1 Gate
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'src/domain/cards.ts'
+      - 'src/domain/dealing.ts'
+      - 'src/domain/declarations.ts'
+      - 'src/domain/engine.ts'
+      - 'src/domain/gameConfig.ts'
+      - 'src/domain/scoring.ts'
+      - 'src/domain/premia.ts'
+      - 'src/domain/ranking.ts'
+      - 'src/domain/gameLifecycle.ts'
+      - 'src/domain/gameplayCommands.ts'
+      - 'src/domain/controller.ts'
+      - 'src/domain/projection.ts'
+      - 'src/server/**'
+      - 'src/services/authFunctions.ts'
+      - 'src/services/roomFunctions.ts'
+      - 'supabase/migrations/**'
+      - 'supabase/functions/verify-player-pin/**'
+      - 'supabase/functions/game-state/**'
+      - 'supabase/functions/room-commands/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'tsconfig*.json'
+      - 'vite.config.*'
   workflow_dispatch:
 
 jobs:
