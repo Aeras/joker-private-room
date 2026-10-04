@@ -97,13 +97,14 @@ function AnimatedTrickCard({
   const pos = posOf(viewerSeat, play.seatIndex);
   const winner = winnerSeat === play.seatIndex;
   const winnerPos = winnerSeat == null ? null : posOf(viewerSeat, winnerSeat);
-  const [arrived, setArrived] = useState(departing || reducedMotion || !geometry);
+  const [arrived, setArrived] = useState(departing || !geometry);
 
   useEffect(() => {
-    if (departing || reducedMotion || !geometry) {
+    if (departing || !geometry) {
       setArrived(true);
       return;
     }
+    setArrived(false);
     const frame = window.requestAnimationFrame(() => setArrived(true));
     return () => window.cancelAnimationFrame(frame);
   }, [departing, geometry, reducedMotion]);
@@ -162,10 +163,7 @@ function LocalFlightCard({
       setLanded(false);
       return;
     }
-    if (reducedMotion) {
-      setLanded(true);
-      return;
-    }
+    setLanded(false);
     const frame = window.requestAnimationFrame(() => setLanded(true));
     return () => window.cancelAnimationFrame(frame);
   }, [presentation.status, reducedMotion]);
@@ -295,8 +293,6 @@ export function TrickPresentation({
 
   useEffect(() => {
     if (!departing || projection.cards.currentTrick.length === 0) return;
-    // Canonical next-turn state is already live. Fast-forward the display-only
-    // departing cluster rather than allowing two primary trick truths to collide.
     clearTimers();
     setDeparting((value) => value ? { ...value, collecting: true } : value);
     const id = departing.id;
@@ -343,6 +339,9 @@ export function TrickPresentation({
       data-trick-presentation-id={departing?.id ?? "current"}
       aria-label={departing ? "Ολοκληρωμένη μπάζα" : "Τρέχουσα μπάζα"}
     >
+      <span className="sr-only" aria-live="polite">
+        {departing ? `Η μπάζα κερδήθηκε από τη θέση ${departing.winnerSeat + 1}.` : ""}
+      </span>
       {visibleCards.map((play) => (
         <AnimatedTrickCard
           key={`${departing?.id ?? "current"}:${play.seatIndex}:${play.card.id}`}
