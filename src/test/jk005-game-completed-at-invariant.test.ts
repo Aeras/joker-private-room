@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
-const migrationPath = "supabase/migrations/20261005005000_jk005_game_completed_at_invariant.sql";
+const migrationPath = "supabase/migrations/20261004215449_jk005_game_completed_at_invariant.sql";
 
 describe("JK-005 game completed_at invariant", () => {
   it("stamps completed_at whenever a game transitions to complete", () => {
