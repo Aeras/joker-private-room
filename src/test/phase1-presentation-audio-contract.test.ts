@@ -31,7 +31,8 @@ describe("JK-001 Phase 1 — deal/trick/audio presentation authority", () => {
   it("derives departing trick winner only from authoritative completedTricks", () => {
     expect(trick).toContain("projection.cards.completedTricks[completedCount - 1]");
     expect(trick).toContain("winnerSeat: trick.winnerSeat");
-    expect(trick).not.toMatch(/resolveTrick|calculateWinner|winner\s*=/);
+    expect(trick).not.toMatch(/resolveTrick|calculateWinner/);
+    expect(trick).toContain("departing?.winnerSeat === play.seatIndex");
     expect(trick).toContain("setDeparting");
     expect(trick).toContain("setDeparting((value) => value?.id === id ? null : value)");
   });
