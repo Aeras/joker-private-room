@@ -1,0 +1,84 @@
+name: JK-001 Phase 10 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+      - name: Phase 10 lint
+        id: phase10_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/bots/strategy.ts
+          src/bots/strategy.test.ts
+          --rule 'prettier/prettier: off'
+      - name: Canonical strategy profiles guard
+        id: strategy_profiles
+        continue-on-error: true
+        run: |
+          grep -q 'strong-basic-v1' src/bots/strategy.ts
+          grep -q 'memory-inference-v1' src/bots/strategy.ts
+          grep -q 'probability-simulation-v1' src/bots/strategy.ts
+          grep -q 'resolveBotStrategy' src/bots/strategy.ts
+          ! grep -q 'placeholderStrategy' src/bots/strategy.ts
+      - name: Fair PlayerView boundary guard
+        id: fair_view
+        continue-on-error: true
+        run: |
+          grep -q 'PlayerView' src/bots/strategy.ts
+          ! grep -q 'CanonicalGameState' src/bots/strategy.ts
+          ! grep -q 'gameState' src/bots/strategy.ts
+          ! grep -q 'opponentHands' src/bots/strategy.ts
+          ! grep -q 'deckOrder' src/bots/strategy.ts
+      - name: Tier 2 public inference guard
+        id: tier2_inference
+        continue-on-error: true
+        run: |
+          grep -q 'derivePublicInference' src/bots/strategy.ts
+          grep -q 'voidSuitsBySeat' src/bots/strategy.ts
+          grep -q 'playedCardIds' src/bots/strategy.ts
+      - name: Tier 3 bounded simulation guard
+        id: tier3_bounded
+        continue-on-error: true
+        run: |
+          grep -q 'MAX_TIER3_SIMULATION_BUDGET' src/bots/strategy.ts
+          grep -q 'createProbabilitySimulationStrategy' src/bots/strategy.ts
+          grep -q 'fairUnknownCards' src/bots/strategy.ts
+          grep -q 'seededRandom' src/bots/strategy.ts
+          grep -q 'simulationBudget === 0' src/bots/strategy.ts
+          ! grep -qi 'openai\|gemini\|anthropic\|llm' src/bots/strategy.ts
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build
+      - name: Require Phase 10 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.phase10_lint.outcome }}" = "success"
+          test "${{ steps.strategy_profiles.outcome }}" = "success"
+          test "${{ steps.fair_view.outcome }}" = "success"
+          test "${{ steps.tier2_inference.outcome }}" = "success"
+          test "${{ steps.tier3_bounded.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
