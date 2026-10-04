@@ -54,10 +54,7 @@ export function chooseUniformFirstRecipient(random: () => number): SeatIndex {
   return Math.floor(value * 4) as SeatIndex;
 }
 
-/**
- * First persisted canonical snapshot after room Start. No dealer-dependent
- * field is fabricated while the first-Ace ritual is unresolved.
- */
+/** First persisted canonical snapshot after room Start. */
 export function createInitialDealerBootstrapState(
   args: CreateDealerBootstrapStateArgs,
 ): CanonicalGameState {
@@ -87,10 +84,7 @@ export function createInitialDealerBootstrapState(
       currentActorSeat: null,
       phase: "INITIAL_DEALER_SELECTION",
     },
-    initialDealerSelection: {
-      status: "pending",
-      bootstrapActionId: args.bootstrapActionId,
-    },
+    initialDealerSelection: { status: "pending", bootstrapActionId: args.bootstrapActionId },
     seats: args.seats.map(canonicalSeat) as CanonicalGameState["seats"],
     cards: {
       deck: [],
@@ -116,27 +110,25 @@ export function createInitialDealerBootstrapState(
       cumulativeTotals: [0, 0, 0, 0],
       finalPlacements: [null, null, null, null],
     },
-    timing: {
-      currentHumanDeadline: null,
-      timeoutTakeoverActive: false,
-    },
+    timing: { currentHumanDeadline: null, timeoutTakeoverActive: false },
   };
 }
 
 /**
  * Resolves the complete public dealer ritual in one authoritative transition,
  * discards the temporary selection deck, independently shuffles a fresh full
- * gameplay deck and initializes Deal 1. Only the public revealed prefix is
- * retained from dealer selection.
+ * gameplay deck and initializes Deal 1. Only the public revealed prefix is retained.
  */
 export function resolveDealerBootstrapAndInitializeDealOne(
   args: ResolveDealerBootstrapArgs,
 ): CanonicalGameState {
   const { state } = args;
+  const pendingSelection = state.initialDealerSelection;
   if (
     state.lifecycle !== "starting" ||
     state.progression.phase !== "INITIAL_DEALER_SELECTION" ||
-    state.initialDealerSelection.status !== "pending"
+    !pendingSelection ||
+    pendingSelection.status !== "pending"
   ) {
     throw new Error("Initial dealer bootstrap is not pending");
   }
@@ -184,7 +176,7 @@ export function resolveDealerBootstrapAndInitializeDealOne(
     },
     initialDealerSelection: {
       status: "resolved",
-      bootstrapActionId: state.initialDealerSelection.bootstrapActionId,
+      bootstrapActionId: pendingSelection.bootstrapActionId,
       firstRecipientSeat,
       revealedSelectionCards,
       selectedDealerSeat: dealerSeat,
