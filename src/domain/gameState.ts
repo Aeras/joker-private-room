@@ -133,7 +133,8 @@ export interface CanonicalGameState {
   stateVersion: number;
   lifecycle: GameLifecycle;
   progression: CanonicalProgressionState;
-  initialDealerSelection: InitialDealerSelectionState;
+  /** Required on every persisted schema-v2 production snapshot. Optional only for legacy test fixtures. */
+  initialDealerSelection?: InitialDealerSelectionState;
   seats: [CanonicalSeatState, CanonicalSeatState, CanonicalSeatState, CanonicalSeatState];
   cards: CanonicalCardsState;
   declarations: CanonicalDeclarationState;
@@ -164,5 +165,8 @@ export function assertCanonicalGameStateIdentity(
   }
   if (!Number.isSafeInteger(state.stateVersion) || state.stateVersion < 1) {
     throw new Error("Canonical state version must be a positive safe integer");
+  }
+  if (state.stateSchemaVersion >= 2 && !state.initialDealerSelection) {
+    throw new Error("Schema-v2 canonical state requires initial dealer selection metadata");
   }
 }
