@@ -96,15 +96,18 @@ describe("full 24-deal production game simulation", () => {
   for (const seed of [1201, 1202, 1203]) {
     it(`completes all four rounds with mixed Tier 1/2/3 strategies (seed ${seed})`, () => {
       const state = simulate(seed);
+      const completedDeals = state.score.completedDeals ?? [];
+      const roundPremia = state.score.roundPremia ?? [];
+
       expect(state.lifecycle).toBe("complete");
       expect(state.progression.phase).toBe("GAME_COMPLETE");
       expect(state.progression.dealNumber).toBe(24);
-      expect(state.score.completedDeals).toHaveLength(24);
-      expect(state.score.roundPremia).toHaveLength(4);
+      expect(completedDeals).toHaveLength(24);
+      expect(roundPremia).toHaveLength(4);
       expect(state.score.finalPlacements.every((placement) => placement != null)).toBe(true);
-      expect(state.score.completedDeals.map((deal) => deal.dealNumber)).toEqual(Array.from({ length: 24 }, (_, index) => index + 1));
-      expect(state.score.completedDeals.every((deal) => deal.tricksTaken.reduce((sum, tricks) => sum + tricks, 0) === deal.cardsPerPlayer)).toBe(true);
-      expect(state.score.completedDeals.every((deal) => deal.declarations.reduce((sum, declaration) => sum + declaration, 0) !== deal.cardsPerPlayer)).toBe(true);
+      expect(completedDeals.map((deal) => deal.dealNumber)).toEqual(Array.from({ length: 24 }, (_, index) => index + 1));
+      expect(completedDeals.every((deal) => deal.tricksTaken.reduce((sum, tricks) => sum + tricks, 0) === deal.cardsPerPlayer)).toBe(true);
+      expect(completedDeals.every((deal) => deal.declarations.reduce((sum, declaration) => sum + declaration, 0) !== deal.cardsPerPlayer)).toBe(true);
       expect(state.cards.hands.every((hand) => hand.length === 0)).toBe(true);
     });
   }
