@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { nextSeat, type SeatIndex } from "@/domain/dealing";
 import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
@@ -76,7 +76,7 @@ function TravelingBack({
   geometry: TableGeometry | null;
 }) {
   const [arrived, setArrived] = useState(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     setArrived(false);
     const frame = window.requestAnimationFrame(() => setArrived(true));
     return () => window.cancelAnimationFrame(frame);
@@ -113,6 +113,9 @@ function TravelingBack({
  * Replays public deal counts as backs only. A session-scoped presentation marker
  * prevents historical deal bursts from replaying after refresh/reconnect while
  * still allowing the first live projection of a newly-created deal to animate.
+ *
+ * Once a deal presentation starts, its geometry snapshot and public sequence are frozen.
+ * Polling projections and later ResizeObserver epochs are not allowed to restart or cancel it.
  */
 export function DealPresentation({
   projection,
@@ -127,10 +130,13 @@ export function DealPresentation({
 }) {
   const previousGameId = useRef(projection.gameId);
   const previousStageKey = useRef<string | null>(null);
-  const previousGeometryEpoch = useRef(geometry?.epoch ?? 0);
   const [beats, setBeats] = useState<DealBeat[]>([]);
   const [visibleIndex, setVisibleIndex] = useState(-1);
+  const [runGeometry, setRunGeometry] = useState<TableGeometry | null>(null);
+  const [runViewerSeat, setRunViewerSeat] = useState<SeatIndex>(projection.viewerSeat);
   const timers = useRef<number[]>([]);
+  const onActiveChangeRef = useRef(onActiveChange);
+  onActiveChangeRef.current = onActiveChange;
   const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   const stage = stageFor(projection);
@@ -149,40 +155,44 @@ export function DealPresentation({
     }));
   }, [projection.progression.cardsPerPlayer, projection.progression.dealerSeat, stage, stageKey]);
 
-  const interrupt = () => {
+  const clearTimers = useCallback(() => {
     for (const timer of timers.current) window.clearTimeout(timer);
     timers.current = [];
+  }, []);
+
+  const clearPresentation = useCallback(() => {
+    clearTimers();
     setBeats([]);
     setVisibleIndex(-1);
-    onActiveChange?.(false);
-  };
+    setRunGeometry(null);
+    onActiveChangeRef.current?.(false);
+  }, [clearTimers]);
 
-  useEffect(() => {
-    const nextEpoch = geometry?.epoch ?? 0;
-    if (previousGeometryEpoch.current === nextEpoch) return;
-    previousGeometryEpoch.current = nextEpoch;
-    recordTimingDiagnostic("deal_geometry_changed", { geometryEpoch: nextEpoch });
-    interrupt();
-  }, [geometry?.epoch]);
-
-  useEffect(() => {
-    interrupt();
-
+  // Layout effect is intentional: when dealer intro releases its gate, the normal-deal
+  // gate is raised again before the browser can paint the real hand/declaration UI.
+  useLayoutEffect(() => {
     if (previousGameId.current !== projection.gameId) {
+      clearPresentation();
       previousGameId.current = projection.gameId;
       previousStageKey.current = null;
     }
+
     if (paused || !stageKey || sequence.length === 0 || alreadyPresented(stageKey)) {
       previousStageKey.current = stageKey;
-      return interrupt;
+      return;
     }
-    if (stageKey === previousStageKey.current && beats.length > 0) return interrupt;
+    if (stageKey === previousStageKey.current) return;
 
     startTimingDiagnosticSession(projection.gameId);
     previousStageKey.current = stageKey;
     markPresented(stageKey);
-    onActiveChange?.(true);
-    setBeats(sequence);
+    onActiveChangeRef.current?.(true);
+    const frozenSequence = sequence.map((beat) => ({ ...beat }));
+    const frozenGeometry = geometry;
+    const frozenViewerSeat = projection.viewerSeat;
+    setRunGeometry(frozenGeometry);
+    setRunViewerSeat(frozenViewerSeat);
+    setBeats(frozenSequence);
     setVisibleIndex(-1);
     if (stage !== "remaining") playGameSound("shuffle", `${projection.gameId}:${projection.progression.dealNumber}`);
 
@@ -192,12 +202,14 @@ export function DealPresentation({
       stage,
       dealNumber: projection.progression.dealNumber,
       dealerSeat: projection.progression.dealerSeat ?? -1,
-      cardCount: sequence.length,
+      cardCount: frozenSequence.length,
       staggerMs,
       travelMs: reducedMotion ? 75 : 260,
       tailMs,
+      frozenGeometryEpoch: frozenGeometry?.epoch ?? 0,
     });
-    sequence.forEach((beat, index) => {
+
+    frozenSequence.forEach((beat, index) => {
       timers.current.push(window.setTimeout(() => {
         setVisibleIndex(index);
         recordTimingDiagnostic("deal_card_visible", {
@@ -209,28 +221,25 @@ export function DealPresentation({
         playGameSound("deal", beat.id);
       }, index * staggerMs));
     });
-    const completeAt = sequence.length * staggerMs + tailMs;
-    timers.current.push(window.setTimeout(
-      () => {
-        recordTimingDiagnostic("deal_sequence_complete", {
-          stage,
-          scheduledOffsetMs: completeAt,
-        });
-        interrupt();
-      },
-      completeAt,
-    ));
 
-    return interrupt;
-  }, [paused, projection.gameId, projection.progression.dealNumber, reducedMotion, sequence, stage, stageKey]);
+    const completeAt = frozenSequence.length * staggerMs + tailMs;
+    timers.current.push(window.setTimeout(() => {
+      recordTimingDiagnostic("deal_sequence_complete", {
+        stage,
+        scheduledOffsetMs: completeAt,
+      });
+      clearPresentation();
+    }, completeAt));
+  }, [clearPresentation, paused, projection.gameId, projection.progression.dealNumber, reducedMotion, sequence, stage, stageKey]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const visibility = () => {
       if (document.visibilityState !== "visible") {
         recordTimingDiagnostic("deal_sequence_interrupted", { visibilityState: document.visibilityState });
-        interrupt();
+        clearPresentation();
       }
     };
+    const interrupt = () => clearPresentation();
     window.addEventListener("orientationchange", interrupt);
     window.addEventListener("blur", interrupt);
     document.addEventListener("visibilitychange", visibility);
@@ -238,23 +247,23 @@ export function DealPresentation({
       window.removeEventListener("orientationchange", interrupt);
       window.removeEventListener("blur", interrupt);
       document.removeEventListener("visibilitychange", visibility);
-      interrupt();
+      clearTimers();
     };
-  }, []);
+  }, [clearPresentation, clearTimers]);
 
   if (beats.length === 0 || visibleIndex < 0) return null;
 
   const beat = beats[Math.min(visibleIndex, beats.length - 1)];
   if (!beat) return null;
-  const pos = visualPosition(projection.viewerSeat, beat.seat);
+  const pos = visualPosition(runViewerSeat, beat.seat);
 
   return (
     <div
       className="pointer-events-none absolute inset-0 z-30 overflow-hidden"
       aria-hidden="true"
-      data-deal-geometry-epoch={geometry?.epoch ?? 0}
+      data-deal-geometry-epoch={runGeometry?.epoch ?? 0}
     >
-      <TravelingBack key={beat.id} beat={beat} pos={pos} geometry={geometry} />
+      <TravelingBack key={beat.id} beat={beat} pos={pos} geometry={runGeometry} />
     </div>
   );
 }
