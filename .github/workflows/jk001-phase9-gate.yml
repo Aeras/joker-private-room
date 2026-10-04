@@ -1,0 +1,99 @@
+name: JK-001 Phase 9 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+      - name: Phase 9 lint
+        id: phase9_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/domain/gameState.ts
+          src/domain/dealerBootstrap.ts
+          src/domain/dealerBootstrap.test.ts
+          src/domain/projection.ts
+          src/domain/gameplayCommands.ts
+          src/server/dealerBootstrap.ts
+          src/server/internalDeterminism.ts
+          src/server/internalDeterminism.test.ts
+          src/server/gamePersistence.ts
+          src/services/roomFunctions.ts
+          src/services/gameProjectionFunctions.ts
+          supabase/functions/game-state/index.ts
+          --rule 'prettier/prettier: off'
+      - name: No fake dealer guard
+        id: no_fake_dealer
+        continue-on-error: true
+        run: |
+          grep -q 'dealerSeat: null' src/domain/dealerBootstrap.ts
+          grep -q 'firstDeclarerSeat: null' src/domain/dealerBootstrap.ts
+          grep -q 'firstLeaderSeat: null' src/domain/dealerBootstrap.ts
+          ! grep -q 'firstDealerRecipientSeat.*0' src/domain/dealerBootstrap.ts
+      - name: Server-owned randomness and identity guard
+        id: server_random
+        continue-on-error: true
+        run: |
+          grep -q 'stableInternalActionId' src/server/dealerBootstrap.ts
+          grep -q 'deterministicRandomUnits' src/server/dealerBootstrap.ts
+          grep -q 'initial-dealer-bootstrap-v1' src/server/dealerBootstrap.ts
+          ! grep -q 'dealerSeat: z\.' src/services/gameProjectionFunctions.ts
+          ! grep -q 'firstRecipientSeat: z\.' src/services/gameProjectionFunctions.ts
+      - name: Separate deck boundary guard
+        id: separate_decks
+        continue-on-error: true
+        run: |
+          grep -q 'selectionDeck = shuffleCards(createDeck()' src/domain/dealerBootstrap.ts
+          grep -q 'gameplayDeck = shuffleCards(createDeck()' src/domain/dealerBootstrap.ts
+          grep -q 'revealedSelectionCards' src/domain/dealerBootstrap.ts
+          ! grep -q 'selectionDeck.slice(selection.revealedCount)' src/domain/dealerBootstrap.ts
+      - name: Schema version guard
+        id: schema_version
+        continue-on-error: true
+        run: |
+          grep -q 'GAME_STATE_SCHEMA_VERSION = 2' src/domain/gameState.ts
+          grep -q 'state_schema_version: 2' supabase/functions/game-state/index.ts
+          grep -q 'Schema-v2 canonical state requires dealer-selection metadata' src/server/gamePersistence.ts
+      - name: Bootstrap remains internal
+        id: internal_bootstrap
+        continue-on-error: true
+        run: |
+          grep -q 'action === "bootstrap"' supabase/functions/game-state/index.ts
+          grep -q 'ensureInitialDealerBootstrap' src/services/roomFunctions.ts
+          ! grep -q 'select_initial_dealer' src/domain/gameplayCommands.ts
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build
+      - name: Require Phase 9 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.phase9_lint.outcome }}" = "success"
+          test "${{ steps.no_fake_dealer.outcome }}" = "success"
+          test "${{ steps.server_random.outcome }}" = "success"
+          test "${{ steps.separate_decks.outcome }}" = "success"
+          test "${{ steps.schema_version.outcome }}" = "success"
+          test "${{ steps.internal_bootstrap.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
