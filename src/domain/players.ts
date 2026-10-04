@@ -1,4 +1,5 @@
 /** Player, seat and room domain types (backend-agnostic). */
+import type { DialogueIntensity } from "./dialoguePolicy";
 import type { RulesetId } from "./rulesets";
 
 export type PlayerRole = "host" | "player";
@@ -50,9 +51,14 @@ export interface Seat {
 }
 
 export interface BotSettings {
+  /** Legacy field name retained for room wire compatibility; this is the speech master gate. */
   botsTalk: boolean;
   /** Only meaningful when botsTalk is true. Never affects play strength/rules. */
   allowProfanity: boolean;
+  /** Optional external-AI dialogue path; false means preset-only dialogue. */
+  aiEnabled: boolean;
+  /** Presentation frequency only; never a bot strategy input. */
+  intensity: DialogueIntensity;
 }
 
 export type RoomStatus = "lobby" | "playing";

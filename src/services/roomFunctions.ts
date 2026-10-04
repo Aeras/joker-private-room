@@ -69,6 +69,7 @@ const actionId = z.string().uuid();
 const roomVersion = z.number().int().nonnegative();
 const seatIndex = z.number().int().min(0).max(3);
 const botId = z.string().min(1).max(64);
+const dialogueIntensity = z.enum(["conservative", "normal", "chaos"]);
 
 export const createProductionRoom = createServerFn({ method: "POST" })
   .validator(
@@ -77,6 +78,8 @@ export const createProductionRoom = createServerFn({ method: "POST" })
       rulesetId: z.enum(["popular", "classic", "panagiotis"]),
       botsTalk: z.boolean(),
       allowProfanity: z.boolean(),
+      aiEnabled: z.boolean(),
+      intensity: dialogueIntensity,
     }),
   )
   .handler(async ({ data }) =>
@@ -85,7 +88,9 @@ export const createProductionRoom = createServerFn({ method: "POST" })
       actionId: data.actionId,
       rulesetId: data.rulesetId,
       botsTalk: data.botsTalk,
-      allowProfanity: data.allowProfanity,
+      allowProfanity: data.botsTalk && data.allowProfanity,
+      aiEnabled: data.botsTalk && data.aiEnabled,
+      intensity: data.intensity,
     }),
   );
 
