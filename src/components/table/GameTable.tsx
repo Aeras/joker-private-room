@@ -123,6 +123,8 @@ export function GameTable({
   const [pendingDeclarationValue, setPendingDeclarationValue] = useState<number | null>(null);
   const [localPlayPresentation, setLocalPlayPresentation] = useState<LocalPlayPresentation | null>(null);
   const [dealerIntroActive, setDealerIntroActive] = useState(() => dealerSelectionNeedsPresentation(projection));
+  const [dealPresentationActive, setDealPresentationActive] = useState(false);
+  const startupPresentationActive = dealerIntroActive || dealPresentationActive;
   const clearLocalFlight = useCallback(() => setLocalPlayPresentation(null), []);
 
   const names = room.seats.map((seat) => {
@@ -153,6 +155,11 @@ export function GameTable({
 
   const nameAt = (seat: number) => names[seat] ?? `Θέση ${seat + 1}`;
   const seatAt = (pos: Pos) => ((localSeat + pos) % SEAT_COUNT) as Pos;
+  const presentedPhaseMessage = dealerIntroActive
+    ? "Επιλογή πρώτου dealer"
+    : dealPresentationActive
+      ? "Μοίρασμα φύλλων"
+      : phaseMessage(projection);
 
   useEffect(() => {
     const update = () => setPortrait(window.innerHeight > window.innerWidth);
@@ -273,16 +280,16 @@ export function GameTable({
       <TableSeat
         seat={roomSeat}
         orientation={orientation}
-        showCards={pos !== 0}
+        showCards={pos !== 0 && !startupPresentationActive}
         local={pos === 0}
         stats={{
           totalScore: projection.score.cumulativeTotals[seat],
-          declaration: projection.declarations.values[seat],
+          declaration: startupPresentationActive ? null : projection.declarations.values[seat],
           tricksTaken: projection.score.tricksTaken[seat],
-          isDealer: projection.progression.dealerSeat === seat,
-          isActive: projection.progression.currentActorSeat === seat,
-          cardCount: publicCardCount(projection, seat),
-          humanDeadline: projection.progression.currentActorSeat === seat ? publicDeadline : null,
+          isDealer: !dealerIntroActive && projection.progression.dealerSeat === seat,
+          isActive: !startupPresentationActive && projection.progression.currentActorSeat === seat,
+          cardCount: startupPresentationActive ? 0 : publicCardCount(projection, seat),
+          humanDeadline: !startupPresentationActive && projection.progression.currentActorSeat === seat ? publicDeadline : null,
         }}
       />
     );
@@ -321,7 +328,7 @@ export function GameTable({
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="ml-2 rounded-lg bg-black/60 px-2 py-1 text-xs text-white/75 backdrop-blur">
-          Γύρος {projection.progression.round} · Μοιρασιά {projection.progression.dealNumber}/24 · {phaseMessage(projection)}
+          Γύρος {projection.progression.round} · Μοιρασιά {projection.progression.dealNumber}/24 · {presentedPhaseMessage}
         </div>
         <div className="ml-auto flex items-center gap-1 pr-[max(0rem,env(safe-area-inset-right))]">
           <SoundToggle />
@@ -343,9 +350,11 @@ export function GameTable({
           <div ref={tableGeometry.rightSeatRef} className="absolute right-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(3, "vertical")}</div>
 
           <DealerSelectionPresentation projection={projection} geometry={tableGeometry.geometry} onActiveChange={setDealerIntroActive} />
-          <TrickPresentation projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} onLocalFlightSettled={clearLocalFlight} />
+          {!startupPresentationActive && (
+            <TrickPresentation projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} onLocalFlightSettled={clearLocalFlight} />
+          )}
 
-          {projection.cards.exposedTrumpCard && (
+          {!startupPresentationActive && projection.cards.exposedTrumpCard && (
             <div className="absolute left-[59%] top-[54%] -translate-y-1/2 [--card-w:clamp(2rem,4vw,3.4rem)]">
               <div className="mb-1 text-center text-[10px] uppercase tracking-wider text-white/60">Ατού</div>
               <PlayingCard card={projection.cards.exposedTrumpCard} />
@@ -354,20 +363,25 @@ export function GameTable({
         </div>
       </main>
 
-      <DealPresentation projection={projection} geometry={tableGeometry.geometry} paused={dealerIntroActive} />
+      <DealPresentation
+        projection={projection}
+        geometry={tableGeometry.geometry}
+        paused={dealerIntroActive}
+        onActiveChange={setDealPresentationActive}
+      />
 
       <footer className="absolute inset-x-0 bottom-[max(.15rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center">
         {error && <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>}
 
-        {declarationAction && pendingDeclarationValue == null && (
+        {!startupPresentationActive && declarationAction && pendingDeclarationValue == null && (
           <DeclarationPicker values={declarationValues} legalValues={declarationAction.values} busy={busy} onSelect={(value) => void submitDeclaration(value)} />
         )}
 
-        {pendingDeclarationValue != null && (
+        {!startupPresentationActive && pendingDeclarationValue != null && (
           <div className="mb-2 rounded-lg bg-black/70 px-3 py-1 text-xs text-white/60">Η δήλωση καταχωρείται…</div>
         )}
 
-        {trumpAction && (
+        {!startupPresentationActive && trumpAction && (
           <div className="mb-2 flex max-w-[94vw] flex-wrap justify-center gap-1 rounded-xl bg-black/70 p-2 backdrop-blur">
             {trumpAction.suits.map((suit) => (
               <JButton key={suit ?? "none"} size="sm" disabled={busy} onClick={() => onCommand({ type: "choose_trump", suit })}>
@@ -377,7 +391,7 @@ export function GameTable({
           </div>
         )}
 
-        {jokerAction && (
+        {!startupPresentationActive && jokerAction && (
           <div className="mb-2 flex max-w-[94vw] flex-wrap justify-center gap-1 rounded-xl bg-black/70 p-2 backdrop-blur">
             {jokerAction.options.map((semantic, index) => (
               <JButton key={`${semantic.context}-${semantic.mode}-${index}`} size="sm" disabled={busy} onClick={() => onCommand({ type: "choose_joker_semantic", semantic })}>
@@ -387,16 +401,16 @@ export function GameTable({
           </div>
         )}
 
-        {reclaimAction && (
+        {!startupPresentationActive && reclaimAction && (
           <JButton className="mb-2" variant="outlineGold" size="sm" disabled={busy} onClick={onReclaim}>Πάρε ξανά τον έλεγχο</JButton>
         )}
 
         <LocalHandRow
-          cards={projection.cards.ownHand}
-          visible={projection.cards.ownHandVisible}
-          legalCardIds={playAction?.cardIds ?? []}
-          blocked={busy || Boolean(submittingCardId)}
-          pendingCardId={localPlayPresentation?.cardId ?? null}
+          cards={startupPresentationActive ? [] : projection.cards.ownHand}
+          visible={!startupPresentationActive && projection.cards.ownHandVisible}
+          legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []}
+          blocked={startupPresentationActive || busy || Boolean(submittingCardId)}
+          pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null}
           authorityKey={handAuthorityKey}
           geometry={tableGeometry.geometry}
           onCommit={commitCard}
