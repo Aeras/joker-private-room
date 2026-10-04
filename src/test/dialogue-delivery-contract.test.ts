@@ -6,7 +6,11 @@ const migration = readFileSync(
   "utf8",
 );
 const hardening = readFileSync(
-  "supabase/migrations/20261004113000_jk001_ai_banter_phase_c_delivery_hardening.sql",
+  "supabase/migrations/20261004112919_jk001_ai_banter_phase_c_delivery_hardening.sql",
+  "utf8",
+);
+const serverEvents = readFileSync(
+  "supabase/migrations/20261004114600_jk001_ai_banter_phase_c_server_event_resolution.sql",
   "utf8",
 );
 const edge = readFileSync("supabase/functions/ai-banter/index.ts", "utf8");
@@ -21,7 +25,6 @@ describe("AI banter Phase C delivery contract", () => {
     expect(migration).toContain("enable row level security");
     expect(migration).toContain("revoke all on private.dialogue_messages from public, anon, authenticated");
     expect(migration).not.toContain("game_history");
-    expect(migration).not.toContain("canonical_state");
   });
 
   it("enforces dedup, cooldown, human rate limiting and depth at the server boundary", () => {
@@ -40,17 +43,32 @@ describe("AI banter Phase C delivery contract", () => {
     expect(service).not.toContain("viewerSeat");
   });
 
-  it("accepts only the fixed dialogue event vocabulary and stable event identities", () => {
-    expect(service).toContain("const dialogueEventType = z.enum([");
-    expect(edge).toContain("const DIALOGUE_EVENT_TYPES = new Set<DialogueEventType>");
-    expect(edge).toContain("hasStableEventIdentity");
-    expect(edge).toContain('type === "HUMAN_MESSAGE_TO_BOT"');
-    expect(edge).toContain('type === "BOT_MESSAGE_TO_BOT"');
+  it("resolves state-derived event type and data from committed server-owned game state", () => {
+    expect(edge).toContain('body?.action === "generate-state"');
+    expect(edge).toContain('admin.rpc("resolve_dialogue_state_event_internal"');
+    expect(edge).not.toContain("body?.event");
+    expect(service).toContain("eventId: dialogueEventId");
+    expect(service).not.toContain("const event = z.object");
+    expect(serverEvents).toContain("g.canonical_state");
+    expect(serverEvents).toContain("v_event_type <> v_expected_type");
+    expect(serverEvents).toContain("v_speaker_bot_id := v_bots[");
+    expect(serverEvents).toContain("STALE_DIALOGUE_EVENT");
+  });
+
+  it("builds human and bot-reply event payloads server-side", () => {
+    expect(service).toContain('action: "human-message"');
+    expect(service).toContain('action: "bot-reply"');
+    expect(edge).toContain('type: "HUMAN_MESSAGE_TO_BOT"');
+    expect(edge).toContain('type: "BOT_MESSAGE_TO_BOT"');
+    expect(edge).toContain('source.replyDepth !== 0');
+    expect(edge).toContain('id: `reply:${body.sourceMessageId}:${responderBotId}`');
+    expect(table).toContain("requestBotDialogueReply");
+    expect(table).not.toContain('type: "BOT_MESSAGE_TO_BOT"');
   });
 
   it("builds recent provider context from server-side ephemeral delivery, never client-supplied history", () => {
     expect(edge).toContain('admin.rpc("list_dialogue_messages_internal"');
-    expect(edge).toContain("recentBanter: recentLines(recentData?.messages)");
+    expect(edge).toContain("recentBanter: recentLines(latestRecentData?.messages)");
     expect(edge).not.toContain("body?.recentBanter");
   });
 
