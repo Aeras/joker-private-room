@@ -71,8 +71,7 @@ function dealScoresFor(
 }
 
 function isLastDealOfRound(state: CanonicalGameState): boolean {
-  const roundDeals = dealsOfPhase(state.progression.round);
-  return state.progression.indexInPhase === roundDeals.length;
+  return state.progression.indexInPhase === dealsOfPhase(state.progression.round).length;
 }
 
 function initialDeclarations(dealerSeat: SeatIndex, firstDeclarerSeat: SeatIndex, cardsPerPlayer: number) {
@@ -91,6 +90,7 @@ function initialDeclarations(dealerSeat: SeatIndex, firstDeclarerSeat: SeatIndex
   } satisfies CanonicalGameState["declarations"];
 }
 
+/** Prepares the next deal inside the caller's single state-version transition. */
 function nextDealState(
   state: CanonicalGameState,
   random: () => number,
@@ -105,7 +105,7 @@ function nextDealState(
   const firstLeaderSeat = firstDeclarerSeat;
   const deck = shuffleCards(createDeck(), random);
   const actorController = state.seats[firstDeclarerSeat].controller;
-  const baseTiming = {
+  const timing = {
     currentHumanDeadline:
       actorController === "human" ? humanDeadlineFromServerTime(serverNow) : null,
     timeoutTakeoverActive: actorController === "temporary_bot",
@@ -115,7 +115,6 @@ function nextDealState(
     const initial = dealNineCardInitial(deck, dealerSeat);
     return {
       ...state,
-      stateVersion: state.stateVersion + 1,
       lifecycle: "active",
       progression: {
         round: nextInfo.phase,
@@ -145,14 +144,13 @@ function nextDealState(
         tricksTaken: [0, 0, 0, 0],
         currentDealScores: [null, null, null, null],
       },
-      timing: baseTiming,
+      timing,
     };
   }
 
   const dealt = dealWithTrumpReveal(deck, dealerSeat, nextInfo.cardsPerPlayer);
   return {
     ...state,
-    stateVersion: state.stateVersion + 1,
     lifecycle: "active",
     progression: {
       round: nextInfo.phase,
@@ -182,7 +180,7 @@ function nextDealState(
       tricksTaken: [0, 0, 0, 0],
       currentDealScores: [null, null, null, null],
     },
-    timing: baseTiming,
+    timing,
   };
 }
 
@@ -196,8 +194,7 @@ function settleDeal(
   if (state.cards.hands.some((hand) => hand.length !== 0) || state.cards.currentTrick.length !== 0) {
     return { ok: false, code: "INVALID_LIFECYCLE_STATE" };
   }
-  const trickTotal = state.score.tricksTaken.reduce((sum, value) => sum + value, 0);
-  if (trickTotal !== state.progression.cardsPerPlayer) {
+  if (state.score.tricksTaken.reduce((sum, value) => sum + value, 0) !== state.progression.cardsPerPlayer) {
     return { ok: false, code: "INVALID_LIFECYCLE_STATE" };
   }
 
@@ -244,8 +241,12 @@ function settleDeal(
   }
   if (!random) return { ok: false, code: "INVALID_LIFECYCLE_STATE" };
   try {
-    const next = nextDealState(scored, random, serverNow);
-    return { ok: true, changed: true, state: next, transition: "DEAL_SETTLED" };
+    return {
+      ok: true,
+      changed: true,
+      state: nextDealState(scored, random, serverNow),
+      transition: "DEAL_SETTLED",
+    };
   } catch {
     return { ok: false, code: "INVALID_LIFECYCLE_STATE" };
   }
@@ -293,9 +294,7 @@ function settleRound(
 
   if (finalDeal) {
     const placements: [number | null, number | null, number | null, number | null] = [null, null, null, null];
-    for (const ranked of rankFinalScores(totalsAfterPremia)) {
-      placements[ranked.seatIndex] = ranked.placement;
-    }
+    for (const ranked of rankFinalScores(totalsAfterPremia)) placements[ranked.seatIndex] = ranked.placement;
     return {
       ok: true,
       changed: true,
@@ -329,17 +328,18 @@ function settleRound(
         roundPremia: premiaHistory,
       },
     };
-    const next = nextDealState(settled, random, serverNow);
-    return { ok: true, changed: true, state: next, transition: "ROUND_SETTLED" };
+    return {
+      ok: true,
+      changed: true,
+      state: nextDealState(settled, random, serverNow),
+      transition: "ROUND_SETTLED",
+    };
   } catch {
     return { ok: false, code: "INVALID_LIFECYCLE_STATE" };
   }
 }
 
-/**
- * Settles one internal lifecycle boundary. Randomness is required only when the
- * transition also initializes the next deal. Game rules stay pure and testable.
- */
+/** Settles exactly one persisted internal lifecycle boundary. */
 export function settleCanonicalLifecycle(args: {
   state: CanonicalGameState;
   nextDealRandom?: () => number;
