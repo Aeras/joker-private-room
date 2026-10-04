@@ -10,7 +10,7 @@ const hardening = readFileSync(
   "utf8",
 );
 const serverEvents = readFileSync(
-  "supabase/migrations/20261004114600_jk001_ai_banter_phase_c_server_event_resolution.sql",
+  "supabase/migrations/20261004115502_jk001_ai_banter_phase_c_server_event_resolution.sql",
   "utf8",
 );
 const edge = readFileSync("supabase/functions/ai-banter/index.ts", "utf8");
