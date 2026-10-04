@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("JK-002 active-game lookup and routing", () => {
   it("reuses the existing canonical active-game invariant and keeps lookup service-role only", () => {
-    const migration = read("supabase/migrations/20261004181700_jk002_active_game_lookup.sql");
+    const migration = read("supabase/migrations/20261004160830_jk002_active_game_lookup.sql");
     expect(migration).toContain("private.active_game_for_player_internal(v_player_id)");
     expect(migration).toContain("validate_player_session_internal(p_session_token)");
     expect(migration).toContain("revoke all on function public.get_current_active_game_internal(text) from public, anon, authenticated");
