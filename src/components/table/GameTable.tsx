@@ -10,16 +10,19 @@ import type { LocalLegalAction, PlayerGameProjection } from "@/domain/projection
 import type { ScoreSheet } from "@/domain/scoreSheet";
 import { JButton } from "../joker/JButton";
 import { PlayingCard } from "../joker/PlayingCard";
+import { DealerSelectionPresentation } from "./DealerSelectionPresentation";
 import { DealPresentation } from "./DealPresentation";
 import { DeclarationPicker } from "./DeclarationPicker";
 import { LocalHandRow } from "./LocalHandRow";
 import {
-  projectionContainsPendingCardInCurrentTrick,
+  projectionContainsPendingCard,
   type LocalPlayPresentation,
 } from "./localPlayPresentation";
+import { dealerSelectionNeedsPresentation } from "./dealerSelectionPresentationModel";
 import { SoundToggle } from "./SoundToggle";
 import { Scoreboard } from "./Scoreboard";
 import { TableSeat } from "./TableSeat";
+import { TableUtilityMenu } from "./TableUtilityMenu";
 import { TrickPresentation } from "./TrickPresentation";
 import { useTableGeometry, type RectLike } from "./useTableGeometry";
 
@@ -66,24 +69,20 @@ function publicCardCount(projection: PlayerGameProjection, seat: number): number
 }
 
 function phaseMessage(projection: PlayerGameProjection): string {
-  if (projection.lifecycle === "complete") return "Η παρτίδα ολοκληρώθηκε";
+  if (projection.lifecycle === "complete") {
+    return projection.termination?.kind === "host_ended"
+      ? "Η παρτίδα τερματίστηκε"
+      : "Η παρτίδα ολοκληρώθηκε";
+  }
   switch (projection.progression.phase) {
-    case "INITIAL_DEALER_SELECTION":
-      return "Επιλογή πρώτου dealer";
-    case "NINE_CARD_TRUMP_CHOICE":
-      return "Επιλογή ατού για το 9φυλλο";
-    case "DECLARATION":
-      return "Δηλώσεις";
-    case "CARD_PLAY":
-      return "Παίξιμο φύλλου";
-    case "JOKER_DECISION":
-      return "Επιλογή Joker";
-    case "DEAL_RESULT":
-      return "Υπολογισμός μοιρασιάς";
-    case "PHASE_RESULT":
-      return "Υπολογισμός πρέμιας";
-    default:
-      return "Η παρτίδα εξελίσσεται";
+    case "INITIAL_DEALER_SELECTION": return "Επιλογή πρώτου dealer";
+    case "NINE_CARD_TRUMP_CHOICE": return "Επιλογή ατού για το 9φυλλο";
+    case "DECLARATION": return "Δηλώσεις";
+    case "CARD_PLAY": return "Παίξιμο φύλλου";
+    case "JOKER_DECISION": return "Επιλογή Joker";
+    case "DEAL_RESULT": return "Υπολογισμός μοιρασιάς";
+    case "PHASE_RESULT": return "Υπολογισμός πρέμιας";
+    default: return "Η παρτίδα εξελίσσεται";
   }
 }
 
@@ -103,6 +102,7 @@ export function GameTable({
   error,
   onCommand,
   onReclaim,
+  onEndGame,
 }: {
   room: Room;
   projection: PlayerGameProjection;
@@ -110,6 +110,7 @@ export function GameTable({
   error: string | null;
   onCommand: (command: GameplayCommand) => Promise<PlayerGameProjection | null>;
   onReclaim: () => Promise<void>;
+  onEndGame: () => Promise<boolean>;
 }) {
   const tableRootRef = useRef<HTMLDivElement>(null);
   const playSubmissionLock = useRef(false);
@@ -119,7 +120,9 @@ export function GameTable({
   const [fullscreen, setFullscreen] = useState(false);
   const [portrait, setPortrait] = useState(false);
   const [submittingCardId, setSubmittingCardId] = useState<string | null>(null);
+  const [pendingDeclarationValue, setPendingDeclarationValue] = useState<number | null>(null);
   const [localPlayPresentation, setLocalPlayPresentation] = useState<LocalPlayPresentation | null>(null);
+  const [dealerIntroActive, setDealerIntroActive] = useState(() => dealerSelectionNeedsPresentation(projection));
   const clearLocalFlight = useCallback(() => setLocalPlayPresentation(null), []);
 
   const names = room.seats.map((seat) => {
@@ -137,6 +140,8 @@ export function GameTable({
   const declarationValues = declarationAction
     ? Array.from({ length: projection.progression.cardsPerPlayer + 1 }, (_, value) => value)
     : [];
+  const viewerOccupant = room.seats[localSeat]?.occupant;
+  const isHost = viewerOccupant?.type === "human" && viewerOccupant.player.id === room.hostId;
   const handAuthorityKey = [
     projection.gameId,
     projection.stateVersion,
@@ -173,6 +178,16 @@ export function GameTable({
     );
   }, [tableGeometry.geometry?.epoch]);
 
+  useEffect(() => {
+    if (!declarationAction) setPendingDeclarationValue(null);
+  }, [projection.stateVersion, declarationAction]);
+
+  useEffect(() => {
+    setDealerIntroActive(dealerSelectionNeedsPresentation(projection));
+  }, [projection.gameId, projection.initialDealerSelection?.status === "resolved"
+    ? projection.initialDealerSelection.resolvedAtStateVersion
+    : null]);
+
   const commitCard = async (cardId: string, releaseRect: RectLike) => {
     if (!playAction?.cardIds.includes(cardId) || busy || playSubmissionLock.current) return;
     const card = projection.cards.ownHand.find((candidate) => candidate.id === cardId);
@@ -205,9 +220,15 @@ export function GameTable({
         authoritative.gameId !== presentation.gameId ||
         authoritative.progression.dealNumber !== presentation.dealNumber ||
         authoritative.stateVersion <= presentation.sourceStateVersion ||
-        !projectionContainsPendingCardInCurrentTrick(presentation, authoritative.cards.currentTrick)
+        !projectionContainsPendingCard(
+          presentation,
+          authoritative.cards.currentTrick,
+          authoritative.cards.completedTricks,
+        )
       ) {
-        setLocalPlayPresentation(null);
+        setLocalPlayPresentation((current) =>
+          current && current.cardId === cardId ? { ...current, status: "rejected" } : current,
+        );
         return;
       }
       setLocalPlayPresentation((current) =>
@@ -221,10 +242,18 @@ export function GameTable({
     }
   };
 
+  const submitDeclaration = async (value: number) => {
+    if (!declarationAction?.values.includes(value) || pendingDeclarationValue != null || busy) return;
+    setPendingDeclarationValue(value);
+    const result = await onCommand({ type: "declare", value });
+    if (!result) setPendingDeclarationValue(null);
+  };
+
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) {
-        await tableRootRef.current?.requestFullscreen();
+        const root = document.getElementById("table-fullscreen-root") ?? tableRootRef.current;
+        await root?.requestFullscreen();
         const orientation = screen.orientation as OrientationLock;
         await orientation.lock?.("landscape").catch(() => undefined);
       } else {
@@ -239,8 +268,7 @@ export function GameTable({
     const seat = seatAt(pos);
     const roomSeat = room.seats[seat];
     if (!roomSeat) return null;
-    const publicDeadline =
-      projection.timing?.currentHumanDeadline ?? projection.local.humanDeadline;
+    const publicDeadline = projection.timing?.currentHumanDeadline ?? projection.local.humanDeadline;
     return (
       <TableSeat
         seat={roomSeat}
@@ -260,29 +288,18 @@ export function GameTable({
     );
   };
 
+  const forcedEnd = projection.termination?.kind === "host_ended";
   const finalRows =
-    projection.lifecycle === "complete"
+    projection.lifecycle === "complete" && !forcedEnd
       ? projection.score.finalPlacements
-          .map((placement, seat) => ({
-            seat,
-            placement,
-            score: projection.score.cumulativeTotals[seat] ?? 0,
-          }))
+          .map((placement, seat) => ({ seat, placement, score: projection.score.cumulativeTotals[seat] ?? 0 }))
           .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99) || b.score - a.score)
       : [];
 
   return (
-    <div
-      ref={tableRootRef}
-      className="joker-room relative h-dvh w-full overflow-hidden bg-[#090b09]"
-    >
+    <div ref={tableRootRef} className="joker-room relative h-dvh w-full overflow-hidden bg-[#090b09]">
       {assets.tableArt && (
-        <img
-          src={assets.tableArt}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover object-center select-none"
-        />
+        <img src={assets.tableArt} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center select-none" />
       )}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/25" />
 
@@ -291,9 +308,7 @@ export function GameTable({
           <div className="max-w-sm rounded-3xl border border-primary/35 bg-card/95 p-6 shadow-2xl">
             <div className="mb-3 text-4xl">↻</div>
             <div className="font-display text-xl text-primary">Γύρισε τη συσκευή οριζόντια</div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Το τραπέζι είναι σχεδιασμένο για landscape προβολή.
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">Το τραπέζι είναι σχεδιασμένο για landscape προβολή.</p>
             <JButton className="mt-5" variant="outlineGold" onClick={toggleFullscreen}>
               <Maximize className="h-4 w-4" /> Πλήρης οθόνη
             </JButton>
@@ -302,37 +317,20 @@ export function GameTable({
       )}
 
       <header className="absolute inset-x-0 top-0 z-50 flex items-center gap-1 px-[max(.35rem,env(safe-area-inset-left))] pt-[max(.25rem,env(safe-area-inset-top))]">
-        <Link
-          to="/lobby"
-          search={{ code: room.code }}
-          aria-label="Πίσω"
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white/75 backdrop-blur"
-        >
+        <Link to="/lobby" search={{ code: room.code }} aria-label="Πίσω" className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white/75 backdrop-blur">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="ml-2 rounded-lg bg-black/60 px-2 py-1 text-xs text-white/75 backdrop-blur">
-          Γύρος {projection.progression.round} · Μοιρασιά {projection.progression.dealNumber}/24 ·{" "}
-          {phaseMessage(projection)}
+          Γύρος {projection.progression.round} · Μοιρασιά {projection.progression.dealNumber}/24 · {phaseMessage(projection)}
         </div>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1 pr-[max(0rem,env(safe-area-inset-right))]">
           <SoundToggle />
-          <JButton
-            variant="outlineGold"
-            size="sm"
-            className="h-8 px-2 bg-black/60"
-            onClick={() => setScoreOpen(true)}
-            aria-label="Σκορ"
-          >
+          <JButton variant="outlineGold" size="sm" className="h-8 px-2 bg-black/60" onClick={() => setScoreOpen(true)} aria-label="Σκορ">
             <Trophy className="h-4 w-4" />
             <span className="hidden lg:inline">Σκορ</span>
           </JButton>
-          <JButton
-            variant="outlineGold"
-            size="sm"
-            className="h-8 px-2 bg-black/60"
-            onClick={toggleFullscreen}
-            aria-label={fullscreen ? "Έξοδος από πλήρη οθόνη" : "Πλήρης οθόνη"}
-          >
+          <TableUtilityMenu isHost={isHost} disabled={busy || projection.lifecycle === "complete"} onEndGame={onEndGame} />
+          <JButton variant="outlineGold" size="sm" className="h-8 px-2 bg-black/60" onClick={toggleFullscreen} aria-label={fullscreen ? "Έξοδος από πλήρη οθόνη" : "Πλήρης οθόνη"}>
             {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </JButton>
         </div>
@@ -340,59 +338,39 @@ export function GameTable({
 
       <main className="absolute inset-x-[5vw] top-[10vh] bottom-[27vh]">
         <div ref={tableGeometry.feltRef} className="relative h-full w-full">
-          <div ref={tableGeometry.topSeatRef} className="absolute left-1/2 top-[1%] z-20 -translate-x-1/2">
-            {seatBlock(2, "horizontal")}
-          </div>
-          <div ref={tableGeometry.leftSeatRef} className="absolute left-[2%] top-[50%] z-20 -translate-y-1/2">
-            {seatBlock(1, "vertical")}
-          </div>
-          <div ref={tableGeometry.rightSeatRef} className="absolute right-[2%] top-[50%] z-20 -translate-y-1/2">
-            {seatBlock(3, "vertical")}
-          </div>
+          <div ref={tableGeometry.topSeatRef} className="absolute left-1/2 top-[1%] z-20 -translate-x-1/2">{seatBlock(2, "horizontal")}</div>
+          <div ref={tableGeometry.leftSeatRef} className="absolute left-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(1, "vertical")}</div>
+          <div ref={tableGeometry.rightSeatRef} className="absolute right-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(3, "vertical")}</div>
 
-          <TrickPresentation
-            projection={projection}
-            geometry={tableGeometry.geometry}
-            localPlayPresentation={localPlayPresentation}
-            onLocalFlightSettled={clearLocalFlight}
-          />
+          <DealerSelectionPresentation projection={projection} geometry={tableGeometry.geometry} onActiveChange={setDealerIntroActive} />
+          <TrickPresentation projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} onLocalFlightSettled={clearLocalFlight} />
 
           {projection.cards.exposedTrumpCard && (
             <div className="absolute left-[59%] top-[54%] -translate-y-1/2 [--card-w:clamp(2rem,4vw,3.4rem)]">
-              <div className="mb-1 text-center text-[10px] uppercase tracking-wider text-white/60">
-                Ατού
-              </div>
+              <div className="mb-1 text-center text-[10px] uppercase tracking-wider text-white/60">Ατού</div>
               <PlayingCard card={projection.cards.exposedTrumpCard} />
             </div>
           )}
         </div>
       </main>
 
-      <DealPresentation projection={projection} geometry={tableGeometry.geometry} />
+      <DealPresentation projection={projection} geometry={tableGeometry.geometry} paused={dealerIntroActive} />
 
       <footer className="absolute inset-x-0 bottom-[max(.15rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center">
-        {error && (
-          <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>
+        {error && <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>}
+
+        {declarationAction && pendingDeclarationValue == null && (
+          <DeclarationPicker values={declarationValues} legalValues={declarationAction.values} busy={busy} onSelect={(value) => void submitDeclaration(value)} />
         )}
 
-        {declarationAction && (
-          <DeclarationPicker
-            values={declarationValues}
-            legalValues={declarationAction.values}
-            busy={busy}
-            onSelect={(value) => { void onCommand({ type: "declare", value }); }}
-          />
+        {pendingDeclarationValue != null && (
+          <div className="mb-2 rounded-lg bg-black/70 px-3 py-1 text-xs text-white/60">Η δήλωση καταχωρείται…</div>
         )}
 
         {trumpAction && (
           <div className="mb-2 flex max-w-[94vw] flex-wrap justify-center gap-1 rounded-xl bg-black/70 p-2 backdrop-blur">
             {trumpAction.suits.map((suit) => (
-              <JButton
-                key={suit ?? "none"}
-                size="sm"
-                disabled={busy}
-                onClick={() => onCommand({ type: "choose_trump", suit })}
-              >
+              <JButton key={suit ?? "none"} size="sm" disabled={busy} onClick={() => onCommand({ type: "choose_trump", suit })}>
                 {suit ? SUIT_LABEL[suit] : "Χωρίς ατού"}
               </JButton>
             ))}
@@ -402,12 +380,7 @@ export function GameTable({
         {jokerAction && (
           <div className="mb-2 flex max-w-[94vw] flex-wrap justify-center gap-1 rounded-xl bg-black/70 p-2 backdrop-blur">
             {jokerAction.options.map((semantic, index) => (
-              <JButton
-                key={`${semantic.context}-${semantic.mode}-${index}`}
-                size="sm"
-                disabled={busy}
-                onClick={() => onCommand({ type: "choose_joker_semantic", semantic })}
-              >
+              <JButton key={`${semantic.context}-${semantic.mode}-${index}`} size="sm" disabled={busy} onClick={() => onCommand({ type: "choose_joker_semantic", semantic })}>
                 {jokerLabel(semantic)}
               </JButton>
             ))}
@@ -415,15 +388,7 @@ export function GameTable({
         )}
 
         {reclaimAction && (
-          <JButton
-            className="mb-2"
-            variant="outlineGold"
-            size="sm"
-            disabled={busy}
-            onClick={onReclaim}
-          >
-            Πάρε ξανά τον έλεγχο
-          </JButton>
+          <JButton className="mb-2" variant="outlineGold" size="sm" disabled={busy} onClick={onReclaim}>Πάρε ξανά τον έλεγχο</JButton>
         )}
 
         <LocalHandRow
@@ -436,51 +401,35 @@ export function GameTable({
           geometry={tableGeometry.geometry}
           onCommit={commitCard}
         />
-        <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">
-          {seatBlock(0, "horizontal")}
-        </div>
+        <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
       </footer>
 
       {projection.lifecycle === "complete" && (
         <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-3xl border border-primary/40 bg-card/95 p-6 text-center shadow-2xl">
-            <h2 className="font-display text-2xl text-primary">Τελικό αποτέλεσμα</h2>
-            <div className="mt-4 space-y-2">
-              {finalRows.map((row) => (
-                <div
-                  key={row.seat}
-                  className="flex items-center justify-between rounded-xl bg-secondary/70 px-4 py-2"
-                >
-                  <span>
-                    {row.placement}η θέση · {nameAt(row.seat)}
-                  </span>
-                  <strong className="tabular-nums">{row.score}</strong>
-                </div>
-              ))}
-            </div>
+            <h2 className="font-display text-2xl text-primary">{forcedEnd ? "Η παρτίδα τερματίστηκε" : "Τελικό αποτέλεσμα"}</h2>
+            {forcedEnd ? (
+              <p className="mt-3 text-sm text-white/70">Ο host τερμάτισε την παρτίδα. Όλοι οι παίκτες έχουν αποδεσμευτεί.</p>
+            ) : (
+              <div className="mt-4 space-y-2">
+                {finalRows.map((row) => (
+                  <div key={row.seat} className="flex items-center justify-between rounded-xl bg-secondary/70 px-4 py-2">
+                    <span>{row.placement}η θέση · {nameAt(row.seat)}</span>
+                    <strong className="tabular-nums">{row.score}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="mt-5 flex justify-center gap-2">
-              <JButton variant="outlineGold" onClick={() => setScoreOpen(true)}>
-                Αναλυτικό σκορ
-              </JButton>
-              <Link
-                to="/"
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground"
-              >
-                Αρχική
-              </Link>
+              {!forcedEnd && <JButton variant="outlineGold" onClick={() => setScoreOpen(true)}>Αναλυτικό σκορ</JButton>}
+              <Link to="/" className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground">Αρχική</Link>
             </div>
           </div>
         </div>
       )}
 
       <div className="relative z-[120]">
-        <Scoreboard
-          open={scoreOpen}
-          onClose={() => setScoreOpen(false)}
-          playerNames={names}
-          sheet={sheet}
-          projection={projection}
-        />
+        <Scoreboard open={scoreOpen} onClose={() => setScoreOpen(false)} playerNames={names} sheet={sheet} projection={projection} />
       </div>
     </div>
   );
