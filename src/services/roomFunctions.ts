@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { getCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 
-import type { DialogueIntensity } from "@/domain/dialoguePolicy";
 import type { Room } from "@/domain/players";
 import {
   EXTERNAL_SUPABASE_PUBLISHABLE_KEY,
@@ -91,7 +90,7 @@ export const createProductionRoom = createServerFn({ method: "POST" })
       botsTalk: data.botsTalk,
       allowProfanity: data.botsTalk && data.allowProfanity,
       aiEnabled: data.botsTalk && data.aiEnabled,
-      intensity: data.intensity satisfies DialogueIntensity,
+      intensity: data.intensity,
     }),
   );
 
