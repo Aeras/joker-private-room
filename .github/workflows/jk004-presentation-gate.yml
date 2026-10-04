@@ -1,0 +1,47 @@
+name: JK-004 Presentation Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/jk004-presentation-gate.yml'
+      - 'src/components/table/**'
+      - 'src/routes/table.tsx'
+      - 'src/test/jk004-*.test.ts'
+  workflow_dispatch:
+
+jobs:
+  presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: JK-004 focused tests
+        run: >-
+          bunx vitest run
+          src/test/jk004-table-geometry.test.ts
+          src/test/jk004-local-play-continuity.test.ts
+          src/test/jk004-trick-lifecycle.test.ts
+          src/test/jk004-deal-presentation.test.ts
+          src/test/jk004-hand-declaration.test.ts
+          src/test/jk004-reconnect-readiness.test.ts
+      - name: Table presentation lint
+        run: >-
+          bunx eslint
+          src/components/table
+          src/routes/table.tsx
+          src/test/jk004-table-geometry.test.ts
+          src/test/jk004-local-play-continuity.test.ts
+          src/test/jk004-trick-lifecycle.test.ts
+          src/test/jk004-deal-presentation.test.ts
+          src/test/jk004-hand-declaration.test.ts
+          src/test/jk004-reconnect-readiness.test.ts
+          --rule 'prettier/prettier: off'
+      - name: Strict TypeScript
+        run: bunx tsc --noEmit
+      - name: Production build
+        run: bun run build
