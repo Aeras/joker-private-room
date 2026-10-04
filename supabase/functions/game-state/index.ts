@@ -16,6 +16,7 @@ function statusFor(code?: string) {
       return 404;
     case "ACTION_ID_CONFLICT":
     case "STALE_STATE":
+    case "GAME_ALREADY_INITIALIZED":
       return 409;
     case "GAME_STATE_NOT_INITIALIZED":
     case "INVALID_REQUEST":
@@ -31,6 +32,61 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
 const sessionPattern = /^[0-9a-f]{64}$/i;
 const fingerprintPattern = /^[0-9a-f]{64}$/i;
 const commandPattern = /^[a-z0-9_]{1,64}$/;
+
+async function bootstrapGame(
+  admin: ReturnType<typeof createClient>,
+  sessionToken: string,
+  gameId: string,
+): Promise<Record<string, unknown>> {
+  const { data: viewerRows, error: viewerError } = await admin.rpc(
+    "validate_player_session_internal",
+    { p_session_token: sessionToken },
+  );
+  if (viewerError) throw viewerError;
+  const viewerId = Array.isArray(viewerRows) ? viewerRows[0]?.id : null;
+  if (typeof viewerId !== "string") return { ok: false, code: "NOT_AUTHENTICATED" };
+
+  const { data: game, error: gameError } = await admin
+    .from("games")
+    .select("id,room_id,ruleset_id,rules_version,state_schema_version,state_version,lifecycle,canonical_state")
+    .eq("id", gameId)
+    .maybeSingle();
+  if (gameError) throw gameError;
+  if (!game) return { ok: false, code: "GAME_NOT_FOUND" };
+
+  const { data: participants, error: participantError } = await admin
+    .from("game_participants")
+    .select(
+      "seat_index,owner_type,player_id,bot_id,bot_display_name,bot_avatar_url,bot_personality_id,bot_strategy_profile_id,bot_catalog_version,status",
+    )
+    .eq("game_id", gameId)
+    .eq("status", "active")
+    .order("seat_index", { ascending: true });
+  if (participantError) throw participantError;
+
+  const viewerIsParticipant = (participants ?? []).some(
+    (participant) => participant.owner_type === "human" && participant.player_id === viewerId,
+  );
+  if (!viewerIsParticipant) return { ok: false, code: "GAME_NOT_FOUND" };
+  if (game.canonical_state != null) {
+    return { ok: false, code: "GAME_ALREADY_INITIALIZED", stateVersion: game.state_version };
+  }
+  if (!Array.isArray(participants) || participants.length !== 4) {
+    return { ok: false, code: "INVALID_CANONICAL_STATE" };
+  }
+
+  return {
+    ok: true,
+    gameId: game.id,
+    roomId: game.room_id,
+    rulesetId: game.ruleset_id,
+    rulesVersion: game.rules_version,
+    stateSchemaVersion: game.state_schema_version,
+    stateVersion: game.state_version,
+    lifecycle: game.lifecycle,
+    participants,
+  };
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ ok: false, code: "INVALID_REQUEST" }, 405);
@@ -50,6 +106,14 @@ Deno.serve(async (req: Request) => {
     );
 
     const action = typeof body?.action === "string" ? body.action : "";
+    if (action === "bootstrap") {
+      const result = await bootstrapGame(admin, sessionToken, gameId);
+      return json(
+        result,
+        result.ok === true ? 200 : statusFor(typeof result.code === "string" ? result.code : undefined),
+      );
+    }
+
     let rpcName: string;
     let args: Record<string, unknown>;
 
