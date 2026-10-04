@@ -51,16 +51,19 @@ begin
     return v_existing.result || jsonb_build_object('replayed', true);
   end if;
 
-  select g.*, r.host_player_id
-  into v_game, v_host_player_id
+  select g.* into v_game
   from public.games g
-  join public.rooms r on r.id = g.room_id
   where g.id = p_game_id
-  for update of g;
+  for update;
 
   if not found then
     return jsonb_build_object('ok', false, 'code', 'GAME_NOT_FOUND');
   end if;
+
+  select r.host_player_id into v_host_player_id
+  from public.rooms r
+  where r.id = v_game.room_id;
+
   if v_host_player_id <> v_player_id then
     return jsonb_build_object('ok', false, 'code', 'NOT_HOST');
   end if;
