@@ -9,6 +9,7 @@ const deal = readFileSync("src/components/table/DealPresentation.tsx", "utf8");
 const trick = readFileSync("src/components/table/TrickPresentation.tsx", "utf8");
 const trickModel = readFileSync("src/components/table/trickPresentationModel.ts", "utf8");
 const declaration = readFileSync("src/components/table/DeclarationPicker.tsx", "utf8");
+const controls = readFileSync("src/components/table/tableControlModel.ts", "utf8");
 const audio = readFileSync("src/lib/gameAudio.ts", "utf8");
 
 describe("JK-001 Phase 1 — integrated non-asset release gates", () => {
@@ -55,7 +56,7 @@ describe("JK-001 Phase 1 — integrated non-asset release gates", () => {
     expect(trick).toContain("winnerSeat: trick.winnerSeat");
     expect(trick).not.toMatch(/resolveTrick|calculateWinner/);
     expect(trick).toContain("trickPresentationTiming(reducedMotion)");
-    expect(trickModel).toContain("holdMs: 850");
+    expect(trickModel).toContain("NORMAL_TRICK_HOLD_MS = 850");
   });
 
   it("uses best-effort deduplicated audio with no gameplay dependency", () => {
@@ -77,8 +78,10 @@ describe("JK-001 Phase 1 — integrated non-asset release gates", () => {
 
   it("keeps the touch declaration range large and server-projected", () => {
     expect(declaration).toContain("h-12 min-w-12");
-    expect(declaration).toContain("legalValues.includes(value)");
+    expect(declaration).toContain("const legal = new Set(legalValues)");
+    expect(declaration).toContain("const allowed = legal.has(value)");
     expect(declaration).toContain("disabled={busy || !allowed}");
-    expect(declaration).toContain('value === 0 ? "—"');
+    expect(declaration).toContain("declarationDisplayValue(value)");
+    expect(controls).toContain('value === 0 ? "—"');
   });
 });
