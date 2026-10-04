@@ -55,24 +55,16 @@ function isDialogueEventType(value: unknown): value is DialogueEventType {
   return typeof value === "string" && DIALOGUE_EVENT_TYPES.has(value as DialogueEventType);
 }
 
-function hasStableEventIdentity(id: string, type: DialogueEventType): boolean {
-  if (type === "HUMAN_MESSAGE_TO_BOT") return /^human:[0-9a-f-]{36}$/i.test(id);
-  if (type === "BOT_MESSAGE_TO_BOT") return /^reply:[^:]{1,128}:[a-z0-9-]{1,64}$/i.test(id);
-  return /^state-\d+:[A-Z0-9_]+:(?:\d|all):\d+$/.test(id);
-}
-
-function publicEvent(value: unknown): PublicDialogueEvent | null {
+function trustedPublicEvent(value: unknown): PublicDialogueEvent | null {
   if (!value || typeof value !== "object") return null;
   const event = value as Record<string, unknown>;
   const speakerBotId = typeof event.speakerBotId === "string" ? event.speakerBotId : "";
   if (!getCanonicalBot(speakerBotId)) return null;
   if (typeof event.id !== "string" || event.id.length < 1 || event.id.length > 128) return null;
-  if (!isDialogueEventType(event.type) || !hasStableEventIdentity(event.id, event.type)) return null;
+  if (!isDialogueEventType(event.type)) return null;
   if (typeof event.createdAt !== "string" || Number.isNaN(Date.parse(event.createdAt))) return null;
   const replyDepth = event.replyDepth === 0 || event.replyDepth === 1 ? event.replyDepth : null;
   if (replyDepth === null) return null;
-  if (event.type === "HUMAN_MESSAGE_TO_BOT" && replyDepth !== 0) return null;
-  if (event.type === "BOT_MESSAGE_TO_BOT" && replyDepth !== 1) return null;
 
   return {
     id: event.id,
@@ -127,24 +119,85 @@ Deno.serve(async (req: Request) => {
       return json(data ?? { ok: false, code: "SERVICE_UNAVAILABLE" }, data?.ok === true ? 200 : 404);
     }
 
-    if (body?.action !== "generate") return json({ ok: false, code: "INVALID_REQUEST" }, 400);
+    let event: PublicDialogueEvent | null = null;
+    let recentData: Record<string, unknown> | null = null;
 
-    const event = publicEvent(body?.event);
+    if (body?.action === "generate-state") {
+      if (typeof body?.eventId !== "string" || body.eventId.length < 1 || body.eventId.length > 128) {
+        return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 400);
+      }
+      const { data, error } = await admin.rpc("resolve_dialogue_state_event_internal", {
+        p_session_token: body.sessionToken,
+        p_game_id: body.gameId,
+        p_event_id: body.eventId,
+      });
+      if (error) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+      if (data?.ok !== true) return json(data ?? { ok: false, code: "INVALID_DIALOGUE_EVENT" }, 409);
+      event = trustedPublicEvent(data.event);
+    } else if (body?.action === "human-message") {
+      const text = typeof body?.text === "string" ? body.text.trim().slice(0, 160) : "";
+      const speakerBotId = typeof body?.speakerBotId === "string" ? body.speakerBotId : "";
+      if (!isUuid(body?.actionId) || !text || !getCanonicalBot(speakerBotId)) {
+        return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 400);
+      }
+      event = {
+        id: `human:${body.actionId}`,
+        type: "HUMAN_MESSAGE_TO_BOT",
+        createdAt: new Date().toISOString(),
+        speakerBotId: speakerBotId as PublicDialogueEvent["speakerBotId"],
+        humanMessage: text,
+        replyDepth: 0,
+      };
+    } else if (body?.action === "bot-reply") {
+      const responderBotId = typeof body?.responderBotId === "string" ? body.responderBotId : "";
+      if (!isUuid(body?.sourceMessageId) || !getCanonicalBot(responderBotId)) {
+        return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 400);
+      }
+      const { data, error } = await admin.rpc("list_dialogue_messages_internal", {
+        p_session_token: body.sessionToken,
+        p_game_id: body.gameId,
+      });
+      if (error) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+      if (data?.ok !== true || !Array.isArray(data.messages)) {
+        return json(data ?? { ok: false, code: "GAME_NOT_FOUND" }, 404);
+      }
+      recentData = data as Record<string, unknown>;
+      const source = data.messages.find((message: Record<string, unknown>) => message?.id === body.sourceMessageId);
+      if (!source || source.replyDepth !== 0 || typeof source.text !== "string" || source.speakerBotId === responderBotId) {
+        return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 409);
+      }
+      event = {
+        id: `reply:${body.sourceMessageId}:${responderBotId}`,
+        type: "BOT_MESSAGE_TO_BOT",
+        createdAt: new Date().toISOString(),
+        speakerBotId: responderBotId as PublicDialogueEvent["speakerBotId"],
+        publicSummary: `${String(source.speakerBotId).slice(0, 64)}: ${source.text.slice(0, 100)}`,
+        replyDepth: 1,
+      };
+    } else {
+      return json({ ok: false, code: "INVALID_REQUEST" }, 400);
+    }
+
     if (!event) return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 400);
 
     const bot = getCanonicalBot(event.speakerBotId);
     const personality = bot ? getDialoguePersonality(bot.personalityId) : null;
     if (!bot || !personality) return json({ ok: false, code: "INVALID_DIALOGUE_TARGET" }, 400);
 
-    const [{ data: policyData, error: policyError }, { data: recentData, error: recentError }] = await Promise.all([
-      admin.rpc("get_dialogue_policy_internal", {
-        p_session_token: body.sessionToken,
-        p_game_id: body.gameId,
-      }),
-      admin.rpc("list_dialogue_messages_internal", {
-        p_session_token: body.sessionToken,
-        p_game_id: body.gameId,
-      }),
+    const policyPromise = admin.rpc("get_dialogue_policy_internal", {
+      p_session_token: body.sessionToken,
+      p_game_id: body.gameId,
+    });
+    const recentPromise = recentData
+      ? Promise.resolve({ data: recentData, error: null })
+      : admin.rpc("list_dialogue_messages_internal", {
+          p_session_token: body.sessionToken,
+          p_game_id: body.gameId,
+        });
+
+    const [{ data: policyData, error: policyError }, { data: latestRecentData, error: recentError }] = await Promise.all([
+      policyPromise,
+      recentPromise,
     ]);
     if (policyError || recentError) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
 
@@ -176,7 +229,7 @@ Deno.serve(async (req: Request) => {
       event,
       profanityEnabled: policy.allowProfanity === true,
       intensity: policy.intensity === "conservative" || policy.intensity === "chaos" ? policy.intensity : "normal",
-      recentBanter: recentLines(recentData?.messages),
+      recentBanter: recentLines(latestRecentData?.messages),
     };
 
     try {
