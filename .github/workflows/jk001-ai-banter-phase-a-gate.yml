@@ -79,12 +79,13 @@ jobs:
           grep -q 'enable row level security' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
           grep -q 'grant all on private.dialogue_runtime_state to service_role' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
 
-      - name: No provider implementation in Phase A
+      - name: Provider remains outside Phase A authority
         id: no_provider
         continue-on-error: true
         run: |
-          ! grep -R -q 'GEMINI_API_KEY' src supabase/functions
-          ! test -e supabase/functions/ai-banter/index.ts
+          ! grep -q 'GEMINI_API_KEY' src/domain/dialoguePolicy.ts src/routes/create.tsx src/services/roomFunctions.ts supabase/functions/room-commands/index.ts
+          ! grep -qi 'gemini\|provider' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          test -e supabase/functions/ai-banter/index.ts
 
       - name: TypeScript
         id: typecheck

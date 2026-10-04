@@ -1,0 +1,58 @@
+name: JK-001 AI Banter Phase C Gate
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Dialogue delivery tests
+        run: >-
+          bunx vitest run
+          src/dialogue/publicEvents.test.ts
+          src/test/dialogue-delivery-contract.test.ts
+          src/test/dialogue-generation.test.ts
+      - name: Dialogue delivery lint
+        run: >-
+          bunx eslint
+          src/components/table/DialogueOverlay.tsx
+          src/dialogue/publicEvents.ts
+          src/dialogue/publicEvents.test.ts
+          src/routes/table.tsx
+          src/services/dialogueFunctions.ts
+          supabase/functions/ai-banter/index.ts
+          src/test/dialogue-delivery-contract.test.ts
+          --rule 'prettier/prettier: off'
+      - name: Ephemeral delivery guard
+        run: |
+          grep -q 'private.dialogue_messages' supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
+          grep -q "interval '8 seconds'" supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
+          grep -q 'enable row level security' supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
+          ! grep -q 'game_history' supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
+      - name: Server-owned event and privacy guard
+        run: |
+          grep -q 'μπορεί να επεξεργαστεί από εξωτερικό πάροχο AI' src/components/table/DialogueOverlay.tsx
+          grep -q 'getCookie(SESSION_COOKIE)' src/services/dialogueFunctions.ts
+          grep -q 'eventId: dialogueEventId' src/services/dialogueFunctions.ts
+          grep -q 'action: "human-message"' src/services/dialogueFunctions.ts
+          grep -q 'action: "bot-reply"' src/services/dialogueFunctions.ts
+          grep -q 'resolve_dialogue_state_event_internal' supabase/functions/ai-banter/index.ts
+          grep -q 'g.canonical_state' supabase/migrations/20261004115502_jk001_ai_banter_phase_c_server_event_resolution.sql
+          ! grep -q 'body?.event' supabase/functions/ai-banter/index.ts
+          grep -q 'recentBanter: recentLines(latestRecentData?.messages)' supabase/functions/ai-banter/index.ts
+          ! grep -q 'body?.recentBanter' supabase/functions/ai-banter/index.ts
+          grep -q 'void requestDialogueReaction' src/routes/table.tsx
+          grep -q 'requestBotDialogueReply' src/routes/table.tsx
+      - name: TypeScript
+        run: bunx tsc --noEmit
+      - name: Production build
+        run: bun run build

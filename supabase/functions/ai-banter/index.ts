@@ -1,14 +1,40 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-
 import {
   getDialoguePersonality,
-  pickDialoguePreset,
   type DialogueGenerationContext,
+  type DialogueEventType,
   type PublicDialogueEvent,
 } from "../_shared/dialogue-core.ts";
 import { generateDialogueLine } from "../_shared/gemini-dialogue.ts";
 import { getCanonicalBot } from "../_shared/bot-catalog.ts";
+
+const DIALOGUE_EVENT_TYPES = new Set<DialogueEventType>([
+  "PLAYER_DECLARED_ZERO",
+  "PLAYER_DECLARED_HIGH",
+  "PLAYER_HIT_EXACT_BID",
+  "PLAYER_MISSED_BID",
+  "BOT_HIT_EXACT_BID",
+  "BOT_MISSED_BID",
+  "BOT_GOT_MINUS_200",
+  "PLAYER_GOT_MINUS_200",
+  "PLAYER_STOLE_CRITICAL_TRICK",
+  "BOT_STOLE_CRITICAL_TRICK",
+  "JOKER_PLAYED",
+  "JOKER_CHANGED_TRICK_RESULT",
+  "FORCED_TRUMP",
+  "OVERTRICK",
+  "UNDERTRICK",
+  "PREMIA_ACHIEVED",
+  "PREMIA_LOST",
+  "COMEBACK",
+  "SCORE_COLLAPSE",
+  "BOT_REVENGE_SUCCESS",
+  "ROUND_END",
+  "GAME_END",
+  "HUMAN_MESSAGE_TO_BOT",
+  "BOT_MESSAGE_TO_BOT",
+]);
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -25,32 +51,48 @@ function isUuid(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function publicEvent(value: unknown): PublicDialogueEvent | null {
+function isDialogueEventType(value: unknown): value is DialogueEventType {
+  return typeof value === "string" && DIALOGUE_EVENT_TYPES.has(value as DialogueEventType);
+}
+
+function trustedPublicEvent(value: unknown): PublicDialogueEvent | null {
   if (!value || typeof value !== "object") return null;
   const event = value as Record<string, unknown>;
   const speakerBotId = typeof event.speakerBotId === "string" ? event.speakerBotId : "";
   if (!getCanonicalBot(speakerBotId)) return null;
   if (typeof event.id !== "string" || event.id.length < 1 || event.id.length > 128) return null;
-  if (typeof event.type !== "string" || event.type.length < 1 || event.type.length > 64) return null;
+  if (!isDialogueEventType(event.type)) return null;
   if (typeof event.createdAt !== "string" || Number.isNaN(Date.parse(event.createdAt))) return null;
-  const replyDepth = event.replyDepth === 1 ? 1 : event.replyDepth === 0 ? 0 : null;
+  const replyDepth = event.replyDepth === 0 || event.replyDepth === 1 ? event.replyDepth : null;
   if (replyDepth === null) return null;
+
   return {
     id: event.id,
-    type: event.type as PublicDialogueEvent["type"],
+    type: event.type,
     createdAt: event.createdAt,
     speakerBotId: speakerBotId as PublicDialogueEvent["speakerBotId"],
-    targetName: typeof event.targetName === "string" ? event.targetName.slice(0, 40) : undefined,
-    targetSeat: typeof event.targetSeat === "number" ? event.targetSeat : undefined,
-    declared: typeof event.declared === "number" ? event.declared : undefined,
-    actualTricks: typeof event.actualTricks === "number" ? event.actualTricks : undefined,
-    scoreDelta: typeof event.scoreDelta === "number" ? event.scoreDelta : undefined,
-    round: typeof event.round === "number" ? event.round : undefined,
-    deal: typeof event.deal === "number" ? event.deal : undefined,
-    publicSummary: typeof event.publicSummary === "string" ? event.publicSummary.slice(0, 160) : undefined,
-    humanMessage: typeof event.humanMessage === "string" ? event.humanMessage.slice(0, 160) : undefined,
+    ...(typeof event.targetName === "string" ? { targetName: event.targetName.slice(0, 40) } : {}),
+    ...(typeof event.targetSeat === "number" && Number.isInteger(event.targetSeat) && event.targetSeat >= 0 && event.targetSeat <= 3
+      ? { targetSeat: event.targetSeat }
+      : {}),
+    ...(typeof event.declared === "number" ? { declared: event.declared } : {}),
+    ...(typeof event.actualTricks === "number" ? { actualTricks: event.actualTricks } : {}),
+    ...(typeof event.scoreDelta === "number" ? { scoreDelta: event.scoreDelta } : {}),
+    ...(typeof event.round === "number" ? { round: event.round } : {}),
+    ...(typeof event.deal === "number" ? { deal: event.deal } : {}),
+    ...(typeof event.publicSummary === "string" ? { publicSummary: event.publicSummary.slice(0, 160) } : {}),
+    ...(typeof event.humanMessage === "string" ? { humanMessage: event.humanMessage.slice(0, 160) } : {}),
     replyDepth,
   };
+}
+
+function recentLines(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>).text : null))
+    .filter((text): text is string => typeof text === "string")
+    .slice(-3)
+    .map((text) => text.slice(0, 100));
 }
 
 Deno.serve(async (req: Request) => {
@@ -62,47 +104,111 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, code: "NOT_AUTHENTICATED" }, 401);
     }
 
-    const event = publicEvent(body?.event);
-    if (!event) return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 400);
-
-    const bot = getCanonicalBot(event.speakerBotId);
-    const personality = bot ? getDialoguePersonality(bot.personalityId) : null;
-    if (!bot || !personality) return json({ ok: false, code: "INVALID_DIALOGUE_TARGET" }, 400);
-
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
 
-    const { data: policyData, error: policyError } = await admin.rpc("get_dialogue_policy_internal", {
+    if (body?.action === "list") {
+      const { data, error } = await admin.rpc("list_dialogue_messages_internal", {
+        p_session_token: body.sessionToken,
+        p_game_id: body.gameId,
+      });
+      if (error) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+      return json(data ?? { ok: false, code: "SERVICE_UNAVAILABLE" }, data?.ok === true ? 200 : 404);
+    }
+
+    let event: PublicDialogueEvent | null = null;
+    let recentData: Record<string, unknown> | null = null;
+
+    if (body?.action === "generate-state") {
+      if (typeof body?.eventId !== "string" || body.eventId.length < 1 || body.eventId.length > 128) {
+        return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 400);
+      }
+      const { data, error } = await admin.rpc("resolve_dialogue_state_event_internal", {
+        p_session_token: body.sessionToken,
+        p_game_id: body.gameId,
+        p_event_id: body.eventId,
+      });
+      if (error) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+      if (data?.ok !== true) return json(data ?? { ok: false, code: "INVALID_DIALOGUE_EVENT" }, 409);
+      event = trustedPublicEvent(data.event);
+    } else if (body?.action === "human-message") {
+      const text = typeof body?.text === "string" ? body.text.trim().slice(0, 160) : "";
+      const speakerBotId = typeof body?.speakerBotId === "string" ? body.speakerBotId : "";
+      if (!isUuid(body?.actionId) || !text || !getCanonicalBot(speakerBotId)) {
+        return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 400);
+      }
+      event = {
+        id: `human:${body.actionId}`,
+        type: "HUMAN_MESSAGE_TO_BOT",
+        createdAt: new Date().toISOString(),
+        speakerBotId: speakerBotId as PublicDialogueEvent["speakerBotId"],
+        humanMessage: text,
+        replyDepth: 0,
+      };
+    } else if (body?.action === "bot-reply") {
+      const responderBotId = typeof body?.responderBotId === "string" ? body.responderBotId : "";
+      if (!isUuid(body?.sourceMessageId) || !getCanonicalBot(responderBotId)) {
+        return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 400);
+      }
+      const { data, error } = await admin.rpc("list_dialogue_messages_internal", {
+        p_session_token: body.sessionToken,
+        p_game_id: body.gameId,
+      });
+      if (error) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+      if (data?.ok !== true || !Array.isArray(data.messages)) {
+        return json(data ?? { ok: false, code: "GAME_NOT_FOUND" }, 404);
+      }
+      recentData = data as Record<string, unknown>;
+      const source = data.messages.find((message: Record<string, unknown>) => message?.id === body.sourceMessageId);
+      if (!source || source.replyDepth !== 0 || typeof source.text !== "string" || source.speakerBotId === responderBotId) {
+        return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 409);
+      }
+      event = {
+        id: `reply:${body.sourceMessageId}:${responderBotId}`,
+        type: "BOT_MESSAGE_TO_BOT",
+        createdAt: new Date().toISOString(),
+        speakerBotId: responderBotId as PublicDialogueEvent["speakerBotId"],
+        publicSummary: `${String(source.speakerBotId).slice(0, 64)}: ${source.text.slice(0, 100)}`,
+        replyDepth: 1,
+      };
+    } else {
+      return json({ ok: false, code: "INVALID_REQUEST" }, 400);
+    }
+
+    if (!event) return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 400);
+
+    const bot = getCanonicalBot(event.speakerBotId);
+    const personality = bot ? getDialoguePersonality(bot.personalityId) : null;
+    if (!bot || !personality) return json({ ok: false, code: "INVALID_DIALOGUE_TARGET" }, 400);
+
+    const policyPromise = admin.rpc("get_dialogue_policy_internal", {
       p_session_token: body.sessionToken,
       p_game_id: body.gameId,
     });
-    if (policyError) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+    const recentPromise = recentData
+      ? Promise.resolve({ data: recentData, error: null })
+      : admin.rpc("list_dialogue_messages_internal", {
+          p_session_token: body.sessionToken,
+          p_game_id: body.gameId,
+        });
+
+    const [{ data: policyData, error: policyError }, { data: latestRecentData, error: recentError }] = await Promise.all([
+      policyPromise,
+      recentPromise,
+    ]);
+    if (policyError || recentError) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
 
     const policy = policyData?.policy as Record<string, unknown> | undefined;
-    if (policyData?.ok !== true || !policy) return json(policyData ?? { ok: false, code: "GAME_NOT_FOUND" }, 404);
+    if (policyData?.ok !== true || !policy) {
+      return json(policyData ?? { ok: false, code: "GAME_NOT_FOUND" }, 404);
+    }
     if (policy.speechEnabled !== true) return json({ ok: false, code: "DIALOGUE_DISABLED" }, 409);
 
-    const context: DialogueGenerationContext = {
-      botId: bot.id,
-      botDisplayName: bot.displayName,
-      personality: personality.summary,
-      event,
-      profanityEnabled: policy.allowProfanity === true,
-      intensity:
-        policy.intensity === "conservative" || policy.intensity === "chaos" ? policy.intensity : "normal",
-      recentBanter: Array.isArray(body?.recentBanter)
-        ? body.recentBanter.filter((line: unknown) => typeof line === "string").slice(-3).map((line: string) => line.slice(0, 100))
-        : [],
-    };
-
-    if (policy.aiEnabled !== true) {
-      return json({ ok: true, text: pickDialoguePreset(context), source: "preset", providerAttempted: false });
-    }
-
-    const { data: claim, error: claimError } = await admin.rpc("claim_ai_dialogue_internal", {
+    const providerCall = policy.aiEnabled === true;
+    const { data: claim, error: claimError } = await admin.rpc("claim_dialogue_event_internal", {
       p_session_token: body.sessionToken,
       p_game_id: body.gameId,
       p_event_id: event.id,
@@ -111,24 +217,77 @@ Deno.serve(async (req: Request) => {
       p_reply_depth: event.replyDepth,
       p_is_human_message: event.type === "HUMAN_MESSAGE_TO_BOT",
       p_event_created_at: event.createdAt,
+      p_provider_call: providerCall,
     });
     if (claimError) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
     if (claim?.ok !== true) return json(claim, 409);
 
+    const context: DialogueGenerationContext = {
+      botId: bot.id,
+      botDisplayName: bot.displayName,
+      personality: personality.summary,
+      event,
+      profanityEnabled: policy.allowProfanity === true,
+      intensity: policy.intensity === "conservative" || policy.intensity === "chaos" ? policy.intensity : "normal",
+      recentBanter: recentLines(latestRecentData?.messages),
+    };
+
     try {
-      const result = await generateDialogueLine({
+      const generated = await generateDialogueLine({
         context,
-        aiEnabled: true,
+        aiEnabled: providerCall,
         apiKey: Deno.env.get("GEMINI_API_KEY") ?? undefined,
         model: Deno.env.get("GEMINI_DIALOGUE_MODEL") ?? undefined,
       });
-      return json({ ok: true, ...result });
-    } finally {
-      await admin.rpc("release_ai_dialogue_slot_internal", {
+      if (!generated.text) {
+        return json({
+          ok: true,
+          text: null,
+          source: "silence",
+          providerAttempted: generated.providerAttempted,
+          providerReason: generated.providerReason,
+        });
+      }
+
+      const { data: published, error: publishError } = await admin.rpc("publish_dialogue_message_internal", {
         p_session_token: body.sessionToken,
         p_game_id: body.gameId,
         p_event_id: event.id,
+        p_speaker_bot_id: event.speakerBotId,
+        p_target_seat: event.targetSeat ?? null,
+        p_message_text: generated.text,
+        p_source: generated.source === "gemini" ? "gemini" : "preset",
+        p_reply_depth: event.replyDepth,
       });
+      if (publishError) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+      if (published?.ok !== true) {
+        const code = String(published?.code ?? "SERVICE_UNAVAILABLE");
+        if (code === "STALE_DIALOGUE_RESULT" || code === "DUPLICATE_DIALOGUE_LINE") {
+          return json({
+            ok: true,
+            text: null,
+            source: "silence",
+            providerAttempted: generated.providerAttempted,
+            providerReason: code,
+          });
+        }
+        return json({ ok: false, code }, 409);
+      }
+
+      return json({
+        ok: true,
+        message: published.message,
+        providerAttempted: generated.providerAttempted,
+        providerReason: generated.providerReason,
+      });
+    } finally {
+      if (providerCall) {
+        await admin.rpc("release_dialogue_slot_internal", {
+          p_session_token: body.sessionToken,
+          p_game_id: body.gameId,
+          p_event_id: event.id,
+        });
+      }
     }
   } catch {
     return json({ ok: false, code: "INVALID_REQUEST" }, 400);
