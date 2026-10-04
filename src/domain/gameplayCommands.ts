@@ -51,9 +51,7 @@ function validServerTime(value: string): boolean {
 }
 
 function resolvedTrump(state: CanonicalGameState): Suit | null {
-  if (state.trump.status !== "resolved") {
-    throw new Error("Trump is not resolved");
-  }
+  if (state.trump.status !== "resolved") throw new Error("Trump is not resolved");
   return state.trump.suit;
 }
 
@@ -94,7 +92,8 @@ function timingForActor(
 }
 
 function forbiddenDealerValue(state: CanonicalGameState, seat: SeatIndex): number | null {
-  if (seat !== state.progression.dealerSeat) return null;
+  const dealerSeat = state.progression.dealerSeat;
+  if (dealerSeat == null || seat !== dealerSeat) return null;
   const others = state.declarations.declarations.filter((_, index) => index !== seat);
   if (others.some((value) => value == null)) return null;
   const sum = others.reduce<number>((total, value) => total + (value ?? 0), 0);
@@ -109,10 +108,15 @@ function applyDeclarationCommand(
   serverNow: string,
 ): GameplayCommandResult {
   if (state.progression.phase !== "DECLARATION") return { ok: false, code: "WRONG_PHASE" };
+  const dealerSeat = state.progression.dealerSeat;
+  const firstLeaderSeat = state.progression.firstLeaderSeat;
+  if (dealerSeat == null || firstLeaderSeat == null) {
+    return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
+  }
   if (state.declarations.currentDeclarerSeat !== seat || state.progression.currentActorSeat !== seat) {
     return { ok: false, code: "NOT_CURRENT_ACTOR" };
   }
-  if (seat === state.progression.dealerSeat && state.declarations.forbiddenDealerValue === value) {
+  if (seat === dealerSeat && state.declarations.forbiddenDealerValue === value) {
     return { ok: false, code: "FORBIDDEN_DEALER_DECLARATION" };
   }
 
@@ -120,7 +124,7 @@ function applyDeclarationCommand(
   try {
     declarations = applyDeclaration({
       cardsPerPlayer: state.progression.cardsPerPlayer,
-      dealerSeat: state.progression.dealerSeat,
+      dealerSeat,
       seatIndex: seat,
       declarations: state.declarations.declarations,
       declared: value,
@@ -130,28 +134,26 @@ function applyDeclarationCommand(
   }
 
   if (declarationsAreComplete(declarations)) {
-    const actor = state.progression.firstLeaderSeat;
-    const next: CanonicalGameState = {
-      ...state,
-      stateVersion: state.stateVersion + 1,
-      progression: {
-        ...state.progression,
-        phase: "CARD_PLAY",
-        currentActorSeat: actor,
+    const actor = firstLeaderSeat;
+    return {
+      ok: true,
+      state: {
+        ...state,
+        stateVersion: state.stateVersion + 1,
+        progression: { ...state.progression, phase: "CARD_PLAY", currentActorSeat: actor },
+        declarations: {
+          ...state.declarations,
+          currentDeclarerSeat: null,
+          declarations,
+          legalValues: [],
+          forbiddenDealerValue: null,
+        },
+        timing: timingForActor(state, actor, serverNow),
       },
-      declarations: {
-        ...state.declarations,
-        currentDeclarerSeat: null,
-        declarations,
-        legalValues: [],
-        forbiddenDealerValue: null,
-      },
-      timing: timingForActor(state, actor, serverNow),
     };
-    return { ok: true, state: next };
   }
 
-  const actor = nextDeclarer(state.progression.dealerSeat, declarations);
+  const actor = nextDeclarer(dealerSeat, declarations);
   if (actor == null) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
   const declarationState: CanonicalGameState["declarations"] = {
     ...state.declarations,
@@ -159,7 +161,7 @@ function applyDeclarationCommand(
     declarations,
     legalValues: legalDeclarationValues({
       cardsPerPlayer: state.progression.cardsPerPlayer,
-      dealerSeat: state.progression.dealerSeat,
+      dealerSeat,
       seatIndex: actor,
       declarations,
     }),
@@ -187,23 +189,21 @@ function applyTrumpChoice(
   suit: Suit | null,
   serverNow: string,
 ): GameplayCommandResult {
-  if (state.progression.phase !== "NINE_CARD_TRUMP_CHOICE") {
-    return { ok: false, code: "WRONG_PHASE" };
-  }
+  if (state.progression.phase !== "NINE_CARD_TRUMP_CHOICE") return { ok: false, code: "WRONG_PHASE" };
   if (
     state.trump.status !== "chooser_pending" ||
     state.trump.chooserSeat !== seat ||
     state.progression.currentActorSeat !== seat
-  ) {
-    return { ok: false, code: "NOT_CURRENT_ACTOR" };
-  }
-  if (suit !== null && !SUITS.includes(suit)) {
-    return { ok: false, code: "INVALID_TRUMP_CHOICE" };
-  }
+  ) return { ok: false, code: "NOT_CURRENT_ACTOR" };
+  if (suit !== null && !SUITS.includes(suit)) return { ok: false, code: "INVALID_TRUMP_CHOICE" };
+
+  const dealerSeat = state.progression.dealerSeat;
+  const actor = state.progression.firstDeclarerSeat;
+  if (dealerSeat == null || actor == null) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
 
   let completed;
   try {
-    completed = completeNineCardDeal(state.cards.deck, state.progression.dealerSeat, {
+    completed = completeNineCardDeal(state.cards.deck, dealerSeat, {
       cursor: state.cards.drawCursor,
       hands: state.cards.hands,
     });
@@ -211,18 +211,12 @@ function applyTrumpChoice(
     return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
   }
 
-  const actor = state.progression.firstDeclarerSeat;
   const declarations: CanonicalGameState["declarations"]["declarations"] = [null, null, null, null];
   const declarationState: CanonicalGameState["declarations"] = {
     ...state.declarations,
     currentDeclarerSeat: actor,
     declarations,
-    legalValues: legalDeclarationValues({
-      cardsPerPlayer: 9,
-      dealerSeat: state.progression.dealerSeat,
-      seatIndex: actor,
-      declarations,
-    }),
+    legalValues: legalDeclarationValues({ cardsPerPlayer: 9, dealerSeat, seatIndex: actor, declarations }),
     forbiddenDealerValue: null,
   };
 
@@ -231,11 +225,7 @@ function applyTrumpChoice(
     state: {
       ...state,
       stateVersion: state.stateVersion + 1,
-      progression: {
-        ...state.progression,
-        phase: "DECLARATION",
-        currentActorSeat: actor,
-      },
+      progression: { ...state.progression, phase: "DECLARATION", currentActorSeat: actor },
       cards: {
         ...state.cards,
         hands: completed.hands,
@@ -312,10 +302,7 @@ function completeCommittedPlay(args: {
         ...state.cards,
         hands,
         currentTrick: [],
-        completedTricks: [
-          ...state.cards.completedTricks,
-          { cards: currentTrick, winnerSeat: winner },
-        ],
+        completedTricks: [...state.cards.completedTricks, { cards: currentTrick, winnerSeat: winner }],
       },
       joker: { pendingForSeat: null, cardId: null, semantic: null },
       score: { ...state.score, tricksTaken },
@@ -357,27 +344,17 @@ function applyCardPlay(
 
   const nextHand = removeCard(state.cards.hands[seat], card.id);
   if (!nextHand) return { ok: false, code: "ILLEGAL_CARD" };
-  return completeCommittedPlay({
-    state,
-    seat,
-    play: { seatIndex: seat, card },
-    nextHand,
-    serverNow,
-  });
+  return completeCommittedPlay({ state, seat, play: { seatIndex: seat, card }, nextHand, serverNow });
 }
 
 function validJokerSemantic(state: CanonicalGameState, semantic: JokerSemantic): boolean {
   if (state.cards.currentTrick.length === 0) {
-    return (
-      semantic.context === "LEAD" &&
+    return semantic.context === "LEAD" &&
       (semantic.mode === "HIGHER_SUIT" || semantic.mode === "SUIT_WINS") &&
-      SUITS.includes(semantic.requestedSuit)
-    );
+      SUITS.includes(semantic.requestedSuit);
   }
-  return (
-    semantic.context === "OPEN_TRICK" &&
-    (semantic.mode === "COMPETE" || semantic.mode === "FROM_BELOW")
-  );
+  return semantic.context === "OPEN_TRICK" &&
+    (semantic.mode === "COMPETE" || semantic.mode === "FROM_BELOW");
 }
 
 function applyJokerChoice(
@@ -386,21 +363,15 @@ function applyJokerChoice(
   semantic: JokerSemantic,
   serverNow: string,
 ): GameplayCommandResult {
-  if (state.progression.phase !== "JOKER_DECISION") {
-    return { ok: false, code: "WRONG_PHASE" };
-  }
+  if (state.progression.phase !== "JOKER_DECISION") return { ok: false, code: "WRONG_PHASE" };
   if (state.progression.currentActorSeat !== seat || state.joker.pendingForSeat !== seat) {
     return { ok: false, code: "NOT_CURRENT_ACTOR" };
   }
   if (!state.joker.cardId) return { ok: false, code: "JOKER_CHOICE_REQUIRED" };
-  if (!validJokerSemantic(state, semantic)) {
-    return { ok: false, code: "INVALID_JOKER_CHOICE" };
-  }
+  if (!validJokerSemantic(state, semantic)) return { ok: false, code: "INVALID_JOKER_CHOICE" };
 
   const card = state.cards.hands[seat].find((candidate) => candidate.id === state.joker.cardId);
-  if (!card || card.kind !== "joker") {
-    return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
-  }
+  if (!card || card.kind !== "joker") return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
   const nextHand = removeCard(state.cards.hands[seat], card.id);
   if (!nextHand) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
 
@@ -413,18 +384,12 @@ function applyJokerChoice(
   });
 }
 
-/**
- * The single pure gameplay-command dispatcher. Human and bot callers must use
- * this same transition surface; callers provide identity/controller context,
- * while legality and state progression remain engine-owned here.
- */
+/** Human and bot callers use this same pure transition surface. */
 export function applyGameplayCommand(args: ApplyGameplayCommandArgs): GameplayCommandResult {
   const { state, seat, command, serverNow, expectedController } = args;
   if (!validServerTime(serverNow)) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
   if (state.lifecycle !== "active") return { ok: false, code: "WRONG_PHASE" };
-  if (state.seats[seat]?.seatIndex !== seat) {
-    return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
-  }
+  if (state.seats[seat]?.seatIndex !== seat) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
   if (expectedController && state.seats[seat].controller !== expectedController) {
     return { ok: false, code: "CONTROLLER_CHANGED" };
   }
