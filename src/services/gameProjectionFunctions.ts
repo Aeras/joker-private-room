@@ -9,6 +9,7 @@ import {
   resolveOverdueTimeoutBeforeRead,
   type GameControlFailureCode,
 } from "@/server/gameControl";
+import { ensureInitialDealerBootstrap } from "@/server/dealerBootstrap";
 import {
   submitHumanGameplayCommand,
   type SubmitGameplayCommandFailureCode,
@@ -47,9 +48,17 @@ const gameplayCommand = z.discriminatedUnion("type", [
   z.object({ type: z.literal("choose_joker_semantic"), semantic: jokerSemantic }),
 ]);
 
+async function ensureBootstrapIfNeeded(gameId: string): Promise<GameStateFailureCode | null> {
+  const result = await ensureInitialDealerBootstrap(gameId);
+  return result.ok ? null : result.code;
+}
+
 export const getProjectedGameState = createServerFn({ method: "GET" })
   .validator(z.object({ gameId: z.string().uuid() }))
   .handler(async ({ data }): Promise<ProjectedGameStateResult> => {
+    const bootstrapFailure = await ensureBootstrapIfNeeded(data.gameId);
+    if (bootstrapFailure) return { ok: false, code: bootstrapFailure };
+
     const loaded = await resolveOverdueTimeoutBeforeRead(data.gameId);
     if (!loaded.ok) return { ok: false, code: loaded.code };
 

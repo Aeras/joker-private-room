@@ -1,0 +1,215 @@
+import { createDeck, shuffleCards } from "./cards";
+import { declarationOrder, legalDeclarationValues, type Declarations } from "./declarations";
+import { dealWithTrumpReveal, nextSeat, selectInitialDealer, type SeatIndex } from "./dealing";
+import { humanDeadlineFromServerTime } from "./controller";
+import {
+  GAME_STATE_SCHEMA_VERSION,
+  POPULAR_RULES_VERSION,
+  type CanonicalGameState,
+  type CanonicalSeatState,
+  type SeatOwner,
+} from "./gameState";
+
+export interface InitialSeatInput {
+  seatIndex: SeatIndex;
+  owner: SeatOwner;
+  connected: boolean;
+}
+
+export interface CreateDealerBootstrapStateArgs {
+  gameId: string;
+  roomId: string;
+  bootstrapActionId: string;
+  seats: [InitialSeatInput, InitialSeatInput, InitialSeatInput, InitialSeatInput];
+}
+
+export interface ResolveDealerBootstrapArgs {
+  state: CanonicalGameState;
+  firstRecipientRandom: () => number;
+  selectionShuffleRandom: () => number;
+  dealOneShuffleRandom: () => number;
+  serverNow: string;
+}
+
+function canonicalSeat(input: InitialSeatInput): CanonicalSeatState {
+  return {
+    seatIndex: input.seatIndex,
+    owner: input.owner,
+    controller: input.owner.type === "human" ? "human" : "permanent_bot",
+    connected: input.owner.type === "human" ? input.connected : false,
+    takeoverAt: null,
+    reclaimable: false,
+  };
+}
+
+function emptyHands(): CanonicalGameState["cards"]["hands"] {
+  return [[], [], [], []];
+}
+
+export function chooseUniformFirstRecipient(random: () => number): SeatIndex {
+  const value = random();
+  if (!Number.isFinite(value) || value < 0 || value >= 1) {
+    throw new Error("Random source must return a finite value in [0, 1)");
+  }
+  return Math.floor(value * 4) as SeatIndex;
+}
+
+/** First persisted canonical snapshot after room Start. */
+export function createInitialDealerBootstrapState(
+  args: CreateDealerBootstrapStateArgs,
+): CanonicalGameState {
+  if (!args.gameId || !args.roomId || !args.bootstrapActionId) {
+    throw new Error("Dealer bootstrap identity is incomplete");
+  }
+  if (args.seats.some((seat, index) => seat.seatIndex !== index)) {
+    throw new Error("Initial seats must contain canonical indexes 0..3 in order");
+  }
+
+  return {
+    gameId: args.gameId,
+    roomId: args.roomId,
+    rulesetId: "popular",
+    rulesVersion: POPULAR_RULES_VERSION,
+    stateSchemaVersion: GAME_STATE_SCHEMA_VERSION,
+    stateVersion: 1,
+    lifecycle: "starting",
+    progression: {
+      round: 1,
+      dealNumber: 1,
+      indexInPhase: 1,
+      cardsPerPlayer: 1,
+      dealerSeat: null,
+      firstDeclarerSeat: null,
+      firstLeaderSeat: null,
+      currentActorSeat: null,
+      phase: "INITIAL_DEALER_SELECTION",
+    },
+    initialDealerSelection: { status: "pending", bootstrapActionId: args.bootstrapActionId },
+    seats: args.seats.map(canonicalSeat) as CanonicalGameState["seats"],
+    cards: {
+      deck: [],
+      drawCursor: 0,
+      hands: emptyHands(),
+      hiddenPartialNineCardHands: false,
+      exposedTrumpCard: null,
+      currentTrick: [],
+      completedTricks: [],
+    },
+    declarations: {
+      order: [0, 1, 2, 3],
+      currentDeclarerSeat: null,
+      declarations: [null, null, null, null],
+      legalValues: [],
+      forbiddenDealerValue: null,
+    },
+    trump: { status: "unresolved" },
+    joker: { pendingForSeat: null, cardId: null, semantic: null },
+    score: {
+      tricksTaken: [0, 0, 0, 0],
+      currentDealScores: [null, null, null, null],
+      cumulativeTotals: [0, 0, 0, 0],
+      finalPlacements: [null, null, null, null],
+    },
+    timing: { currentHumanDeadline: null, timeoutTakeoverActive: false },
+  };
+}
+
+/**
+ * Resolves the complete public dealer ritual in one authoritative transition,
+ * discards the temporary selection deck, independently shuffles a fresh full
+ * gameplay deck and initializes Deal 1. Only the public revealed prefix is retained.
+ */
+export function resolveDealerBootstrapAndInitializeDealOne(
+  args: ResolveDealerBootstrapArgs,
+): CanonicalGameState {
+  const { state } = args;
+  const pendingSelection = state.initialDealerSelection;
+  if (
+    state.lifecycle !== "starting" ||
+    state.progression.phase !== "INITIAL_DEALER_SELECTION" ||
+    !pendingSelection ||
+    pendingSelection.status !== "pending"
+  ) {
+    throw new Error("Initial dealer bootstrap is not pending");
+  }
+
+  const firstRecipientSeat = chooseUniformFirstRecipient(args.firstRecipientRandom);
+  const selectionDeck = shuffleCards(createDeck(), args.selectionShuffleRandom);
+  const selection = selectInitialDealer(selectionDeck, firstRecipientSeat);
+  const revealedSelectionCards = selectionDeck.slice(0, selection.revealedCount);
+  const lastRevealed = revealedSelectionCards.at(-1);
+  if (!lastRevealed || lastRevealed.kind !== "standard" || lastRevealed.rank !== "A") {
+    throw new Error("Dealer bootstrap did not end on an Ace");
+  }
+  if (revealedSelectionCards.slice(0, -1).some((card) => card.kind === "standard" && card.rank === "A")) {
+    throw new Error("Dealer bootstrap prefix contains an earlier Ace");
+  }
+
+  const dealerSeat = selection.dealerSeat;
+  const firstDeclarerSeat = nextSeat(dealerSeat);
+  const gameplayDeck = shuffleCards(createDeck(), args.dealOneShuffleRandom);
+  const firstDeal = dealWithTrumpReveal(gameplayDeck, dealerSeat, 1);
+  const declarations: Declarations = [null, null, null, null];
+  const legalValues = legalDeclarationValues({
+    cardsPerPlayer: 1,
+    dealerSeat,
+    seatIndex: firstDeclarerSeat,
+    declarations,
+  });
+  const nextStateVersion = state.stateVersion + 1;
+  const actorController = state.seats[firstDeclarerSeat].controller;
+
+  return {
+    ...state,
+    stateVersion: nextStateVersion,
+    lifecycle: "active",
+    progression: {
+      round: 1,
+      dealNumber: 1,
+      indexInPhase: 1,
+      cardsPerPlayer: 1,
+      dealerSeat,
+      firstDeclarerSeat,
+      firstLeaderSeat: firstDeclarerSeat,
+      currentActorSeat: firstDeclarerSeat,
+      phase: "DECLARATION",
+    },
+    initialDealerSelection: {
+      status: "resolved",
+      bootstrapActionId: pendingSelection.bootstrapActionId,
+      firstRecipientSeat,
+      revealedSelectionCards,
+      selectedDealerSeat: dealerSeat,
+      resolvedAtStateVersion: nextStateVersion,
+    },
+    cards: {
+      deck: gameplayDeck,
+      drawCursor: firstDeal.cursor,
+      hands: firstDeal.hands,
+      hiddenPartialNineCardHands: false,
+      exposedTrumpCard: firstDeal.revealedTrumpCard,
+      currentTrick: [],
+      completedTricks: [],
+    },
+    declarations: {
+      order: declarationOrder(dealerSeat) as [SeatIndex, SeatIndex, SeatIndex, SeatIndex],
+      currentDeclarerSeat: firstDeclarerSeat,
+      declarations,
+      legalValues,
+      forbiddenDealerValue: null,
+    },
+    trump: { status: "resolved", suit: firstDeal.trump },
+    joker: { pendingForSeat: null, cardId: null, semantic: null },
+    score: {
+      tricksTaken: [0, 0, 0, 0],
+      currentDealScores: [null, null, null, null],
+      cumulativeTotals: [0, 0, 0, 0],
+      finalPlacements: [null, null, null, null],
+    },
+    timing: {
+      currentHumanDeadline:
+        actorController === "human" ? humanDeadlineFromServerTime(args.serverNow) : null,
+      timeoutTakeoverActive: false,
+    },
+  };
+}

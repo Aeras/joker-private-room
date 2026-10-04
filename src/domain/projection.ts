@@ -28,6 +28,16 @@ export interface PublicSeatProjection {
   connected: boolean;
 }
 
+export type PublicInitialDealerSelection =
+  | { status: "pending" }
+  | {
+      status: "resolved";
+      firstRecipientSeat: SeatIndex;
+      revealedSelectionCards: Card[];
+      selectedDealerSeat: SeatIndex;
+      resolvedAtStateVersion: number;
+    };
+
 export interface PlayerGameProjection {
   gameId: string;
   roomId: string;
@@ -38,6 +48,7 @@ export interface PlayerGameProjection {
   lifecycle: GameLifecycle;
   viewerSeat: SeatIndex;
   progression: CanonicalGameState["progression"];
+  initialDealerSelection: PublicInitialDealerSelection | null;
   seats: [PublicSeatProjection, PublicSeatProjection, PublicSeatProjection, PublicSeatProjection];
   trump: CanonicalGameState["trump"];
   declarations: {
@@ -68,10 +79,26 @@ function publicSeat(seat: CanonicalSeatState): PublicSeatProjection {
   };
 }
 
+function publicDealerSelection(state: CanonicalGameState): PublicInitialDealerSelection | null {
+  const selection = state.initialDealerSelection;
+  if (!selection) return null;
+  if (selection.status === "pending") return { status: "pending" };
+  return {
+    status: "resolved",
+    firstRecipientSeat: selection.firstRecipientSeat,
+    revealedSelectionCards: selection.revealedSelectionCards.slice(),
+    selectedDealerSeat: selection.selectedDealerSeat,
+    resolvedAtStateVersion: selection.resolvedAtStateVersion,
+  };
+}
+
 function visibleOwnHand(state: CanonicalGameState, seat: SeatIndex): {
   hand: Card[];
   visible: boolean;
 } {
+  if (state.progression.phase === "INITIAL_DEALER_SELECTION") {
+    return { hand: [], visible: false };
+  }
   if (!state.cards.hiddenPartialNineCardHands) {
     return { hand: state.cards.hands[seat].slice(), visible: true };
   }
@@ -153,11 +180,7 @@ function localLegalActions(
   return actions;
 }
 
-/**
- * The only canonical-to-player serializer. It deliberately constructs a fresh
- * object instead of copying CanonicalGameState, so server-only deck/order and
- * opponent private data cannot leak by omission mistakes.
- */
+/** The only canonical-to-player serializer. */
 export function projectGameForSeat(
   state: CanonicalGameState,
   seat: SeatIndex,
@@ -175,6 +198,7 @@ export function projectGameForSeat(
     lifecycle: state.lifecycle,
     viewerSeat: seat,
     progression: { ...state.progression },
+    initialDealerSelection: publicDealerSelection(state),
     seats: state.seats.map(publicSeat) as PlayerGameProjection["seats"],
     trump: { ...state.trump },
     declarations: {

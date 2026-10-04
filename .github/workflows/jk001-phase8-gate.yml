@@ -71,14 +71,13 @@ jobs:
           grep -q 'GameplayCommand | null' src/domain/controller.ts
           grep -q 'action: GameplayCommand' src/domain/controller.ts
           ! grep -q 'LocalLegalAction | null' src/domain/controller.ts
-      - name: No unsupported dealer bootstrap default
+      - name: Dealer bootstrap remains outside gameplay command vocabulary
         id: bootstrap_guard
         continue-on-error: true
         run: |
-          test ! -e src/domain/gameInitialization.ts
-          test ! -e src/server/gameInitialization.ts
-          ! grep -q 'ensureCanonicalGameInitialized' src/services/roomFunctions.ts
-          ! grep -q 'action === "bootstrap"' supabase/functions/game-state/index.ts
+          ! grep -q 'select_initial_dealer' src/domain/gameplayCommands.ts
+          ! grep -q 'dealerSeat:' src/services/gameProjectionFunctions.ts
+          ! grep -q 'firstRecipientSeat:' src/services/gameProjectionFunctions.ts
       - name: TypeScript
         id: typecheck
         continue-on-error: true

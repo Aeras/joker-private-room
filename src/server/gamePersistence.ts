@@ -18,6 +18,7 @@ export type GameStateFailureCode =
   | "NOT_AUTHENTICATED"
   | "GAME_NOT_FOUND"
   | "GAME_STATE_NOT_INITIALIZED"
+  | "GAME_ALREADY_INITIALIZED"
   | "ACTION_ID_CONFLICT"
   | "STALE_STATE"
   | "INVALID_REQUEST"
@@ -37,6 +38,32 @@ export type LoadGameStateResult =
       stateVersion: number;
       lifecycle: CanonicalGameState["lifecycle"];
       canonicalState: CanonicalGameState;
+    }
+  | { ok: false; code: GameStateFailureCode; stateVersion?: number };
+
+export interface GameBootstrapParticipant {
+  seat_index: number;
+  owner_type: "human" | "bot";
+  player_id: string | null;
+  bot_id: string | null;
+  bot_display_name: string | null;
+  bot_personality_id: string | null;
+  bot_strategy_profile_id: string | null;
+  bot_catalog_version: string | null;
+  status: string;
+}
+
+export type LoadGameBootstrapResult =
+  | {
+      ok: true;
+      gameId: string;
+      roomId: string;
+      rulesetId: "popular";
+      rulesVersion: string;
+      stateSchemaVersion: number;
+      stateVersion: number;
+      lifecycle: CanonicalGameState["lifecycle"];
+      participants: GameBootstrapParticipant[];
     }
   | { ok: false; code: GameStateFailureCode; stateVersion?: number };
 
@@ -76,10 +103,12 @@ export async function loadCanonicalGameState(gameId: string): Promise<LoadGameSt
   return (await callGameStateEdge({ action: "load", gameId })) as LoadGameStateResult;
 }
 
-/**
- * Persist a TypeScript-computed transition through the single atomic Postgres CAS primitive.
- * This helper is intentionally server-internal and is not a browser API.
- */
+/** Server-only roster/room metadata used only while canonical_state is still null. */
+export async function loadGameBootstrap(gameId: string): Promise<LoadGameBootstrapResult> {
+  return (await callGameStateEdge({ action: "bootstrap", gameId })) as LoadGameBootstrapResult;
+}
+
+/** Persist a TypeScript-computed transition through the single atomic Postgres CAS primitive. */
 export async function persistCanonicalGameState(args: {
   gameId: string;
   actionId: string;
@@ -96,6 +125,9 @@ export async function persistCanonicalGameState(args: {
   }
   if (newState.stateVersion !== expectedStateVersion + 1) {
     throw new Error("Canonical state version must be expectedStateVersion + 1");
+  }
+  if (!newState.initialDealerSelection) {
+    throw new Error("Schema-v2 canonical state requires dealer-selection metadata");
   }
 
   const requestFingerprint = await fingerprintJson({
