@@ -6,6 +6,11 @@ import { playGameSound } from "@/lib/gameAudio";
 import { cn } from "@/lib/utils";
 import { PlayingCard } from "../joker/PlayingCard";
 import type { LocalPlayPresentation } from "./localPlayPresentation";
+import {
+  COLLISION_FAST_FORWARD_MS,
+  completedTrickPresentationId,
+  trickPresentationTiming,
+} from "./trickPresentationModel";
 import type { Point, TableGeometry, VisualSeat } from "./useTableGeometry";
 
 type Pos = VisualSeat;
@@ -92,7 +97,6 @@ function AnimatedTrickCard({
   const pos = posOf(viewerSeat, play.seatIndex);
   const winner = winnerSeat === play.seatIndex;
   const winnerPos = winnerSeat == null ? null : posOf(viewerSeat, winnerSeat);
-  // When geometry is unavailable, correctness wins over sophisticated motion.
   const [arrived, setArrived] = useState(departing || reducedMotion || !geometry);
 
   useEffect(() => {
@@ -219,13 +223,16 @@ export function TrickPresentation({
   const [departing, setDeparting] = useState<Departing | null>(null);
   const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+  const clearTimers = () => {
+    for (const timer of timers.current) window.clearTimeout(timer);
+    timers.current = [];
+  };
+
   useEffect(() => {
     const nextEpoch = geometry?.epoch ?? 0;
     if (previousGeometryEpoch.current === nextEpoch) return;
     previousGeometryEpoch.current = nextEpoch;
-    for (const timer of timers.current) window.clearTimeout(timer);
-    timers.current = [];
-    // Disposable presentation must never finish against stale geometry.
+    clearTimers();
     setDeparting(null);
   }, [geometry?.epoch]);
 
@@ -243,7 +250,13 @@ export function TrickPresentation({
     if (completedCount > previousCompletedCount.current) {
       const trick = projection.cards.completedTricks[completedCount - 1];
       if (trick) {
-        const id = `${projection.gameId}:${projection.progression.dealNumber}:trick:${completedCount}`;
+        const id = completedTrickPresentationId({
+          gameId: projection.gameId,
+          dealNumber: projection.progression.dealNumber,
+          trickOrdinal: completedCount,
+          cards: trick.cards,
+          winnerSeat: trick.winnerSeat,
+        });
         setDeparting({
           id,
           cards: trick.cards.map((play) => ({ ...play, card: { ...play.card } })),
@@ -256,10 +269,8 @@ export function TrickPresentation({
           }
         }
 
-        for (const timer of timers.current) window.clearTimeout(timer);
-        timers.current = [];
-        const holdMs = reducedMotion ? 120 : 520;
-        const clearMs = reducedMotion ? 260 : 920;
+        clearTimers();
+        const { holdMs, clearMs } = trickPresentationTiming(reducedMotion);
         timers.current.push(window.setTimeout(
           () => setDeparting((value) => value?.id === id ? { ...value, collecting: true } : value),
           holdMs,
@@ -283,9 +294,21 @@ export function TrickPresentation({
   }, [localPlayPresentation, projection, reducedMotion]);
 
   useEffect(() => {
+    if (!departing || projection.cards.currentTrick.length === 0) return;
+    // Canonical next-turn state is already live. Fast-forward the display-only
+    // departing cluster rather than allowing two primary trick truths to collide.
+    clearTimers();
+    setDeparting((value) => value ? { ...value, collecting: true } : value);
+    const id = departing.id;
+    timers.current.push(window.setTimeout(
+      () => setDeparting((value) => value?.id === id ? null : value),
+      reducedMotion ? 60 : COLLISION_FAST_FORWARD_MS,
+    ));
+  }, [departing?.id, projection.cards.currentTrick.length, reducedMotion]);
+
+  useEffect(() => {
     const interrupt = () => {
-      for (const timer of timers.current) window.clearTimeout(timer);
-      timers.current = [];
+      clearTimers();
       setDeparting(null);
       onLocalFlightSettled();
     };
@@ -299,14 +322,13 @@ export function TrickPresentation({
       window.removeEventListener("orientationchange", interrupt);
       window.removeEventListener("blur", interrupt);
       document.removeEventListener("visibilitychange", visibility);
-      for (const timer of timers.current) window.clearTimeout(timer);
-      timers.current = [];
+      clearTimers();
     };
   }, [onLocalFlightSettled]);
 
   const cards = departing?.cards ?? projection.cards.currentTrick;
   const visibleCards = cards.filter((play) => !isPresentationCard(localPlayPresentation, play));
-  const showLocalFlight = Boolean(localPlayPresentation && geometry);
+  const showLocalFlight = Boolean(localPlayPresentation && geometry && !departing);
   if (visibleCards.length === 0 && !showLocalFlight) return null;
 
   const rootStyle = geometry
@@ -318,6 +340,7 @@ export function TrickPresentation({
       className="pointer-events-none absolute z-20 h-0 w-0 [--card-w:clamp(3rem,6vw,5rem)]"
       style={rootStyle}
       data-geometry-epoch={geometry?.epoch ?? 0}
+      data-trick-presentation-id={departing?.id ?? "current"}
       aria-label={departing ? "Ολοκληρωμένη μπάζα" : "Τρέχουσα μπάζα"}
     >
       {visibleCards.map((play) => (
@@ -332,7 +355,7 @@ export function TrickPresentation({
           geometry={geometry}
         />
       ))}
-      {localPlayPresentation && geometry && (
+      {showLocalFlight && localPlayPresentation && geometry && (
         <LocalFlightCard
           presentation={localPlayPresentation}
           projection={projection}
