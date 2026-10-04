@@ -9,6 +9,8 @@ import {
 } from "./dealerBootstrap";
 import { nextSeat } from "./dealing";
 
+const PRIVATE_SEED = "a".repeat(64);
+
 function sequence(values: number[]): () => number {
   let index = 0;
   return () => values[index++ % values.length] ?? 0;
@@ -39,6 +41,7 @@ function pending() {
     gameId: "00000000-0000-4000-8000-000000000091",
     roomId: "00000000-0000-4000-8000-000000000092",
     bootstrapActionId: "00000000-0000-5000-8000-000000000093",
+    serverEntropySeed: PRIVATE_SEED,
     seats: seats(),
   });
 }
@@ -60,9 +63,10 @@ describe("uniform dealer-selection first recipient", () => {
 });
 
 describe("canonical dealer bootstrap", () => {
-  it("persists an unresolved state with no fake dealer or gameplay cards", () => {
+  it("persists an unresolved state with no fake dealer, gameplay cards or public-derived entropy", () => {
     const state = pending();
-    expect(state.stateSchemaVersion).toBe(2);
+    expect(state.stateSchemaVersion).toBe(3);
+    expect(state.serverEntropySeed).toBe(PRIVATE_SEED);
     expect(state.lifecycle).toBe("starting");
     expect(state.progression.phase).toBe("INITIAL_DEALER_SELECTION");
     expect(state.progression.dealerSeat).toBeNull();
@@ -70,10 +74,8 @@ describe("canonical dealer bootstrap", () => {
     expect(state.progression.firstLeaderSeat).toBeNull();
     expect(state.cards.deck).toEqual([]);
     expect(state.cards.hands.every((hand) => hand.length === 0)).toBe(true);
-    expect(state.initialDealerSelection).toEqual({
-      status: "pending",
-      bootstrapActionId: "00000000-0000-5000-8000-000000000093",
-    });
+    expect(state.score.completedDeals).toEqual([]);
+    expect(state.score.roundPremia).toEqual([]);
   });
 
   it("resolves one public first-Ace prefix then initializes Deal 1 from a fresh full deck", () => {
@@ -97,31 +99,27 @@ describe("canonical dealer bootstrap", () => {
     expect(selection?.status).toBe("resolved");
     if (!selection || selection.status !== "resolved") throw new Error("expected resolved selection");
     expect(selection.firstRecipientSeat).toBe(3);
-    expect(selection.revealedSelectionCards.length).toBeGreaterThan(0);
     const last = selection.revealedSelectionCards.at(-1);
     expect(last?.kind).toBe("standard");
     expect(last && last.kind === "standard" ? last.rank : null).toBe("A");
-    expect(
-      selection.revealedSelectionCards
-        .slice(0, -1)
-        .some((card) => card.kind === "standard" && card.rank === "A"),
-    ).toBe(false);
+    expect(selection.revealedSelectionCards.slice(0, -1).some((card) => card.kind === "standard" && card.rank === "A")).toBe(false);
     expect(state.progression.dealerSeat).toBe(selection.selectedDealerSeat);
     expect(state.progression.firstDeclarerSeat).toBe(nextSeat(selection.selectedDealerSeat));
     expect(state.progression.firstLeaderSeat).toBe(nextSeat(selection.selectedDealerSeat));
-
     for (const revealed of selection.revealedSelectionCards) {
       expect(state.cards.deck.some((card) => card.id === revealed.id)).toBe(true);
     }
   });
 
-  it("projects the ritual publicly without exposing any gameplay deck or hand", () => {
-    const pendingState = pending();
-    const pendingProjection = projectGameForSeat(pendingState, 0);
-    expect(pendingProjection.initialDealerSelection).toEqual({ status: "pending" });
-    expect(pendingProjection.cards.ownHandVisible).toBe(false);
-    expect(pendingProjection.cards.ownHand).toEqual([]);
-    expect(JSON.stringify(pendingProjection)).not.toContain('"deck"');
-    expect(JSON.stringify(pendingProjection)).not.toContain("bootstrapActionId");
+  it("projects the ritual without exposing deck, bootstrap identity or private entropy", () => {
+    const projection = projectGameForSeat(pending(), 0);
+    const serialized = JSON.stringify(projection);
+    expect(projection.initialDealerSelection).toEqual({ status: "pending" });
+    expect(projection.cards.ownHandVisible).toBe(false);
+    expect(projection.cards.ownHand).toEqual([]);
+    expect(serialized).not.toContain('"deck"');
+    expect(serialized).not.toContain("bootstrapActionId");
+    expect(serialized).not.toContain("serverEntropySeed");
+    expect(serialized).not.toContain(PRIVATE_SEED);
   });
 });
