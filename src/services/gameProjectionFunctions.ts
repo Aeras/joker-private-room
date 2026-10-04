@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { SeatIndex } from "@/domain/dealing";
 import { projectGameForSeat, type PlayerGameProjection } from "@/domain/projection";
 import type { GameplayCommand } from "@/domain/gameplayCommands";
+import { progressAutomaticGameplay } from "@/server/botProgression";
 import {
   reclaimGameControl,
   resolveOverdueTimeoutBeforeRead,
@@ -14,7 +15,7 @@ import {
   submitHumanGameplayCommand,
   type SubmitGameplayCommandFailureCode,
 } from "@/server/gameplayCommands";
-import type { GameStateFailureCode } from "@/server/gamePersistence";
+import type { GameStateFailureCode, LoadGameStateResult } from "@/server/gamePersistence";
 
 export type ProjectedGameStateResult =
   | { ok: true; projection: PlayerGameProjection }
@@ -53,13 +54,27 @@ async function ensureBootstrapIfNeeded(gameId: string): Promise<GameStateFailure
   return result.ok ? null : result.code;
 }
 
+async function settleAutomaticState(gameId: string): Promise<LoadGameStateResult> {
+  const timed = await resolveOverdueTimeoutBeforeRead(gameId);
+  if (!timed.ok) return timed;
+
+  const progression = await progressAutomaticGameplay(gameId);
+  if (!progression.ok) {
+    return progression.currentStateVersion == null
+      ? { ok: false, code: progression.code }
+      : { ok: false, code: progression.code, stateVersion: progression.currentStateVersion };
+  }
+
+  return resolveOverdueTimeoutBeforeRead(gameId);
+}
+
 export const getProjectedGameState = createServerFn({ method: "GET" })
   .validator(z.object({ gameId: z.string().uuid() }))
   .handler(async ({ data }): Promise<ProjectedGameStateResult> => {
     const bootstrapFailure = await ensureBootstrapIfNeeded(data.gameId);
     if (bootstrapFailure) return { ok: false, code: bootstrapFailure };
 
-    const loaded = await resolveOverdueTimeoutBeforeRead(data.gameId);
+    const loaded = await settleAutomaticState(data.gameId);
     if (!loaded.ok) return { ok: false, code: loaded.code };
 
     if (!isSeatIndex(loaded.viewerSeat)) {
@@ -84,7 +99,7 @@ export const reclaimProjectedGameControl = createServerFn({ method: "POST" })
     const result = await reclaimGameControl(data);
     if (!result.ok) return result;
 
-    const loaded = await resolveOverdueTimeoutBeforeRead(data.gameId);
+    const loaded = await settleAutomaticState(data.gameId);
     if (!loaded.ok) return { ok: false, code: loaded.code };
     if (!isSeatIndex(loaded.viewerSeat)) return { ok: false, code: "SERVICE_UNAVAILABLE" };
 
@@ -113,7 +128,7 @@ export const submitProjectedGameplayCommand = createServerFn({ method: "POST" })
     });
     if (!result.ok) return result;
 
-    const loaded = await resolveOverdueTimeoutBeforeRead(data.gameId);
+    const loaded = await settleAutomaticState(data.gameId);
     if (!loaded.ok) return { ok: false, code: loaded.code };
     if (!isSeatIndex(loaded.viewerSeat)) return { ok: false, code: "SERVICE_UNAVAILABLE" };
 
