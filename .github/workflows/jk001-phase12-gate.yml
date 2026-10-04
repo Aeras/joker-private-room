@@ -1,0 +1,125 @@
+name: JK-001 Phase 12 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Full tests including 24-deal simulations
+        id: tests
+        continue-on-error: true
+        run: bun run test
+
+      - name: Phase 12 lint
+        id: lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/domain/gameState.ts
+          src/domain/gameLifecycle.ts
+          src/domain/gameLifecycle.test.ts
+          src/domain/projection.ts
+          src/domain/dealerBootstrap.test.ts
+          src/server/internalDeterminism.ts
+          src/server/dealerBootstrap.ts
+          src/server/gamePersistence.ts
+          src/server/botProgression.ts
+          src/services/gameProjectionFunctions.ts
+          src/services/gameHistoryFunctions.ts
+          src/components/table/GameTable.tsx
+          src/routes/table.tsx
+          src/routes/lobby.tsx
+          src/routes/history.tsx
+          src/routes/index.tsx
+          src/test/full-game-simulation.test.ts
+          supabase/functions/game-state/index.ts
+          --rule 'prettier/prettier: off'
+
+      - name: Production path contains no demo authority
+        id: no_demo
+        continue-on-error: true
+        run: |
+          ! grep -q 'useDemoTable' src/components/table/GameTable.tsx
+          ! grep -q 'useDemoState' src/routes/table.tsx
+          grep -q 'getProjectedGameState' src/routes/table.tsx
+          grep -q 'submitProjectedGameplayCommand' src/routes/table.tsx
+          grep -q 'reclaimProjectedGameControl' src/routes/table.tsx
+
+      - name: Private entropy and schema-v3 guards
+        id: entropy
+        continue-on-error: true
+        run: |
+          grep -q 'GAME_STATE_SCHEMA_VERSION = 3' src/domain/gameState.ts
+          grep -q 'serverEntropySeed' src/domain/gameState.ts
+          grep -q 'secureEntropySeed' src/server/internalDeterminism.ts
+          grep -q 'deterministicRandomUnitsFromSeed' src/server/internalDeterminism.ts
+          ! grep -q 'deterministicRandomUnits(' src/server/dealerBootstrap.ts
+          grep -q 'private server entropy' src/server/gamePersistence.ts
+          grep -q 'state_schema_version: 3' supabase/functions/game-state/index.ts
+
+      - name: Completion and history atomicity guards
+        id: finalization
+        continue-on-error: true
+        run: |
+          grep -q 'finalize_game_internal' supabase/migrations/20261004053000_jk001_phase12_atomic_finalization_history.sql
+          grep -q 'game_history' supabase/migrations/20261004053000_jk001_phase12_atomic_finalization_history.sql
+          grep -q "status = 'completed'" supabase/migrations/20261004053000_jk001_phase12_atomic_finalization_history.sql
+          grep -q "'winPercentage', null" supabase/migrations/20261004053000_jk001_phase12_atomic_finalization_history.sql
+          grep -q 'finalizeCanonicalGameState' src/server/botProgression.ts
+          grep -q 'completedDeals' src/domain/gameState.ts
+          grep -q 'roundPremia' src/domain/gameState.ts
+
+      - name: Projection privacy guard
+        id: projection
+        continue-on-error: true
+        run: |
+          grep -q 'serverEntropySeed' src/domain/gameState.ts
+          ! grep -q 'serverEntropySeed:' src/domain/projection.ts
+          grep -q 'not.toContain("serverEntropySeed")' src/domain/dealerBootstrap.test.ts
+          ! grep -q 'canonicalState' src/routes/table.tsx
+
+      - name: Full-game simulation guard
+        id: simulation
+        continue-on-error: true
+        run: |
+          grep -q 'full 24-deal production game simulation' src/test/full-game-simulation.test.ts
+          grep -q 'completedDeals).toHaveLength(24)' src/test/full-game-simulation.test.ts
+          grep -q 'roundPremia).toHaveLength(4)' src/test/full-game-simulation.test.ts
+          grep -q 'probability-simulation-v1' src/test/full-game-simulation.test.ts
+          grep -q 'memory-inference-v1' src/test/full-game-simulation.test.ts
+          grep -q 'strong-basic-v1' src/test/full-game-simulation.test.ts
+
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+
+      - name: Production build
+        id: build
+        continue-on-error: true
+        run: bun run build
+
+      - name: Require Phase 12 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.lint.outcome }}" = "success"
+          test "${{ steps.no_demo.outcome }}" = "success"
+          test "${{ steps.entropy.outcome }}" = "success"
+          test "${{ steps.finalization.outcome }}" = "success"
+          test "${{ steps.projection.outcome }}" = "success"
+          test "${{ steps.simulation.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
