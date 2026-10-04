@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { JButton } from "@/components/joker/JButton";
 import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
+import { DIALOGUE_INTENSITIES, type DialogueIntensity } from "@/domain/dialoguePolicy";
 import type { PublicPlayer } from "@/domain/players";
 import { RULESET_LIST, type RulesetId } from "@/domain/rulesets";
 import { t } from "@/i18n/el";
@@ -29,6 +30,12 @@ function Toggle({ checked, disabled, onChange, label }: { checked: boolean; disa
   );
 }
 
+const intensityLabels: Record<DialogueIntensity, string> = {
+  conservative: t.banterConservative,
+  normal: t.banterNormal,
+  chaos: t.banterChaos,
+};
+
 function CreateGame() {
   const navigate = useNavigate();
   const [host, setHost] = useState<PublicPlayer | null>(null);
@@ -39,6 +46,8 @@ function CreateGame() {
   const [rulesetId, setRulesetId] = useState<RulesetId>("popular");
   const [botsTalk, setBotsTalk] = useState(false);
   const [allowProfanity, setAllowProfanity] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [intensity, setIntensity] = useState<DialogueIntensity>("normal");
   const [busy, setBusy] = useState(false);
   const [roomError, setRoomError] = useState<string | null>(null);
   const createActionId = useRef<string | null>(null);
@@ -66,7 +75,16 @@ function CreateGame() {
     setRoomError(null);
     createActionId.current ??= crypto.randomUUID();
     try {
-      const result = await createProductionRoom({ data: { actionId: createActionId.current, rulesetId, botsTalk, allowProfanity: botsTalk && allowProfanity } });
+      const result = await createProductionRoom({
+        data: {
+          actionId: createActionId.current,
+          rulesetId,
+          botsTalk,
+          allowProfanity: botsTalk && allowProfanity,
+          aiEnabled: botsTalk && aiEnabled,
+          intensity,
+        },
+      });
       if (!result.ok) {
         if (result.code === "ACTIVE_GAME_EXISTS" && result.activeGame?.roomCode) {
           createActionId.current = null;
@@ -105,7 +123,49 @@ function CreateGame() {
           return <button key={r.id} role="radio" aria-checked={active} aria-disabled={!available} disabled={!available} onClick={() => available && setRulesetId(r.id)} className={cn("panel flex w-full items-center gap-4 p-4 text-left transition-shadow", active && "ring-gold", !available && "cursor-not-allowed opacity-45")}><span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", active ? "border-primary" : "border-muted-foreground")}>{active && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}</span><span><span className="block font-display text-lg text-foreground">{r.name}</span><span className="block text-sm text-muted-foreground">{available ? r.description : t.rulesetNotImplemented}</span></span></button>;
         })}
       </div>
-      <div className="mt-8"><SectionLabel>{t.botBehavior}</SectionLabel><div className="panel px-4 py-2"><Toggle checked={botsTalk} onChange={(v) => { setBotsTalk(v); if (!v) setAllowProfanity(false); }} label={t.botsTalk} />{botsTalk && <div className="border-t border-border pl-4"><Toggle checked={allowProfanity} onChange={setAllowProfanity} label={t.allowProfanity} /></div>}</div><p className="mt-2 px-1 text-xs text-muted-foreground">{t.botsNote}</p></div>
+      <div className="mt-8">
+        <SectionLabel>{t.botBehavior}</SectionLabel>
+        <div className="panel px-4 py-2">
+          <Toggle
+            checked={botsTalk}
+            onChange={(v) => {
+              setBotsTalk(v);
+              if (!v) {
+                setAllowProfanity(false);
+                setAiEnabled(false);
+              }
+            }}
+            label={t.botsTalk}
+          />
+          {botsTalk && (
+            <div className="space-y-2 border-t border-border pl-4">
+              <Toggle checked={allowProfanity} onChange={setAllowProfanity} label={t.allowProfanity} />
+              <Toggle checked={aiEnabled} onChange={setAiEnabled} label={t.useAiBanter} />
+              <div className="pb-3 pt-1">
+                <p className="mb-2 text-sm text-muted-foreground">{t.banterIntensity}</p>
+                <div role="radiogroup" className="grid grid-cols-3 gap-2">
+                  {DIALOGUE_INTENSITIES.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={intensity === value}
+                      onClick={() => setIntensity(value)}
+                      className={cn(
+                        "min-h-10 rounded-lg border px-2 text-sm",
+                        intensity === value ? "border-primary bg-gold-soft text-primary" : "border-border text-muted-foreground",
+                      )}
+                    >
+                      {intensityLabels[value]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        <p className="mt-2 px-1 text-xs text-muted-foreground">{t.botsNote}</p>
+      </div>
     </ScreenShell>
   );
 }
