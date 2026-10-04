@@ -1,0 +1,96 @@
+name: JK-001 Phase 11 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+      - name: Phase 11 lint
+        id: phase11_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/bots/runtime.ts
+          src/bots/progression.ts
+          src/bots/runtime.test.ts
+          src/server/botProgression.ts
+          src/services/gameProjectionFunctions.ts
+          --rule 'prettier/prettier: off'
+      - name: Permanent profile resolution guard
+        id: permanent_profiles
+        continue-on-error: true
+        run: |
+          grep -q 'owner.strategyProfileId' src/bots/runtime.ts
+          grep -q 'resolveBotStrategy' src/bots/runtime.ts
+          grep -q 'permanent_bot' src/bots/runtime.ts
+      - name: Temporary controller separation guard
+        id: temporary_controller
+        continue-on-error: true
+        run: |
+          grep -q 'temporary-controller-v1' src/bots/runtime.ts
+          grep -q 'owner.type !== "human"' src/bots/runtime.ts
+          ! grep -q 'botId.*temporary-controller' src/bots/runtime.ts
+      - name: Fair projection strategy boundary guard
+        id: fair_projection
+        continue-on-error: true
+        run: |
+          grep -q 'PlayerGameProjection' src/bots/runtime.ts
+          ! grep -q 'CanonicalGameState' src/bots/runtime.ts
+          grep -q 'projectGameForSeat' src/bots/progression.ts
+      - name: Per-action CAS guard
+        id: per_action_cas
+        continue-on-error: true
+        run: |
+          grep -q 'persistCanonicalGameState' src/server/botProgression.ts
+          grep -q 'expectedStateVersion: loaded.stateVersion' src/server/botProgression.ts
+          grep -q 'stableInternalActionId' src/server/botProgression.ts
+          grep -q 'STALE_STATE' src/server/botProgression.ts
+      - name: Authoritative entry-point progression guard
+        id: entry_points
+        continue-on-error: true
+        run: |
+          grep -q 'settleAutomaticState' src/services/gameProjectionFunctions.ts
+          grep -q 'progressAutomaticGameplay' src/services/gameProjectionFunctions.ts
+          grep -q 'resolveOverdueTimeoutBeforeRead' src/services/gameProjectionFunctions.ts
+      - name: No Phase 12 scope guard
+        id: no_phase12
+        continue-on-error: true
+        run: |
+          ! grep -qi 'history\|statistics\|finalization' src/server/botProgression.ts
+          ! grep -qi 'openai\|gemini\|anthropic\|llm' src/bots/runtime.ts src/bots/progression.ts src/server/botProgression.ts
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build
+      - name: Require Phase 11 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.phase11_lint.outcome }}" = "success"
+          test "${{ steps.permanent_profiles.outcome }}" = "success"
+          test "${{ steps.temporary_controller.outcome }}" = "success"
+          test "${{ steps.fair_projection.outcome }}" = "success"
+          test "${{ steps.per_action_cas.outcome }}" = "success"
+          test "${{ steps.entry_points.outcome }}" = "success"
+          test "${{ steps.no_phase12.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
