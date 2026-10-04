@@ -3,6 +3,7 @@ import { cardLabel, type Card } from "@/domain/cards";
 import { cn } from "@/lib/utils";
 import { PlayingCard } from "../joker/PlayingCard";
 import { shouldCommitCardGesture } from "./cardGesture";
+import type { RectLike } from "./useTableGeometry";
 
 type DragState = {
   pointerId: number;
@@ -12,6 +13,17 @@ type DragState = {
   currentY: number;
   startedAt: number;
 };
+
+function rectLike(rect: DOMRect): RectLike {
+  return {
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  };
+}
 
 export function DraggableHandCard({
   card,
@@ -30,8 +42,9 @@ export function DraggableHandCard({
   authorityKey: string;
   zIndex: number;
   overlap: boolean;
-  onCommit: (cardId: string) => Promise<void>;
+  onCommit: (cardId: string, releaseRect: RectLike) => Promise<void>;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const committingRef = useRef(false);
   const canInteract = legal && !blocked && !pending;
@@ -63,14 +76,14 @@ export function DraggableHandCard({
   } : null, [drag]);
   const commitReady = sample ? shouldCommitCardGesture(sample) : false;
 
-  const submitOnce = async () => {
+  const submitOnce = async (releaseRect: RectLike) => {
     if (!canInteract || committingRef.current) return;
     committingRef.current = true;
-    setDrag(null);
     try {
-      await onCommit(card.id);
+      await onCommit(card.id, releaseRect);
     } finally {
       committingRef.current = false;
+      setDrag(null);
     }
   };
 
@@ -103,20 +116,29 @@ export function DraggableHandCard({
     } catch {
       // Pointer capture may already be released by the browser/OS.
     }
-    setDrag(null);
-    if (cancelled || !canInteract) return;
+    if (cancelled || !canInteract) {
+      setDrag(null);
+      return;
+    }
     const shouldCommit = shouldCommitCardGesture({
       deltaX: event.clientX - current.startX,
       deltaY: event.clientY - current.startY,
       durationMs: performance.now() - current.startedAt,
     });
-    if (shouldCommit) void submitOnce();
+    if (!shouldCommit) {
+      setDrag(null);
+      return;
+    }
+    // Preserve the final dragged pose until the parent creates the presentation token.
+    void submitOnce(rectLike(event.currentTarget.getBoundingClientRect()));
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!canInteract || (event.key !== "Enter" && event.key !== " ")) return;
     event.preventDefault();
-    void submitOnce();
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    void submitOnce(rectLike(rect));
   };
 
   const deltaX = drag ? drag.currentX - drag.startX : 0;
@@ -124,6 +146,7 @@ export function DraggableHandCard({
 
   return (
     <div
+      ref={rootRef}
       role="button"
       tabIndex={canInteract ? 0 : -1}
       aria-disabled={!canInteract}
@@ -134,7 +157,7 @@ export function DraggableHandCard({
         legal ? "touch-none" : "opacity-70",
         drag && "z-[100] cursor-grabbing transition-none",
         commitReady && "drop-shadow-[0_0_14px_var(--gold)]",
-        pending && "opacity-80",
+        pending && "pointer-events-none opacity-0",
       )}
       style={{
         zIndex: drag ? 100 : zIndex,
@@ -146,7 +169,7 @@ export function DraggableHandCard({
       onPointerCancel={(event) => finishPointer(event, true)}
       onKeyDown={onKeyDown}
     >
-      <PlayingCard card={card} selected={commitReady} className={cn(drag && "scale-[1.04]", pending && "animate-pulse")} />
+      <PlayingCard card={card} selected={commitReady} className={cn(drag && "scale-[1.04]")} />
     </div>
   );
 }

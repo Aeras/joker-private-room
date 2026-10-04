@@ -167,8 +167,8 @@ function TablePage() {
     };
   }, [refreshAll, refreshDialogue, refreshProjection]);
 
-  const submit = async (command: GameplayCommand) => {
-    if (!projection || busy) return;
+  const submit = async (command: GameplayCommand): Promise<PlayerGameProjection | null> => {
+    if (!projection || busy) return null;
     setBusy(true);
     setError(null);
     try {
@@ -180,10 +180,11 @@ function TablePage() {
           setProjection(result.projection);
           triggerPublicDialogue(result.projection);
         }
-        return;
+        return result.projection;
       }
       if (mounted.current) setError(gameplayFailureMessage(result.code));
       await refreshProjection();
+      return null;
     } finally {
       if (mounted.current) setBusy(false);
     }

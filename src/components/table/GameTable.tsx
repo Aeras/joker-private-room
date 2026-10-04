@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Maximize, Minimize, Trophy } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { assets } from "@/assets/registry";
 import type { Suit } from "@/domain/cards";
 import type { GameplayCommand } from "@/domain/gameplayCommands";
@@ -12,11 +12,15 @@ import { JButton } from "../joker/JButton";
 import { PlayingCard } from "../joker/PlayingCard";
 import { DealPresentation } from "./DealPresentation";
 import { DraggableHandCard } from "./DraggableHandCard";
+import {
+  projectionContainsPendingCardInCurrentTrick,
+  type LocalPlayPresentation,
+} from "./localPlayPresentation";
 import { SoundToggle } from "./SoundToggle";
 import { Scoreboard } from "./Scoreboard";
 import { TableSeat } from "./TableSeat";
 import { TrickPresentation } from "./TrickPresentation";
-import { useTableGeometry } from "./useTableGeometry";
+import { useTableGeometry, type RectLike } from "./useTableGeometry";
 
 type Pos = 0 | 1 | 2 | 3;
 type OrientationLock = ScreenOrientation & { lock?: (orientation: "landscape") => Promise<void> };
@@ -103,7 +107,7 @@ export function GameTable({
   projection: PlayerGameProjection;
   busy: boolean;
   error: string | null;
-  onCommand: (command: GameplayCommand) => Promise<void>;
+  onCommand: (command: GameplayCommand) => Promise<PlayerGameProjection | null>;
   onReclaim: () => Promise<void>;
 }) {
   const tableRootRef = useRef<HTMLDivElement>(null);
@@ -114,6 +118,8 @@ export function GameTable({
   const [fullscreen, setFullscreen] = useState(false);
   const [portrait, setPortrait] = useState(false);
   const [submittingCardId, setSubmittingCardId] = useState<string | null>(null);
+  const [localPlayPresentation, setLocalPlayPresentation] = useState<LocalPlayPresentation | null>(null);
+  const clearLocalFlight = useCallback(() => setLocalPlayPresentation(null), []);
 
   const names = room.seats.map((seat) => {
     const occupant = seat.occupant;
@@ -159,12 +165,55 @@ export function GameTable({
     return () => document.removeEventListener("fullscreenchange", change);
   }, []);
 
-  const commitCard = async (cardId: string) => {
+  useEffect(() => {
+    const epoch = tableGeometry.geometry?.epoch ?? 0;
+    setLocalPlayPresentation((current) =>
+      current && current.geometryEpoch !== epoch ? null : current,
+    );
+  }, [tableGeometry.geometry?.epoch]);
+
+  const commitCard = async (cardId: string, releaseRect: RectLike) => {
     if (!playAction?.cardIds.includes(cardId) || busy || playSubmissionLock.current) return;
+    const card = projection.cards.ownHand.find((candidate) => candidate.id === cardId);
+    if (!card) return;
+
     playSubmissionLock.current = true;
     setSubmittingCardId(cardId);
+    const geometryEpoch = tableGeometry.geometry?.epoch ?? 0;
+    const presentation: LocalPlayPresentation | null = tableGeometry.geometry
+      ? {
+          gameId: projection.gameId,
+          dealNumber: projection.progression.dealNumber,
+          card,
+          cardId,
+          actorSeat: localSeat,
+          sourceStateVersion: projection.stateVersion,
+          acceptedStateVersion: null,
+          geometryEpoch,
+          releaseRect,
+          status: "submitted",
+        }
+      : null;
+    setLocalPlayPresentation(presentation);
+
     try {
-      await onCommand({ type: "play_card", cardId });
+      const authoritative = await onCommand({ type: "play_card", cardId });
+      if (
+        !authoritative ||
+        !presentation ||
+        authoritative.gameId !== presentation.gameId ||
+        authoritative.progression.dealNumber !== presentation.dealNumber ||
+        authoritative.stateVersion <= presentation.sourceStateVersion ||
+        !projectionContainsPendingCardInCurrentTrick(presentation, authoritative.cards.currentTrick)
+      ) {
+        setLocalPlayPresentation(null);
+        return;
+      }
+      setLocalPlayPresentation((current) =>
+        current && current.cardId === cardId && current.sourceStateVersion === presentation.sourceStateVersion
+          ? { ...current, status: "accepted", acceptedStateVersion: authoritative.stateVersion }
+          : current,
+      );
     } finally {
       playSubmissionLock.current = false;
       setSubmittingCardId(null);
@@ -300,7 +349,12 @@ export function GameTable({
             {seatBlock(3, "vertical")}
           </div>
 
-          <TrickPresentation projection={projection} geometry={tableGeometry.geometry} />
+          <TrickPresentation
+            projection={projection}
+            geometry={tableGeometry.geometry}
+            localPlayPresentation={localPlayPresentation}
+            onLocalFlightSettled={clearLocalFlight}
+          />
 
           {projection.cards.exposedTrumpCard && (
             <div className="absolute left-[59%] top-[54%] -translate-y-1/2 [--card-w:clamp(2rem,4vw,3.4rem)]">
@@ -397,7 +451,7 @@ export function GameTable({
                   card={card}
                   legal={Boolean(playAction?.cardIds.includes(card.id))}
                   blocked={busy || Boolean(submittingCardId)}
-                  pending={submittingCardId === card.id}
+                  pending={localPlayPresentation?.cardId === card.id}
                   authorityKey={handAuthorityKey}
                   zIndex={index}
                   overlap={index > 0}
