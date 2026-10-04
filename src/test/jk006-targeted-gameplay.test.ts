@@ -56,7 +56,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
   });
 
   it("implements host-only atomic termination without fabricated scores or history", () => {
-    const migration = read("supabase/migrations/20261005003000_jk006_host_forced_termination.sql");
+    const migration = read("supabase/migrations/20261004225711_jk006_host_forced_termination.sql");
     expect(migration).toContain("terminate_game_by_host_internal");
     expect(migration).toContain("v_host_player_id <> v_player_id");
     expect(migration).toContain("'NOT_HOST'");
