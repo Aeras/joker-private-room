@@ -5,6 +5,7 @@ const projection = readFileSync("src/domain/projection.ts", "utf8");
 const tableSeat = readFileSync("src/components/table/TableSeat.tsx", "utf8");
 const gameTable = readFileSync("src/components/table/GameTable.tsx", "utf8");
 const declaration = readFileSync("src/components/table/DeclarationPicker.tsx", "utf8");
+const controls = readFileSync("src/components/table/tableControlModel.ts", "utf8");
 
 describe("JK-001 Phase 1 — seat, timer and declaration contract", () => {
   it("projects the authoritative human deadline publicly without moving timeout authority client-side", () => {
@@ -40,10 +41,12 @@ describe("JK-001 Phase 1 — seat, timer and declaration contract", () => {
   it("renders the complete declaration range while disabling values outside projected legality", () => {
     expect(gameTable).toContain("Array.from({ length: projection.progression.cardsPerPlayer + 1 }");
     expect(gameTable).toContain("legalValues={declarationAction.values}");
-    expect(declaration).toContain("const allowed = legalValues.includes(value)");
+    expect(declaration).toContain("const legal = new Set(legalValues)");
+    expect(declaration).toContain("const allowed = legal.has(value)");
     expect(declaration).toContain("disabled={busy || !allowed}");
-    expect(declaration).toContain("Μη επιτρεπτή δήλωση για τον dealer");
-    expect(declaration).toContain('value === 0 ? "—"');
+    expect(declaration).toContain("Δεν επιτρέπεται για τον dealer.");
+    expect(declaration).toContain("declarationDisplayValue(value)");
+    expect(controls).toContain('value === 0 ? "—"');
     expect(declaration).not.toContain("<select");
   });
 });
