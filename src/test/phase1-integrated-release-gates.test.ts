@@ -7,6 +7,8 @@ const seat = readFileSync("src/components/table/TableSeat.tsx", "utf8");
 const gesture = readFileSync("src/components/table/DraggableHandCard.tsx", "utf8");
 const deal = readFileSync("src/components/table/DealPresentation.tsx", "utf8");
 const trick = readFileSync("src/components/table/TrickPresentation.tsx", "utf8");
+const trickModel = readFileSync("src/components/table/trickPresentationModel.ts", "utf8");
+const declaration = readFileSync("src/components/table/DeclarationPicker.tsx", "utf8");
 const audio = readFileSync("src/lib/gameAudio.ts", "utf8");
 
 describe("JK-001 Phase 1 — integrated non-asset release gates", () => {
@@ -52,7 +54,8 @@ describe("JK-001 Phase 1 — integrated non-asset release gates", () => {
     expect(trick).toContain("projection.cards.completedTricks[completedCount - 1]");
     expect(trick).toContain("winnerSeat: trick.winnerSeat");
     expect(trick).not.toMatch(/resolveTrick|calculateWinner/);
-    expect(trick).toContain("const clearMs = reducedMotion ? 260 : 920");
+    expect(trick).toContain("trickPresentationTiming(reducedMotion)");
+    expect(trickModel).toContain("holdMs: 850");
   });
 
   it("uses best-effort deduplicated audio with no gameplay dependency", () => {
@@ -73,8 +76,9 @@ describe("JK-001 Phase 1 — integrated non-asset release gates", () => {
   });
 
   it("keeps the touch declaration range large and server-projected", () => {
-    expect(table).toContain("h-12 min-w-12");
-    expect(table).toContain("declarationAction.values.includes(value)");
-    expect(table).toContain("disabled={busy || !allowed}");
+    expect(declaration).toContain("h-12 min-w-12");
+    expect(declaration).toContain("legalValues.includes(value)");
+    expect(declaration).toContain("disabled={busy || !allowed}");
+    expect(declaration).toContain('value === 0 ? "—"');
   });
 });
