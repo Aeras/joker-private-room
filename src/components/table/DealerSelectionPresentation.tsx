@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Card } from "@/domain/cards";
 import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
@@ -22,6 +22,14 @@ type RevealedBeat = {
   index: number;
 };
 
+type FrozenRun = {
+  key: string;
+  gameId: string;
+  viewerSeat: number;
+  geometry: TableGeometry;
+  beats: RevealedBeat[];
+};
+
 function visualSeat(viewerSeat: number, seat: number): VisualSeat {
   return ((seat - viewerSeat + 4) % 4) as VisualSeat;
 }
@@ -32,17 +40,17 @@ function relativeTransform(point: Point, center: Point, scale = 1): string {
 
 function RevealedCard({
   beat,
-  projection,
+  viewerSeat,
   geometry,
   finalAce,
 }: {
   beat: RevealedBeat;
-  projection: PlayerGameProjection;
+  viewerSeat: number;
   geometry: TableGeometry;
   finalAce: boolean;
 }) {
   const [arrived, setArrived] = useState(false);
-  const pos = visualSeat(projection.viewerSeat, beat.seat);
+  const pos = visualSeat(viewerSeat, beat.seat);
   const center = geometry.usableCenter;
   const base = geometry.seatOrigins[pos];
   const stackOffset = (beat.index % 4) * 4;
@@ -84,100 +92,127 @@ export function DealerSelectionPresentation({
   geometry: TableGeometry | null;
   onActiveChange: (active: boolean) => void;
 }) {
+  const [run, setRun] = useState<FrozenRun | null>(null);
   const [cueVisible, setCueVisible] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
   const timers = useRef<number[]>([]);
+  const startupFrames = useRef<number[]>([]);
+  const startedKey = useRef<string | null>(null);
+  const onActiveChangeRef = useRef(onActiveChange);
+  onActiveChangeRef.current = onActiveChange;
+
   const selection = projection.initialDealerSelection?.status === "resolved"
     ? projection.initialDealerSelection
     : null;
+  const selectionKey = selection
+    ? `${projection.gameId}:${selection.resolvedAtStateVersion}`
+    : null;
+  const geometryReady = geometry != null;
   const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const needsPresentation = Boolean(selectionKey && selection && dealerSelectionNeedsPresentation(projection));
 
-  const beats = useMemo<RevealedBeat[]>(() => {
-    if (!selection) return [];
-    return selection.revealedSelectionCards.map((card, index) => ({
-      id: `${projection.gameId}:dealer-select:${selection.resolvedAtStateVersion}:${index}:${card.id}`,
-      card,
-      seat: dealerSelectionRecipient(selection.firstRecipientSeat, index),
-      index,
-    }));
-  }, [projection.gameId, selection]);
-
-  const clear = () => {
+  const clearTimers = useCallback(() => {
     for (const timer of timers.current) window.clearTimeout(timer);
     timers.current = [];
-  };
+    for (const frame of startupFrames.current) window.cancelAnimationFrame(frame);
+    startupFrames.current = [];
+  }, []);
 
   useEffect(() => {
-    clear();
-    setCueVisible(false);
-    setVisibleCount(0);
-
-    const needsPresentation = Boolean(selection && beats.length > 0 && dealerSelectionNeedsPresentation(projection));
     if (!needsPresentation) {
-      onActiveChange(false);
-      return clear;
+      if (startedKey.current == null) onActiveChangeRef.current(false);
+      return;
     }
-
-    startTimingDiagnosticSession(projection.gameId);
-    onActiveChange(true);
-    if (!geometry) {
+    // From the moment a resolved dealer ritual is known, block all real gameplay UI.
+    // Geometry measurement is allowed to finish behind this gate; no cards/hands/actions leak through.
+    onActiveChangeRef.current(true);
+    if (!geometryReady || !geometry || !selection || !selectionKey) {
       recordTimingDiagnostic("dealer_waiting_for_geometry", { reducedMotion: Boolean(reducedMotion) });
-      return clear;
+      return;
     }
+    if (startedKey.current === selectionKey) return;
 
-    setCueVisible(true);
-    playGameSound("shuffle", `${projection.gameId}:dealer-selection`);
+    // Wait two paint frames after the first complete geometry snapshot, then freeze it.
+    // Once started, polling projections and later geometry epochs must never restart this sequence.
+    const firstFrame = window.requestAnimationFrame(() => {
+      const secondFrame = window.requestAnimationFrame(() => {
+        if (startedKey.current === selectionKey) return;
+        startedKey.current = selectionKey;
+        startTimingDiagnosticSession(projection.gameId);
 
-    const cueMs = reducedMotion ? 90 : DEALER_START_CUE_MS;
-    const staggerMs = reducedMotion ? 90 : DEALER_SELECTION_STAGGER_MS;
-    const holdMs = reducedMotion ? 160 : DEALER_SELECTION_WINNER_HOLD_MS;
-    recordTimingDiagnostic("dealer_sequence_start", {
-      reducedMotion: Boolean(reducedMotion),
-      cueMs,
-      staggerMs,
-      travelMs: reducedMotion ? 75 : DEALER_SELECTION_CARD_TRAVEL_MS,
-      holdMs,
-      cardCount: beats.length,
-      firstRecipientSeat: selection?.firstRecipientSeat ?? -1,
-    });
-
-    beats.forEach((beat, index) => {
-      timers.current.push(window.setTimeout(() => {
-        if (index === 0) setCueVisible(false);
-        setVisibleCount(index + 1);
-        recordTimingDiagnostic("dealer_card_visible", {
+        const beats: RevealedBeat[] = selection.revealedSelectionCards.map((card, index) => ({
+          id: `${projection.gameId}:dealer-select:${selection.resolvedAtStateVersion}:${index}:${card.id}`,
+          card: { ...card },
+          seat: dealerSelectionRecipient(selection.firstRecipientSeat, index),
           index,
-          seat: beat.seat,
-          scheduledOffsetMs: cueMs + index * staggerMs,
-          finalAce: index === beats.length - 1,
+        }));
+        const frozenRun: FrozenRun = {
+          key: selectionKey,
+          gameId: projection.gameId,
+          viewerSeat: projection.viewerSeat,
+          geometry,
+          beats,
+        };
+        setRun(frozenRun);
+        setVisibleCount(0);
+        setCueVisible(true);
+        playGameSound("shuffle", `${projection.gameId}:dealer-selection`);
+
+        const cueMs = reducedMotion ? 90 : DEALER_START_CUE_MS;
+        const staggerMs = reducedMotion ? 90 : DEALER_SELECTION_STAGGER_MS;
+        const holdMs = reducedMotion ? 160 : DEALER_SELECTION_WINNER_HOLD_MS;
+        recordTimingDiagnostic("dealer_sequence_start", {
+          reducedMotion: Boolean(reducedMotion),
+          cueMs,
+          staggerMs,
+          travelMs: reducedMotion ? 75 : DEALER_SELECTION_CARD_TRAVEL_MS,
+          holdMs,
+          cardCount: beats.length,
+          firstRecipientSeat: selection.firstRecipientSeat,
+          frozenGeometryEpoch: geometry.epoch,
         });
-        playGameSound("deal", beat.id);
-      }, cueMs + index * staggerMs));
+
+        beats.forEach((beat, index) => {
+          timers.current.push(window.setTimeout(() => {
+            if (index === 0) setCueVisible(false);
+            setVisibleCount(index + 1);
+            recordTimingDiagnostic("dealer_card_visible", {
+              index,
+              seat: beat.seat,
+              scheduledOffsetMs: cueMs + index * staggerMs,
+              finalAce: index === beats.length - 1,
+            });
+            playGameSound("deal", beat.id);
+          }, cueMs + index * staggerMs));
+        });
+
+        const completeAt = cueMs + beats.length * staggerMs + holdMs;
+        timers.current.push(window.setTimeout(() => {
+          recordTimingDiagnostic("dealer_sequence_complete", { scheduledOffsetMs: completeAt });
+          markDealerSelectionPresented(projection);
+          setCueVisible(false);
+          setVisibleCount(0);
+          setRun(null);
+          onActiveChangeRef.current(false);
+        }, completeAt));
+      });
+      startupFrames.current.push(secondFrame);
     });
-
-    const completeAt = cueMs + beats.length * staggerMs + holdMs;
-    timers.current.push(window.setTimeout(() => {
-      recordTimingDiagnostic("dealer_sequence_complete", { scheduledOffsetMs: completeAt });
-      markDealerSelectionPresented(projection);
-      setCueVisible(false);
-      setVisibleCount(0);
-      onActiveChange(false);
-    }, completeAt));
-
-    return clear;
-  }, [beats, geometry?.epoch, projection.gameId, reducedMotion, selection?.resolvedAtStateVersion]);
+    startupFrames.current.push(firstFrame);
+  }, [geometryReady, needsPresentation, reducedMotion, selectionKey]);
 
   useEffect(() => {
     const interrupt = () => {
-      if (!dealerSelectionNeedsPresentation(projection)) return;
-      clear();
+      if (!run || !selectionKey || run.key !== selectionKey) return;
+      clearTimers();
       recordTimingDiagnostic("dealer_sequence_interrupted", {
         visibilityState: document.visibilityState,
       });
       markDealerSelectionPresented(projection);
       setCueVisible(false);
       setVisibleCount(0);
-      onActiveChange(false);
+      setRun(null);
+      onActiveChangeRef.current(false);
     };
     const visibility = () => {
       if (document.visibilityState !== "visible") interrupt();
@@ -189,18 +224,19 @@ export function DealerSelectionPresentation({
       window.removeEventListener("orientationchange", interrupt);
       window.removeEventListener("blur", interrupt);
       document.removeEventListener("visibilitychange", visibility);
-      clear();
     };
-  }, [projection.gameId, selection?.resolvedAtStateVersion]);
+  }, [clearTimers, projection, run, selectionKey]);
 
-  if (!geometry || (!cueVisible && visibleCount === 0)) return null;
-  const visible = beats.slice(0, visibleCount);
-  const finalIndex = beats.length - 1;
+  useEffect(() => () => clearTimers(), [clearTimers]);
+
+  if (!run || (!cueVisible && visibleCount === 0)) return null;
+  const visible = run.beats.slice(0, visibleCount);
+  const finalIndex = run.beats.length - 1;
 
   return (
     <div
       className="pointer-events-none absolute z-30 h-0 w-0"
-      style={{ left: geometry.usableCenter.x, top: geometry.usableCenter.y }}
+      style={{ left: run.geometry.usableCenter.x, top: run.geometry.usableCenter.y }}
       aria-hidden="true"
     >
       {cueVisible && (
@@ -212,8 +248,8 @@ export function DealerSelectionPresentation({
         <RevealedCard
           key={beat.id}
           beat={beat}
-          projection={projection}
-          geometry={geometry}
+          viewerSeat={run.viewerSeat}
+          geometry={run.geometry}
           finalAce={beat.index === finalIndex}
         />
       ))}
