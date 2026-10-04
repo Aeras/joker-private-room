@@ -55,7 +55,12 @@ export const mockRoomService: RoomService = {
             code: normalized,
             hostId: DEMO_HOST.id,
             rulesetId: "popular",
-            botSettings: { botsTalk: true, allowProfanity: false },
+            botSettings: {
+              botsTalk: true,
+              allowProfanity: false,
+              aiEnabled: false,
+              intensity: "normal",
+            },
             seats: emptySeats(),
             status: "lobby",
           };
