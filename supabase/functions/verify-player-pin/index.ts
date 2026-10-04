@@ -1,16 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" },
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 }
 
@@ -24,12 +18,11 @@ function sourceKey(req: Request) {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Invalid request" }, 405);
 
   try {
     const body = await req.json();
-    const action = typeof body?.action === "string" ? body.action : "legacy-authenticate";
+    const action = typeof body?.action === "string" ? body.action : "";
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -57,6 +50,8 @@ Deno.serve(async (req: Request) => {
       await admin.rpc("revoke_player_session_internal", { p_session_token: sessionToken });
       return json({ ok: true });
     }
+
+    if (action !== "authenticate") return json({ error: "Invalid request" }, 400);
 
     const playerId = typeof body?.playerId === "string" ? body.playerId : "";
     const pin = typeof body?.pin === "string" ? body.pin : "";
@@ -94,26 +89,12 @@ Deno.serve(async (req: Request) => {
       }, 401);
     }
 
-    const player = {
-      id: result.out_player_id,
-      displayName: result.out_display_name,
-      role: result.out_is_host ? "host" : "player",
-    };
-
-    // Rolling-deploy compatibility: the old frontend expects only { player }.
-    // Revoke the temporary real session immediately so a legacy client cannot
-    // create an active-control lock it cannot use.
-    if (action === "legacy-authenticate") {
-      if (result.session_token) {
-        await admin.rpc("revoke_player_session_internal", { p_session_token: result.session_token });
-      }
-      return json({ player });
-    }
-
-    if (action !== "authenticate") return json({ error: "Invalid request" }, 400);
-
     return json({
-      player,
+      player: {
+        id: result.out_player_id,
+        displayName: result.out_display_name,
+        role: result.out_is_host ? "host" : "player",
+      },
       sessionToken: result.session_token ?? null,
       reuseSession: Boolean(result.reuse_session),
       retryAfterSeconds: result.retry_after_seconds ?? null,
