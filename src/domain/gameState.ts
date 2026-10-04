@@ -4,7 +4,7 @@ import type { SeatIndex } from "./dealing";
 import type { JokerSemantic, PlayedCard } from "./engine";
 import type { PhaseConfig } from "./gameConfig";
 
-export const GAME_STATE_SCHEMA_VERSION = 1 as const;
+export const GAME_STATE_SCHEMA_VERSION = 2 as const;
 export const POPULAR_RULES_VERSION = "popular-v1" as const;
 
 export type GameLifecycle = "starting" | "active" | "complete";
@@ -49,12 +49,31 @@ export interface CanonicalProgressionState {
   dealNumber: number;
   indexInPhase: number;
   cardsPerPlayer: number;
-  dealerSeat: SeatIndex;
-  firstDeclarerSeat: SeatIndex;
-  firstLeaderSeat: SeatIndex;
+  /** Null only while the initial-dealer ritual is unresolved. */
+  dealerSeat: SeatIndex | null;
+  /** Null only while the initial-dealer ritual is unresolved. */
+  firstDeclarerSeat: SeatIndex | null;
+  /** Null only while the initial-dealer ritual is unresolved. */
+  firstLeaderSeat: SeatIndex | null;
   currentActorSeat: SeatIndex | null;
   phase: CanonicalGamePhase;
 }
+
+export type InitialDealerSelectionState =
+  | {
+      status: "pending";
+      /** Stable server-owned identity for the dealer-bootstrap transition. */
+      bootstrapActionId: string;
+    }
+  | {
+      status: "resolved";
+      bootstrapActionId: string;
+      firstRecipientSeat: SeatIndex;
+      /** Public ritual prefix through and including the first Ace. */
+      revealedSelectionCards: Card[];
+      selectedDealerSeat: SeatIndex;
+      resolvedAtStateVersion: number;
+    };
 
 export interface CanonicalCardsState {
   /** Server-only complete shuffled deck for the current deal. Never serialize directly to a player. */
@@ -101,9 +120,9 @@ export interface CanonicalTimingState {
 }
 
 /**
- * The single server-only source of truth for an active game.
+ * The single server-only source of truth for an active or starting game.
  * Never send this object directly to a browser. Player-facing payloads must go
- * through the dedicated seat projection layer implemented in the next phase.
+ * through the dedicated seat projection layer.
  */
 export interface CanonicalGameState {
   gameId: string;
@@ -114,6 +133,7 @@ export interface CanonicalGameState {
   stateVersion: number;
   lifecycle: GameLifecycle;
   progression: CanonicalProgressionState;
+  initialDealerSelection: InitialDealerSelectionState;
   seats: [CanonicalSeatState, CanonicalSeatState, CanonicalSeatState, CanonicalSeatState];
   cards: CanonicalCardsState;
   declarations: CanonicalDeclarationState;
