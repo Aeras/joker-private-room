@@ -46,6 +46,7 @@ jobs:
           src/routes/index.tsx
           src/test/full-game-simulation.test.ts
           supabase/functions/game-state/index.ts
+          supabase/functions/verify-player-pin/index.ts
           --rule 'prettier/prettier: off'
 
       - name: Production path contains no demo authority
@@ -91,6 +92,17 @@ jobs:
           grep -q 'not.toContain("serverEntropySeed")' src/domain/dealerBootstrap.test.ts
           ! grep -q 'canonicalState' src/routes/table.tsx
 
+      - name: PIN endpoint release hardening guard
+        id: auth_cutover
+        continue-on-error: true
+        run: |
+          ! grep -q 'legacy-authenticate' supabase/functions/verify-player-pin/index.ts
+          ! grep -q 'Access-Control-Allow-Origin' supabase/functions/verify-player-pin/index.ts
+          grep -q 'action !== "authenticate"' supabase/functions/verify-player-pin/index.ts
+          grep -q 'authenticate_player_pin_internal' supabase/functions/verify-player-pin/index.ts
+          grep -q 'PIN_COOLDOWN_ACTIVE' supabase/functions/verify-player-pin/index.ts
+          grep -q 'SECOND_ACTIVE_CONNECTION' supabase/functions/verify-player-pin/index.ts
+
       - name: Full-game simulation guard
         id: simulation
         continue-on-error: true
@@ -121,6 +133,7 @@ jobs:
           test "${{ steps.entropy.outcome }}" = "success"
           test "${{ steps.finalization.outcome }}" = "success"
           test "${{ steps.projection.outcome }}" = "success"
+          test "${{ steps.auth_cutover.outcome }}" = "success"
           test "${{ steps.simulation.outcome }}" = "success"
           test "${{ steps.typecheck.outcome }}" = "success"
           test "${{ steps.build.outcome }}" = "success"
