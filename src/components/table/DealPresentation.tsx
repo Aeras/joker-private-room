@@ -3,6 +3,8 @@ import { nextSeat, type SeatIndex } from "@/domain/dealing";
 import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
 import { PlayingCard } from "../joker/PlayingCard";
+import { dealPresentationTiming } from "./dealPresentationModel";
+import type { Point, TableGeometry, VisualSeat } from "./useTableGeometry";
 
 type DealBeat = {
   id: string;
@@ -11,6 +13,13 @@ type DealBeat = {
 };
 
 type Stage = "initial" | "remaining" | "full";
+
+const FALLBACK_TARGET: Record<VisualSeat, string> = {
+  0: "translate(-50%, 42vh)",
+  1: "translate(-43vw, -50%)",
+  2: "translate(-50%, -38vh)",
+  3: "translate(38vw, -50%)",
+};
 
 function stageFor(projection: PlayerGameProjection): Stage | null {
   if (projection.progression.cardsPerPlayer === 9 && projection.rulesetId !== "classic") {
@@ -32,18 +41,28 @@ function recipientFor(dealerSeat: SeatIndex, beatIndex: number): SeatIndex {
   return nextSeat(nextSeat(dealerSeat), beatIndex % 4);
 }
 
-function visualPosition(viewerSeat: SeatIndex, seat: SeatIndex): 0 | 1 | 2 | 3 {
-  return ((seat - viewerSeat + 4) % 4) as 0 | 1 | 2 | 3;
+function visualPosition(viewerSeat: SeatIndex, seat: SeatIndex): VisualSeat {
+  return ((seat - viewerSeat + 4) % 4) as VisualSeat;
 }
 
-const TARGET: Record<0 | 1 | 2 | 3, string> = {
-  0: "translate(-50%, 42vh)",
-  1: "translate(-43vw, -50%)",
-  2: "translate(-50%, -38vh)",
-  3: "translate(38vw, -50%)",
-};
+function viewportPoint(geometry: TableGeometry, local: Point): Point {
+  return {
+    x: geometry.feltRect.left + local.x,
+    y: geometry.feltRect.top + local.y,
+  };
+}
 
-function TravelingBack({ beat, pos, reducedMotion }: { beat: DealBeat; pos: 0 | 1 | 2 | 3; reducedMotion: boolean }) {
+function TravelingBack({
+  beat,
+  pos,
+  reducedMotion,
+  geometry,
+}: {
+  beat: DealBeat;
+  pos: VisualSeat;
+  reducedMotion: boolean;
+  geometry: TableGeometry | null;
+}) {
   const [arrived, setArrived] = useState(reducedMotion);
   useEffect(() => {
     if (reducedMotion) {
@@ -54,10 +73,27 @@ function TravelingBack({ beat, pos, reducedMotion }: { beat: DealBeat; pos: 0 | 
     return () => window.cancelAnimationFrame(frame);
   }, [beat.id, reducedMotion]);
 
+  if (!geometry) {
+    return (
+      <div
+        className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform duration-200 ease-out motion-reduce:duration-75"
+        style={{ transform: arrived ? FALLBACK_TARGET[pos] : "translate(-50%, -50%) scale(.58)" }}
+      >
+        <PlayingCard faceDown />
+      </div>
+    );
+  }
+
+  const source = viewportPoint(geometry, geometry.usableCenter);
+  const target = viewportPoint(geometry, geometry.seatOrigins[pos]);
   return (
     <div
-      className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform duration-200 ease-out motion-reduce:duration-75"
-      style={{ transform: arrived ? TARGET[pos] : "translate(-50%, -50%) scale(.58)" }}
+      className="absolute [--card-w:clamp(1.8rem,4vw,3rem)] transition-[left,top,transform] duration-200 ease-out motion-reduce:duration-75"
+      style={{
+        left: arrived ? target.x : source.x,
+        top: arrived ? target.y : source.y,
+        transform: `translate(-50%, -50%) scale(${arrived ? 1 : 0.58})`,
+      }}
     >
       <PlayingCard faceDown />
     </div>
@@ -68,10 +104,17 @@ function TravelingBack({ beat, pos, reducedMotion }: { beat: DealBeat; pos: 0 | 
  * Replays already-authoritative deal counts as backs only. It never receives deck order or hidden card identities.
  * First render is intentionally skipped so reconnect/resume cannot replay a historical deal burst.
  */
-export function DealPresentation({ projection }: { projection: PlayerGameProjection }) {
+export function DealPresentation({
+  projection,
+  geometry = null,
+}: {
+  projection: PlayerGameProjection;
+  geometry?: TableGeometry | null;
+}) {
   const firstRender = useRef(true);
   const previousGameId = useRef(projection.gameId);
   const previousStageKey = useRef<string | null>(null);
+  const previousGeometryEpoch = useRef(geometry?.epoch ?? 0);
   const [beats, setBeats] = useState<DealBeat[]>([]);
   const [visibleIndex, setVisibleIndex] = useState(-1);
   const timers = useRef<number[]>([]);
@@ -101,6 +144,13 @@ export function DealPresentation({ projection }: { projection: PlayerGameProject
   };
 
   useEffect(() => {
+    const nextEpoch = geometry?.epoch ?? 0;
+    if (previousGeometryEpoch.current === nextEpoch) return;
+    previousGeometryEpoch.current = nextEpoch;
+    interrupt();
+  }, [geometry?.epoch]);
+
+  useEffect(() => {
     interrupt();
 
     if (firstRender.current || previousGameId.current !== projection.gameId) {
@@ -119,14 +169,17 @@ export function DealPresentation({ projection }: { projection: PlayerGameProject
     setVisibleIndex(-1);
     if (stage !== "remaining") playGameSound("shuffle", `${projection.gameId}:${projection.progression.dealNumber}`);
 
-    const stagger = reducedMotion ? 28 : 72;
+    const { staggerMs, tailMs } = dealPresentationTiming(reducedMotion);
     sequence.forEach((beat, index) => {
       timers.current.push(window.setTimeout(() => {
         setVisibleIndex(index);
         playGameSound("deal", beat.id);
-      }, index * stagger));
+      }, index * staggerMs));
     });
-    timers.current.push(window.setTimeout(() => interrupt(), sequence.length * stagger + (reducedMotion ? 120 : 360)));
+    timers.current.push(window.setTimeout(
+      () => interrupt(),
+      sequence.length * staggerMs + tailMs,
+    ));
 
     return interrupt;
   }, [projection.gameId, projection.progression.dealNumber, reducedMotion, sequence, stage, stageKey]);
@@ -153,11 +206,12 @@ export function DealPresentation({ projection }: { projection: PlayerGameProject
   const pos = visualPosition(projection.viewerSeat, beat.seat);
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true">
-      <TravelingBack key={beat.id} beat={beat} pos={pos} reducedMotion={reducedMotion} />
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/55 px-2 py-1 text-[10px] tabular-nums text-white/70">
-        {Math.min(visibleIndex + 1, beats.length)} / {beats.length}
-      </div>
+    <div
+      className="pointer-events-none absolute inset-0 z-30 overflow-hidden"
+      aria-hidden="true"
+      data-deal-geometry-epoch={geometry?.epoch ?? 0}
+    >
+      <TravelingBack key={beat.id} beat={beat} pos={pos} reducedMotion={reducedMotion} geometry={geometry} />
     </div>
   );
 }
