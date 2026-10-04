@@ -9,6 +9,7 @@ import {
 } from "./engine";
 import type {
   CanonicalGameState,
+  CanonicalGameTermination,
   CanonicalSeatState,
   ControllerType,
   GameLifecycle,
@@ -47,6 +48,7 @@ export interface PlayerGameProjection {
   stateSchemaVersion: number;
   stateVersion: number;
   lifecycle: GameLifecycle;
+  termination: CanonicalGameTermination | null;
   viewerSeat: SeatIndex;
   progression: CanonicalGameState["progression"];
   initialDealerSelection: PublicInitialDealerSelection | null;
@@ -67,10 +69,7 @@ export interface PlayerGameProjection {
     completedDeals: NonNullable<CanonicalGameState["score"]["completedDeals"]>;
     roundPremia: NonNullable<CanonicalGameState["score"]["roundPremia"]>;
   };
-  /** Public presentation timing. It never grants timeout authority to the client. */
-  timing?: {
-    currentHumanDeadline: string | null;
-  };
+  timing?: { currentHumanDeadline: string | null };
   local: {
     legalActions: LocalLegalAction[];
     reclaimAvailable: boolean;
@@ -100,15 +99,10 @@ function publicDealerSelection(state: CanonicalGameState): PublicInitialDealerSe
   };
 }
 
-function visibleOwnHand(state: CanonicalGameState, seat: SeatIndex): {
-  hand: Card[];
-  visible: boolean;
-} {
+function visibleOwnHand(state: CanonicalGameState, seat: SeatIndex): { hand: Card[]; visible: boolean } {
   if (state.progression.phase === "INITIAL_DEALER_SELECTION") return { hand: [], visible: false };
   if (!state.cards.hiddenPartialNineCardHands) return { hand: state.cards.hands[seat].slice(), visible: true };
-  if (state.trump.status === "chooser_pending" && state.trump.chooserSeat === seat) {
-    return { hand: state.cards.hands[seat].slice(), visible: true };
-  }
+  if (state.trump.status === "chooser_pending" && state.trump.chooserSeat === seat) return { hand: state.cards.hands[seat].slice(), visible: true };
   return { hand: [], visible: false };
 }
 
@@ -144,6 +138,7 @@ function jokerOptions(state: CanonicalGameState): JokerSemantic[] {
 }
 
 function localLegalActions(state: CanonicalGameState, seat: SeatIndex, visibleHand: Card[]): LocalLegalAction[] {
+  if (state.lifecycle === "complete") return [];
   const actions: LocalLegalAction[] = [];
   if (state.progression.phase === "DECLARATION" && state.declarations.currentDeclarerSeat === seat) {
     actions.push({ type: "declare", values: state.declarations.legalValues.slice() });
@@ -162,7 +157,6 @@ function localLegalActions(state: CanonicalGameState, seat: SeatIndex, visibleHa
   return actions;
 }
 
-/** The only canonical-to-player serializer. Private entropy/deck/opponent hands are never copied. */
 export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex, revealRestrictedIdentity = false): PlayerGameProjection {
   if (state.seats[seat]?.seatIndex !== seat) throw new Error("Projection seat does not exist");
   const policy = getRuleset(state.rulesetId, state.rulesVersion);
@@ -176,6 +170,7 @@ export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex, r
     stateSchemaVersion: state.stateSchemaVersion,
     stateVersion: state.stateVersion,
     lifecycle: state.lifecycle,
+    termination: state.termination ? { ...state.termination } : null,
     viewerSeat: seat,
     progression: { ...state.progression },
     initialDealerSelection: publicDealerSelection(state),
@@ -215,13 +210,11 @@ export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex, r
         totalsAfterPremia: [...record.totalsAfterPremia],
       })),
     },
-    timing: {
-      currentHumanDeadline: state.timing.currentHumanDeadline,
-    },
+    timing: { currentHumanDeadline: state.timing.currentHumanDeadline },
     local: {
       legalActions: localLegalActions(state, seat, own.hand),
-      reclaimAvailable: state.seats[seat].owner.type === "human" && state.seats[seat].reclaimable,
-      humanDeadline: state.progression.currentActorSeat === seat ? state.timing.currentHumanDeadline : null,
+      reclaimAvailable: state.lifecycle !== "complete" && state.seats[seat].owner.type === "human" && state.seats[seat].reclaimable,
+      humanDeadline: state.lifecycle !== "complete" && state.progression.currentActorSeat === seat ? state.timing.currentHumanDeadline : null,
     },
   };
 }
