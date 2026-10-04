@@ -30,10 +30,24 @@ describe("AI banter Phase C delivery contract", () => {
   });
 
   it("keeps the opaque session on the server and never accepts a browser seat as authority", () => {
-    expect(service).toContain('getCookie(SESSION_COOKIE)');
-    expect(service).toContain('body: JSON.stringify({ ...body, sessionToken })');
+    expect(service).toContain("getCookie(SESSION_COOKIE)");
+    expect(service).toContain("body: JSON.stringify({ ...body, sessionToken })");
     expect(service).not.toContain("sessionToken: z.");
     expect(service).not.toContain("viewerSeat");
+  });
+
+  it("accepts only the fixed dialogue event vocabulary and stable event identities", () => {
+    expect(service).toContain('const dialogueEventType = z.enum([');
+    expect(edge).toContain("const DIALOGUE_EVENT_TYPES = new Set<DialogueEventType>");
+    expect(edge).toContain("hasStableEventIdentity");
+    expect(edge).toContain('type === "HUMAN_MESSAGE_TO_BOT"');
+    expect(edge).toContain('type === "BOT_MESSAGE_TO_BOT"');
+  });
+
+  it("builds recent provider context from server-side ephemeral delivery, never client-supplied history", () => {
+    expect(edge).toContain('admin.rpc("list_dialogue_messages_internal"');
+    expect(edge).toContain("recentBanter: recentLines(recentData?.messages)");
+    expect(edge).not.toContain("body?.recentBanter");
   });
 
   it("makes dialogue fire-and-forget relative to gameplay refresh", () => {
