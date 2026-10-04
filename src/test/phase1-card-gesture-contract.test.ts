@@ -24,11 +24,12 @@ describe("JK-001 Phase 1 — direct card manipulation contract", () => {
     expect(draggable).toContain("onPointerCancel");
   });
 
-  it("provides a keyboard/assistive path using the same commit callback", () => {
+  it("provides a keyboard/assistive path using the same commit callback and measured release pose", () => {
     expect(draggable).toContain('event.key !== "Enter" && event.key !== " "');
     expect(draggable).toContain('role="button"');
     expect(draggable).toContain("aria-disabled={!canInteract}");
-    expect(draggable).toContain("await onCommit(card.id)");
+    expect(draggable).toContain("await onCommit(card.id, releaseRect)");
+    expect(draggable).toContain("getBoundingClientRect()");
   });
 
   it("lets the authoritative Joker transition lead into the existing semantic chooser", () => {
