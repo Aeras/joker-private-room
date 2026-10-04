@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const migration = readFileSync(
-  resolve(process.cwd(), "supabase/migrations/20261004195000_jk002_reconciler_worker_boundary.sql"),
+  resolve(process.cwd(), "supabase/migrations/20261004164513_jk002_reconciler_worker_boundary.sql"),
   "utf8",
 );
 
