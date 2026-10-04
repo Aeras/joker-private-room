@@ -52,32 +52,33 @@ jobs:
         id: snapshot
         continue-on-error: true
         run: |
-          grep -q 'games_snapshot_dialogue_policy' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          grep -q 'dialogue_policy' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          grep -q 'policyVersion' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          grep -q 'dialogue-policy-v1' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'games_snapshot_dialogue_policy' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'dialogue_policy' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'policyVersion' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'dialogue-policy-v1' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'speechEnabled":false' supabase/migrations/20261004095306_jk001_ai_banter_phase_a_existing_game_compat.sql
 
       - name: Shared server-side cost-control guard
         id: cost
         continue-on-error: true
         run: |
-          grep -q 'private.dialogue_runtime_state' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          grep -q 'private.dialogue_event_claims' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          grep -q 'claim_ai_dialogue_internal' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          grep -q 'DIALOGUE_BUDGET_EXHAUSTED' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          grep -q 'DIALOGUE_CONCURRENCY_LIMIT' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          grep -q 'HUMAN_MESSAGE_RATE_LIMITED' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'private.dialogue_runtime_state' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'private.dialogue_event_claims' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'claim_ai_dialogue_internal' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'DIALOGUE_BUDGET_EXHAUSTED' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'DIALOGUE_CONCURRENCY_LIMIT' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'HUMAN_MESSAGE_RATE_LIMITED' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
 
       - name: Ephemeral privacy guard
         id: privacy
         continue-on-error: true
         run: |
-          ! grep -qi 'transcript' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          ! grep -qi 'message_text' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          ! grep -qi 'generated_text' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          ! grep -q 'canonical_state' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          grep -q 'enable row level security' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
-          grep -q 'grant all on private.dialogue_runtime_state to service_role' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          ! grep -qi 'transcript' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          ! grep -qi 'message_text' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          ! grep -qi 'generated_text' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          ! grep -q 'canonical_state' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'enable row level security' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'grant all on private.dialogue_runtime_state to service_role' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
 
       - name: No provider implementation in Phase A
         id: no_provider
