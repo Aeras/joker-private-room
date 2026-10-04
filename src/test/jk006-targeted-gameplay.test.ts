@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { DEALER_SELECTION_STAGGER_MS, dealerSelectionRecipient } from "@/components/table/dealerSelectionPresentationModel";
+import {
+  DEALER_SELECTION_CARD_TRAVEL_MS,
+  DEALER_SELECTION_STAGGER_MS,
+  dealerSelectionRecipient,
+} from "@/components/table/dealerSelectionPresentationModel";
 import { NORMAL_DEAL_STAGGER_MS } from "@/components/table/dealPresentationModel";
 import { NORMAL_TRICK_HOLD_MS, NORMAL_TRICK_PLAY_SPACING_MS } from "@/components/table/trickPresentationModel";
 
@@ -11,6 +15,7 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 describe("JK-006 targeted gameplay timing and termination", () => {
   it("uses the requested readable presentation pacing", () => {
     expect(DEALER_SELECTION_STAGGER_MS).toBe(350);
+    expect(DEALER_SELECTION_CARD_TRAVEL_MS).toBe(340);
     expect(NORMAL_DEAL_STAGGER_MS).toBe(350);
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(500);
     expect(NORMAL_TRICK_HOLD_MS).toBe(850);
@@ -18,6 +23,21 @@ describe("JK-006 targeted gameplay timing and termination", () => {
 
   it("preserves cyclic dealer-selection recipients from the canonical random start seat", () => {
     expect([0, 1, 2, 3, 4, 5].map((index) => dealerSelectionRecipient(2, index))).toEqual([2, 3, 0, 1, 2, 3]);
+  });
+
+  it("blocks real hands and declarations until dealer selection and actual dealing presentation finish", () => {
+    const table = read("src/components/table/GameTable.tsx");
+    const dealer = read("src/components/table/DealerSelectionPresentation.tsx");
+    const deal = read("src/components/table/DealPresentation.tsx");
+    expect(table).toContain("const startupPresentationActive = dealerIntroActive || dealPresentationActive");
+    expect(table).toContain("cards={startupPresentationActive ? [] : projection.cards.ownHand}");
+    expect(table).toContain("!startupPresentationActive && declarationAction");
+    expect(table).toContain("showCards={pos !== 0 && !startupPresentationActive}");
+    expect(table).toContain("onActiveChange={setDealPresentationActive}");
+    expect(dealer).toContain("onActiveChange(true)");
+    expect(dealer).toContain("if (!geometry) return clear");
+    expect(deal).toContain("onActiveChange?.(true)");
+    expect(deal).toContain("onActiveChange?.(false)");
   });
 
   it("keeps declaration choice optimistic while retaining recovery on failed command", () => {
