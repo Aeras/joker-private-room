@@ -1,0 +1,110 @@
+name: JK-001 AI Banter Phase A Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Full tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+
+      - name: AI Banter Phase A lint
+        id: lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/domain/dialoguePolicy.ts
+          src/domain/dialoguePolicy.test.ts
+          src/domain/players.ts
+          src/routes/create.tsx
+          src/services/roomFunctions.ts
+          supabase/functions/room-commands/index.ts
+          --rule 'prettier/prettier: off'
+
+      - name: Dialogue policy contract guard
+        id: policy
+        continue-on-error: true
+        run: |
+          grep -q 'conservative' src/domain/dialoguePolicy.ts
+          grep -q 'normal' src/domain/dialoguePolicy.ts
+          grep -q 'chaos' src/domain/dialoguePolicy.ts
+          grep -q 'aiEnabled' src/routes/create.tsx
+          grep -q 'intensity' src/routes/create.tsx
+          grep -q 'p_ai_enabled' supabase/functions/room-commands/index.ts
+          grep -q 'p_dialogue_intensity' supabase/functions/room-commands/index.ts
+
+      - name: Stable game-policy snapshot guard
+        id: snapshot
+        continue-on-error: true
+        run: |
+          grep -q 'games_snapshot_dialogue_policy' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'dialogue_policy' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'policyVersion' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'dialogue-policy-v1' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+
+      - name: Shared server-side cost-control guard
+        id: cost
+        continue-on-error: true
+        run: |
+          grep -q 'private.dialogue_runtime_state' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'private.dialogue_event_claims' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'claim_ai_dialogue_internal' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'DIALOGUE_BUDGET_EXHAUSTED' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'DIALOGUE_CONCURRENCY_LIMIT' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'HUMAN_MESSAGE_RATE_LIMITED' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+
+      - name: Ephemeral privacy guard
+        id: privacy
+        continue-on-error: true
+        run: |
+          ! grep -qi 'transcript' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          ! grep -qi 'message_text' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          ! grep -qi 'generated_text' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          ! grep -q 'canonical_state' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'enable row level security' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+          grep -q 'grant all on private.dialogue_runtime_state to service_role' supabase/migrations/20261004094500_jk001_ai_banter_phase_a_policy_authority.sql
+
+      - name: No provider implementation in Phase A
+        id: no_provider
+        continue-on-error: true
+        run: |
+          ! grep -R -q 'GEMINI_API_KEY' src supabase/functions || true
+          ! test -e supabase/functions/ai-banter/index.ts
+
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+
+      - name: Production build
+        id: build
+        continue-on-error: true
+        run: bun run build
+
+      - name: Require AI Banter Phase A gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.lint.outcome }}" = "success"
+          test "${{ steps.policy.outcome }}" = "success"
+          test "${{ steps.snapshot.outcome }}" = "success"
+          test "${{ steps.cost.outcome }}" = "success"
+          test "${{ steps.privacy.outcome }}" = "success"
+          test "${{ steps.no_provider.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
