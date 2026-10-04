@@ -37,6 +37,8 @@ on:
 jobs:
   phase1:
     uses: ./.github/workflows/jk001-phase1-gate.yml
+  phase1-playtest-corrections:
+    uses: ./.github/workflows/jk001-phase1-playtest-corrections-gate.yml
   phase2:
     uses: ./.github/workflows/jk001-phase2-gate.yml
   phase3:
