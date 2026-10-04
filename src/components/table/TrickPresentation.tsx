@@ -5,6 +5,7 @@ import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
 import { cn } from "@/lib/utils";
 import { PlayingCard } from "../joker/PlayingCard";
+import type { LocalPlayPresentation } from "./localPlayPresentation";
 import type { Point, TableGeometry, VisualSeat } from "./useTableGeometry";
 
 type Pos = VisualSeat;
@@ -58,6 +59,17 @@ function landingPoint(pos: Pos, geometry: TableGeometry | null): Point {
 
 function geometryCenter(geometry: TableGeometry | null): Point {
   return geometry?.usableCenter ?? { x: 0, y: 0 };
+}
+
+function isPresentationCard(
+  presentation: LocalPlayPresentation | null,
+  play: PlayedCard,
+): boolean {
+  return Boolean(
+    presentation &&
+    play.seatIndex === presentation.actorSeat &&
+    play.card.id === presentation.cardId,
+  );
 }
 
 function AnimatedTrickCard({
@@ -118,13 +130,86 @@ function AnimatedTrickCard({
   );
 }
 
+function LocalFlightCard({
+  presentation,
+  projection,
+  geometry,
+  reducedMotion,
+  onSettled,
+}: {
+  presentation: LocalPlayPresentation;
+  projection: PlayerGameProjection;
+  geometry: TableGeometry;
+  reducedMotion: boolean;
+  onSettled: () => void;
+}) {
+  const [landed, setLanded] = useState(false);
+  const settledRef = useRef(false);
+  const pos = posOf(projection.viewerSeat, presentation.actorSeat);
+  const center = geometry.usableCenter;
+  const releasePoint: Point = {
+    x: presentation.releaseRect.left - geometry.feltRect.left + presentation.releaseRect.width / 2,
+    y: presentation.releaseRect.top - geometry.feltRect.top + presentation.releaseRect.height / 2,
+  };
+  const target = geometry.trickSlots[pos];
+
+  useEffect(() => {
+    if (presentation.status !== "accepted") {
+      setLanded(false);
+      return;
+    }
+    if (reducedMotion) {
+      setLanded(true);
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => setLanded(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [presentation.status, reducedMotion]);
+
+  useEffect(() => {
+    if (presentation.status !== "accepted" || !landed || settledRef.current) return;
+    const settle = () => {
+      if (settledRef.current) return;
+      settledRef.current = true;
+      playGameSound(
+        "play",
+        `${presentation.gameId}:${presentation.dealNumber}:local-flight:${presentation.cardId}:${presentation.acceptedStateVersion ?? "accepted"}`,
+      );
+      onSettled();
+    };
+    const timer = window.setTimeout(settle, reducedMotion ? 90 : 340);
+    return () => window.clearTimeout(timer);
+  }, [landed, onSettled, presentation, reducedMotion]);
+
+  return (
+    <div
+      className="absolute left-0 top-0 z-40 transition-transform duration-300 ease-out motion-reduce:duration-75"
+      style={{
+        transform: relativeTransform(
+          landed ? target : releasePoint,
+          center,
+          ROTATION[pos],
+          landed ? 1 : 1.04,
+        ),
+      }}
+      data-local-flight-card={presentation.cardId}
+    >
+      <PlayingCard card={presentation.card} />
+    </div>
+  );
+}
+
 /** Public, presentation-only trick layer. Winner always comes from completedTricks authority. */
 export function TrickPresentation({
   projection,
   geometry,
+  localPlayPresentation,
+  onLocalFlightSettled,
 }: {
   projection: PlayerGameProjection;
   geometry: TableGeometry | null;
+  localPlayPresentation: LocalPlayPresentation | null;
+  onLocalFlightSettled: () => void;
 }) {
   const firstRender = useRef(true);
   const previousCurrent = useRef("");
@@ -140,8 +225,7 @@ export function TrickPresentation({
     previousGeometryEpoch.current = nextEpoch;
     for (const timer of timers.current) window.clearTimeout(timer);
     timers.current = [];
-    // A departing trick is disposable presentation state. On geometry change,
-    // current canonical projection wins rather than finishing on stale coordinates.
+    // Disposable presentation must never finish against stale geometry.
     setDeparting(null);
   }, [geometry?.epoch]);
 
@@ -167,7 +251,9 @@ export function TrickPresentation({
           collecting: false,
         });
         for (const play of trick.cards) {
-          playGameSound("play", acceptedPlayEventId(projection, completedCount, play));
+          if (!isPresentationCard(localPlayPresentation, play)) {
+            playGameSound("play", acceptedPlayEventId(projection, completedCount, play));
+          }
         }
 
         for (const timer of timers.current) window.clearTimeout(timer);
@@ -186,19 +272,22 @@ export function TrickPresentation({
     } else if (signature !== previousCurrent.current && projection.cards.currentTrick.length > 0) {
       const trickOrdinal = completedCount + 1;
       for (const play of projection.cards.currentTrick) {
-        playGameSound("play", acceptedPlayEventId(projection, trickOrdinal, play));
+        if (!isPresentationCard(localPlayPresentation, play)) {
+          playGameSound("play", acceptedPlayEventId(projection, trickOrdinal, play));
+        }
       }
     }
 
     previousCurrent.current = signature;
     previousCompletedCount.current = completedCount;
-  }, [projection, reducedMotion]);
+  }, [localPlayPresentation, projection, reducedMotion]);
 
   useEffect(() => {
     const interrupt = () => {
       for (const timer of timers.current) window.clearTimeout(timer);
       timers.current = [];
       setDeparting(null);
+      onLocalFlightSettled();
     };
     const visibility = () => {
       if (document.visibilityState !== "visible") interrupt();
@@ -210,12 +299,15 @@ export function TrickPresentation({
       window.removeEventListener("orientationchange", interrupt);
       window.removeEventListener("blur", interrupt);
       document.removeEventListener("visibilitychange", visibility);
-      interrupt();
+      for (const timer of timers.current) window.clearTimeout(timer);
+      timers.current = [];
     };
-  }, []);
+  }, [onLocalFlightSettled]);
 
   const cards = departing?.cards ?? projection.cards.currentTrick;
-  if (cards.length === 0) return null;
+  const visibleCards = cards.filter((play) => !isPresentationCard(localPlayPresentation, play));
+  const showLocalFlight = Boolean(localPlayPresentation && geometry);
+  if (visibleCards.length === 0 && !showLocalFlight) return null;
 
   const rootStyle = geometry
     ? { left: geometry.usableCenter.x, top: geometry.usableCenter.y }
@@ -228,7 +320,7 @@ export function TrickPresentation({
       data-geometry-epoch={geometry?.epoch ?? 0}
       aria-label={departing ? "Ολοκληρωμένη μπάζα" : "Τρέχουσα μπάζα"}
     >
-      {cards.map((play) => (
+      {visibleCards.map((play) => (
         <AnimatedTrickCard
           key={`${departing?.id ?? "current"}:${play.seatIndex}:${play.card.id}`}
           play={play}
@@ -240,6 +332,15 @@ export function TrickPresentation({
           geometry={geometry}
         />
       ))}
+      {localPlayPresentation && geometry && (
+        <LocalFlightCard
+          presentation={localPlayPresentation}
+          projection={projection}
+          geometry={geometry}
+          reducedMotion={reducedMotion}
+          onSettled={onLocalFlightSettled}
+        />
+      )}
     </div>
   );
 }
