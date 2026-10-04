@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Card } from "@/domain/cards";
 import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
+import { recordTimingDiagnostic, startTimingDiagnosticSession } from "@/lib/timingDiagnostics";
 import { PlayingCard } from "../joker/PlayingCard";
 import {
   DEALER_SELECTION_CARD_TRAVEL_MS,
@@ -117,11 +118,12 @@ export function DealerSelectionPresentation({
       return clear;
     }
 
-    // Keep the gameplay UI blocked while the table geometry is still being measured.
-    // Previously this branch reported inactive for one or more frames, exposing the
-    // already-authoritative hand/declaration before the dealer ritual had started.
+    startTimingDiagnosticSession(projection.gameId);
     onActiveChange(true);
-    if (!geometry) return clear;
+    if (!geometry) {
+      recordTimingDiagnostic("dealer_waiting_for_geometry", { reducedMotion: Boolean(reducedMotion) });
+      return clear;
+    }
 
     setCueVisible(true);
     playGameSound("shuffle", `${projection.gameId}:dealer-selection`);
@@ -129,17 +131,33 @@ export function DealerSelectionPresentation({
     const cueMs = reducedMotion ? 90 : DEALER_START_CUE_MS;
     const staggerMs = reducedMotion ? 90 : DEALER_SELECTION_STAGGER_MS;
     const holdMs = reducedMotion ? 160 : DEALER_SELECTION_WINNER_HOLD_MS;
+    recordTimingDiagnostic("dealer_sequence_start", {
+      reducedMotion: Boolean(reducedMotion),
+      cueMs,
+      staggerMs,
+      travelMs: reducedMotion ? 75 : DEALER_SELECTION_CARD_TRAVEL_MS,
+      holdMs,
+      cardCount: beats.length,
+      firstRecipientSeat: selection?.firstRecipientSeat ?? -1,
+    });
 
     beats.forEach((beat, index) => {
       timers.current.push(window.setTimeout(() => {
         if (index === 0) setCueVisible(false);
         setVisibleCount(index + 1);
+        recordTimingDiagnostic("dealer_card_visible", {
+          index,
+          seat: beat.seat,
+          scheduledOffsetMs: cueMs + index * staggerMs,
+          finalAce: index === beats.length - 1,
+        });
         playGameSound("deal", beat.id);
       }, cueMs + index * staggerMs));
     });
 
     const completeAt = cueMs + beats.length * staggerMs + holdMs;
     timers.current.push(window.setTimeout(() => {
+      recordTimingDiagnostic("dealer_sequence_complete", { scheduledOffsetMs: completeAt });
       markDealerSelectionPresented(projection);
       setCueVisible(false);
       setVisibleCount(0);
@@ -153,6 +171,9 @@ export function DealerSelectionPresentation({
     const interrupt = () => {
       if (!dealerSelectionNeedsPresentation(projection)) return;
       clear();
+      recordTimingDiagnostic("dealer_sequence_interrupted", {
+        visibilityState: document.visibilityState,
+      });
       markDealerSelectionPresented(projection);
       setCueVisible(false);
       setVisibleCount(0);

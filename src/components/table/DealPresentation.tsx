@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { nextSeat, type SeatIndex } from "@/domain/dealing";
 import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
+import { recordTimingDiagnostic, startTimingDiagnosticSession } from "@/lib/timingDiagnostics";
 import { PlayingCard } from "../joker/PlayingCard";
 import { dealPresentationTiming } from "./dealPresentationModel";
 import type { Point, TableGeometry, VisualSeat } from "./useTableGeometry";
@@ -160,6 +161,7 @@ export function DealPresentation({
     const nextEpoch = geometry?.epoch ?? 0;
     if (previousGeometryEpoch.current === nextEpoch) return;
     previousGeometryEpoch.current = nextEpoch;
+    recordTimingDiagnostic("deal_geometry_changed", { geometryEpoch: nextEpoch });
     interrupt();
   }, [geometry?.epoch]);
 
@@ -176,6 +178,7 @@ export function DealPresentation({
     }
     if (stageKey === previousStageKey.current && beats.length > 0) return interrupt;
 
+    startTimingDiagnosticSession(projection.gameId);
     previousStageKey.current = stageKey;
     markPresented(stageKey);
     onActiveChange?.(true);
@@ -184,15 +187,38 @@ export function DealPresentation({
     if (stage !== "remaining") playGameSound("shuffle", `${projection.gameId}:${projection.progression.dealNumber}`);
 
     const { staggerMs, tailMs } = dealPresentationTiming(reducedMotion);
+    recordTimingDiagnostic("deal_sequence_start", {
+      reducedMotion: Boolean(reducedMotion),
+      stage,
+      dealNumber: projection.progression.dealNumber,
+      dealerSeat: projection.progression.dealerSeat ?? -1,
+      cardCount: sequence.length,
+      staggerMs,
+      travelMs: reducedMotion ? 75 : 260,
+      tailMs,
+    });
     sequence.forEach((beat, index) => {
       timers.current.push(window.setTimeout(() => {
         setVisibleIndex(index);
+        recordTimingDiagnostic("deal_card_visible", {
+          index,
+          seat: beat.seat,
+          stage,
+          scheduledOffsetMs: index * staggerMs,
+        });
         playGameSound("deal", beat.id);
       }, index * staggerMs));
     });
+    const completeAt = sequence.length * staggerMs + tailMs;
     timers.current.push(window.setTimeout(
-      () => interrupt(),
-      sequence.length * staggerMs + tailMs,
+      () => {
+        recordTimingDiagnostic("deal_sequence_complete", {
+          stage,
+          scheduledOffsetMs: completeAt,
+        });
+        interrupt();
+      },
+      completeAt,
     ));
 
     return interrupt;
@@ -200,7 +226,10 @@ export function DealPresentation({
 
   useEffect(() => {
     const visibility = () => {
-      if (document.visibilityState !== "visible") interrupt();
+      if (document.visibilityState !== "visible") {
+        recordTimingDiagnostic("deal_sequence_interrupted", { visibilityState: document.visibilityState });
+        interrupt();
+      }
     };
     window.addEventListener("orientationchange", interrupt);
     window.addEventListener("blur", interrupt);

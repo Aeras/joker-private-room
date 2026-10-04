@@ -1,0 +1,136 @@
+import {
+  DEALER_SELECTION_CARD_TRAVEL_MS,
+  DEALER_SELECTION_STAGGER_MS,
+  DEALER_SELECTION_WINNER_HOLD_MS,
+  DEALER_START_CUE_MS,
+} from "@/components/table/dealerSelectionPresentationModel";
+import {
+  NORMAL_DEAL_STAGGER_MS,
+  NORMAL_DEAL_TAIL_MS,
+  REDUCED_DEAL_STAGGER_MS,
+  REDUCED_DEAL_TAIL_MS,
+} from "@/components/table/dealPresentationModel";
+import {
+  NORMAL_TRICK_COLLECT_MS,
+  NORMAL_TRICK_HOLD_MS,
+  NORMAL_TRICK_PLAY_SPACING_MS,
+  REDUCED_TRICK_COLLECT_MS,
+  REDUCED_TRICK_HOLD_MS,
+  REDUCED_TRICK_PLAY_SPACING_MS,
+} from "@/components/table/trickPresentationModel";
+
+const STORAGE_KEY = "joker:timing-diagnostics:v1";
+const SESSION_KEY = "joker:timing-diagnostics:game-id";
+const MAX_EVENTS = 800;
+
+type DiagnosticDetails = Record<string, string | number | boolean | null>;
+
+type TimingDiagnosticEvent = {
+  seq: number;
+  event: string;
+  epochMs: number;
+  performanceMs: number;
+  details: DiagnosticDetails;
+};
+
+function browserAvailable(): boolean {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function readEvents(): TimingDiagnosticEvent[] {
+  if (!browserAvailable()) return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeEvents(events: TimingDiagnosticEvent[]): void {
+  if (!browserAvailable()) return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(events.slice(-MAX_EVENTS)));
+  } catch {
+    // Diagnostics must never affect gameplay if storage is unavailable/full.
+  }
+}
+
+export function startTimingDiagnosticSession(gameId: string): void {
+  if (!browserAvailable()) return;
+  const current = window.localStorage.getItem(SESSION_KEY);
+  if (current === gameId) return;
+  window.localStorage.setItem(SESSION_KEY, gameId);
+  writeEvents([]);
+  recordTimingDiagnostic("session_start", {
+    gameId,
+    reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    devicePixelRatio: window.devicePixelRatio,
+  });
+}
+
+export function recordTimingDiagnostic(event: string, details: DiagnosticDetails = {}): void {
+  if (!browserAvailable()) return;
+  const events = readEvents();
+  events.push({
+    seq: events.length === 0 ? 1 : (events[events.length - 1]?.seq ?? 0) + 1,
+    event,
+    epochMs: Date.now(),
+    performanceMs: Math.round(performance.now() * 1000) / 1000,
+    details,
+  });
+  writeEvents(events);
+}
+
+function activeRuntimeTimings() {
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  return {
+    reducedMotion,
+    dealer: {
+      cueMs: reducedMotion ? 90 : DEALER_START_CUE_MS,
+      spacingMs: reducedMotion ? 90 : DEALER_SELECTION_STAGGER_MS,
+      travelMs: reducedMotion ? 75 : DEALER_SELECTION_CARD_TRAVEL_MS,
+      winnerHoldMs: reducedMotion ? 160 : DEALER_SELECTION_WINNER_HOLD_MS,
+    },
+    normalDeal: {
+      spacingMs: reducedMotion ? REDUCED_DEAL_STAGGER_MS : NORMAL_DEAL_STAGGER_MS,
+      travelMs: reducedMotion ? 75 : 260,
+      tailMs: reducedMotion ? REDUCED_DEAL_TAIL_MS : NORMAL_DEAL_TAIL_MS,
+    },
+    trick: {
+      playSpacingMs: reducedMotion ? REDUCED_TRICK_PLAY_SPACING_MS : NORMAL_TRICK_PLAY_SPACING_MS,
+      holdMs: reducedMotion ? REDUCED_TRICK_HOLD_MS : NORMAL_TRICK_HOLD_MS,
+      collectMs: reducedMotion ? REDUCED_TRICK_COLLECT_MS : NORMAL_TRICK_COLLECT_MS,
+      cardTransitionMs: reducedMotion ? 75 : 300,
+      localFlightMs: reducedMotion ? 75 : 300,
+    },
+    polling: {
+      gameStateMs: 1500,
+      dialogueMs: 1000,
+    },
+  };
+}
+
+export function exportTimingDiagnosticsFile(): boolean {
+  if (!browserAvailable()) return false;
+  const payload = {
+    schema: "joker-timing-diagnostics-v1",
+    exportedAt: new Date().toISOString(),
+    gameId: window.localStorage.getItem(SESSION_KEY),
+    runtime: activeRuntimeTimings(),
+    events: readEvents(),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  link.href = url;
+  link.download = `joker-timing-diagnostics-${stamp}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return true;
+}
