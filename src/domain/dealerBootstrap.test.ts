@@ -65,7 +65,7 @@ describe("uniform dealer-selection first recipient", () => {
 describe("canonical dealer bootstrap", () => {
   it("persists an unresolved state with no fake dealer, gameplay cards or public-derived entropy", () => {
     const state = pending();
-    expect(state.stateSchemaVersion).toBe(3);
+    expect(state.stateSchemaVersion).toBe(4);
     expect(state.serverEntropySeed).toBe(PRIVATE_SEED);
     expect(state.lifecycle).toBe("starting");
     expect(state.progression.phase).toBe("INITIAL_DEALER_SELECTION");

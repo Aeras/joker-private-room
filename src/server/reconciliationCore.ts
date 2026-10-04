@@ -1,3 +1,4 @@
+import { getRuleset } from "@/domain/rulesets";
 import { planAutomaticGameplayStep, type AutomaticStepStopReason } from "@/bots/progression";
 import { applyOverdueTimeout } from "@/domain/controller";
 import { settleCanonicalLifecycle } from "@/domain/gameLifecycle";
@@ -108,7 +109,7 @@ async function lifecycleTransition(
   let nextDealRandom: (() => number) | undefined;
   if (!finalRoundBoundary) {
     const nextDealNumber = state.progression.dealNumber + 1;
-    const units = await dependencies.randomUnits(entropySeed, `deal-${nextDealNumber}-shuffle-v1`, 35);
+    const units = await dependencies.randomUnits(entropySeed, `deal-${nextDealNumber}-shuffle-v1`, getRuleset(state.rulesetId, state.rulesVersion).deckSize - 1);
     nextDealRandom = randomIterator(units);
   }
 
@@ -180,6 +181,7 @@ export async function advanceGameUntilBlockedWithDependencies(
         : { ok: false, code: loaded.code, currentStateVersion: loaded.stateVersion };
     }
     const state = loaded.canonicalState;
+    try { getRuleset(state.rulesetId, state.rulesVersion); } catch { return { ok: false, code: "INVALID_CANONICAL_STATE" }; }
 
     if (state.lifecycle === "complete") {
       return { ok: true, stateVersion: loaded.stateVersion, steps: committedSteps, stopReason: "GAME_COMPLETE" };

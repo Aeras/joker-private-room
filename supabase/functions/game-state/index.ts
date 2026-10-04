@@ -56,7 +56,7 @@ async function bootstrapGame(admin: ReturnType<typeof createClient>, sessionToke
 
   const { data: prepared, error: prepareError } = await admin
     .from("games")
-    .update({ state_schema_version: 3 })
+    .update({ state_schema_version: 4 })
     .eq("id", gameId)
     .eq("state_version", 0)
     .is("canonical_state", null)

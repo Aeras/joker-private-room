@@ -26,6 +26,9 @@ interface SelectedStrategy {
 
 function playerViewFromProjection(projection: PlayerGameProjection): PlayerView {
   return {
+    deckProfile: projection.rulesetId === "classic" ? "classic38" : "popular36",
+    scoringProfile: projection.rulesetId === "minus" ? "minus" : "popular",
+    exposedTrumpCard: projection.cards.exposedTrumpCard,
     seatIndex: projection.viewerSeat,
     hand: projection.cards.ownHand.slice(),
     cardsPerPlayer: projection.progression.cardsPerPlayer,

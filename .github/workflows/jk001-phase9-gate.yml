@@ -59,8 +59,8 @@ jobs:
         id: separate_decks
         continue-on-error: true
         run: |
-          grep -q 'selectionDeck = shuffleCards(createDeck()' src/domain/dealerBootstrap.ts
-          grep -q 'gameplayDeck = shuffleCards(createDeck()' src/domain/dealerBootstrap.ts
+          grep -q 'selectionDeck = shuffleCards(createDeck(getRuleset' src/domain/dealerBootstrap.ts
+          grep -q 'gameplayDeck = prepareGameplayDeck' src/domain/dealerBootstrap.ts
           grep -q 'revealedSelectionCards' src/domain/dealerBootstrap.ts
           ! grep -q 'selectionDeck.slice(selection.revealedCount)' src/domain/dealerBootstrap.ts
       - name: Schema version guard
@@ -68,7 +68,7 @@ jobs:
         continue-on-error: true
         run: |
           grep -Eq 'GAME_STATE_SCHEMA_VERSION = [3-9]' src/domain/gameState.ts
-          grep -q 'state_schema_version: 3' supabase/functions/game-state/index.ts
+          grep -q 'state_schema_version: 4' supabase/functions/game-state/index.ts
           grep -q 'Canonical state requires dealer-selection metadata' src/server/gamePersistence.ts
           grep -q 'serverEntropySeed' src/domain/gameState.ts
       - name: Bootstrap remains internal

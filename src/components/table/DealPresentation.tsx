@@ -13,7 +13,7 @@ type DealBeat = {
 type Stage = "initial" | "remaining" | "full";
 
 function stageFor(projection: PlayerGameProjection): Stage | null {
-  if (projection.progression.cardsPerPlayer === 9) {
+  if (projection.progression.cardsPerPlayer === 9 && projection.rulesetId !== "classic") {
     if (projection.progression.phase === "NINE_CARD_TRUMP_CHOICE") return "initial";
     if (projection.progression.phase === "DECLARATION" && projection.cards.ownHand.length === 9) return "remaining";
     return null;

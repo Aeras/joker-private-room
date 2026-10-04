@@ -1,3 +1,5 @@
+import { getRuleset } from "@/domain/rulesets";
+import { RESERVED_TARGET_ID } from "@/server/rulesetIdentity";
 import type { SeatIndex } from "@/domain/dealing";
 import {
   createInitialDealerBootstrapState,
@@ -110,10 +112,9 @@ export async function ensureInitialDealerBootstrap(gameId: string): Promise<Deal
       }
       return { ok: false, code: bootstrap.code };
     }
+    try { getRuleset(bootstrap.rulesetId, bootstrap.rulesVersion); } catch { return { ok: false, code: "INVALID_CANONICAL_STATE" }; }
     if (
-      bootstrap.rulesetId !== "popular" ||
-      bootstrap.rulesVersion !== "popular-v1" ||
-      bootstrap.stateSchemaVersion !== 3 ||
+      bootstrap.stateSchemaVersion !== 4 ||
       bootstrap.stateVersion !== 0 ||
       bootstrap.lifecycle !== "starting"
     ) {
@@ -125,6 +126,9 @@ export async function ensureInitialDealerBootstrap(gameId: string): Promise<Deal
     pendingState = createInitialDealerBootstrapState({
       gameId,
       roomId: bootstrap.roomId,
+      rulesetId: bootstrap.rulesetId,
+      rulesVersion: bootstrap.rulesVersion,
+      targetPlayerId: RESERVED_TARGET_ID,
       bootstrapActionId,
       serverEntropySeed: secureServerEntropySeed(),
       seats,
@@ -178,8 +182,8 @@ export async function ensureInitialDealerBootstrap(gameId: string): Promise<Deal
 
   const [recipientUnits, selectionUnits, dealUnits] = await Promise.all([
     deterministicRandomUnitsFromSeed(entropySeed, "dealer-first-recipient-v1", 1),
-    deterministicRandomUnitsFromSeed(entropySeed, "dealer-selection-shuffle-v1", 35),
-    deterministicRandomUnitsFromSeed(entropySeed, "deal-1-shuffle-v1", 35),
+    deterministicRandomUnitsFromSeed(entropySeed, "dealer-selection-shuffle-v1", getRuleset(pendingState.rulesetId, pendingState.rulesVersion).deckSize - 1),
+    deterministicRandomUnitsFromSeed(entropySeed, "deal-1-shuffle-v1", getRuleset(pendingState.rulesetId, pendingState.rulesVersion).deckSize - 1),
   ]);
   const resolved = resolveDealerBootstrapAndInitializeDealOne({
     state: pendingState,

@@ -7,7 +7,7 @@ import { LobbySeat } from "@/components/joker/LobbySeat";
 import { RoomCodeCard } from "@/components/joker/RoomCodeCard";
 import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
 import type { PublicPlayer, Room } from "@/domain/players";
-import { RULESETS } from "@/domain/rulesets";
+import { publicRulesetName } from "@/domain/rulesetPresentation";
 import { t } from "@/i18n/el";
 import { roomFailureMessage } from "@/lib/room-feedback";
 import { getCurrentPlayer } from "@/services/authFunctions";
@@ -154,7 +154,7 @@ function Lobby() {
       }
     >
       <RoomCodeCard code={room.code} />
-      <p className="mt-3 text-center text-sm text-muted-foreground">{RULESETS[room.rulesetId].name}</p>
+      <p className="mt-3 text-center text-sm text-muted-foreground">{room.rulesetName ?? publicRulesetName(room.rulesetId)}</p>
 
       <div className="mt-6">
         <SectionLabel>Παίκτες</SectionLabel>

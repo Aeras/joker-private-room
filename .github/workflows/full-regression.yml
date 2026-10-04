@@ -70,3 +70,6 @@ jobs:
 
   jk002-db-integration:
     uses: ./.github/workflows/jk002-db-integration.yml
+
+  jk003-db-integration:
+    uses: ./.github/workflows/jk003-db-integration.yml

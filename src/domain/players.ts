@@ -67,6 +67,8 @@ export interface Room {
   code: string;
   hostId: string;
   rulesetId: RulesetId;
+  /** Viewer-safe server label, including restricted host presentation. */
+  rulesetName?: string;
   botSettings: BotSettings;
   seats: Seat[];
   status: RoomStatus;

@@ -19,6 +19,9 @@ export interface PublicDealHistory {
 
 /** Everything a seat/bot may legitimately know. Never add hidden opponent data. */
 export interface PlayerView {
+  deckProfile?: import("./cards").DeckProfile;
+  scoringProfile?: "popular" | "minus";
+  exposedTrumpCard?: Card | null;
   seatIndex: number;
   hand: Card[];
   cardsPerPlayer: number;

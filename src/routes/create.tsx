@@ -5,14 +5,15 @@ import { JButton } from "@/components/joker/JButton";
 import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
 import { DIALOGUE_INTENSITIES, type DialogueIntensity } from "@/domain/dialoguePolicy";
 import type { PublicPlayer } from "@/domain/players";
-import { RULESET_LIST, type RulesetId } from "@/domain/rulesets";
+import type { RulesetId } from "@/domain/rulesets";
+import { PUBLIC_RULESET_OPTIONS, type RulesetOption } from "@/domain/rulesetPresentation";
 import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
 import { t } from "@/i18n/el";
 import { authFailureMessage } from "@/lib/auth-feedback";
 import { roomFailureMessage } from "@/lib/room-feedback";
 import { cn } from "@/lib/utils";
 import { realIdentityService } from "@/services/realIdentity";
-import { createProductionRoom } from "@/services/roomFunctions";
+import { createProductionRoom, getAvailableRulesets } from "@/services/roomFunctions";
 
 export const Route = createFileRoute("/create")({
   head: () => ({ meta: [{ title: "Δημιουργία παιχνιδιού — JOKER" }] }),
@@ -45,6 +46,7 @@ function CreateGame() {
   const [pin, setPin] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
+  const [options, setOptions] = useState<RulesetOption[]>(PUBLIC_RULESET_OPTIONS);
   const [rulesetId, setRulesetId] = useState<RulesetId>("popular");
   const [botsTalk, setBotsTalk] = useState(false);
   const [allowProfanity, setAllowProfanity] = useState(false);
@@ -85,6 +87,9 @@ function CreateGame() {
         return;
       }
 
+      const available = await getAvailableRulesets();
+      if (!available.ok) { setAuthError(t.authUnavailable); return; }
+      setOptions(available.options);
       setVerifiedHost(result.player);
       setPin("");
     } finally { setAuthBusy(false); }
@@ -150,12 +155,12 @@ function CreateGame() {
   }
 
   return (
-    <ScreenShell title={t.createGame} footer={<div className="space-y-2">{roomError && <p className="text-sm text-negative">{roomError}</p>}<JButton size="lg" className="w-full" onClick={create} disabled={busy || rulesetId !== "popular"}>{t.createRoom}</JButton></div>}>
+    <ScreenShell title={t.createGame} footer={<div className="space-y-2">{roomError && <p className="text-sm text-negative">{roomError}</p>}<JButton size="lg" className="w-full" onClick={create} disabled={busy}>{t.createRoom}</JButton></div>}>
       <SectionLabel>{t.chooseGame}</SectionLabel>
       <div role="radiogroup" className="space-y-3">
-        {RULESET_LIST.map((r) => {
+        {options.map((r) => {
           const active = r.id === rulesetId;
-          const available = r.id === "popular";
+          const available = true;
           return <button key={r.id} role="radio" aria-checked={active} aria-disabled={!available} disabled={!available} onClick={() => available && setRulesetId(r.id)} className={cn("panel flex w-full items-center gap-4 p-4 text-left transition-shadow", active && "ring-gold", !available && "cursor-not-allowed opacity-45")}><span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", active ? "border-primary" : "border-muted-foreground")}>{active && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}</span><span><span className="block font-display text-lg text-foreground">{r.name}</span><span className="block text-sm text-muted-foreground">{available ? r.description : t.rulesetNotImplemented}</span></span></button>;
         })}
       </div>

@@ -1,10 +1,11 @@
+import { getRuleset, type RulesetId, type RulesVersion } from "./rulesets";
+import { prepareGameplayDeck } from "./deckPolicy";
 import { createDeck, shuffleCards } from "./cards";
 import { declarationOrder, legalDeclarationValues, type Declarations } from "./declarations";
 import { dealWithTrumpReveal, nextSeat, selectInitialDealer, type SeatIndex } from "./dealing";
 import { humanDeadlineFromServerTime } from "./controller";
 import {
   GAME_STATE_SCHEMA_VERSION,
-  POPULAR_RULES_VERSION,
   type CanonicalGameState,
   type CanonicalSeatState,
   type SeatOwner,
@@ -19,6 +20,9 @@ export interface InitialSeatInput {
 export interface CreateDealerBootstrapStateArgs {
   gameId: string;
   roomId: string;
+  rulesetId?: RulesetId;
+  rulesVersion?: RulesVersion;
+  targetPlayerId?: string;
   bootstrapActionId: string;
   serverEntropySeed: string;
   seats: [InitialSeatInput, InitialSeatInput, InitialSeatInput, InitialSeatInput];
@@ -69,11 +73,14 @@ export function createInitialDealerBootstrapState(
     throw new Error("Initial seats must contain canonical indexes 0..3 in order");
   }
 
+  const policy = getRuleset(args.rulesetId ?? "popular", args.rulesVersion ?? "popular-v1");
+  const presentTarget = args.seats.some(seat => seat.owner.type === "human" && seat.owner.playerId === args.targetPlayerId);
   return {
+    ...(policy.allocation === "reserved_lowest" ? { privateRulesetState: { targetPlayerId: presentTarget ? args.targetPlayerId! : null } } : {}),
     gameId: args.gameId,
     roomId: args.roomId,
-    rulesetId: "popular",
-    rulesVersion: POPULAR_RULES_VERSION,
+    rulesetId: policy.id,
+    rulesVersion: policy.version,
     stateSchemaVersion: GAME_STATE_SCHEMA_VERSION,
     stateVersion: 1,
     lifecycle: "starting",
@@ -144,7 +151,7 @@ export function resolveDealerBootstrapAndInitializeDealOne(
   }
 
   const firstRecipientSeat = chooseUniformFirstRecipient(args.firstRecipientRandom);
-  const selectionDeck = shuffleCards(createDeck(), args.selectionShuffleRandom);
+  const selectionDeck = shuffleCards(createDeck(getRuleset(state.rulesetId, state.rulesVersion).deckProfile), args.selectionShuffleRandom);
   const selection = selectInitialDealer(selectionDeck, firstRecipientSeat);
   const revealedSelectionCards = selectionDeck.slice(0, selection.revealedCount);
   const lastRevealed = revealedSelectionCards.at(-1);
@@ -157,7 +164,7 @@ export function resolveDealerBootstrapAndInitializeDealOne(
 
   const dealerSeat = selection.dealerSeat;
   const firstDeclarerSeat = nextSeat(dealerSeat);
-  const gameplayDeck = shuffleCards(createDeck(), args.dealOneShuffleRandom);
+  const gameplayDeck = prepareGameplayDeck(state, dealerSeat, 1, args.dealOneShuffleRandom);
   const firstDeal = dealWithTrumpReveal(gameplayDeck, dealerSeat, 1);
   const declarations: Declarations = [null, null, null, null];
   const legalValues = legalDeclarationValues({

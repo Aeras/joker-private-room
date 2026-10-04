@@ -103,14 +103,14 @@ export function trumpFromReveal(card: Card): Suit | null {
   return card.kind === "standard" ? card.suit : null;
 }
 
-/** Canonical 1..8-card deal followed by immediate next-card trump reveal. */
+/** Policy-selected 1..9-card deal followed by immediate next-card trump reveal. */
 export function dealWithTrumpReveal(
   deck: readonly Card[],
   dealerSeat: SeatIndex,
   cardsPerSeat: number,
 ): StandardDealResult {
-  if (cardsPerSeat < 1 || cardsPerSeat > 8) {
-    throw new Error("Trump-reveal deals must contain 1..8 cards per seat");
+  if (cardsPerSeat < 1 || cardsPerSeat > 9) {
+    throw new Error("Trump-reveal deals must contain 1..9 cards per seat");
   }
   const dealt = dealCards(deck, dealerSeat, cardsPerSeat);
   const revealedTrumpCard = deck[dealt.cursor];
