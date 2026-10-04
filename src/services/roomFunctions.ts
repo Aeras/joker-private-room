@@ -118,7 +118,7 @@ export const createProductionRoom = createServerFn({ method: "POST" })
   .validator(
     z.object({
       actionId,
-      rulesetId: z.enum(["popular", "classic", "panagiotis"]),
+      rulesetId: z.enum(["popular", "classic", "minus", "panagiotis"]),
       botsTalk: z.boolean(),
       allowProfanity: z.boolean(),
       aiEnabled: z.boolean(),
@@ -212,3 +212,13 @@ export const startProductionRoom = createServerFn({ method: "POST" })
 export const getProductionRoom = createServerFn({ method: "GET" })
   .validator(z.object({ code: roomCode }))
   .handler(async ({ data }) => callRoomEdge({ action: "get", code: data.code }));
+
+/** Options are derived from the verified server session, never the browser identity. */
+export const getAvailableRulesets = createServerFn({ method: "GET" }).handler(async (): Promise<{ ok: true; options: import("@/domain/rulesetPresentation").RulesetOption[] } | { ok: false; code: string }> => {
+ const sessionToken = getCookie(SESSION_COOKIE);
+ if (!sessionToken) return { ok: false, code: "NOT_AUTHENTICATED" };
+ try {
+  const response = await fetch(EXTERNAL_SUPABASE_URL + "/functions/v1/room-commands", { method: "POST", headers: { apikey: EXTERNAL_SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ action: "ruleset_options", sessionToken }) });
+  return await response.json();
+ } catch { return { ok: false, code: "SERVICE_UNAVAILABLE" }; }
+});

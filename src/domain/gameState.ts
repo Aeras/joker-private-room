@@ -1,10 +1,11 @@
+import type { RulesetId, RulesVersion } from "./rulesets";
 import type { Card, Suit } from "./cards";
 import type { Declarations } from "./declarations";
 import type { SeatIndex } from "./dealing";
 import type { JokerSemantic, PlayedCard } from "./engine";
 import type { PhaseConfig } from "./gameConfig";
 
-export const GAME_STATE_SCHEMA_VERSION = 3 as const;
+export const GAME_STATE_SCHEMA_VERSION = 4 as const;
 export const POPULAR_RULES_VERSION = "popular-v1" as const;
 
 export type GameLifecycle = "starting" | "active" | "complete";
@@ -159,9 +160,11 @@ export interface CanonicalTimingState {
 export interface CanonicalGameState {
   gameId: string;
   roomId: string;
-  rulesetId: "popular";
-  rulesVersion: typeof POPULAR_RULES_VERSION;
-  stateSchemaVersion: typeof GAME_STATE_SCHEMA_VERSION;
+  rulesetId: RulesetId;
+  rulesVersion: RulesVersion;
+  stateSchemaVersion: 3 | typeof GAME_STATE_SCHEMA_VERSION;
+  /** Server-only target resolved once from the immutable starting roster. */
+  privateRulesetState?: { targetPlayerId: string | null };
   stateVersion: number;
   lifecycle: GameLifecycle;
   /**

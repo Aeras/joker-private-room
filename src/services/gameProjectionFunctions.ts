@@ -1,24 +1,25 @@
+import { RESTRICTED_HOST_ID } from "@/server/rulesetIdentity";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import type { SeatIndex } from "@/domain/dealing";
 import { projectGameForSeat, type PlayerGameProjection } from "@/domain/projection";
 import type { GameplayCommand } from "@/domain/gameplayCommands";
-import {
-  reclaimGameControl,
-  type GameControlFailureCode,
-} from "@/server/gameControl";
+import { reclaimGameControl, type GameControlFailureCode } from "@/server/gameControl";
 import { ensureInitialDealerBootstrap } from "@/server/dealerBootstrap";
 import {
   submitHumanGameplayCommand,
   type SubmitGameplayCommandFailureCode,
 } from "@/server/gameplayCommands";
-import { loadCanonicalGameState, type GameStateFailureCode, type LoadGameStateResult } from "@/server/gamePersistence";
+import {
+  loadCanonicalGameState,
+  type GameStateFailureCode,
+  type LoadGameStateResult,
+} from "@/server/gamePersistence";
 import { advanceGameUntilBlocked } from "@/server/reconciliation";
 
 export type ProjectedGameStateResult =
-  | { ok: true; projection: PlayerGameProjection }
-  | { ok: false; code: GameStateFailureCode };
+  { ok: true; projection: PlayerGameProjection } | { ok: false; code: GameStateFailureCode };
 
 export type ReclaimGameControlResult =
   | { ok: true; projection: PlayerGameProjection; replayed: boolean }
@@ -78,7 +79,13 @@ export const getProjectedGameState = createServerFn({ method: "GET" })
 
     return {
       ok: true,
-      projection: projectGameForSeat(loaded.canonicalState, loaded.viewerSeat),
+      projection: projectGameForSeat(
+        loaded.canonicalState,
+        loaded.viewerSeat,
+        loaded.canonicalState.seats[loaded.viewerSeat].owner.type === "human" &&
+          (loaded.canonicalState.seats[loaded.viewerSeat].owner as { playerId: string })
+            .playerId === RESTRICTED_HOST_ID,
+      ),
     };
   });
 
@@ -101,7 +108,13 @@ export const reclaimProjectedGameControl = createServerFn({ method: "POST" })
     return {
       ok: true,
       replayed: result.replayed,
-      projection: projectGameForSeat(loaded.canonicalState, loaded.viewerSeat),
+      projection: projectGameForSeat(
+        loaded.canonicalState,
+        loaded.viewerSeat,
+        loaded.canonicalState.seats[loaded.viewerSeat].owner.type === "human" &&
+          (loaded.canonicalState.seats[loaded.viewerSeat].owner as { playerId: string })
+            .playerId === RESTRICTED_HOST_ID,
+      ),
     };
   });
 
@@ -130,6 +143,12 @@ export const submitProjectedGameplayCommand = createServerFn({ method: "POST" })
     return {
       ok: true,
       replayed: result.replayed,
-      projection: projectGameForSeat(loaded.canonicalState, loaded.viewerSeat),
+      projection: projectGameForSeat(
+        loaded.canonicalState,
+        loaded.viewerSeat,
+        loaded.canonicalState.seats[loaded.viewerSeat].owner.type === "human" &&
+          (loaded.canonicalState.seats[loaded.viewerSeat].owner as { playerId: string })
+            .playerId === RESTRICTED_HOST_ID,
+      ),
     };
   });

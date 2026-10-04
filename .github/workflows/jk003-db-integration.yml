@@ -1,0 +1,35 @@
+name: JK-003 Ruleset DB Integration
+on:
+  workflow_call:
+  pull_request:
+    branches: [main]
+    paths: ['supabase/migrations/**', 'tests/integration/rulesets*', '.github/workflows/jk003-db-integration.yml']
+jobs:
+  rulesets:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_PASSWORD: ci-only, POSTGRES_DB: jk003 }
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env: { PGPASSWORD: ci-only }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Disposable database authorization, identity and privacy integration
+        run: |
+          set -euo pipefail
+          psql -h localhost -U postgres -d jk003 -v ON_ERROR_STOP=1 -f tests/integration/rulesets-setup.sql
+          for migration in \
+            20261003180716_jk001_phase2_room_authority \
+            20261003181005_jk001_phase2_fix_room_rpc_search_path \
+            20261003191742_jk001_phase4_game_state_cas \
+            20261003194500_jk001_phase5_projection_viewer_seat \
+            20261003211612_jk001_phase7_bot_roster_authority \
+            20261004053000_jk001_phase12_atomic_finalization_history \
+            20261004095255_jk001_ai_banter_phase_a_policy_authority \
+            20261004193700_jk003_versioned_ruleset_policies
+          do
+            psql -h localhost -U postgres -d jk003 -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration.sql"
+          done
+          psql -h localhost -U postgres -d jk003 -v ON_ERROR_STOP=1 -f tests/integration/rulesets.sql

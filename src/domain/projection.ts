@@ -1,3 +1,4 @@
+import { getRuleset, type RulesetId } from "./rulesets";
 import { SUITS, type Card, type Suit } from "./cards";
 import type { SeatIndex } from "./dealing";
 import {
@@ -41,7 +42,7 @@ export type PublicInitialDealerSelection =
 export interface PlayerGameProjection {
   gameId: string;
   roomId: string;
-  rulesetId: "popular";
+  rulesetId: RulesetId;
   rulesVersion: string;
   stateSchemaVersion: number;
   stateVersion: number;
@@ -117,6 +118,7 @@ function resolvedTrump(state: CanonicalGameState): Suit | null {
 
 function playerView(state: CanonicalGameState, seat: SeatIndex, hand: Card[]): PlayerView {
   return {
+    deckProfile: getRuleset(state.rulesetId, state.rulesVersion).deckProfile,
     seatIndex: seat,
     hand,
     cardsPerPlayer: state.progression.cardsPerPlayer,
@@ -161,14 +163,16 @@ function localLegalActions(state: CanonicalGameState, seat: SeatIndex, visibleHa
 }
 
 /** The only canonical-to-player serializer. Private entropy/deck/opponent hands are never copied. */
-export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex): PlayerGameProjection {
+export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex, revealRestrictedIdentity = false): PlayerGameProjection {
   if (state.seats[seat]?.seatIndex !== seat) throw new Error("Projection seat does not exist");
+  const policy = getRuleset(state.rulesetId, state.rulesVersion);
+  const masked = state.rulesetId === "panagiotis" && !revealRestrictedIdentity;
   const own = visibleOwnHand(state, seat);
   return {
     gameId: state.gameId,
     roomId: state.roomId,
-    rulesetId: state.rulesetId,
-    rulesVersion: state.rulesVersion,
+    rulesetId: masked ? "popular" : policy.id,
+    rulesVersion: masked ? "popular-v1" : policy.version,
     stateSchemaVersion: state.stateSchemaVersion,
     stateVersion: state.stateVersion,
     lifecycle: state.lifecycle,

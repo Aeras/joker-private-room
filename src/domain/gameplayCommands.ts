@@ -1,3 +1,4 @@
+import { getRuleset } from "./rulesets";
 import { SUITS, type Card, type Suit } from "./cards";
 import {
   applyDeclaration,
@@ -57,6 +58,7 @@ function resolvedTrump(state: CanonicalGameState): Suit | null {
 
 function playerView(state: CanonicalGameState, seat: SeatIndex): PlayerView {
   return {
+    deckProfile: getRuleset(state.rulesetId, state.rulesVersion).deckProfile,
     seatIndex: seat,
     hand: state.cards.hands[seat].slice(),
     cardsPerPlayer: state.progression.cardsPerPlayer,
@@ -387,6 +389,8 @@ function applyJokerChoice(
 /** Human and bot callers use this same pure transition surface. */
 export function applyGameplayCommand(args: ApplyGameplayCommandArgs): GameplayCommandResult {
   const { state, seat, command, serverNow, expectedController } = args;
+  try { getRuleset(state.rulesetId, state.rulesVersion); } catch { return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" }; }
+  if (command.type === "choose_trump" && getRuleset(state.rulesetId, state.rulesVersion).nineCardTrump !== "chooser") return { ok: false, code: "WRONG_PHASE" };
   if (!validServerTime(serverNow)) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
   if (state.lifecycle !== "active") return { ok: false, code: "WRONG_PHASE" };
   if (state.seats[seat]?.seatIndex !== seat) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };

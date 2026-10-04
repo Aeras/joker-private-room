@@ -58,17 +58,17 @@ jobs:
           grep -q 'submitProjectedGameplayCommand' src/routes/table.tsx
           grep -q 'reclaimProjectedGameControl' src/routes/table.tsx
 
-      - name: Private entropy and schema-v3 guards
+      - name: Private entropy and schema-v4 guards
         id: entropy
         continue-on-error: true
         run: |
-          grep -q 'GAME_STATE_SCHEMA_VERSION = 3' src/domain/gameState.ts
+          grep -q 'GAME_STATE_SCHEMA_VERSION = 4' src/domain/gameState.ts
           grep -q 'serverEntropySeed' src/domain/gameState.ts
           grep -q 'secureServerEntropySeed' src/server/internalDeterminism.ts
           grep -q 'deterministicRandomUnitsFromSeed' src/server/internalDeterminism.ts
           grep -q 'serverEntropySeed: secureServerEntropySeed()' src/server/dealerBootstrap.ts
           grep -q 'private server entropy' src/server/gamePersistence.ts
-          grep -q 'state_schema_version: 3' supabase/functions/game-state/index.ts
+          grep -q 'state_schema_version: 4' supabase/functions/game-state/index.ts
 
       - name: Completion and history atomicity guards
         id: finalization

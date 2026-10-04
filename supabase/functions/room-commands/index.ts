@@ -104,7 +104,10 @@ Deno.serve(async (req: Request) => {
     let rpcName = "";
     let args: Record<string, unknown> = {};
 
-    if (action === "get") {
+    if (action === "ruleset_options") {
+      rpcName = "get_available_rulesets_internal";
+      args = { p_session_token: sessionToken };
+    } else if (action === "get") {
       rpcName = "get_room_for_session_internal";
       args = { p_session_token: sessionToken, p_code: String(body?.code ?? "") };
     } else if (action === "active_game") {

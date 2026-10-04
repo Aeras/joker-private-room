@@ -101,8 +101,9 @@ describe('JK-002 executable deployment artifact', () => {
     expect(state.stateVersion).toBe(version);
     expect(JSON.stringify(result.body)).not.toMatch(/canonicalState|hands|serverEntropySeed|deck/);
   });
-  it('finishes all 24 deals across bounded browser-free ticks and finalizes exactly once', async () => {
-    reset();
+  for (const rulesetId of ['popular', 'classic', 'minus', 'panagiotis'] as const) {
+  it('finishes all 24 deals across bounded browser-free ticks and finalizes exactly once: ' + rulesetId, async () => {
+    reset(); state = reconciliationFixture(rulesetId, rulesetId === 'panagiotis');
     let ticks = 0; let bounded = 0;
     while (state.lifecycle !== 'complete' && ticks++ < 100) {
       consumed = false;
@@ -121,6 +122,7 @@ describe('JK-002 executable deployment artifact', () => {
     expect(versions.every((v, i) => i === 0 || v === versions[i - 1]! + 1)).toBe(true);
     consumed = false; expect((await invoke()).body.claimed).toBe(0); expect(finalized).toBe(1);
   }, 30000);
+  }
   it('releases claims after a crash and retries without changing the internal action identity', async () => {
     reset(); failPersist = true;
     const failed = await invoke();

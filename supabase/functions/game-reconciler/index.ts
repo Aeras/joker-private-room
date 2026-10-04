@@ -1,3 +1,5 @@
+import { assertRulesetState } from "@/domain/rulesetValidation.ts";
+import type { CanonicalGameState } from "@/domain/gameState.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -102,6 +104,7 @@ function dependenciesForClaim(
       ) {
         return { ok: false, code: "INVALID_CANONICAL_STATE" };
       }
+      try { assertRulesetState(result.canonicalState as CanonicalGameState); } catch { return { ok: false, code: "INVALID_CANONICAL_STATE" }; }
       return {
         ok: true,
         gameId: result.gameId,

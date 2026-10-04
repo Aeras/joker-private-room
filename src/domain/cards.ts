@@ -46,11 +46,14 @@ export function cardId(card: { suit: Suit; rank: Rank }) {
   return `${card.rank}-${card.suit}`;
 }
 
-export function createDeck(): Card[] {
+export type DeckProfile = "popular36" | "classic38";
+
+export function createDeck(profile: DeckProfile = "popular36"): Card[] {
+  if (profile !== "popular36" && profile !== "classic38") throw new Error("Unknown deck profile");
   const deck: Card[] = [];
   for (const suit of SUITS) {
     for (const rank of RANKS) {
-      if (EXCLUDED_CARDS.some((c) => c.suit === suit && c.rank === rank)) continue;
+      if (profile === "popular36" && EXCLUDED_CARDS.some((c) => c.suit === suit && c.rank === rank)) continue;
       deck.push({ kind: "standard", id: cardId({ suit, rank }), suit, rank });
     }
   }

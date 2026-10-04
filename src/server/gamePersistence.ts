@@ -1,3 +1,5 @@
+import { assertRulesetState } from "@/domain/rulesetValidation";
+import type { RulesetId, RulesVersion } from "@/domain/rulesets";
 import { getCookie } from "@tanstack/react-start/server";
 
 import {
@@ -32,8 +34,8 @@ export type LoadGameStateResult =
       gameId: string;
       roomId: string;
       viewerSeat: SeatIndex;
-      rulesetId: "popular";
-      rulesVersion: string;
+      rulesetId: RulesetId;
+      rulesVersion: RulesVersion;
       stateSchemaVersion: number;
       stateVersion: number;
       lifecycle: CanonicalGameState["lifecycle"];
@@ -58,8 +60,8 @@ export type LoadGameBootstrapResult =
       ok: true;
       gameId: string;
       roomId: string;
-      rulesetId: "popular";
-      rulesVersion: string;
+      rulesetId: RulesetId;
+      rulesVersion: RulesVersion;
       stateSchemaVersion: number;
       stateVersion: number;
       lifecycle: CanonicalGameState["lifecycle"];
@@ -95,7 +97,7 @@ export interface CompletedGameSummary {
   gameId: string;
   completedAt: string;
   rulesetId: string;
-  rulesVersion: string;
+  rulesVersion: RulesVersion;
   participants: CompletedGameParticipant[];
 }
 
@@ -146,7 +148,9 @@ async function callGameStateEdge(body: Record<string, unknown>): Promise<Record<
 
 /** Server-only raw load. Never return its canonicalState directly from a route. */
 export async function loadCanonicalGameState(gameId: string): Promise<LoadGameStateResult> {
-  return (await callGameStateEdge({ action: "load", gameId })) as LoadGameStateResult;
+  const result = (await callGameStateEdge({ action: "load", gameId })) as LoadGameStateResult;
+  if (result.ok) { try { assertRulesetState(result.canonicalState); } catch { return { ok: false, code: "INVALID_CANONICAL_STATE" }; } }
+  return result;
 }
 
 /** Server-only roster/room metadata used only while canonical_state is still null. */
@@ -161,7 +165,8 @@ export async function loadCompletedGameHistory(limit = 50): Promise<GameHistoryR
 
 function assertPersistableState(gameId: string, expectedStateVersion: number, newState: CanonicalGameState) {
   if (newState.gameId !== gameId) throw new Error("Canonical state gameId mismatch before persistence");
-  if (newState.stateSchemaVersion !== GAME_STATE_SCHEMA_VERSION) {
+  assertRulesetState(newState);
+  if (newState.stateSchemaVersion !== GAME_STATE_SCHEMA_VERSION && newState.stateSchemaVersion !== 3) {
     throw new Error("Unsupported canonical state schema version");
   }
   if (newState.stateVersion !== expectedStateVersion + 1) {

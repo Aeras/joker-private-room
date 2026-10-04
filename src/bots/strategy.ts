@@ -178,6 +178,7 @@ export function derivePublicInference(view: PlayerView): PublicInference {
     }
   };
 
+  if (view.exposedTrumpCard) playedCardIds.add(view.exposedTrumpCard.id);
   for (const trick of view.history.completedTricks) observeTrick(trick.cards);
   observeTrick(view.currentTrick);
 
@@ -202,7 +203,7 @@ function publicRiskPenalty(view: PlayerView, card: Card, inference: PublicInfere
 function unseenHigherCount(view: PlayerView, card: Card, inference: PublicInference): number {
   if (card.kind !== "standard") return 0;
   const ownIds = new Set(view.hand.map((item) => item.id));
-  return createDeck().filter(
+  return createDeck(view.deckProfile).filter(
     (candidate) =>
       candidate.kind === "standard" &&
       candidate.suit === card.suit &&
@@ -251,10 +252,10 @@ function seededRandom(seed: string): () => number {
   };
 }
 
-function fairUnknownCards(view: PlayerView, inference: PublicInference): Card[] {
+export function fairUnknownCards(view: PlayerView, inference: PublicInference): Card[] {
   const known = new Set<string>(view.hand.map((card) => card.id));
   for (const id of inference.playedCardIds) known.add(id);
-  return createDeck().filter((card) => !known.has(card.id));
+  return createDeck(view.deckProfile).filter((card) => !known.has(card.id));
 }
 
 function sampleWithoutReplacement(cards: readonly Card[], count: number, random: () => number): Card[] {

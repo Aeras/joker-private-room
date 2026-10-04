@@ -1,4 +1,5 @@
-import { createDeck, shuffleCards } from "./cards";
+import { prepareGameplayDeck } from "./deckPolicy";
+import { getRuleset, type Ruleset } from "./rulesets";
 import { humanDeadlineFromServerTime } from "./controller";
 import { declarationOrder, legalDeclarationValues, type Declarations } from "./declarations";
 import { dealNineCardInitial, dealWithTrumpReveal, nextSeat, type SeatIndex } from "./dealing";
@@ -8,9 +9,8 @@ import type {
   CanonicalGameState,
   CanonicalRoundPremiaRecord,
 } from "./gameState";
-import { resolvePremia, type RoundDealOutcome } from "./premia";
+import { type RoundDealOutcome } from "./premia";
 import { rankFinalScores } from "./ranking";
-import { scoreDeal } from "./scoring";
 
 export type LifecycleTransitionResult =
   | { ok: true; changed: false; state: CanonicalGameState }
@@ -55,13 +55,14 @@ function declarationsTuple(state: CanonicalGameState): [number, number, number, 
 }
 
 function dealScoresFor(
+  policy: Ruleset,
   declarations: readonly number[],
   tricksTaken: readonly number[],
   cardsPerPlayer: number,
 ): [number, number, number, number] {
   return tuple4(
     [0, 1, 2, 3].map((seat) =>
-      scoreDeal({
+      policy.scoreDeal({
         declared: declarations[seat]!,
         taken: tricksTaken[seat]!,
         tricksInDeal: cardsPerPlayer,
@@ -103,7 +104,8 @@ function nextDealState(
   const dealerSeat = nextSeat(currentDealer);
   const firstDeclarerSeat = nextSeat(dealerSeat);
   const firstLeaderSeat = firstDeclarerSeat;
-  const deck = shuffleCards(createDeck(), random);
+  const policy = getRuleset(state.rulesetId, state.rulesVersion);
+  const deck = prepareGameplayDeck(state, dealerSeat, nextInfo.cardsPerPlayer, random);
   const actorController = state.seats[firstDeclarerSeat].controller;
   const timing = {
     currentHumanDeadline:
@@ -111,7 +113,7 @@ function nextDealState(
     timeoutTakeoverActive: actorController === "temporary_bot",
   };
 
-  if (nextInfo.cardsPerPlayer === 9) {
+  if (nextInfo.cardsPerPlayer === 9 && policy.nineCardTrump === "chooser") {
     const initial = dealNineCardInitial(deck, dealerSeat);
     return {
       ...state,
@@ -198,7 +200,7 @@ function settleDeal(
     return { ok: false, code: "INVALID_LIFECYCLE_STATE" };
   }
 
-  const dealScores = dealScoresFor(declarations, state.score.tricksTaken, state.progression.cardsPerPlayer);
+  const dealScores = dealScoresFor(getRuleset(state.rulesetId, state.rulesVersion), declarations, state.score.tricksTaken, state.progression.cardsPerPlayer);
   const totalsAfterDeal = tuple4(
     state.score.cumulativeTotals.map((total, seat) => total + dealScores[seat]!),
   );
@@ -274,7 +276,7 @@ function settleRound(
   }));
   let premia;
   try {
-    premia = resolvePremia(round, outcomes);
+    premia = getRuleset(state.rulesetId, state.rulesVersion).resolvePremia(round, outcomes);
   } catch {
     return { ok: false, code: "INVALID_LIFECYCLE_STATE" };
   }
@@ -345,6 +347,7 @@ export function settleCanonicalLifecycle(args: {
   nextDealRandom?: () => number;
   serverNow: string;
 }): LifecycleTransitionResult {
+  try { getRuleset(args.state.rulesetId, args.state.rulesVersion); } catch { return { ok: false, code: "INVALID_LIFECYCLE_STATE" }; }
   if (!validServerTime(args.serverNow)) return { ok: false, code: "INVALID_LIFECYCLE_STATE" };
   if (args.state.lifecycle !== "active") return { ok: true, changed: false, state: args.state };
   if (args.state.progression.phase === "DEAL_RESULT") {
