@@ -5,6 +5,10 @@ const migration = readFileSync(
   "supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql",
   "utf8",
 );
+const hardening = readFileSync(
+  "supabase/migrations/20261004113000_jk001_ai_banter_phase_c_delivery_hardening.sql",
+  "utf8",
+);
 const edge = readFileSync("supabase/functions/ai-banter/index.ts", "utf8");
 const service = readFileSync("src/services/dialogueFunctions.ts", "utf8");
 const overlay = readFileSync("src/components/table/DialogueOverlay.tsx", "utf8");
@@ -37,7 +41,7 @@ describe("AI banter Phase C delivery contract", () => {
   });
 
   it("accepts only the fixed dialogue event vocabulary and stable event identities", () => {
-    expect(service).toContain('const dialogueEventType = z.enum([');
+    expect(service).toContain("const dialogueEventType = z.enum([");
     expect(edge).toContain("const DIALOGUE_EVENT_TYPES = new Set<DialogueEventType>");
     expect(edge).toContain("hasStableEventIdentity");
     expect(edge).toContain('type === "HUMAN_MESSAGE_TO_BOT"');
@@ -66,5 +70,13 @@ describe("AI banter Phase C delivery contract", () => {
     expect(edge).toContain('admin.rpc("publish_dialogue_message_internal"');
     expect(migration).toContain("DIALOGUE_EVENT_NOT_CLAIMED");
     expect(migration).toContain("source in ('preset', 'gemini')");
+  });
+
+  it("drops stale provider results and duplicate active lines as silence", () => {
+    expect(hardening).toContain("STALE_DIALOGUE_RESULT");
+    expect(hardening).toContain("DUPLICATE_DIALOGUE_LINE");
+    expect(hardening).toContain("v_current_state_version > v_event_state_version + 1");
+    expect(edge).toContain('code === "STALE_DIALOGUE_RESULT" || code === "DUPLICATE_DIALOGUE_LINE"');
+    expect(edge).toContain('source: "silence"');
   });
 });
