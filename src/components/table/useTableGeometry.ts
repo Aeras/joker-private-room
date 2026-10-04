@@ -29,10 +29,10 @@ export interface TableGeometry {
 
 interface GeometryInput {
   feltRect: RectLike;
-  topSeatRect?: RectLike | null;
-  leftSeatRect?: RectLike | null;
-  rightSeatRect?: RectLike | null;
-  localSeatRect?: RectLike | null;
+  topSeatRect?: RectLike | null | undefined;
+  leftSeatRect?: RectLike | null | undefined;
+  rightSeatRect?: RectLike | null | undefined;
+  localSeatRect?: RectLike | null | undefined;
   viewportWidth: number;
 }
 
