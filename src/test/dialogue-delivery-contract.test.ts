@@ -72,8 +72,8 @@ describe("AI banter Phase C delivery contract", () => {
     expect(edge).not.toContain("body?.recentBanter");
   });
 
-  it("makes dialogue fire-and-forget relative to gameplay refresh", () => {
-    expect(table).toContain("setProjection(result.projection)");
+  it("makes dialogue fire-and-forget relative to reconnect-safe gameplay snapshot acceptance", () => {
+    expect(table).toContain("acceptSnapshot(currentRoom, result.projection)");
     expect(table).toContain("void requestDialogueReaction");
     expect(table).not.toContain("await requestDialogueReaction");
   });

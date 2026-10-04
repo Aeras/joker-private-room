@@ -30,10 +30,11 @@ describe("JK-001 Phase 1 — deal/trick/audio presentation authority", () => {
     expect(deal).toContain('document.addEventListener("visibilitychange", visibility)');
   });
 
-  it("animates deal backs and accepted cards from origin toward their viewer-relative seat/center", () => {
+  it("animates deal backs and accepted cards from measured origin toward viewer-relative destinations", () => {
     expect(deal).toContain("window.requestAnimationFrame(() => setArrived(true))");
-    expect(deal).toContain('"translate(-50%, -50%) scale(.58)"');
-    expect(trick).toContain("const ORIGIN: Record<Pos, string>");
+    expect(deal).toContain("geometry.seatOrigins[pos]");
+    expect(trick).toContain("geometry?.seatOrigins[pos]");
+    expect(trick).toContain("geometry.trickSlots[pos]");
     expect(trick).toContain("window.requestAnimationFrame(() => setArrived(true))");
   });
 
@@ -64,9 +65,10 @@ describe("JK-001 Phase 1 — deal/trick/audio presentation authority", () => {
     expect(audio).not.toContain("throw new Error");
   });
 
-  it("integrates the presentation layers without changing gameplay command semantics", () => {
-    expect(table).toContain("<TrickPresentation projection={projection} />");
-    expect(table).toContain("<DealPresentation projection={projection} />");
+  it("integrates the measured presentation layers without changing gameplay command semantics", () => {
+    expect(table).toContain("<TrickPresentation");
+    expect(table).toContain("geometry={tableGeometry.geometry}");
+    expect(table).toContain("<DealPresentation projection={projection} geometry={tableGeometry.geometry} />");
     expect(table).toContain('await onCommand({ type: "play_card", cardId })');
   });
 });
