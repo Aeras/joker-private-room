@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
-const migrationPath = "supabase/migrations/20261005090000_jk005_harden_active_game_lookup.sql";
+const migrationPath = "supabase/migrations/20261004213032_jk005_harden_active_game_lookup.sql";
 
 describe("JK-005 active-game lifecycle hardening", () => {
   it("repairs stale active participants that belong to completed games", () => {
