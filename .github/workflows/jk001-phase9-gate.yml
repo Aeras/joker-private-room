@@ -51,7 +51,8 @@ jobs:
         continue-on-error: true
         run: |
           grep -q 'stableInternalActionId' src/server/dealerBootstrap.ts
-          grep -q 'deterministicRandomUnits' src/server/dealerBootstrap.ts
+          grep -q 'deterministicRandomUnitsFromSeed' src/server/dealerBootstrap.ts
+          grep -q 'secureServerEntropySeed' src/server/dealerBootstrap.ts
           grep -q 'initial-dealer-bootstrap-v1' src/server/dealerBootstrap.ts
           ! grep -q 'dealerSeat: z\.' src/services/gameProjectionFunctions.ts
           ! grep -q 'firstRecipientSeat: z\.' src/services/gameProjectionFunctions.ts
@@ -67,9 +68,10 @@ jobs:
         id: schema_version
         continue-on-error: true
         run: |
-          grep -q 'GAME_STATE_SCHEMA_VERSION = 2' src/domain/gameState.ts
-          grep -q 'state_schema_version: 2' supabase/functions/game-state/index.ts
-          grep -q 'Schema-v2 canonical state requires dealer-selection metadata' src/server/gamePersistence.ts
+          grep -Eq 'GAME_STATE_SCHEMA_VERSION = [3-9]' src/domain/gameState.ts
+          grep -q 'state_schema_version: 3' supabase/functions/game-state/index.ts
+          grep -q 'Canonical state requires dealer-selection metadata' src/server/gamePersistence.ts
+          grep -q 'serverEntropySeed' src/domain/gameState.ts
       - name: Bootstrap remains internal
         id: internal_bootstrap
         continue-on-error: true
