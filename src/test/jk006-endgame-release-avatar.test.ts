@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("JK-006 end-game release and human avatars", () => {
   it("revokes active-control sessions for every human participant on host End Game", () => {
-    const migration = read("supabase/migrations/20261004233000_jk006_release_sessions_on_host_end.sql");
+    const migration = read("supabase/migrations/20261004232919_jk006_release_sessions_on_host_end.sql");
     expect(migration).toContain("update private.player_sessions ps");
     expect(migration).toContain("gp.owner_type = 'human'");
     expect(migration).toContain("active_control = false");
