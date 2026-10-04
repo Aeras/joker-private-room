@@ -1,0 +1,101 @@
+name: JK-001 Phase 8 Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: bun run test
+      - name: Phase 8 lint
+        id: phase8_lint
+        continue-on-error: true
+        run: >-
+          bunx eslint
+          src/domain/gameState.ts
+          src/domain/gameplayCommands.ts
+          src/domain/gameplayCommands.test.ts
+          src/domain/controller.ts
+          src/domain/controller.test.ts
+          src/bots/strategy.ts
+          src/server/gameplayCommands.ts
+          src/services/gameProjectionFunctions.ts
+          --rule 'prettier/prettier: off'
+      - name: Complete decision contract guard
+        id: decision_contract
+        continue-on-error: true
+        run: |
+          grep -q 'chooseDeclaration' src/bots/strategy.ts
+          grep -q 'chooseTrump' src/bots/strategy.ts
+          grep -q 'chooseCard' src/bots/strategy.ts
+          grep -q 'chooseJokerSemantic' src/bots/strategy.ts
+          grep -q 'type: "declare"' src/domain/gameplayCommands.ts
+          grep -q 'type: "choose_trump"' src/domain/gameplayCommands.ts
+          grep -q 'type: "play_card"' src/domain/gameplayCommands.ts
+          grep -q 'type: "choose_joker_semantic"' src/domain/gameplayCommands.ts
+      - name: Canonical engine reuse guard
+        id: engine_reuse
+        continue-on-error: true
+        run: |
+          grep -q 'applyDeclaration' src/domain/gameplayCommands.ts
+          grep -q 'completeNineCardDeal' src/domain/gameplayCommands.ts
+          grep -q 'legalMoves' src/domain/gameplayCommands.ts
+          grep -q 'resolveTrick' src/domain/gameplayCommands.ts
+          ! grep -q 'unrestrictedLegalMoves' src/domain/gameplayCommands.ts
+      - name: Authenticated seat and controller guard
+        id: auth_guard
+        continue-on-error: true
+        run: |
+          grep -q 'seat: loaded.viewerSeat' src/server/gameplayCommands.ts
+          grep -q 'expectedController: "human"' src/server/gameplayCommands.ts
+          grep -q 'resolveOverdueTimeoutBeforeRead' src/server/gameplayCommands.ts
+          ! grep -q 'seatIndex: z.number' src/services/gameProjectionFunctions.ts
+          ! grep -q 'viewerSeat:' src/services/gameProjectionFunctions.ts
+      - name: Bot semantic command guard
+        id: bot_command_guard
+        continue-on-error: true
+        run: |
+          grep -q 'GameplayCommand | null' src/domain/controller.ts
+          grep -q 'action: GameplayCommand' src/domain/controller.ts
+          ! grep -q 'LocalLegalAction | null' src/domain/controller.ts
+      - name: No unsupported dealer bootstrap default
+        id: bootstrap_guard
+        continue-on-error: true
+        run: |
+          test ! -e src/domain/gameInitialization.ts
+          test ! -e src/server/gameInitialization.ts
+          ! grep -q 'ensureCanonicalGameInitialized' src/services/roomFunctions.ts
+          ! grep -q 'action === "bootstrap"' supabase/functions/game-state/index.ts
+      - name: TypeScript
+        id: typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: bun run build
+      - name: Require Phase 8 gates
+        if: always()
+        run: |
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.phase8_lint.outcome }}" = "success"
+          test "${{ steps.decision_contract.outcome }}" = "success"
+          test "${{ steps.engine_reuse.outcome }}" = "success"
+          test "${{ steps.auth_guard.outcome }}" = "success"
+          test "${{ steps.bot_command_guard.outcome }}" = "success"
+          test "${{ steps.bootstrap_guard.outcome }}" = "success"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"

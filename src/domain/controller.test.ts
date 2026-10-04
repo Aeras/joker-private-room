@@ -54,7 +54,7 @@ function state(): CanonicalGameState {
     declarations: {
       order: [0, 1, 2, 3],
       currentDeclarerSeat: null,
-      declarations: [0, 0, 0, 1],
+      declarations: [0, 0, 0, 0],
       legalValues: [],
       forbiddenDealerValue: null,
     },
@@ -115,17 +115,22 @@ describe("controller timeout/reclaim", () => {
 });
 
 describe("bounded bot progression", () => {
-  it("feeds the bot only a fair seat projection and stops when human input is next", () => {
+  it("feeds the bot only a fair seat projection and a concrete semantic command", () => {
     const timed = applyOverdueTimeout(state(), "2026-10-03T19:00:30.000Z");
     if (!timed.ok || !timed.changed) throw new Error("expected timeout");
     let sawOpponentHand = false;
+    let selectedCardId: string | null = null;
     const result = runBoundedBotProgression(timed.state, {
       selectAction(view) {
         const json = JSON.stringify(view);
         sawOpponentHand = json.includes("player-1-secret-card");
-        return view.local.legalActions[0] ?? null;
+        const legalPlay = view.local.legalActions.find((action) => action.type === "play_card");
+        if (!legalPlay || legalPlay.cardIds.length === 0) return null;
+        selectedCardId = legalPlay.cardIds[0]!;
+        return { type: "play_card", cardId: selectedCardId };
       },
-      applyAction({ state: current }) {
+      applyAction({ state: current, action }) {
+        expect(action).toEqual({ type: "play_card", cardId: "7-hearts" });
         const seats = current.seats.map((seat) => ({ ...seat })) as CanonicalGameState["seats"];
         seats[1] = { ...seats[1], controller: "human" };
         return {
@@ -137,18 +142,22 @@ describe("bounded bot progression", () => {
       },
     });
     expect(sawOpponentHand).toBe(false);
+    expect(selectedCardId).toBe("7-hearts");
     expect(result.steps).toBe(1);
     expect(result.stopReason).toBe("HUMAN_INPUT");
   });
 
-  it("stops at the hard step bound", () => {
+  it("stops at the hard step bound using concrete commands", () => {
     const original = state();
     original.seats[0].controller = "permanent_bot";
     const result = runBoundedBotProgression(
       original,
       {
         selectAction(view) {
-          return view.local.legalActions[0] ?? { type: "reclaim_control" };
+          const legalPlay = view.local.legalActions.find((action) => action.type === "play_card");
+          return legalPlay?.cardIds[0]
+            ? { type: "play_card" as const, cardId: legalPlay.cardIds[0] }
+            : { type: "declare" as const, value: 0 };
         },
         applyAction({ state: current }) {
           return { ...current, stateVersion: current.stateVersion + 1 };

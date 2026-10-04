@@ -26,7 +26,14 @@ export type CanonicalGamePhase =
 export type ControllerType = "human" | "temporary_bot" | "permanent_bot";
 export type SeatOwner =
   | { type: "human"; playerId: string }
-  | { type: "bot"; botId: string; displayName: string; personalityId: string };
+  | {
+      type: "bot";
+      botId: string;
+      displayName: string;
+      personalityId: string;
+      strategyProfileId: string;
+      catalogVersion: string;
+    };
 
 export interface CanonicalSeatState {
   seatIndex: SeatIndex;

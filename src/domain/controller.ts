@@ -1,6 +1,7 @@
 import type { SeatIndex } from "./dealing";
+import type { GameplayCommand } from "./gameplayCommands";
 import type { CanonicalGameState } from "./gameState";
-import { projectGameForSeat, type LocalLegalAction, type PlayerGameProjection } from "./projection";
+import { projectGameForSeat, type PlayerGameProjection } from "./projection";
 
 export const HUMAN_TURN_TIMEOUT_MS = 30_000;
 export const MAX_SYNCHRONOUS_BOT_STEPS = 32;
@@ -112,11 +113,11 @@ export function applyReclaimControl(
 }
 
 export interface BotProgressionAdapter {
-  selectAction(view: PlayerGameProjection): LocalLegalAction | null;
+  selectAction(view: PlayerGameProjection): GameplayCommand | null;
   applyAction(args: {
     state: CanonicalGameState;
     seat: SeatIndex;
-    action: LocalLegalAction;
+    action: GameplayCommand;
   }): CanonicalGameState;
 }
 
@@ -128,8 +129,9 @@ export interface BotProgressionResult {
 
 /**
  * Bounded server-side bot loop. The bot sees only the same seat projection a
- * legitimate player/controller may see. State mutation is delegated to the
- * canonical gameplay transition layer; this module never invents parallel rules.
+ * legitimate player/controller may see. It proposes one concrete semantic
+ * GameplayCommand; state mutation remains delegated to the canonical gameplay
+ * dispatcher/persistence layer rather than a bot-only rules path.
  */
 export function runBoundedBotProgression(
   initial: CanonicalGameState,
