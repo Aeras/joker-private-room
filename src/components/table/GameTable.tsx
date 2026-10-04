@@ -11,6 +11,7 @@ import type { ScoreSheet } from "@/domain/scoreSheet";
 import { cn } from "@/lib/utils";
 import { JButton } from "../joker/JButton";
 import { PlayingCard } from "../joker/PlayingCard";
+import { DraggableHandCard } from "./DraggableHandCard";
 import { Scoreboard } from "./Scoreboard";
 import { TableSeat } from "./TableSeat";
 
@@ -67,22 +68,14 @@ function publicCardCount(projection: PlayerGameProjection, seat: number): number
 function phaseMessage(projection: PlayerGameProjection): string {
   if (projection.lifecycle === "complete") return "Η παρτίδα ολοκληρώθηκε";
   switch (projection.progression.phase) {
-    case "INITIAL_DEALER_SELECTION":
-      return "Επιλογή πρώτου dealer";
-    case "NINE_CARD_TRUMP_CHOICE":
-      return "Επιλογή ατού για το 9φυλλο";
-    case "DECLARATION":
-      return "Δηλώσεις";
-    case "CARD_PLAY":
-      return "Παίξιμο φύλλου";
-    case "JOKER_DECISION":
-      return "Επιλογή Joker";
-    case "DEAL_RESULT":
-      return "Υπολογισμός μοιρασιάς";
-    case "PHASE_RESULT":
-      return "Υπολογισμός πρέμιας";
-    default:
-      return "Η παρτίδα εξελίσσεται";
+    case "INITIAL_DEALER_SELECTION": return "Επιλογή πρώτου dealer";
+    case "NINE_CARD_TRUMP_CHOICE": return "Επιλογή ατού για το 9φυλλο";
+    case "DECLARATION": return "Δηλώσεις";
+    case "CARD_PLAY": return "Παίξιμο φύλλου";
+    case "JOKER_DECISION": return "Επιλογή Joker";
+    case "DEAL_RESULT": return "Υπολογισμός μοιρασιάς";
+    case "PHASE_RESULT": return "Υπολογισμός πρέμιας";
+    default: return "Η παρτίδα εξελίσσεται";
   }
 }
 
@@ -108,11 +101,12 @@ export function GameTable({
   onReclaim: () => Promise<void>;
 }) {
   const tableRootRef = useRef<HTMLDivElement>(null);
+  const playSubmissionLock = useRef(false);
   const localSeat = projection.viewerSeat;
   const [scoreOpen, setScoreOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [portrait, setPortrait] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [submittingCardId, setSubmittingCardId] = useState<string | null>(null);
 
   const names = room.seats.map((seat) => {
     const occupant = seat.occupant;
@@ -129,6 +123,14 @@ export function GameTable({
   const declarationValues = declarationAction
     ? Array.from({ length: projection.progression.cardsPerPlayer + 1 }, (_, value) => value)
     : [];
+  const handAuthorityKey = [
+    projection.gameId,
+    projection.stateVersion,
+    projection.progression.phase,
+    projection.progression.currentActorSeat ?? "none",
+    playAction?.cardIds.join(",") ?? "none",
+    projection.cards.ownHand.map((card) => card.id).join(","),
+  ].join(":");
 
   const nameAt = (seat: number) => names[seat] ?? `Θέση ${seat + 1}`;
   const seatAt = (pos: Pos) => ((localSeat + pos) % SEAT_COUNT) as Pos;
@@ -151,9 +153,17 @@ export function GameTable({
     return () => document.removeEventListener("fullscreenchange", change);
   }, []);
 
-  useEffect(() => {
-    if (!selectedId || !playAction?.cardIds.includes(selectedId)) setSelectedId(null);
-  }, [selectedId, playAction]);
+  const commitCard = async (cardId: string) => {
+    if (!playAction?.cardIds.includes(cardId) || busy || playSubmissionLock.current) return;
+    playSubmissionLock.current = true;
+    setSubmittingCardId(cardId);
+    try {
+      await onCommand({ type: "play_card", cardId });
+    } finally {
+      playSubmissionLock.current = false;
+      setSubmittingCardId(null);
+    }
+  };
 
   const toggleFullscreen = async () => {
     try {
@@ -195,11 +205,7 @@ export function GameTable({
 
   const finalRows = projection.lifecycle === "complete"
     ? projection.score.finalPlacements
-        .map((placement, seat) => ({
-          seat,
-          placement,
-          score: projection.score.cumulativeTotals[seat] ?? 0,
-        }))
+        .map((placement, seat) => ({ seat, placement, score: projection.score.cumulativeTotals[seat] ?? 0 }))
         .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99) || b.score - a.score)
     : [];
 
@@ -273,15 +279,7 @@ export function GameTable({
               {declarationValues.map((value) => {
                 const allowed = declarationAction.values.includes(value);
                 return (
-                  <JButton
-                    key={value}
-                    size="sm"
-                    className="h-12 min-w-12 px-4 text-base font-bold"
-                    disabled={busy || !allowed}
-                    aria-disabled={busy || !allowed}
-                    title={!allowed ? "Μη επιτρεπτή δήλωση για τον dealer" : `Δήλωση ${value}`}
-                    onClick={() => allowed && onCommand({ type: "declare", value })}
-                  >
+                  <JButton key={value} size="sm" className="h-12 min-w-12 px-4 text-base font-bold" disabled={busy || !allowed} aria-disabled={busy || !allowed} title={!allowed ? "Μη επιτρεπτή δήλωση για τον dealer" : `Δήλωση ${value}`} onClick={() => allowed && onCommand({ type: "declare", value })}>
                     {value}
                   </JButton>
                 );
@@ -319,31 +317,21 @@ export function GameTable({
         <div className="flex w-full items-end justify-center px-3 pl-[clamp(7rem,17vw,11rem)]">
           <div className="flex justify-center overflow-visible pt-2 [--card-w:clamp(3rem,7.2vw,5rem)]">
             {projection.cards.ownHandVisible ? projection.cards.ownHand.map((card, index) => (
-              <div key={card.id} className={cn(index > 0 && "-ml-[calc(var(--card-w)*0.36)]")} style={{ zIndex: index }}>
-                <PlayingCard
-                  card={card}
-                  selected={selectedId === card.id}
-                  onClick={playAction?.cardIds.includes(card.id) && !busy ? () => setSelectedId(selectedId === card.id ? null : card.id) : undefined}
-                />
-              </div>
+              <DraggableHandCard
+                key={card.id}
+                card={card}
+                legal={Boolean(playAction?.cardIds.includes(card.id))}
+                blocked={busy || Boolean(submittingCardId)}
+                pending={submittingCardId === card.id}
+                authorityKey={handAuthorityKey}
+                zIndex={index}
+                overlap={index > 0}
+                onCommit={commitCard}
+              />
             )) : (
               <div className="rounded-lg bg-black/65 px-4 py-2 text-xs text-white/65">Τα φύλλα σου δεν είναι ακόμη ορατά.</div>
             )}
           </div>
-          {playAction && (
-            <JButton
-              size="sm"
-              className="mb-2 ml-2 shrink-0"
-              disabled={!selectedId || busy || !playAction.cardIds.includes(selectedId)}
-              onClick={async () => {
-                if (!selectedId) return;
-                await onCommand({ type: "play_card", cardId: selectedId });
-                setSelectedId(null);
-              }}
-            >
-              Παίξε
-            </JButton>
-          )}
         </div>
         <div className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
       </footer>
