@@ -96,17 +96,11 @@ function visibleOwnHand(state: CanonicalGameState, seat: SeatIndex): {
   hand: Card[];
   visible: boolean;
 } {
-  if (state.progression.phase === "INITIAL_DEALER_SELECTION") {
-    return { hand: [], visible: false };
-  }
-  if (!state.cards.hiddenPartialNineCardHands) {
-    return { hand: state.cards.hands[seat].slice(), visible: true };
-  }
-
+  if (state.progression.phase === "INITIAL_DEALER_SELECTION") return { hand: [], visible: false };
+  if (!state.cards.hiddenPartialNineCardHands) return { hand: state.cards.hands[seat].slice(), visible: true };
   if (state.trump.status === "chooser_pending" && state.trump.chooserSeat === seat) {
     return { hand: state.cards.hands[seat].slice(), visible: true };
   }
-
   return { hand: [], visible: false };
 }
 
@@ -140,53 +134,28 @@ function jokerOptions(state: CanonicalGameState): JokerSemantic[] {
   ];
 }
 
-function localLegalActions(
-  state: CanonicalGameState,
-  seat: SeatIndex,
-  visibleHand: Card[],
-): LocalLegalAction[] {
+function localLegalActions(state: CanonicalGameState, seat: SeatIndex, visibleHand: Card[]): LocalLegalAction[] {
   const actions: LocalLegalAction[] = [];
-
   if (state.progression.phase === "DECLARATION" && state.declarations.currentDeclarerSeat === seat) {
     actions.push({ type: "declare", values: state.declarations.legalValues.slice() });
   }
-
-  if (state.progression.phase === "NINE_CARD_TRUMP_CHOICE") {
-    if (state.trump.status === "chooser_pending" && state.trump.chooserSeat === seat) {
-      actions.push({ type: "choose_trump", suits: [...SUITS, null] });
-    }
+  if (state.progression.phase === "NINE_CARD_TRUMP_CHOICE" && state.trump.status === "chooser_pending" && state.trump.chooserSeat === seat) {
+    actions.push({ type: "choose_trump", suits: [...SUITS, null] });
   }
-
-  if (
-    state.progression.phase === "CARD_PLAY" &&
-    state.progression.currentActorSeat === seat &&
-    visibleHand.length > 0
-  ) {
-    actions.push({
-      type: "play_card",
-      cardIds: legalMoves(playerView(state, seat, visibleHand)).map((card) => card.id),
-    });
+  if (state.progression.phase === "CARD_PLAY" && state.progression.currentActorSeat === seat && visibleHand.length > 0) {
+    actions.push({ type: "play_card", cardIds: legalMoves(playerView(state, seat, visibleHand)).map((card) => card.id) });
   }
-
   if (state.progression.phase === "JOKER_DECISION" && state.joker.pendingForSeat === seat) {
     actions.push({ type: "choose_joker_semantic", options: jokerOptions(state) });
   }
-
   const localSeat = state.seats[seat];
-  if (localSeat.owner.type === "human" && localSeat.reclaimable) {
-    actions.push({ type: "reclaim_control" });
-  }
-
+  if (localSeat.owner.type === "human" && localSeat.reclaimable) actions.push({ type: "reclaim_control" });
   return actions;
 }
 
-/** The only canonical-to-player serializer. */
-export function projectGameForSeat(
-  state: CanonicalGameState,
-  seat: SeatIndex,
-): PlayerGameProjection {
+/** The only canonical-to-player serializer. Private entropy/deck/opponent hands are never copied. */
+export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex): PlayerGameProjection {
   if (state.seats[seat]?.seatIndex !== seat) throw new Error("Projection seat does not exist");
-
   const own = visibleOwnHand(state, seat);
   return {
     gameId: state.gameId,
@@ -209,20 +178,36 @@ export function projectGameForSeat(
       ownHand: own.hand,
       ownHandVisible: own.visible,
       exposedTrumpCard: state.cards.exposedTrumpCard,
-      currentTrick: state.cards.currentTrick.slice(),
-      completedTricks: state.cards.completedTricks.slice(),
+      currentTrick: state.cards.currentTrick.map((play) => ({ ...play, card: { ...play.card } })),
+      completedTricks: state.cards.completedTricks.map((trick) => ({
+        winnerSeat: trick.winnerSeat,
+        cards: trick.cards.map((play) => ({ ...play, card: { ...play.card } })),
+      })),
     },
     score: {
       tricksTaken: [...state.score.tricksTaken] as CanonicalGameState["score"]["tricksTaken"],
       currentDealScores: [...state.score.currentDealScores] as CanonicalGameState["score"]["currentDealScores"],
       cumulativeTotals: [...state.score.cumulativeTotals] as CanonicalGameState["score"]["cumulativeTotals"],
       finalPlacements: [...state.score.finalPlacements] as CanonicalGameState["score"]["finalPlacements"],
+      completedDeals: (state.score.completedDeals ?? []).map((record) => ({
+        ...record,
+        declarations: [...record.declarations],
+        tricksTaken: [...record.tricksTaken],
+        dealScores: [...record.dealScores],
+        totalsAfterDeal: [...record.totalsAfterDeal],
+      })),
+      roundPremia: (state.score.roundPremia ?? []).map((record) => ({
+        ...record,
+        qualified: [...record.qualified],
+        adjustments: [...record.adjustments],
+        transfers: record.transfers.map((transfer) => ({ ...transfer })),
+        totalsAfterPremia: [...record.totalsAfterPremia],
+      })),
     },
     local: {
       legalActions: localLegalActions(state, seat, own.hand),
       reclaimAvailable: state.seats[seat].owner.type === "human" && state.seats[seat].reclaimable,
-      humanDeadline:
-        state.progression.currentActorSeat === seat ? state.timing.currentHumanDeadline : null,
+      humanDeadline: state.progression.currentActorSeat === seat ? state.timing.currentHumanDeadline : null,
     },
   };
 }
