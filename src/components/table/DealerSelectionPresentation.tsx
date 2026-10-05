@@ -51,7 +51,7 @@ function RevealedCard({
 }) {
   const [arrived, setArrived] = useState(false);
   const pos = visualSeat(viewerSeat, beat.seat);
-  const center = geometry.usableCenter;
+  const center = geometry.dealCenter;
   const base = geometry.dealTargets[pos];
   const stackOffset = (beat.index % 4) * 4;
   const target = {
@@ -108,7 +108,6 @@ export function DealerSelectionPresentation({
     ? `${projection.gameId}:${selection.resolvedAtStateVersion}`
     : null;
   const geometryReady = geometry != null;
-  const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const needsPresentation = Boolean(selectionKey && selection && dealerSelectionNeedsPresentation(projection));
 
   const clearTimers = useCallback(() => {
@@ -125,7 +124,7 @@ export function DealerSelectionPresentation({
     }
     onActiveChangeRef.current(true);
     if (!geometryReady || !geometry || !selection || !selectionKey) {
-      recordTimingDiagnostic("dealer_waiting_for_geometry", { reducedMotion: Boolean(reducedMotion) });
+      recordTimingDiagnostic("dealer_waiting_for_geometry");
       return;
     }
     if (startedKey.current === selectionKey) return;
@@ -154,18 +153,21 @@ export function DealerSelectionPresentation({
         setCueVisible(true);
         playGameSound("shuffle", `${projection.gameId}:dealer-selection`);
 
-        const cueMs = reducedMotion ? 90 : DEALER_START_CUE_MS;
-        const staggerMs = reducedMotion ? 90 : DEALER_SELECTION_STAGGER_MS;
-        const holdMs = reducedMotion ? 160 : DEALER_SELECTION_WINNER_HOLD_MS;
+        const cueMs = DEALER_START_CUE_MS;
+        const staggerMs = DEALER_SELECTION_STAGGER_MS;
+        const holdMs = DEALER_SELECTION_WINNER_HOLD_MS;
         recordTimingDiagnostic("dealer_sequence_start", {
-          reducedMotion: Boolean(reducedMotion),
+          browserReducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
+          gameplayReducedMotionOverride: false,
           cueMs,
           staggerMs,
-          travelMs: reducedMotion ? 75 : DEALER_SELECTION_CARD_TRAVEL_MS,
+          travelMs: DEALER_SELECTION_CARD_TRAVEL_MS,
           holdMs,
           cardCount: beats.length,
           firstRecipientSeat: selection.firstRecipientSeat,
           frozenGeometryEpoch: geometry.epoch,
+          dealCenterX: geometry.dealCenter.x,
+          dealCenterY: geometry.dealCenter.y,
         });
 
         beats.forEach((beat, index) => {
@@ -195,7 +197,7 @@ export function DealerSelectionPresentation({
       startupFrames.current.push(secondFrame);
     });
     startupFrames.current.push(firstFrame);
-  }, [geometryReady, needsPresentation, reducedMotion, selectionKey]);
+  }, [geometryReady, needsPresentation, selectionKey]);
 
   useEffect(() => {
     const interrupt = () => {
@@ -204,11 +206,11 @@ export function DealerSelectionPresentation({
       recordTimingDiagnostic("dealer_sequence_interrupted", {
         visibilityState: document.visibilityState,
       });
-      markDealerSelectionPresented(projection);
+      startedKey.current = null;
       setCueVisible(false);
       setVisibleCount(0);
       setRun(null);
-      onActiveChangeRef.current(false);
+      onActiveChangeRef.current(true);
     };
     const visibility = () => {
       if (document.visibilityState !== "visible") interrupt();
@@ -221,7 +223,7 @@ export function DealerSelectionPresentation({
       window.removeEventListener("blur", interrupt);
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [clearTimers, projection, run, selectionKey]);
+  }, [clearTimers, run, selectionKey]);
 
   useEffect(() => () => clearTimers(), [clearTimers]);
 
@@ -232,7 +234,7 @@ export function DealerSelectionPresentation({
   return (
     <div
       className="pointer-events-none absolute z-30 h-0 w-0"
-      style={{ left: run.geometry.usableCenter.x, top: run.geometry.usableCenter.y }}
+      style={{ left: run.geometry.dealCenter.x, top: run.geometry.dealCenter.y }}
       aria-hidden="true"
     >
       {cueVisible && (
