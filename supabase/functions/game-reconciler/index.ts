@@ -3,7 +3,7 @@ import type { CanonicalGameState } from "@/domain/gameState.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-import { MAX_SYNCHRONOUS_BOT_STEPS } from "@/domain/controller.ts";
+import { PRESENTATION_SAFE_AUTOMATIC_STEP_BUDGET } from "@/domain/controller.ts";
 import { fingerprintJson } from "@/lib/stableFingerprint.ts";
 import {
   deterministicRandomUnitsFromSeed,
@@ -259,7 +259,7 @@ Deno.serve(async (req: Request) => {
       try {
         const result = await advanceGameUntilBlockedWithDependencies(
           claim.gameId,
-          MAX_SYNCHRONOUS_BOT_STEPS,
+          PRESENTATION_SAFE_AUTOMATIC_STEP_BUDGET,
           dependenciesForClaim(admin, claim.claimToken),
         );
         results.push(
