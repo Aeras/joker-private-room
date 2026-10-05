@@ -1,14 +1,17 @@
 import type { PlayedCard } from "@/domain/engine";
 
-// Keep live bot/remote plays visibly sequential. The next visible play should not
-// begin until the previous card has had time to settle on the felt.
-export const NORMAL_TRICK_PLAY_SPACING_MS = 650;
-export const REDUCED_TRICK_PLAY_SPACING_MS = 120;
+// Human-readable trick pacing is defined from the previous card's settled frame,
+// not merely from when its animation started. This keeps bot/remote presentation
+// independent from raw computation or reconciliation speed.
 export const NORMAL_TRICK_SETTLE_MS = 340;
+export const NORMAL_TRICK_INTER_PLAY_BEAT_MS = 1_000;
+export const NORMAL_TRICK_PLAY_SPACING_MS = NORMAL_TRICK_SETTLE_MS + NORMAL_TRICK_INTER_PLAY_BEAT_MS;
+export const REDUCED_TRICK_SETTLE_MS = 80;
+export const REDUCED_TRICK_INTER_PLAY_BEAT_MS = 120;
+export const REDUCED_TRICK_PLAY_SPACING_MS = REDUCED_TRICK_SETTLE_MS + REDUCED_TRICK_INTER_PLAY_BEAT_MS;
 export const NORMAL_TRICK_HOLD_MS = 850;
 export const NORMAL_TRICK_FLIP_MS = 220;
 export const NORMAL_TRICK_COLLECT_MS = 380;
-export const REDUCED_TRICK_SETTLE_MS = 80;
 export const REDUCED_TRICK_HOLD_MS = 180;
 export const REDUCED_TRICK_FLIP_MS = 80;
 export const REDUCED_TRICK_COLLECT_MS = 120;
@@ -26,14 +29,16 @@ export function completedTrickPresentationId(input: {
 }
 
 export function trickPresentationTiming(reducedMotion: boolean) {
-  const playSpacingMs = reducedMotion ? REDUCED_TRICK_PLAY_SPACING_MS : NORMAL_TRICK_PLAY_SPACING_MS;
   const settleMs = reducedMotion ? REDUCED_TRICK_SETTLE_MS : NORMAL_TRICK_SETTLE_MS;
+  const interPlayBeatMs = reducedMotion ? REDUCED_TRICK_INTER_PLAY_BEAT_MS : NORMAL_TRICK_INTER_PLAY_BEAT_MS;
+  const playSpacingMs = settleMs + interPlayBeatMs;
   const holdMs = reducedMotion ? REDUCED_TRICK_HOLD_MS : NORMAL_TRICK_HOLD_MS;
   const flipMs = reducedMotion ? REDUCED_TRICK_FLIP_MS : NORMAL_TRICK_FLIP_MS;
   const collectMs = reducedMotion ? REDUCED_TRICK_COLLECT_MS : NORMAL_TRICK_COLLECT_MS;
   return {
     playSpacingMs,
     settleMs,
+    interPlayBeatMs,
     holdMs,
     flipMs,
     collectMs,
