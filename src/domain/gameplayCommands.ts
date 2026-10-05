@@ -200,8 +200,8 @@ function applyTrumpChoice(
   if (suit !== null && !SUITS.includes(suit)) return { ok: false, code: "INVALID_TRUMP_CHOICE" };
 
   const dealerSeat = state.progression.dealerSeat;
-  const actor = state.progression.firstDeclarerSeat;
-  if (dealerSeat == null || actor == null) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
+  const firstDeclarerSeat = state.progression.firstDeclarerSeat;
+  if (dealerSeat == null || firstDeclarerSeat == null) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
 
   let completed;
   try {
@@ -213,21 +213,16 @@ function applyTrumpChoice(
     return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
   }
 
-  const declarations: CanonicalGameState["declarations"]["declarations"] = [null, null, null, null];
-  const declarationState: CanonicalGameState["declarations"] = {
-    ...state.declarations,
-    currentDeclarerSeat: actor,
-    declarations,
-    legalValues: legalDeclarationValues({ cardsPerPlayer: 9, dealerSeat, seatIndex: actor, declarations }),
-    forbiddenDealerValue: null,
-  };
-
   return {
     ok: true,
     state: {
       ...state,
       stateVersion: state.stateVersion + 1,
-      progression: { ...state.progression, phase: "DECLARATION", currentActorSeat: actor },
+      progression: {
+        ...state.progression,
+        phase: "NINE_CARD_REMAINING_DEAL",
+        currentActorSeat: null,
+      },
       cards: {
         ...state.cards,
         hands: completed.hands,
@@ -235,9 +230,15 @@ function applyTrumpChoice(
         hiddenPartialNineCardHands: false,
         exposedTrumpCard: null,
       },
-      declarations: declarationState,
+      declarations: {
+        ...state.declarations,
+        currentDeclarerSeat: null,
+        declarations: [null, null, null, null],
+        legalValues: [],
+        forbiddenDealerValue: null,
+      },
       trump: { status: "resolved", suit },
-      timing: timingForActor(state, actor, serverNow),
+      timing: { currentHumanDeadline: null, timeoutTakeoverActive: false },
     },
   };
 }
