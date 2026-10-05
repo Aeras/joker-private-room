@@ -282,6 +282,7 @@ export function GameTable({
           isActive: !startupPresentationActive && projection.progression.currentActorSeat === seat,
           cardCount: startupPresentationActive ? 0 : publicCardCount(projection, seat),
           humanDeadline: !startupPresentationActive && projection.progression.currentActorSeat === seat ? publicDeadline : null,
+          isTemporarilyControlled: projection.seats[seat].owner.type === "human" && projection.seats[seat].controller === "temporary_bot",
         }}
       />
     );
