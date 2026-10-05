@@ -96,7 +96,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(table).toContain("HAND_REVEAL_MS = 700");
     expect(table).toContain("interactionPresentationActive");
     expect(table).toContain("revealing={handRevealActive}");
-    expect(deal).toContain("onPresentationCompleteRef.current?.(stage)");
+    expect(deal).toContain("onPresentationCompleteRef.current?.(presentationStage)");
     expect(hand).toContain('data-hand-reveal="true"');
     expect(hand).toContain("rotateY(180deg)");
     expect(hand).toContain("duration-[620ms]");
@@ -149,7 +149,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(trick).toContain("completionTimer");
     expect(trick).toContain('stage: "flipping"');
     expect(trick).toContain('stage: "collecting"');
-    expect(trick).toContain("faceDown={faceDown}");
+    expect(trick).toContain("faceDown ? <PlayingCard faceDown /> : <PlayingCard card={play.card} />");
     expect(trick).toContain("collectTarget");
   });
 
