@@ -79,7 +79,7 @@ describe("canonical dealer bootstrap", () => {
     expect(state.score.roundPremia).toEqual([]);
   });
 
-  it("resolves the first-Ace ritual into a dormant Deal 1 barrier, then activates gameplay explicitly", () => {
+  it("resolves a center opening card before distributed first-Ace dealer selection, then activates gameplay explicitly", () => {
     const barrier = resolveDealerBootstrapAndInitializeDealOne({
       state: pending(),
       firstRecipientRandom: () => 0.75,
@@ -100,6 +100,8 @@ describe("canonical dealer bootstrap", () => {
     const selection = barrier.initialDealerSelection;
     expect(selection?.status).toBe("resolved");
     if (!selection || selection.status !== "resolved") throw new Error("expected resolved selection");
+    expect(selection.openingCard).toBeDefined();
+    expect(selection.revealedSelectionCards.map((card) => card.id)).not.toContain(selection.openingCard?.id);
     expect(selection.firstRecipientSeat).toBe(3);
     const last = selection.revealedSelectionCards.at(-1);
     expect(last?.kind).toBe("standard");
@@ -108,6 +110,11 @@ describe("canonical dealer bootstrap", () => {
     expect(barrier.progression.dealerSeat).toBe(selection.selectedDealerSeat);
     expect(barrier.progression.firstDeclarerSeat).toBe(nextSeat(selection.selectedDealerSeat));
     expect(barrier.progression.firstLeaderSeat).toBe(nextSeat(selection.selectedDealerSeat));
+
+    const projected = projectGameForSeat(barrier, 0).initialDealerSelection;
+    expect(projected?.status).toBe("resolved");
+    if (!projected || projected.status !== "resolved") throw new Error("expected projected resolved selection");
+    expect(projected.openingCard?.id).toBe(selection.openingCard?.id);
 
     const active = activateDealOneAfterPresentation(barrier, "2026-10-04T12:00:05.000Z");
     expect(active.lifecycle).toBe("active");
