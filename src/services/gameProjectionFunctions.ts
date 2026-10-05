@@ -196,10 +196,20 @@ export const terminateProjectedGame = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<TerminateProjectedGameResult> => {
     const result = await terminateCanonicalGameByHost(data);
     if (!result.ok) return result;
-    const loaded = await loadCanonicalGameState(data.gameId);
-    if (!loaded.ok) return { ok: false, code: loaded.code };
-    const projection = projected(loaded);
-    return projection
-      ? { ok: true, replayed: result.replayed, projection }
-      : { ok: false, code: "SERVICE_UNAVAILABLE" };
+
+    const terminal = result as typeof result & {
+      canonicalState: Extract<LoadGameStateResult, { ok: true }>["canonicalState"];
+      viewerSeat: number;
+    };
+    if (!isSeatIndex(terminal.viewerSeat) || !terminal.canonicalState) {
+      return { ok: false, code: "SERVICE_UNAVAILABLE" };
+    }
+
+    const owner = terminal.canonicalState.seats[terminal.viewerSeat]?.owner;
+    const projection = projectGameForSeat(
+      terminal.canonicalState,
+      terminal.viewerSeat,
+      owner?.type === "human" && owner.playerId === RESTRICTED_HOST_ID,
+    );
+    return { ok: true, replayed: result.replayed, projection };
   });
