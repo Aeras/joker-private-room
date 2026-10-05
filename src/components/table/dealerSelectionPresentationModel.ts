@@ -2,7 +2,7 @@ import { nextSeat, type SeatIndex } from "@/domain/dealing";
 import type { PlayerGameProjection } from "@/domain/projection";
 
 export const DEALER_START_CUE_MS = 300;
-export const DEALER_SELECTION_STAGGER_MS = 350;
+export const DEALER_SELECTION_STAGGER_MS = 500;
 export const DEALER_SELECTION_CARD_TRAVEL_MS = 340;
 export const DEALER_SELECTION_WINNER_HOLD_MS = 700;
 
