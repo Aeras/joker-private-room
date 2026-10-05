@@ -15,12 +15,12 @@ describe("JK-001 Phase 1 / JK-006 presentation authority", () => {
     expect(deal).not.toContain("card.id");
   });
 
-  it("preserves nine-card privacy with 12 initial and 24 remaining presentation beats", () => {
+  it("preserves nine-card privacy with explicit 12-card and 24-card presentation barriers", () => {
     expect(deal).toContain('if (stage === "initial") return 12');
     expect(deal).toContain('if (stage === "remaining") return 24');
-    expect(deal).toContain('projection.progression.phase === "NINE_CARD_TRUMP_CHOICE"');
-    expect(deal).toContain('projection.progression.phase === "DECLARATION"');
-    expect(deal).toContain('if (stage !== "remaining") playGameSound("shuffle"');
+    expect(deal).toContain('projection.progression.phase === "NINE_CARD_INITIAL_DEAL_ALL_SEATS"');
+    expect(deal).toContain('projection.progression.phase === "NINE_CARD_REMAINING_DEAL"');
+    expect(deal).toContain('if (presentationStage !== "remaining") playGameSound("shuffle"');
   });
 
   it("uses session-scoped presentation markers and clears on reconnect/interruption", () => {
@@ -54,7 +54,7 @@ describe("JK-001 Phase 1 / JK-006 presentation authority", () => {
     expect(trick).toContain("function acceptedPlayEventId");
     expect(trick).toContain("queueRef.current");
     expect(trick).toContain("playSpacingMs");
-    expect(trick).toContain('playGameSound(\n            "play",');
+    expect(trick).toContain('playGameSound("play"');
     expect(table).not.toContain('playGameSound("play"');
     const draggable = readFileSync("src/components/table/DraggableHandCard.tsx", "utf8");
     expect(draggable).not.toContain("playGameSound");
