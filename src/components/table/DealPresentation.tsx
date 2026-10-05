@@ -88,7 +88,7 @@ function TravelingBack({ beat, pos, geometry }: { beat: DealBeat; pos: VisualSea
   if (!geometry) {
     return (
       <div
-        className="absolute left-1/2 top-1/2 [--card-w:clamp(2.2rem,4.6vw,3.5rem)] transition-transform ease-out"
+        className="absolute left-1/2 top-1/2 [--card-w:clamp(2.3rem,4.8vw,3.65rem)] transition-transform ease-out"
         style={{
           zIndex: 30 + beat.stackIndex,
           transitionDuration: `${NORMAL_DEAL_TRAVEL_MS}ms`,
@@ -105,7 +105,7 @@ function TravelingBack({ beat, pos, geometry }: { beat: DealBeat; pos: VisualSea
   const target = stackedTarget(baseTarget, pos, beat.stackIndex);
   return (
     <div
-      className="absolute [--card-w:clamp(2.2rem,4.6vw,3.5rem)] transition-[left,top,transform] ease-out"
+      className="absolute [--card-w:clamp(2.3rem,4.8vw,3.65rem)] transition-[left,top,transform] ease-out"
       style={{
         left: arrived ? target.x : source.x,
         top: arrived ? target.y : source.y,
