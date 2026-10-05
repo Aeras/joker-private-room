@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { Card } from "@/domain/cards";
 import {
   COLLISION_FAST_FORWARD_MS,
+  NORMAL_TRICK_COLLECT_MS,
+  NORMAL_TRICK_FLIP_MS,
   NORMAL_TRICK_HOLD_MS,
+  NORMAL_TRICK_SETTLE_MS,
   completedTrickPresentationId,
   trickPresentationTiming,
 } from "@/components/table/trickPresentationModel";
@@ -29,12 +32,18 @@ describe("JK-004 completed trick presentation", () => {
     expect(completedTrickPresentationId({ ...base, winnerSeat: 3 })).not.toBe(id);
   });
 
-  it("keeps normal hold inside the locked readable target and bounds collection", () => {
+  it("keeps the fourth card readable, then flips and collects in bounded stages", () => {
     const timing = trickPresentationTiming(false);
+    expect(NORMAL_TRICK_SETTLE_MS).toBeGreaterThanOrEqual(250);
+    expect(NORMAL_TRICK_SETTLE_MS).toBeLessThanOrEqual(450);
     expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(700);
     expect(NORMAL_TRICK_HOLD_MS).toBeLessThanOrEqual(1100);
-    expect(timing.clearMs).toBeGreaterThan(timing.holdMs);
-    expect(timing.clearMs - timing.holdMs).toBeLessThanOrEqual(350);
+    expect(NORMAL_TRICK_FLIP_MS).toBeGreaterThanOrEqual(150);
+    expect(NORMAL_TRICK_FLIP_MS).toBeLessThanOrEqual(300);
+    expect(NORMAL_TRICK_COLLECT_MS).toBeGreaterThanOrEqual(250);
+    expect(NORMAL_TRICK_COLLECT_MS).toBeLessThanOrEqual(450);
+    expect(timing.collectStartMs).toBeGreaterThan(timing.holdMs);
+    expect(timing.clearMs).toBeGreaterThan(timing.collectStartMs);
   });
 
   it("uses a short collision fast-forward without changing canonical turn timing", () => {
