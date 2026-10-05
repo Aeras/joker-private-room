@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Play } from "lucide-react";
 import { jButton } from "@/components/joker/JButton";
 import { DialogueOverlay } from "@/components/table/DialogueOverlay";
 import { GameTable } from "@/components/table/GameTable";
@@ -12,6 +13,7 @@ import { derivePublicDialogueEvents } from "@/dialogue/publicEvents";
 import type { GameplayCommand } from "@/domain/gameplayCommands";
 import type { Room } from "@/domain/players";
 import type { PlayerGameProjection } from "@/domain/projection";
+import type { GameReadinessSnapshot } from "@/server/gameReadiness";
 import {
   getDialogueMessages,
   requestBotDialogueReply,
@@ -20,8 +22,12 @@ import {
   type DialogueMessage,
 } from "@/services/dialogueFunctions";
 import {
+  completeProjectedStartPresentation,
+  getProjectedGameReadiness,
   getProjectedGameState,
   reclaimProjectedGameControl,
+  setProjectedGameReady,
+  startProjectedGame,
   submitProjectedGameplayCommand,
   terminateProjectedGame,
 } from "@/services/gameProjectionFunctions";
@@ -33,14 +39,10 @@ export const Route = createFileRoute("/table")({
     code: typeof search["code"] === "string" ? search["code"].toUpperCase() : undefined,
     gameId: typeof search["gameId"] === "string" ? search["gameId"] : undefined,
   }),
-  head: () => ({
-    meta: [
-      { title: "Τραπέζι — JOKER" },
-      { name: "description", content: "Το production τραπέζι τεσσάρων παικτών του JOKER." },
-      { property: "og:title", content: "Τραπέζι — JOKER" },
-      { property: "og:description", content: "Το production τραπέζι τεσσάρων παικτών του JOKER." },
-    ],
-  }),
+  head: () => ({ meta: [
+    { title: "Τραπέζι — JOKER" },
+    { name: "description", content: "Το production τραπέζι τεσσάρων παικτών του JOKER." },
+  ] }),
   component: TablePage,
 });
 
@@ -52,8 +54,9 @@ function gameplayFailureMessage(code: string): string {
     case "INVALID_DECLARATION":
     case "FORBIDDEN_DEALER_DECLARATION": return "Η δήλωση δεν επιτρέπεται.";
     case "CONTROLLER_CHANGED": return "Ο έλεγχος της θέσης άλλαξε. Έγινε συγχρονισμός.";
-    case "NOT_HOST": return "Μόνο ο host μπορεί να τερματίσει την παρτίδα.";
-    case "GAME_NOT_ACTIVE": return "Η παρτίδα δεν είναι πλέον ενεργή.";
+    case "NOT_HOST": return "Μόνο ο host μπορεί να ξεκινήσει ή να τερματίσει την παρτίδα.";
+    case "PLAYERS_NOT_READY": return "Περιμένουμε να είναι έτοιμοι όλοι οι πραγματικοί παίκτες.";
+    case "GAME_NOT_ACTIVE": return "Η παρτίδα δεν είναι πλέον σε αυτή την κατάσταση.";
     case "NOT_AUTHENTICATED": return "Η συνεδρία σου δεν είναι πλέον ενεργή.";
     default: return "Η ενέργεια δεν ολοκληρώθηκε. Έγινε νέος συγχρονισμός.";
   }
@@ -72,18 +75,22 @@ function TablePage() {
   const { code, gameId } = Route.useSearch();
   const [room, setRoom] = useState<Room | null>(null);
   const [projection, setProjection] = useState<PlayerGameProjection | null>(null);
+  const [readiness, setReadiness] = useState<GameReadinessSnapshot | null>(null);
   const [messages, setMessages] = useState<DialogueMessage[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<TableConnectionStatus>("initial-loading");
   const [tableEpoch, setTableEpoch] = useState(0);
   const [busy, setBusy] = useState(false);
   const [dialogueBusy, setDialogueBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [landscape, setLandscape] = useState(false);
   const mounted = useRef(true);
   const roomRef = useRef<Room | null>(null);
   const projectionRef = useRef<PlayerGameProjection | null>(null);
   const connectionStatusRef = useRef<TableConnectionStatus>("initial-loading");
   const previousProjectionRef = useRef<PlayerGameProjection | null>(null);
   const seenDialogueMessages = useRef(new Set<string>());
+  const readySent = useRef<boolean | null>(null);
+  const presentationAckKey = useRef<string | null>(null);
 
   const updateConnectionStatus = useCallback((status: TableConnectionStatus) => {
     connectionStatusRef.current = status;
@@ -95,8 +102,7 @@ function TablePage() {
     const previous = previousProjectionRef.current;
     previousProjectionRef.current = next;
     if (!currentRoom?.botSettings.botsTalk) return;
-    const events = derivePublicDialogueEvents(previous, next, currentRoom);
-    for (const dialogueEvent of events) {
+    for (const dialogueEvent of derivePublicDialogueEvents(previous, next, currentRoom)) {
       void requestDialogueReaction({ data: { gameId: next.gameId, eventId: dialogueEvent.id } }).catch(() => undefined);
     }
   }, []);
@@ -121,27 +127,24 @@ function TablePage() {
   }, [updateConnectionStatus]);
 
   const refreshAll = useCallback(async () => {
-    if (!code || !gameId) {
-      markRefreshFailure("Δεν βρέθηκε έγκυρη ενεργή παρτίδα.");
-      return;
-    }
+    if (!code || !gameId) return markRefreshFailure("Δεν βρέθηκε έγκυρη ενεργή παρτίδα.");
     const [roomResult, gameResult] = await Promise.all([
       getProductionRoom({ data: { code } }),
       getProjectedGameState({ data: { gameId } }),
     ]);
     if (!mounted.current) return;
-    if (!roomResult.ok) {
-      markRefreshFailure(gameplayFailureMessage(roomResult.code));
-      return;
-    }
-    if (!gameResult.ok) {
-      markRefreshFailure(gameplayFailureMessage(gameResult.code));
-      return;
-    }
+    if (!roomResult.ok) return markRefreshFailure(gameplayFailureMessage(roomResult.code));
+    if (!gameResult.ok) return markRefreshFailure(gameplayFailureMessage(gameResult.code));
     if (!acceptSnapshot(roomResult.room, gameResult.projection)) {
       markRefreshFailure("Η κατάσταση του δωματίου και της παρτίδας δεν συμφωνεί ακόμη. Γίνεται επανασύνδεση.");
     }
   }, [acceptSnapshot, code, gameId, markRefreshFailure]);
+
+  const refreshReadiness = useCallback(async () => {
+    if (!gameId) return;
+    const result = await getProjectedGameReadiness({ data: { gameId } });
+    if (mounted.current && result.ok) setReadiness(result);
+  }, [gameId]);
 
   const refreshDialogue = useCallback(async () => {
     if (!gameId || !roomRef.current?.botSettings.botsTalk) return;
@@ -161,89 +164,133 @@ function TablePage() {
       if (bucket >= threshold) continue;
       const responder = bots.find((bot) => bot.id !== message.speakerBotId);
       if (!responder) continue;
-      void requestBotDialogueReply({
-        data: { gameId, sourceMessageId: message.id, responderBotId: responder.id },
-      }).catch(() => undefined);
+      void requestBotDialogueReply({ data: { gameId, sourceMessageId: message.id, responderBotId: responder.id } }).catch(() => undefined);
     }
   }, [gameId]);
+
+  useEffect(() => {
+    const update = () => setLandscape(window.innerWidth > window.innerHeight);
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, []);
 
   useEffect(() => {
     mounted.current = true;
     void refreshAll();
     const gameTimer = window.setInterval(() => void refreshAll(), 1500);
     const dialogueTimer = window.setInterval(() => void refreshDialogue(), 1000);
+    const readinessTimer = window.setInterval(() => void refreshReadiness(), 750);
     return () => {
       mounted.current = false;
       window.clearInterval(gameTimer);
       window.clearInterval(dialogueTimer);
+      window.clearInterval(readinessTimer);
     };
-  }, [refreshAll, refreshDialogue]);
+  }, [refreshAll, refreshDialogue, refreshReadiness]);
+
+  useEffect(() => {
+    const waiting = projection?.lifecycle === "starting" && projection.progression.phase === "INITIAL_DEALER_SELECTION";
+    if (!gameId || !waiting) {
+      readySent.current = null;
+      return;
+    }
+    const shouldBeReady = landscape && connectionStatus === "ready" && document.visibilityState === "visible";
+    if (readySent.current === shouldBeReady) return;
+    const timer = window.setTimeout(() => {
+      void setProjectedGameReady({ data: { gameId, ready: shouldBeReady } }).then((result) => {
+        if (result.ok && mounted.current) {
+          readySent.current = shouldBeReady;
+          setReadiness(result);
+        }
+      });
+    }, shouldBeReady ? 450 : 0);
+    return () => window.clearTimeout(timer);
+  }, [connectionStatus, gameId, landscape, projection?.lifecycle, projection?.progression.phase]);
+
+  useEffect(() => {
+    if (!gameId || !projection || projection.lifecycle !== "starting" || projection.progression.phase !== "DEAL_SETUP") return;
+    const selection = projection.initialDealerSelection;
+    if (!selection || selection.status !== "resolved") return;
+    const key = `${gameId}:${selection.resolvedAtStateVersion}`;
+    if (presentationAckKey.current === key || !landscape || document.visibilityState !== "visible") return;
+
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+    const dealerMs = reduced
+      ? 90 + selection.revealedSelectionCards.length * 90 + 160
+      : 300 + selection.revealedSelectionCards.length * 350 + 700;
+    const dealMs = reduced ? 4 * 90 + 120 : 4 * 350 + 320;
+    const timer = window.setTimeout(() => {
+      presentationAckKey.current = key;
+      void completeProjectedStartPresentation({ data: { gameId } }).then((result) => {
+        if (!result.ok || !mounted.current) return;
+        const currentRoom = roomRef.current;
+        if (currentRoom) acceptSnapshot(currentRoom, result.projection);
+      });
+    }, dealerMs + dealMs + 500);
+    return () => window.clearTimeout(timer);
+  }, [acceptSnapshot, gameId, landscape, projection]);
 
   const submit = async (command: GameplayCommand): Promise<PlayerGameProjection | null> => {
     if (!projection || busy || connectionStatusRef.current !== "ready") return null;
-    setBusy(true);
-    setError(null);
+    setBusy(true); setError(null);
     try {
-      const result = await submitProjectedGameplayCommand({
-        data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion, command },
-      });
+      const result = await submitProjectedGameplayCommand({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion, command } });
       if (result.ok) {
         const currentRoom = roomRef.current;
         if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return result.projection;
-        markRefreshFailure("Η παρτίδα προχώρησε, αλλά απαιτείται ασφαλής επανασύνδεση του τραπεζιού.");
-        await refreshAll();
-        return null;
+        await refreshAll(); return null;
       }
       if (mounted.current) setError(gameplayFailureMessage(result.code));
-      await refreshAll();
-      return null;
-    } finally {
-      if (mounted.current) setBusy(false);
-    }
+      await refreshAll(); return null;
+    } finally { if (mounted.current) setBusy(false); }
   };
 
   const reclaim = async () => {
     if (!projection || busy || connectionStatusRef.current !== "ready") return;
-    setBusy(true);
-    setError(null);
+    setBusy(true); setError(null);
     try {
-      const result = await reclaimProjectedGameControl({
-        data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion },
-      });
+      const result = await reclaimProjectedGameControl({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion } });
       if (result.ok) {
         const currentRoom = roomRef.current;
         if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return;
-        markRefreshFailure("Ο έλεγχος άλλαξε, αλλά απαιτείται ασφαλής επανασύνδεση του τραπεζιού.");
-        await refreshAll();
+      } else if (mounted.current) setError(gameplayFailureMessage(result.code));
+      await refreshAll();
+    } finally { if (mounted.current) setBusy(false); }
+  };
+
+  const startGame = async () => {
+    if (!projection || busy || !readiness?.isHost || !readiness.allReady) return;
+    setBusy(true); setError(null);
+    try {
+      const result = await startProjectedGame({ data: { gameId: projection.gameId } });
+      if (!result.ok) {
+        if (mounted.current) setError(gameplayFailureMessage(result.code));
+        await refreshReadiness();
         return;
       }
-      if (mounted.current) setError(gameplayFailureMessage(result.code));
-      await refreshAll();
-    } finally {
-      if (mounted.current) setBusy(false);
-    }
+      const currentRoom = roomRef.current;
+      if (currentRoom) acceptSnapshot(currentRoom, result.projection);
+    } finally { if (mounted.current) setBusy(false); }
   };
 
   const endGame = async (): Promise<boolean> => {
     if (!projection || busy || connectionStatusRef.current !== "ready") return false;
-    setBusy(true);
-    setError(null);
+    setBusy(true); setError(null);
     try {
-      const result = await terminateProjectedGame({
-        data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion },
-      });
+      const result = await terminateProjectedGame({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion } });
       if (result.ok) {
         const currentRoom = roomRef.current;
         if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return true;
-        await refreshAll();
-        return true;
+        await refreshAll(); return true;
       }
       if (mounted.current) setError(gameplayFailureMessage(result.code));
-      await refreshAll();
-      return false;
-    } finally {
-      if (mounted.current) setBusy(false);
-    }
+      await refreshAll(); return false;
+    } finally { if (mounted.current) setBusy(false); }
   };
 
   const sendDialogue = async (speakerBotId: string, text: string) => {
@@ -252,17 +299,15 @@ function TablePage() {
     try {
       await sendHumanMessageToBot({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), speakerBotId, text } });
       await refreshDialogue();
-    } finally {
-      if (mounted.current) setDialogueBusy(false);
-    }
+    } finally { if (mounted.current) setDialogueBusy(false); }
   };
 
   if (connectionStatus === "initial-loading" && (!room || !projection)) {
     return (
       <div className="surface-wood flex h-dvh items-center justify-center p-6" role="status" aria-live="polite">
         <div className="rounded-2xl border border-primary/30 bg-black/70 px-6 py-5 text-center shadow-2xl backdrop-blur">
-          <div className="font-display text-lg text-primary">Επιστροφή στο παιχνίδι</div>
-          <p className="mt-2 text-sm text-white/70">Φορτώνεται το τρέχον τραπέζι…</p>
+          <div className="font-display text-lg text-primary">Προετοιμασία τραπεζιού</div>
+          <p className="mt-2 text-sm text-white/70">Φορτώνεται το τραπέζι χωρίς να ξεκινά η παρτίδα…</p>
         </div>
       </div>
     );
@@ -278,20 +323,32 @@ function TablePage() {
   }
 
   const uncertain = connectionStatus !== "ready";
+  const waitingForPlay = projection.lifecycle === "starting" && projection.progression.phase === "INITIAL_DEALER_SELECTION";
+  const readyCount = readiness?.humans.filter((human) => human.ready).length ?? 0;
+  const humanCount = readiness?.humans.length ?? 0;
+
   return (
     <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
-      <GameTable
-        key={`${projection.gameId}:${tableEpoch}`}
-        room={room}
-        projection={projection}
-        busy={busy || uncertain}
-        error={error}
-        onCommand={submit}
-        onReclaim={reclaim}
-        onEndGame={endGame}
-      />
+      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={projection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} />
       <TableMessaging key={projection.gameId} room={room} projection={projection} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} onSend={sendDialogue} />
+
+      {waitingForPlay && landscape && (
+        <div className="absolute inset-0 z-[95] flex items-center justify-center bg-black/15" role="status" aria-live="polite">
+          <div className="min-w-52 rounded-2xl border border-primary/40 bg-black/80 px-5 py-4 text-center shadow-2xl backdrop-blur">
+            <div className="text-xs uppercase tracking-[.18em] text-white/55">Παίκτες έτοιμοι</div>
+            <div className="mt-1 text-lg font-semibold text-white">{readyCount}/{humanCount}</div>
+            {readiness?.isHost ? (
+              <button type="button" disabled={!readiness.allReady || busy} onClick={() => void startGame()} className="mt-3 inline-flex h-14 w-14 items-center justify-center rounded-full border border-primary/60 bg-primary text-primary-foreground shadow-xl transition enabled:hover:scale-105 disabled:cursor-not-allowed disabled:opacity-35" aria-label="Έναρξη παρτίδας">
+                <Play className="h-7 w-7 translate-x-[1px]" fill="currentColor" />
+              </button>
+            ) : (
+              <div className="mt-3 text-sm text-white/65">Περιμένουμε τον host να ξεκινήσει.</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {uncertain && (
         <div className="pointer-events-auto absolute inset-0 z-[110] flex items-start justify-center bg-black/15 pt-[max(4rem,env(safe-area-inset-top))]" role="status" aria-live="polite">
           <div className="rounded-xl border border-primary/35 bg-black/85 px-4 py-2 text-sm text-white shadow-xl backdrop-blur">
