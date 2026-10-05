@@ -64,18 +64,23 @@ export function JokerChoicePicker({
 
   if (openTrickOptions.length > 0) {
     return (
-      <div className="mb-2 flex overflow-hidden rounded-xl border border-primary/35 bg-black/85 shadow-2xl backdrop-blur">
-        {openTrickOptions.map((option) => (
-          <button
-            key={option.mode}
-            type="button"
-            disabled={busy}
-            onClick={() => onSelect(option)}
-            className="min-w-32 border-l border-white/10 px-4 py-3 text-sm font-semibold text-foreground transition-colors first:border-l-0 enabled:hover:bg-primary/15 enabled:active:bg-primary/25 disabled:opacity-40"
-          >
-            {option.mode === "COMPETE" ? "Joker ψηλά" : "Joker από κάτω"}
-          </button>
-        ))}
+      <div className="mb-2 overflow-hidden rounded-xl border border-primary/35 bg-black/90 shadow-2xl backdrop-blur">
+        <div className="border-b border-white/10 px-3 py-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+          Τζόκερ
+        </div>
+        <div className="flex">
+          {openTrickOptions.map((option) => (
+            <button
+              key={option.mode}
+              type="button"
+              disabled={busy}
+              onClick={() => onSelect(option)}
+              className="min-w-36 border-l border-white/10 px-4 py-2.5 text-sm font-semibold text-foreground transition-colors first:border-l-0 enabled:hover:bg-primary/15 enabled:active:bg-primary/25 disabled:opacity-40"
+            >
+              {option.mode === "COMPETE" ? "Τζόκερ από πάνω" : "Τζόκερ από κάτω"}
+            </button>
+          ))}
+        </div>
       </div>
     );
   }
