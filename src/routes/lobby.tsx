@@ -9,6 +9,7 @@ import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
 import type { PublicPlayer, Room } from "@/domain/players";
 import { publicRulesetName } from "@/domain/rulesetPresentation";
 import { t } from "@/i18n/el";
+import { enterGameDisplayMode, rollbackGameDisplayMode } from "@/lib/gameDisplayMode";
 import { roomFailureMessage } from "@/lib/room-feedback";
 import { getCurrentPlayer } from "@/services/authFunctions";
 import { getProductionRoom, startProductionRoom } from "@/services/roomFunctions";
@@ -90,6 +91,8 @@ function Lobby() {
     setStarting(true);
     setError(null);
     startActionId.current ??= crypto.randomUUID();
+    const displayMode = await enterGameDisplayMode();
+    let keepDisplayMode = false;
     try {
       const result = await startProductionRoom({
         data: {
@@ -103,12 +106,14 @@ function Lobby() {
         if (result.code !== "SERVICE_UNAVAILABLE") startActionId.current = null;
         return;
       }
+      keepDisplayMode = true;
       startActionId.current = null;
       setRoom(result.room);
       if (result.room.gameId) {
         void navigate({ to: "/table", search: { code: result.room.code, gameId: result.room.gameId } });
       }
     } finally {
+      if (!keepDisplayMode) await rollbackGameDisplayMode(displayMode);
       setStarting(false);
     }
   };
