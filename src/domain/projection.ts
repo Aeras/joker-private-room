@@ -34,6 +34,7 @@ export type PublicInitialDealerSelection =
   | { status: "pending" }
   | {
       status: "resolved";
+      openingCard: Card;
       firstRecipientSeat: SeatIndex;
       revealedSelectionCards: Card[];
       selectedDealerSeat: SeatIndex;
@@ -92,8 +93,9 @@ function publicDealerSelection(state: CanonicalGameState): PublicInitialDealerSe
   if (selection.status === "pending") return { status: "pending" };
   return {
     status: "resolved",
+    openingCard: { ...selection.openingCard },
     firstRecipientSeat: selection.firstRecipientSeat,
-    revealedSelectionCards: selection.revealedSelectionCards.slice(),
+    revealedSelectionCards: selection.revealedSelectionCards.map((card) => ({ ...card })),
     selectedDealerSeat: selection.selectedDealerSeat,
     resolvedAtStateVersion: selection.resolvedAtStateVersion,
   };
