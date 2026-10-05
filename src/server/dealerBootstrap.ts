@@ -2,6 +2,7 @@ import { getRuleset } from "@/domain/rulesets";
 import { RESERVED_TARGET_ID } from "@/server/rulesetIdentity";
 import type { SeatIndex } from "@/domain/dealing";
 import {
+  activateDealOneAfterPresentation,
   createInitialDealerBootstrapState,
   resolveDealerBootstrapAndInitializeDealOne,
   type InitialSeatInput,
@@ -21,8 +22,16 @@ import {
   stableInternalActionId,
 } from "@/server/internalDeterminism";
 
+export type DealerBootstrapPreparationResult =
+  | { ok: true; gameId: string; stateVersion: number; replayed: boolean }
+  | { ok: false; code: GameStateFailureCode };
+
 export type DealerBootstrapResult =
   | { ok: true; gameId: string; stateVersion: number; selectedDealerSeat: SeatIndex; replayed: boolean }
+  | { ok: false; code: GameStateFailureCode };
+
+export type StartPresentationActivationResult =
+  | { ok: true; gameId: string; stateVersion: number; replayed: boolean }
   | { ok: false; code: GameStateFailureCode };
 
 function participantOwner(participant: GameBootstrapParticipant): SeatOwner | null {
@@ -67,102 +76,88 @@ function bootstrapSeats(
   return seats as [InitialSeatInput, InitialSeatInput, InitialSeatInput, InitialSeatInput];
 }
 
-async function loadResolvedWinner(gameId: string): Promise<DealerBootstrapResult | null> {
-  const loaded = await loadCanonicalGameState(gameId);
-  if (!loaded.ok) return null;
-  const selection = loaded.canonicalState.initialDealerSelection;
-  if (!selection || selection.status !== "resolved") return null;
-  return {
-    ok: true,
-    gameId,
-    stateVersion: loaded.stateVersion,
-    selectedDealerSeat: selection.selectedDealerSeat,
-    replayed: true,
-  };
-}
-
-/** Ensures exactly one canonical initial-dealer result using private server entropy. */
-export async function ensureInitialDealerBootstrap(gameId: string): Promise<DealerBootstrapResult> {
+/**
+ * Lobby Start ends here. It creates only the canonical waiting state. It MUST NOT
+ * select a dealer, deal cards, start a deadline, or run automatic gameplay.
+ */
+export async function ensureInitialDealerBootstrapPrepared(
+  gameId: string,
+): Promise<DealerBootstrapPreparationResult> {
   const existing = await loadCanonicalGameState(gameId);
   if (existing.ok) {
-    const selection = existing.canonicalState.initialDealerSelection;
-    if (selection?.status === "resolved") {
-      return {
-        ok: true,
-        gameId,
-        stateVersion: existing.stateVersion,
-        selectedDealerSeat: selection.selectedDealerSeat,
-        replayed: true,
-      };
-    }
-  } else if (existing.code !== "GAME_STATE_NOT_INITIALIZED") {
-    return { ok: false, code: existing.code };
+    return { ok: true, gameId, stateVersion: existing.stateVersion, replayed: true };
   }
+  if (existing.code !== "GAME_STATE_NOT_INITIALIZED") return { ok: false, code: existing.code };
 
   const bootstrapActionId = await stableInternalActionId(gameId, "initial-dealer-bootstrap-v1");
   const initActionId = await stableInternalActionId(gameId, "canonical-bootstrap-init-v1");
-
-  let pendingState = existing.ok ? existing.canonicalState : null;
-  if (!pendingState) {
-    const bootstrap = await loadGameBootstrap(gameId);
-    if (!bootstrap.ok) {
-      if (bootstrap.code === "GAME_ALREADY_INITIALIZED") {
-        const winner = await loadResolvedWinner(gameId);
-        if (winner) return winner;
-      }
-      return { ok: false, code: bootstrap.code };
-    }
-    try { getRuleset(bootstrap.rulesetId, bootstrap.rulesVersion); } catch { return { ok: false, code: "INVALID_CANONICAL_STATE" }; }
-    if (
-      bootstrap.stateSchemaVersion !== 4 ||
-      bootstrap.stateVersion !== 0 ||
-      bootstrap.lifecycle !== "starting"
-    ) {
-      return { ok: false, code: "INVALID_CANONICAL_STATE" };
-    }
-    const seats = bootstrapSeats(bootstrap.participants);
-    if (!seats) return { ok: false, code: "INVALID_CANONICAL_STATE" };
-
-    pendingState = createInitialDealerBootstrapState({
-      gameId,
-      roomId: bootstrap.roomId,
-      rulesetId: bootstrap.rulesetId,
-      rulesVersion: bootstrap.rulesVersion,
-      targetPlayerId: RESERVED_TARGET_ID,
-      bootstrapActionId,
-      serverEntropySeed: secureServerEntropySeed(),
-      seats,
-    });
-
-    const initialized = await persistCanonicalGameState({
-      gameId,
-      actionId: initActionId,
-      commandType: "initialize_dealer_bootstrap",
-      expectedStateVersion: 0,
-      commandPayload: {
-        bootstrapActionId,
-        roster: seats.map((seat) =>
-          seat.owner.type === "human"
-            ? { seatIndex: seat.seatIndex, type: "human", playerId: seat.owner.playerId }
-            : { seatIndex: seat.seatIndex, type: "bot", botId: seat.owner.botId },
-        ),
-      },
-      newState: pendingState,
-    });
-
-    if (!initialized.ok) {
-      if (initialized.code !== "STALE_STATE" && initialized.code !== "ACTION_ID_CONFLICT") {
-        return { ok: false, code: initialized.code };
-      }
+  const bootstrap = await loadGameBootstrap(gameId);
+  if (!bootstrap.ok) {
+    if (bootstrap.code === "GAME_ALREADY_INITIALIZED") {
       const reloaded = await loadCanonicalGameState(gameId);
-      if (!reloaded.ok) return { ok: false, code: reloaded.code };
-      pendingState = reloaded.canonicalState;
+      if (reloaded.ok) return { ok: true, gameId, stateVersion: reloaded.stateVersion, replayed: true };
     }
+    return { ok: false, code: bootstrap.code };
+  }
+  try { getRuleset(bootstrap.rulesetId, bootstrap.rulesVersion); }
+  catch { return { ok: false, code: "INVALID_CANONICAL_STATE" }; }
+  if (
+    bootstrap.stateSchemaVersion !== 4 ||
+    bootstrap.stateVersion !== 0 ||
+    bootstrap.lifecycle !== "starting"
+  ) return { ok: false, code: "INVALID_CANONICAL_STATE" };
+
+  const seats = bootstrapSeats(bootstrap.participants);
+  if (!seats) return { ok: false, code: "INVALID_CANONICAL_STATE" };
+
+  const pendingState = createInitialDealerBootstrapState({
+    gameId,
+    roomId: bootstrap.roomId,
+    rulesetId: bootstrap.rulesetId,
+    rulesVersion: bootstrap.rulesVersion,
+    targetPlayerId: RESERVED_TARGET_ID,
+    bootstrapActionId,
+    serverEntropySeed: secureServerEntropySeed(),
+    seats,
+  });
+
+  const initialized = await persistCanonicalGameState({
+    gameId,
+    actionId: initActionId,
+    commandType: "initialize_dealer_bootstrap",
+    expectedStateVersion: 0,
+    commandPayload: {
+      bootstrapActionId,
+      roster: seats.map((seat) =>
+        seat.owner.type === "human"
+          ? { seatIndex: seat.seatIndex, type: "human", playerId: seat.owner.playerId }
+          : { seatIndex: seat.seatIndex, type: "bot", botId: seat.owner.botId },
+      ),
+    },
+    newState: pendingState,
+  });
+
+  if (!initialized.ok) {
+    if (initialized.code === "STALE_STATE" || initialized.code === "ACTION_ID_CONFLICT") {
+      const reloaded = await loadCanonicalGameState(gameId);
+      if (reloaded.ok) return { ok: true, gameId, stateVersion: reloaded.stateVersion, replayed: true };
+    }
+    return { ok: false, code: initialized.code };
   }
 
+  return { ok: true, gameId, stateVersion: initialized.stateVersion, replayed: initialized.replayed };
+}
+
+/** Host Play calls this after the server has verified every human table is ready. */
+export async function resolveInitialDealerBootstrap(gameId: string): Promise<DealerBootstrapResult> {
+  const prepared = await ensureInitialDealerBootstrapPrepared(gameId);
+  if (!prepared.ok) return prepared;
+
+  const loaded = await loadCanonicalGameState(gameId);
+  if (!loaded.ok) return { ok: false, code: loaded.code };
+  const pendingState = loaded.canonicalState;
   const existingSelection = pendingState.initialDealerSelection;
-  const entropySeed = pendingState.serverEntropySeed;
-  if (!existingSelection || !entropySeed) return { ok: false, code: "INVALID_CANONICAL_STATE" };
+  if (!existingSelection || !pendingState.serverEntropySeed) return { ok: false, code: "INVALID_CANONICAL_STATE" };
   if (existingSelection.status === "resolved") {
     return {
       ok: true,
@@ -174,17 +169,18 @@ export async function ensureInitialDealerBootstrap(gameId: string): Promise<Deal
   }
   if (
     pendingState.lifecycle !== "starting" ||
-    pendingState.progression.phase !== "INITIAL_DEALER_SELECTION" ||
-    existingSelection.bootstrapActionId !== bootstrapActionId
-  ) {
-    return { ok: false, code: "INVALID_CANONICAL_STATE" };
-  }
+    pendingState.progression.phase !== "INITIAL_DEALER_SELECTION"
+  ) return { ok: false, code: "INVALID_CANONICAL_STATE" };
 
+  const bootstrapActionId = existingSelection.bootstrapActionId;
+  const entropySeed = pendingState.serverEntropySeed;
+  const deckSize = getRuleset(pendingState.rulesetId, pendingState.rulesVersion).deckSize;
   const [recipientUnits, selectionUnits, dealUnits] = await Promise.all([
     deterministicRandomUnitsFromSeed(entropySeed, "dealer-first-recipient-v1", 1),
-    deterministicRandomUnitsFromSeed(entropySeed, "dealer-selection-shuffle-v1", getRuleset(pendingState.rulesetId, pendingState.rulesVersion).deckSize - 1),
-    deterministicRandomUnitsFromSeed(entropySeed, "deal-1-shuffle-v1", getRuleset(pendingState.rulesetId, pendingState.rulesVersion).deckSize - 1),
+    deterministicRandomUnitsFromSeed(entropySeed, "dealer-selection-shuffle-v1", deckSize - 1),
+    deterministicRandomUnitsFromSeed(entropySeed, "deal-1-shuffle-v1", deckSize - 1),
   ]);
+
   const resolved = resolveDealerBootstrapAndInitializeDealOne({
     state: pendingState,
     firstRecipientRandom: randomIterator(recipientUnits),
@@ -193,9 +189,7 @@ export async function ensureInitialDealerBootstrap(gameId: string): Promise<Deal
     serverNow: new Date().toISOString(),
   });
   const selection = resolved.initialDealerSelection;
-  if (!selection || selection.status !== "resolved") {
-    return { ok: false, code: "INVALID_CANONICAL_STATE" };
-  }
+  if (!selection || selection.status !== "resolved") return { ok: false, code: "INVALID_CANONICAL_STATE" };
 
   const persisted = await persistCanonicalGameState({
     gameId,
@@ -206,14 +200,23 @@ export async function ensureInitialDealerBootstrap(gameId: string): Promise<Deal
       firstRecipientSeat: selection.firstRecipientSeat,
       revealedCardIds: selection.revealedSelectionCards.map((card) => card.id),
       selectedDealerSeat: selection.selectedDealerSeat,
+      presentationBarrier: "DEAL_SETUP",
     },
     newState: resolved,
   });
-
   if (!persisted.ok) {
     if (persisted.code === "STALE_STATE" || persisted.code === "ACTION_ID_CONFLICT") {
-      const winner = await loadResolvedWinner(gameId);
-      if (winner) return winner;
+      const winner = await loadCanonicalGameState(gameId);
+      const winnerSelection = winner.ok ? winner.canonicalState.initialDealerSelection : null;
+      if (winner.ok && winnerSelection?.status === "resolved") {
+        return {
+          ok: true,
+          gameId,
+          stateVersion: winner.stateVersion,
+          selectedDealerSeat: winnerSelection.selectedDealerSeat,
+          replayed: true,
+        };
+      }
     }
     return { ok: false, code: persisted.code };
   }
@@ -226,3 +229,48 @@ export async function ensureInitialDealerBootstrap(gameId: string): Promise<Deal
     replayed: persisted.replayed,
   };
 }
+
+/** Last human presentation acknowledgement releases Deal 1 to real gameplay. */
+export async function activateInitialDealAfterPresentation(
+  gameId: string,
+): Promise<StartPresentationActivationResult> {
+  const loaded = await loadCanonicalGameState(gameId);
+  if (!loaded.ok) return { ok: false, code: loaded.code };
+  if (loaded.canonicalState.lifecycle === "active") {
+    return { ok: true, gameId, stateVersion: loaded.stateVersion, replayed: true };
+  }
+  if (
+    loaded.canonicalState.lifecycle !== "starting" ||
+    loaded.canonicalState.progression.phase !== "DEAL_SETUP"
+  ) return { ok: false, code: "INVALID_CANONICAL_STATE" };
+
+  let nextState;
+  try {
+    nextState = activateDealOneAfterPresentation(loaded.canonicalState, new Date().toISOString());
+  } catch {
+    return { ok: false, code: "INVALID_CANONICAL_STATE" };
+  }
+
+  const actionId = await stableInternalActionId(gameId, "activate-deal-one-after-presentation-v1");
+  const persisted = await persistCanonicalGameState({
+    gameId,
+    actionId,
+    commandType: "activate_initial_deal",
+    expectedStateVersion: loaded.stateVersion,
+    commandPayload: { source: "all_humans_presented" },
+    newState: nextState,
+  });
+  if (!persisted.ok) {
+    if (persisted.code === "STALE_STATE" || persisted.code === "ACTION_ID_CONFLICT") {
+      const winner = await loadCanonicalGameState(gameId);
+      if (winner.ok && winner.canonicalState.lifecycle === "active") {
+        return { ok: true, gameId, stateVersion: winner.stateVersion, replayed: true };
+      }
+    }
+    return { ok: false, code: persisted.code };
+  }
+  return { ok: true, gameId, stateVersion: persisted.stateVersion, replayed: persisted.replayed };
+}
+
+/** Backward-compatible explicit resolver for older tests/internal callers. */
+export const ensureInitialDealerBootstrap = resolveInitialDealerBootstrap;
