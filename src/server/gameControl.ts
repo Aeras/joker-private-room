@@ -1,5 +1,5 @@
 import type { SeatIndex } from "@/domain/dealing";
-import { applyOverdueTimeout, applyReclaimControl } from "@/domain/controller";
+import { applyOverdueTimeout, applyReclaimControl, isSoloHumanPaused } from "@/domain/controller";
 import {
   loadCanonicalGameState,
   persistCanonicalGameState,
@@ -17,11 +17,6 @@ function serverNow(): string {
   return new Date().toISOString();
 }
 
-/**
- * Every authoritative read path may call this before projection. If the human
- * deadline is overdue, exactly one CAS winner transfers controller to the
- * temporary bot. A concurrent winner is observed by reloading the canonical state.
- */
 export async function resolveOverdueTimeoutBeforeRead(gameId: string): Promise<LoadGameStateResult> {
   const loaded = await loadCanonicalGameState(gameId);
   if (!loaded.ok) return loaded;
@@ -31,14 +26,17 @@ export async function resolveOverdueTimeoutBeforeRead(gameId: string): Promise<L
   if (!transition.ok) return { ok: false, code: "SERVICE_UNAVAILABLE" };
   if (!transition.changed) return loaded;
 
+  const actor = loaded.canonicalState.progression.currentActorSeat;
+  const soloPause = actor != null && isSoloHumanPaused(transition.state, actor);
   const persisted = await persistCanonicalGameState({
     gameId,
     actionId: crypto.randomUUID(),
-    commandType: "system_timeout_takeover",
+    commandType: soloPause ? "system_solo_human_pause" : "system_timeout_takeover",
     expectedStateVersion: loaded.stateVersion,
     commandPayload: {
       deadline: loaded.canonicalState.timing.currentHumanDeadline,
-      actorSeat: loaded.canonicalState.progression.currentActorSeat,
+      actorSeat: actor,
+      mode: soloPause ? "solo_pause" : "temporary_bot",
     },
     newState: transition.state,
   });

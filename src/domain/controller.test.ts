@@ -6,6 +6,7 @@ import {
   applyOverdueTimeout,
   applyReclaimControl,
   HUMAN_TURN_TIMEOUT_MS,
+  isSoloHumanPaused,
   runBoundedBotProgression,
 } from "./controller";
 
@@ -113,13 +114,33 @@ describe("controller timeout/reclaim", () => {
     expect(result).toEqual({ ok: true, changed: false, state: original });
   });
 
-  it("keeps the sole human in control after timeout so a solo-vs-bots game pauses", () => {
+  it("persists a solo-human pause without replacing the human controller", () => {
     const original = soloHumanState();
     const result = applyOverdueTimeout(original, "2026-10-03T19:00:30.000Z");
-    expect(result).toEqual({ ok: true, changed: false, state: original });
-    expect(original.seats[0].owner).toEqual({ type: "human", playerId: "player-0" });
-    expect(original.seats[0].controller).toBe("human");
-    expect(original.seats[0].reclaimable).toBe(false);
+    expect(result.ok && result.changed).toBe(true);
+    if (!result.ok || !result.changed) return;
+    expect(result.state.stateVersion).toBe(11);
+    expect(result.state.seats[0].owner).toEqual({ type: "human", playerId: "player-0" });
+    expect(result.state.seats[0].controller).toBe("human");
+    expect(result.state.seats[0].reclaimable).toBe(true);
+    expect(result.state.seats[0].takeoverAt).toBe("2026-10-03T19:00:30.000Z");
+    expect(result.state.timing.currentHumanDeadline).toBeNull();
+    expect(result.state.timing.timeoutTakeoverActive).toBe(false);
+    expect(isSoloHumanPaused(result.state, 0)).toBe(true);
+  });
+
+  it("resumes a paused solo-human seat with a fresh 30 second deadline", () => {
+    const paused = applyOverdueTimeout(soloHumanState(), "2026-10-03T19:00:30.000Z");
+    if (!paused.ok || !paused.changed) throw new Error("expected pause");
+    const resumed = applyReclaimControl(paused.state, 0, "2026-10-03T19:10:00.000Z");
+    if (!resumed.ok || !resumed.changed) throw new Error("expected resume");
+    expect(resumed.state.seats[0].controller).toBe("human");
+    expect(resumed.state.seats[0].reclaimable).toBe(false);
+    expect(resumed.state.seats[0].takeoverAt).toBeNull();
+    expect(resumed.state.timing.currentHumanDeadline).toBe(
+      new Date(Date.parse("2026-10-03T19:10:00.000Z") + HUMAN_TURN_TIMEOUT_MS).toISOString(),
+    );
+    expect(isSoloHumanPaused(resumed.state, 0)).toBe(false);
   });
 
   it("still transfers control when at least two human-owned seats exist", () => {
@@ -146,7 +167,7 @@ describe("controller timeout/reclaim", () => {
     expect(result.state.timing.currentHumanDeadline).toBeNull();
   });
 
-  it("reclaims the same seat and gives current actor a fresh 30 second server deadline", () => {
+  it("reclaims the same temporary-bot seat and gives current actor a fresh 30 second server deadline", () => {
     const timed = applyOverdueTimeout(state(), "2026-10-03T19:00:30.000Z");
     if (!timed.ok || !timed.changed) throw new Error("expected timeout");
     const reclaimed = applyReclaimControl(timed.state, 0, "2026-10-03T19:00:40.000Z");
@@ -158,7 +179,7 @@ describe("controller timeout/reclaim", () => {
     );
   });
 
-  it("rejects reclaim when temporary control is not active", () => {
+  it("rejects reclaim when neither temporary control nor solo pause is active", () => {
     expect(applyReclaimControl(state(), 0, "2026-10-03T19:00:10.000Z")).toEqual({
       ok: false,
       code: "RECLAIM_NOT_AVAILABLE",

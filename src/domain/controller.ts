@@ -20,6 +20,18 @@ function humanOwnedSeatCount(state: CanonicalGameState): number {
   return state.seats.reduce((count, seat) => count + (seat.owner.type === "human" ? 1 : 0), 0);
 }
 
+export function isSoloHumanPaused(state: CanonicalGameState, seatIndex: SeatIndex): boolean {
+  const seat = state.seats[seatIndex];
+  return state.lifecycle === "active" &&
+    humanOwnedSeatCount(state) <= 1 &&
+    state.progression.currentActorSeat === seatIndex &&
+    seat.owner.type === "human" &&
+    seat.controller === "human" &&
+    seat.reclaimable &&
+    state.timing.currentHumanDeadline == null &&
+    !state.timing.timeoutTakeoverActive;
+}
+
 export function humanDeadlineFromServerTime(serverNow: string): string {
   const now = parseServerTime(serverNow);
   if (now == null) throw new Error("Invalid server time");
@@ -51,14 +63,30 @@ export function applyOverdueTimeout(
     return { ok: true, changed: false, state };
   }
 
-  // A solo human playing against three permanent bots must never be replaced by
-  // another bot. Expiry becomes a pause boundary; durable pause/wake handling is
-  // owned by the reconciliation layer rather than changing seat identity here.
+  const seats = state.seats.map((item) => ({ ...item })) as CanonicalGameState["seats"];
+
   if (humanOwnedSeatCount(state) <= 1) {
-    return { ok: true, changed: false, state };
+    seats[actor] = {
+      ...seats[actor],
+      controller: "human",
+      takeoverAt: serverNow,
+      reclaimable: true,
+    };
+    return {
+      ok: true,
+      changed: true,
+      state: {
+        ...state,
+        stateVersion: state.stateVersion + 1,
+        seats,
+        timing: {
+          currentHumanDeadline: null,
+          timeoutTakeoverActive: false,
+        },
+      },
+    };
   }
 
-  const seats = state.seats.map((item) => ({ ...item })) as CanonicalGameState["seats"];
   seats[actor] = {
     ...seats[actor],
     controller: "temporary_bot",
@@ -88,12 +116,9 @@ export function applyReclaimControl(
 ): ControlTransitionResult {
   if (parseServerTime(serverNow) == null) return { ok: false, code: "INVALID_SERVER_TIME" };
   const seat = state.seats[seatIndex];
-  if (
-    state.lifecycle !== "active" ||
-    seat.owner.type !== "human" ||
-    seat.controller !== "temporary_bot" ||
-    !seat.reclaimable
-  ) {
+  const temporaryBotReclaim = seat.owner.type === "human" && seat.controller === "temporary_bot" && seat.reclaimable;
+  const soloPauseReclaim = isSoloHumanPaused(state, seatIndex);
+  if (state.lifecycle !== "active" || (!temporaryBotReclaim && !soloPauseReclaim)) {
     return { ok: false, code: "RECLAIM_NOT_AVAILABLE" };
   }
 
@@ -138,12 +163,6 @@ export interface BotProgressionResult {
   stopReason: "HUMAN_INPUT" | "NO_ACTOR" | "NO_LEGAL_ACTION" | "GAME_COMPLETE" | "STEP_BOUND";
 }
 
-/**
- * Bounded server-side bot loop. The bot sees only the same seat projection a
- * legitimate player/controller may see. It proposes one concrete semantic
- * GameplayCommand; state mutation remains delegated to the canonical gameplay
- * dispatcher/persistence layer rather than a bot-only rules path.
- */
 export function runBoundedBotProgression(
   initial: CanonicalGameState,
   adapter: BotProgressionAdapter,

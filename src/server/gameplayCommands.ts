@@ -1,4 +1,5 @@
 import { applyGameplayCommand, type GameplayCommand, type GameplayCommandFailureCode } from "@/domain/gameplayCommands";
+import { isSoloHumanPaused } from "@/domain/controller";
 import { resolveOverdueTimeoutBeforeRead } from "@/server/gameControl";
 import {
   persistCanonicalGameState,
@@ -39,6 +40,10 @@ export async function submitHumanGameplayCommand(args: {
   if (!loaded.ok) return { ok: false, code: loaded.code };
   if (loaded.stateVersion !== args.expectedStateVersion) {
     return { ok: false, code: "STALE_STATE", currentStateVersion: loaded.stateVersion };
+  }
+
+  if (isSoloHumanPaused(loaded.canonicalState, loaded.viewerSeat)) {
+    return { ok: false, code: "CONTROLLER_CHANGED" };
   }
 
   const transition = applyGameplayCommand({

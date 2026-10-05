@@ -1,6 +1,6 @@
 import { getRuleset } from "@/domain/rulesets";
 import { planAutomaticGameplayStep, type AutomaticStepStopReason } from "@/bots/progression";
-import { applyOverdueTimeout } from "@/domain/controller";
+import { applyOverdueTimeout, isSoloHumanPaused } from "@/domain/controller";
 import { settleCanonicalLifecycle } from "@/domain/gameLifecycle";
 import type { CanonicalGameState } from "@/domain/gameState";
 import { randomIterator } from "@/server/internalDeterminism";
@@ -158,11 +158,6 @@ async function lifecycleTransition(
     : { kind: "committed", replayed: persisted.replayed };
 }
 
-/**
- * The one canonical reconciliation loop used by request-driven and scheduled
- * progression. It owns orchestration only; every rules decision still comes
- * from the existing controller, lifecycle and gameplay/bot modules.
- */
 export async function advanceGameUntilBlockedWithDependencies(
   gameId: string,
   maxSteps: number,
@@ -191,18 +186,21 @@ export async function advanceGameUntilBlockedWithDependencies(
     const timeout = applyOverdueTimeout(state, serverNow);
     if (!timeout.ok) return { ok: false, code: "INVALID_CANONICAL_STATE" };
     if (timeout.changed) {
+      const actor = state.progression.currentActorSeat;
+      const soloPause = actor != null && isSoloHumanPaused(timeout.state, actor);
       const actionId = await dependencies.actionId(
         gameId,
-        `timeout-v1:${loaded.stateVersion}:${state.progression.currentActorSeat ?? "none"}:${state.timing.currentHumanDeadline ?? "none"}`,
+        `timeout-v1:${loaded.stateVersion}:${actor ?? "none"}:${state.timing.currentHumanDeadline ?? "none"}`,
       );
       const persisted = await dependencies.persist({
         gameId,
         actionId,
-        commandType: "system_timeout_takeover",
+        commandType: soloPause ? "system_solo_human_pause" : "system_timeout_takeover",
         expectedStateVersion: loaded.stateVersion,
         commandPayload: {
           deadline: state.timing.currentHumanDeadline,
-          actorSeat: state.progression.currentActorSeat,
+          actorSeat: actor,
+          mode: soloPause ? "solo_pause" : "temporary_bot",
         },
         newState: timeout.state,
       });

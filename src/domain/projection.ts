@@ -163,6 +163,15 @@ function jokerOptions(state: CanonicalGameState): JokerSemantic[] {
 
 function localLegalActions(state: CanonicalGameState, seat: SeatIndex, visibleHand: Card[]): LocalLegalAction[] {
   if (state.lifecycle !== "active") return [];
+  const localSeat = state.seats[seat];
+
+  // A sole human paused on timeout keeps controller="human" and may only
+  // reclaim/resume. A temporary-bot takeover is also reclaimable, but the bot
+  // must still receive the normal legal gameplay actions for that seat.
+  if (localSeat.owner.type === "human" && localSeat.controller === "human" && localSeat.reclaimable) {
+    return [{ type: "reclaim_control" }];
+  }
+
   const actions: LocalLegalAction[] = [];
   if (state.progression.phase === "DECLARATION" && state.declarations.currentDeclarerSeat === seat) {
     actions.push({ type: "declare", values: state.declarations.legalValues.slice() });
@@ -176,8 +185,9 @@ function localLegalActions(state: CanonicalGameState, seat: SeatIndex, visibleHa
   if (state.progression.phase === "JOKER_DECISION" && state.joker.pendingForSeat === seat) {
     actions.push({ type: "choose_joker_semantic", options: jokerOptions(state) });
   }
-  const localSeat = state.seats[seat];
-  if (localSeat.owner.type === "human" && localSeat.reclaimable) actions.push({ type: "reclaim_control" });
+  if (localSeat.owner.type === "human" && localSeat.reclaimable) {
+    actions.push({ type: "reclaim_control" });
+  }
   return actions;
 }
 
