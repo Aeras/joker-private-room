@@ -15,13 +15,24 @@ describe("JK-006 end-game release and human avatars", () => {
     expect(migration).toContain("'sessionsReleased', true");
   });
 
-  it("maps all three human players to existing PNG avatar assets", () => {
+  it("keeps renamed human players on their existing PNG avatar assets", () => {
     const registry = read("src/assets/registry.ts");
     expect(registry).toContain('giobis: "/avatars/giobis.png"');
+    expect(registry).toContain('"ζωάλο πουτς": "/avatars/giobis.png"');
     expect(registry).toContain('mixalis: "/avatars/mixalis.png"');
+    expect(registry).toContain('"τζαμανάς δικώνετε": "/avatars/mixalis.png"');
     expect(registry).toContain('git: "/avatars/git.png"');
     expect(registry).not.toContain('/avatars/giobis.webp');
     expect(registry).not.toContain('/avatars/mixalis.webp');
     expect(registry).not.toContain('/avatars/git.webp');
+  });
+
+  it("renames only display names without changing player IDs, PINs or credentials", () => {
+    const migration = read("supabase/migrations/20261005090139_rename_human_display_names.sql");
+    expect(migration).toContain("set display_name = 'Ζωάλο Πουτς'");
+    expect(migration).toContain("where display_name = 'Giobis'");
+    expect(migration).toContain("set display_name = 'Τζαμανάς Δικώνετε'");
+    expect(migration).toContain("where display_name = 'Mixalis'");
+    expect(migration).not.toMatch(/player_credentials|pin_hash|player_sessions|\bid\s*=/i);
   });
 });

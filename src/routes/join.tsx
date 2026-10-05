@@ -6,6 +6,7 @@ import type { PublicPlayer } from "@/domain/players";
 import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
 import { t } from "@/i18n/el";
 import { authFailureMessage } from "@/lib/auth-feedback";
+import { enterGameDisplayMode, rollbackGameDisplayMode } from "@/lib/gameDisplayMode";
 import { roomFailureMessage } from "@/lib/room-feedback";
 import { cn } from "@/lib/utils";
 import { realIdentityService } from "@/services/realIdentity";
@@ -54,12 +55,15 @@ function JoinGame() {
     if (!playerId || code.trim().length !== 4 || pin.length !== 4 || authBusy) { setError(t.invalidJoin); return; }
 
     setAuthBusy(true);
+    const displayMode = await enterGameDisplayMode();
+    let keepDisplayMode = false;
     try {
       const auth = await realIdentityService.verifyPin(playerId, pin);
       if (!auth.ok) { setError(authFailureMessage(auth)); return; }
 
       const current = await activeLookup.refresh();
       if (current.ok && current.activeGame) {
+        keepDisplayMode = true;
         void navigate({ to: "/table", search: { code: current.activeGame.roomCode, gameId: current.activeGame.gameId } });
         return;
       }
@@ -72,6 +76,7 @@ function JoinGame() {
       const result = await joinProductionRoom({ data: { actionId: joinActionId.current, code: code.trim().toUpperCase() } });
       if (!result.ok) {
         if (result.code === "ACTIVE_GAME_EXISTS" && result.activeGame?.roomCode) {
+          keepDisplayMode = true;
           joinActionId.current = null;
           navigate({ to: "/lobby", search: { code: result.activeGame.roomCode } });
           return;
@@ -81,9 +86,13 @@ function JoinGame() {
         return;
       }
 
+      keepDisplayMode = true;
       joinActionId.current = null;
       navigate({ to: "/lobby", search: { code: result.room.code } });
-    } finally { setAuthBusy(false); }
+    } finally {
+      if (!keepDisplayMode) await rollbackGameDisplayMode(displayMode);
+      setAuthBusy(false);
+    }
   };
 
   if (activeLookup.status === "loading" || activeLookup.status === "active") {
