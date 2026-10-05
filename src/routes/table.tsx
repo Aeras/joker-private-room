@@ -230,6 +230,7 @@ function TablePage() {
   useEffect(() => {
     mounted.current = true;
     void refreshAll();
+    void refreshReadiness();
     const gameTimer = window.setInterval(() => void refreshAll(), 1500);
     const dialogueTimer = window.setInterval(() => void refreshDialogue(), 1000);
     const readinessTimer = window.setInterval(() => void refreshReadiness(), 750);
@@ -372,8 +373,8 @@ function TablePage() {
 
   const uncertain = connectionStatus !== "ready";
   const waitingForPlay = projection.lifecycle === "starting" && projection.progression.phase === "INITIAL_DEALER_SELECTION";
-  const readyCount = readiness?.humans.filter((human) => human.ready).length ?? 0;
-  const humanCount = readiness?.humans.length ?? 0;
+  const humanCount = readiness?.humans.length ?? room.seats.filter((seat) => seat.occupant.type === "human").length;
+  const readyCount = readiness ? readiness.humans.filter((human) => human.ready).length : null;
 
   return (
     <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
@@ -385,9 +386,11 @@ function TablePage() {
         <div className="absolute inset-0 z-[95] flex items-center justify-center bg-black/15" role="status" aria-live="polite">
           <div className="min-w-52 rounded-2xl border border-primary/40 bg-black/80 px-5 py-4 text-center shadow-2xl backdrop-blur">
             <div className="text-xs uppercase tracking-[.18em] text-white/55">Παίκτες έτοιμοι</div>
-            <div className="mt-1 text-lg font-semibold text-white">{readyCount}/{humanCount}</div>
+            <div className="mt-1 text-lg font-semibold text-white">{readyCount == null ? `—/${humanCount}` : `${readyCount}/${humanCount}`}</div>
             {!geometryReady && <div className="mt-1 text-xs text-white/50">Σταθεροποίηση τραπεζιού…</div>}
-            {readiness?.isHost ? (
+            {readiness == null ? (
+              <div className="mt-3 text-sm text-white/65">Έλεγχος ετοιμότητας…</div>
+            ) : readiness.isHost ? (
               <button type="button" disabled={!readiness.allReady || busy || !geometryReady} onClick={() => void startGame()} className="mt-3 inline-flex h-14 w-14 items-center justify-center rounded-full border border-primary/60 bg-primary text-primary-foreground shadow-xl transition enabled:hover:scale-105 disabled:cursor-not-allowed disabled:opacity-35" aria-label="Έναρξη παρτίδας">
                 <Play className="h-7 w-7 translate-x-[1px]" fill="currentColor" />
               </button>
