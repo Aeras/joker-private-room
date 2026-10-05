@@ -1,4 +1,3 @@
-import { MAX_SYNCHRONOUS_BOT_STEPS } from "@/domain/controller";
 import {
   finalizeCanonicalGameState,
   loadCanonicalGameState,
@@ -14,6 +13,8 @@ import {
   type ReconciliationDependencies,
 } from "@/server/reconciliationCore";
 
+export const LIVE_REQUEST_AUTOMATIC_STEP_BUDGET = 1;
+
 const productionDependencies: ReconciliationDependencies = {
   load: loadCanonicalGameState,
   persist: persistCanonicalGameState,
@@ -23,10 +24,14 @@ const productionDependencies: ReconciliationDependencies = {
   now: () => new Date().toISOString(),
 };
 
-/** Request-triggered adapter for the same core used by the durable worker. */
+/**
+ * Request-triggered adapter for the live table. One automatic action per request
+ * prevents a projection refresh from collapsing several bot plays into one
+ * canonical jump. The durable worker keeps its independent bounded batch safety.
+ */
 export async function advanceGameUntilBlocked(
   gameId: string,
-  maxSteps = MAX_SYNCHRONOUS_BOT_STEPS,
+  maxSteps = LIVE_REQUEST_AUTOMATIC_STEP_BUDGET,
 ): Promise<AdvanceGameResult> {
   return advanceGameUntilBlockedWithDependencies(gameId, maxSteps, productionDependencies);
 }
