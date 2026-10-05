@@ -100,7 +100,9 @@ function publicDealerSelection(state: CanonicalGameState): PublicInitialDealerSe
 }
 
 function visibleOwnHand(state: CanonicalGameState, seat: SeatIndex): { hand: Card[]; visible: boolean } {
-  if (state.progression.phase === "INITIAL_DEALER_SELECTION") return { hand: [], visible: false };
+  if (state.progression.phase === "INITIAL_DEALER_SELECTION" || state.progression.phase === "DEAL_SETUP") {
+    return { hand: [], visible: false };
+  }
   if (!state.cards.hiddenPartialNineCardHands) return { hand: state.cards.hands[seat].slice(), visible: true };
   if (state.trump.status === "chooser_pending" && state.trump.chooserSeat === seat) return { hand: state.cards.hands[seat].slice(), visible: true };
   return { hand: [], visible: false };
@@ -138,7 +140,7 @@ function jokerOptions(state: CanonicalGameState): JokerSemantic[] {
 }
 
 function localLegalActions(state: CanonicalGameState, seat: SeatIndex, visibleHand: Card[]): LocalLegalAction[] {
-  if (state.lifecycle === "complete") return [];
+  if (state.lifecycle !== "active") return [];
   const actions: LocalLegalAction[] = [];
   if (state.progression.phase === "DECLARATION" && state.declarations.currentDeclarerSeat === seat) {
     actions.push({ type: "declare", values: state.declarations.legalValues.slice() });
@@ -213,8 +215,8 @@ export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex, r
     timing: { currentHumanDeadline: state.timing.currentHumanDeadline },
     local: {
       legalActions: localLegalActions(state, seat, own.hand),
-      reclaimAvailable: state.lifecycle !== "complete" && state.seats[seat].owner.type === "human" && state.seats[seat].reclaimable,
-      humanDeadline: state.lifecycle !== "complete" && state.progression.currentActorSeat === seat ? state.timing.currentHumanDeadline : null,
+      reclaimAvailable: state.lifecycle === "active" && state.seats[seat].owner.type === "human" && state.seats[seat].reclaimable,
+      humanDeadline: state.lifecycle === "active" && state.progression.currentActorSeat === seat ? state.timing.currentHumanDeadline : null,
     },
   };
 }

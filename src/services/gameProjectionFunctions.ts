@@ -6,7 +6,18 @@ import type { SeatIndex } from "@/domain/dealing";
 import { projectGameForSeat, type PlayerGameProjection } from "@/domain/projection";
 import type { GameplayCommand } from "@/domain/gameplayCommands";
 import { reclaimGameControl, type GameControlFailureCode } from "@/server/gameControl";
-import { ensureInitialDealerBootstrap } from "@/server/dealerBootstrap";
+import {
+  activateInitialDealAfterPresentation,
+  ensureInitialDealerBootstrapPrepared,
+  resolveInitialDealerBootstrap,
+} from "@/server/dealerBootstrap";
+import {
+  authorizeGameStart,
+  getGameTableReadiness,
+  markStartPresentationComplete,
+  setGameTableReady,
+  type GameReadinessResult,
+} from "@/server/gameReadiness";
 import {
   submitHumanGameplayCommand,
   type SubmitGameplayCommandFailureCode,
@@ -34,6 +45,10 @@ export type TerminateProjectedGameResult =
   | { ok: true; projection: PlayerGameProjection; replayed: boolean }
   | { ok: false; code: GameStateFailureCode; currentStateVersion?: number };
 
+export type StartProjectedGameResult =
+  | { ok: true; projection: PlayerGameProjection; replayed: boolean }
+  | { ok: false; code: GameStateFailureCode | "PLAYERS_NOT_READY" };
+
 function isSeatIndex(value: number): value is SeatIndex {
   return Number.isInteger(value) && value >= 0 && value <= 3;
 }
@@ -55,7 +70,7 @@ const gameplayCommand = z.discriminatedUnion("type", [
 ]);
 
 async function ensureBootstrapIfNeeded(gameId: string): Promise<GameStateFailureCode | null> {
-  const result = await ensureInitialDealerBootstrap(gameId);
+  const result = await ensureInitialDealerBootstrapPrepared(gameId);
   return result.ok ? null : result.code;
 }
 
@@ -85,6 +100,48 @@ export const getProjectedGameState = createServerFn({ method: "GET" })
     const bootstrapFailure = await ensureBootstrapIfNeeded(data.gameId);
     if (bootstrapFailure) return { ok: false, code: bootstrapFailure };
     const loaded = await settleAutomaticState(data.gameId);
+    if (!loaded.ok) return { ok: false, code: loaded.code };
+    const projection = projected(loaded);
+    return projection ? { ok: true, projection } : { ok: false, code: "SERVICE_UNAVAILABLE" };
+  });
+
+export const getProjectedGameReadiness = createServerFn({ method: "GET" })
+  .validator(z.object({ gameId: z.string().uuid() }))
+  .handler(async ({ data }): Promise<GameReadinessResult> => getGameTableReadiness(data.gameId));
+
+export const setProjectedGameReady = createServerFn({ method: "POST" })
+  .validator(z.object({ gameId: z.string().uuid(), ready: z.boolean() }))
+  .handler(async ({ data }): Promise<GameReadinessResult> => setGameTableReady(data.gameId, data.ready));
+
+export const startProjectedGame = createServerFn({ method: "POST" })
+  .validator(z.object({ gameId: z.string().uuid() }))
+  .handler(async ({ data }): Promise<StartProjectedGameResult> => {
+    const authorization = await authorizeGameStart(data.gameId);
+    if (!authorization.ok) return { ok: false, code: authorization.code };
+    const resolved = await resolveInitialDealerBootstrap(data.gameId);
+    if (!resolved.ok) return { ok: false, code: resolved.code };
+    const loaded = await loadCanonicalGameState(data.gameId);
+    if (!loaded.ok) return { ok: false, code: loaded.code };
+    const projection = projected(loaded);
+    return projection
+      ? { ok: true, projection, replayed: resolved.replayed }
+      : { ok: false, code: "SERVICE_UNAVAILABLE" };
+  });
+
+export const completeProjectedStartPresentation = createServerFn({ method: "POST" })
+  .validator(z.object({ gameId: z.string().uuid() }))
+  .handler(async ({ data }): Promise<ProjectedGameStateResult> => {
+    const marked = await markStartPresentationComplete(data.gameId);
+    if (!marked.ok) return { ok: false, code: marked.code as GameStateFailureCode };
+    if (marked.allPresented) {
+      const activated = await activateInitialDealAfterPresentation(data.gameId);
+      if (!activated.ok) return { ok: false, code: activated.code };
+      const settled = await settleAutomaticState(data.gameId);
+      if (!settled.ok) return { ok: false, code: settled.code };
+      const projection = projected(settled);
+      return projection ? { ok: true, projection } : { ok: false, code: "SERVICE_UNAVAILABLE" };
+    }
+    const loaded = await loadCanonicalGameState(data.gameId);
     if (!loaded.ok) return { ok: false, code: loaded.code };
     const projection = projected(loaded);
     return projection ? { ok: true, projection } : { ok: false, code: "SERVICE_UNAVAILABLE" };

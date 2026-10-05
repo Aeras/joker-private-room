@@ -16,7 +16,8 @@ function statusFor(code?: string) {
     case "ACTION_ID_CONFLICT":
     case "STALE_STATE":
     case "GAME_ALREADY_INITIALIZED":
-    case "GAME_NOT_ACTIVE": return 409;
+    case "GAME_NOT_ACTIVE":
+    case "PLAYERS_NOT_READY": return 409;
     case "GAME_STATE_NOT_INITIALIZED":
     case "INVALID_REQUEST":
     case "INVALID_CANONICAL_STATE":
@@ -116,6 +117,29 @@ Deno.serve(async (req: Request) => {
     if (action === "bootstrap") {
       const result = await bootstrapGame(admin, sessionToken, gameId);
       return json(result, result.ok === true ? 200 : statusFor(typeof result.code === "string" ? result.code : undefined));
+    }
+
+    if (action === "readiness" || action === "set_ready" || action === "authorize_start" || action === "presentation_complete") {
+      let rpcName: string;
+      let args: Record<string, unknown> = { p_session_token: sessionToken, p_game_id: gameId };
+      if (action === "readiness") {
+        rpcName = "get_game_table_readiness_internal";
+      } else if (action === "set_ready") {
+        if (typeof body?.ready !== "boolean") return json({ ok: false, code: "INVALID_REQUEST" }, 400);
+        rpcName = "set_game_table_ready_internal";
+        args = { ...args, p_ready: body.ready };
+      } else if (action === "authorize_start") {
+        rpcName = "authorize_game_start_internal";
+      } else {
+        rpcName = "mark_game_start_presentation_complete_internal";
+      }
+      const { data, error } = await admin.rpc(rpcName, args);
+      if (error) {
+        console.error("game-ready-rpc-failed", { action, code: error.code });
+        return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+      }
+      const result = data ?? { ok: false, code: "SERVICE_UNAVAILABLE" };
+      return json(result, result.ok === true ? 200 : statusFor(result.code));
     }
 
     let rpcName: string;

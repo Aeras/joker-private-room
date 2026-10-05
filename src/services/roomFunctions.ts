@@ -7,8 +7,7 @@ import {
   EXTERNAL_SUPABASE_PUBLISHABLE_KEY,
   EXTERNAL_SUPABASE_URL,
 } from "@/integrations/external-supabase/client";
-import { ensureInitialDealerBootstrap } from "@/server/dealerBootstrap";
-import { advanceGameUntilBlocked } from "@/server/reconciliation";
+import { ensureInitialDealerBootstrapPrepared } from "@/server/dealerBootstrap";
 
 const SESSION_COOKIE = "__Host-joker_session";
 
@@ -190,19 +189,12 @@ export const startProductionRoom = createServerFn({ method: "POST" })
     if (!result.ok) return result;
     if (!result.gameId) return { ok: false, code: "INVALID_ROOM_STATE" };
 
-    const bootstrap = await ensureInitialDealerBootstrap(result.gameId);
-    if (!bootstrap.ok) {
-      if (bootstrap.code === "NOT_AUTHENTICATED") return { ok: false, code: "NOT_AUTHENTICATED" };
-      if (bootstrap.code === "INVALID_CANONICAL_STATE") return { ok: false, code: "INVALID_ROOM_STATE" };
-      return { ok: false, code: "SERVICE_UNAVAILABLE" };
-    }
-
-    const automatic = await advanceGameUntilBlocked(result.gameId);
-    if (!automatic.ok) {
-      if (automatic.code === "NOT_AUTHENTICATED") return { ok: false, code: "NOT_AUTHENTICATED" };
-      if (automatic.code === "GAME_NOT_FOUND" || automatic.code === "INVALID_CANONICAL_STATE") {
-        return { ok: false, code: "INVALID_ROOM_STATE" };
-      }
+    // Lobby Start prepares the canonical table only. Dealer resolution, deadlines
+    // and automatic gameplay are forbidden until all humans are ready and host presses Play.
+    const prepared = await ensureInitialDealerBootstrapPrepared(result.gameId);
+    if (!prepared.ok) {
+      if (prepared.code === "NOT_AUTHENTICATED") return { ok: false, code: "NOT_AUTHENTICATED" };
+      if (prepared.code === "INVALID_CANONICAL_STATE") return { ok: false, code: "INVALID_ROOM_STATE" };
       return { ok: false, code: "SERVICE_UNAVAILABLE" };
     }
 

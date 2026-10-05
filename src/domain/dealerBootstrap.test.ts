@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { projectGameForSeat } from "./projection";
 import {
+  activateDealOneAfterPresentation,
   chooseUniformFirstRecipient,
   createInitialDealerBootstrapState,
   resolveDealerBootstrapAndInitializeDealOne,
@@ -78,8 +79,8 @@ describe("canonical dealer bootstrap", () => {
     expect(state.score.roundPremia).toEqual([]);
   });
 
-  it("resolves one public first-Ace prefix then initializes Deal 1 from a fresh full deck", () => {
-    const state = resolveDealerBootstrapAndInitializeDealOne({
+  it("resolves the first-Ace ritual into a dormant Deal 1 barrier, then activates gameplay explicitly", () => {
+    const barrier = resolveDealerBootstrapAndInitializeDealOne({
       state: pending(),
       firstRecipientRandom: () => 0.75,
       selectionShuffleRandom: sequence([0.11, 0.87, 0.32, 0.66, 0.04]),
@@ -87,15 +88,16 @@ describe("canonical dealer bootstrap", () => {
       serverNow: "2026-10-04T12:00:00.000Z",
     });
 
-    expect(state.lifecycle).toBe("active");
-    expect(state.stateVersion).toBe(2);
-    expect(state.progression.phase).toBe("DECLARATION");
-    expect(state.cards.deck).toHaveLength(36);
-    expect(new Set(state.cards.deck.map((card) => card.id)).size).toBe(36);
-    expect(state.cards.hands.every((hand) => hand.length === 1)).toBe(true);
-    expect(state.progression.dealNumber).toBe(1);
+    expect(barrier.lifecycle).toBe("starting");
+    expect(barrier.stateVersion).toBe(2);
+    expect(barrier.progression.phase).toBe("DEAL_SETUP");
+    expect(barrier.progression.currentActorSeat).toBeNull();
+    expect(barrier.timing.currentHumanDeadline).toBeNull();
+    expect(barrier.cards.deck).toHaveLength(36);
+    expect(new Set(barrier.cards.deck.map((card) => card.id)).size).toBe(36);
+    expect(barrier.cards.hands.every((hand) => hand.length === 1)).toBe(true);
 
-    const selection = state.initialDealerSelection;
+    const selection = barrier.initialDealerSelection;
     expect(selection?.status).toBe("resolved");
     if (!selection || selection.status !== "resolved") throw new Error("expected resolved selection");
     expect(selection.firstRecipientSeat).toBe(3);
@@ -103,12 +105,18 @@ describe("canonical dealer bootstrap", () => {
     expect(last?.kind).toBe("standard");
     expect(last && last.kind === "standard" ? last.rank : null).toBe("A");
     expect(selection.revealedSelectionCards.slice(0, -1).some((card) => card.kind === "standard" && card.rank === "A")).toBe(false);
-    expect(state.progression.dealerSeat).toBe(selection.selectedDealerSeat);
-    expect(state.progression.firstDeclarerSeat).toBe(nextSeat(selection.selectedDealerSeat));
-    expect(state.progression.firstLeaderSeat).toBe(nextSeat(selection.selectedDealerSeat));
-    for (const revealed of selection.revealedSelectionCards) {
-      expect(state.cards.deck.some((card) => card.id === revealed.id)).toBe(true);
-    }
+    expect(barrier.progression.dealerSeat).toBe(selection.selectedDealerSeat);
+    expect(barrier.progression.firstDeclarerSeat).toBe(nextSeat(selection.selectedDealerSeat));
+    expect(barrier.progression.firstLeaderSeat).toBe(nextSeat(selection.selectedDealerSeat));
+
+    const active = activateDealOneAfterPresentation(barrier, "2026-10-04T12:00:05.000Z");
+    expect(active.lifecycle).toBe("active");
+    expect(active.stateVersion).toBe(3);
+    expect(active.progression.phase).toBe("DECLARATION");
+    expect(active.progression.currentActorSeat).toBe(active.progression.firstDeclarerSeat);
+    expect(active.declarations.currentDeclarerSeat).toBe(active.progression.firstDeclarerSeat);
+    const actor = active.progression.currentActorSeat!;
+    expect(active.timing.currentHumanDeadline).toBe(active.seats[actor].controller === "human" ? "2026-10-04T12:00:35.000Z" : null);
   });
 
   it("projects the ritual without exposing deck, bootstrap identity or private entropy", () => {

@@ -59,7 +59,7 @@ export function chooseUniformFirstRecipient(random: () => number): SeatIndex {
   return Math.floor(value * 4) as SeatIndex;
 }
 
-/** First persisted canonical snapshot after room Start. */
+/** First persisted canonical snapshot after room Start. No gameplay may advance yet. */
 export function createInitialDealerBootstrapState(
   args: CreateDealerBootstrapStateArgs,
 ): CanonicalGameState {
@@ -129,9 +129,10 @@ export function createInitialDealerBootstrapState(
 }
 
 /**
- * Resolves the complete public dealer ritual in one authoritative transition,
- * discards the temporary selection deck, independently shuffles a fresh full
- * gameplay deck and initializes Deal 1. Only the public revealed prefix is retained.
+ * Resolves the dealer ritual and independently shuffles/deals Deal 1, but stops
+ * at DEAL_SETUP. This is a canonical presentation barrier: no actor, no human
+ * deadline, and no automatic controller may advance until every human client has
+ * completed the dealer + deal presentation.
  */
 export function resolveDealerBootstrapAndInitializeDealOne(
   args: ResolveDealerBootstrapArgs,
@@ -167,19 +168,12 @@ export function resolveDealerBootstrapAndInitializeDealOne(
   const gameplayDeck = prepareGameplayDeck(state, dealerSeat, 1, args.dealOneShuffleRandom);
   const firstDeal = dealWithTrumpReveal(gameplayDeck, dealerSeat, 1);
   const declarations: Declarations = [null, null, null, null];
-  const legalValues = legalDeclarationValues({
-    cardsPerPlayer: 1,
-    dealerSeat,
-    seatIndex: firstDeclarerSeat,
-    declarations,
-  });
   const nextStateVersion = state.stateVersion + 1;
-  const actorController = state.seats[firstDeclarerSeat].controller;
 
   return {
     ...state,
     stateVersion: nextStateVersion,
-    lifecycle: "active",
+    lifecycle: "starting",
     progression: {
       round: 1,
       dealNumber: 1,
@@ -188,8 +182,8 @@ export function resolveDealerBootstrapAndInitializeDealOne(
       dealerSeat,
       firstDeclarerSeat,
       firstLeaderSeat: firstDeclarerSeat,
-      currentActorSeat: firstDeclarerSeat,
-      phase: "DECLARATION",
+      currentActorSeat: null,
+      phase: "DEAL_SETUP",
     },
     initialDealerSelection: {
       status: "resolved",
@@ -210,9 +204,9 @@ export function resolveDealerBootstrapAndInitializeDealOne(
     },
     declarations: {
       order: declarationOrder(dealerSeat) as [SeatIndex, SeatIndex, SeatIndex, SeatIndex],
-      currentDeclarerSeat: firstDeclarerSeat,
+      currentDeclarerSeat: null,
       declarations,
-      legalValues,
+      legalValues: [],
       forbiddenDealerValue: null,
     },
     trump: { status: "resolved", suit: firstDeal.trump },
@@ -225,9 +219,54 @@ export function resolveDealerBootstrapAndInitializeDealOne(
       completedDeals: state.score.completedDeals ?? [],
       roundPremia: state.score.roundPremia ?? [],
     },
+    timing: { currentHumanDeadline: null, timeoutTakeoverActive: false },
+  };
+}
+
+/** Release the canonical startup barrier only after every human client finished presentation. */
+export function activateDealOneAfterPresentation(
+  state: CanonicalGameState,
+  serverNow: string,
+): CanonicalGameState {
+  if (
+    state.lifecycle !== "starting" ||
+    state.progression.phase !== "DEAL_SETUP" ||
+    state.progression.dealerSeat == null ||
+    state.progression.firstDeclarerSeat == null ||
+    state.progression.firstLeaderSeat == null ||
+    state.initialDealerSelection?.status !== "resolved"
+  ) {
+    throw new Error("Deal 1 presentation barrier is not ready");
+  }
+
+  const actor = state.progression.firstDeclarerSeat;
+  const declarations: Declarations = [null, null, null, null];
+  const actorController = state.seats[actor].controller;
+
+  return {
+    ...state,
+    stateVersion: state.stateVersion + 1,
+    lifecycle: "active",
+    progression: {
+      ...state.progression,
+      phase: "DECLARATION",
+      currentActorSeat: actor,
+    },
+    declarations: {
+      ...state.declarations,
+      currentDeclarerSeat: actor,
+      declarations,
+      legalValues: legalDeclarationValues({
+        cardsPerPlayer: state.progression.cardsPerPlayer,
+        dealerSeat: state.progression.dealerSeat,
+        seatIndex: actor,
+        declarations,
+      }),
+      forbiddenDealerValue: null,
+    },
     timing: {
       currentHumanDeadline:
-        actorController === "human" ? humanDeadlineFromServerTime(args.serverNow) : null,
+        actorController === "human" ? humanDeadlineFromServerTime(serverNow) : null,
       timeoutTakeoverActive: false,
     },
   };

@@ -23,6 +23,7 @@ const FALLBACK_TARGET: Record<VisualSeat, string> = {
 };
 
 function stageFor(projection: PlayerGameProjection): Stage | null {
+  if (projection.progression.phase === "DEAL_SETUP") return "full";
   if (projection.progression.cardsPerPlayer === 9 && projection.rulesetId !== "classic") {
     if (projection.progression.phase === "NINE_CARD_TRUMP_CHOICE") return "initial";
     if (projection.progression.phase === "DECLARATION" && projection.cards.ownHand.length === 9) return "remaining";
@@ -66,15 +67,7 @@ function markPresented(stageKey: string): void {
   window.sessionStorage.setItem(presentationStorageKey(stageKey), "1");
 }
 
-function TravelingBack({
-  beat,
-  pos,
-  geometry,
-}: {
-  beat: DealBeat;
-  pos: VisualSeat;
-  geometry: TableGeometry | null;
-}) {
+function TravelingBack({ beat, pos, geometry }: { beat: DealBeat; pos: VisualSeat; geometry: TableGeometry | null }) {
   const [arrived, setArrived] = useState(false);
   useLayoutEffect(() => {
     setArrived(false);
@@ -84,10 +77,7 @@ function TravelingBack({
 
   if (!geometry) {
     return (
-      <div
-        className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform duration-260 ease-out motion-reduce:duration-75"
-        style={{ transform: arrived ? FALLBACK_TARGET[pos] : "translate(-50%, -50%) scale(.58)" }}
-      >
+      <div className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform duration-260 ease-out motion-reduce:duration-75" style={{ transform: arrived ? FALLBACK_TARGET[pos] : "translate(-50%, -50%) scale(.58)" }}>
         <PlayingCard faceDown />
       </div>
     );
@@ -96,63 +86,47 @@ function TravelingBack({
   const source = viewportPoint(geometry, geometry.usableCenter);
   const target = viewportPoint(geometry, geometry.seatOrigins[pos]);
   return (
-    <div
-      className="absolute [--card-w:clamp(1.8rem,4vw,3rem)] transition-[left,top,transform] duration-260 ease-out motion-reduce:duration-75"
-      style={{
-        left: arrived ? target.x : source.x,
-        top: arrived ? target.y : source.y,
-        transform: `translate(-50%, -50%) scale(${arrived ? 1 : 0.58})`,
-      }}
-    >
+    <div className="absolute [--card-w:clamp(1.8rem,4vw,3rem)] transition-[left,top,transform] duration-260 ease-out motion-reduce:duration-75" style={{ left: arrived ? target.x : source.x, top: arrived ? target.y : source.y, transform: `translate(-50%, -50%) scale(${arrived ? 1 : 0.58})` }}>
       <PlayingCard faceDown />
     </div>
   );
 }
 
-/**
- * Replays public deal counts as backs only. A session-scoped presentation marker
- * prevents historical deal bursts from replaying after refresh/reconnect while
- * still allowing the first live projection of a newly-created deal to animate.
- *
- * Once a deal presentation starts, its geometry snapshot and public sequence are frozen.
- * Polling projections and later ResizeObserver epochs are not allowed to restart or cancel it.
- */
 export function DealPresentation({
   projection,
   geometry = null,
   paused = false,
   onActiveChange,
+  onSequenceComplete,
 }: {
   projection: PlayerGameProjection;
   geometry?: TableGeometry | null;
   paused?: boolean;
   onActiveChange?: (active: boolean) => void;
+  onSequenceComplete?: () => void;
 }) {
   const previousGameId = useRef(projection.gameId);
   const previousStageKey = useRef<string | null>(null);
+  const acknowledgedStageKey = useRef<string | null>(null);
   const [beats, setBeats] = useState<DealBeat[]>([]);
   const [visibleIndex, setVisibleIndex] = useState(-1);
   const [runGeometry, setRunGeometry] = useState<TableGeometry | null>(null);
   const [runViewerSeat, setRunViewerSeat] = useState<SeatIndex>(projection.viewerSeat);
   const timers = useRef<number[]>([]);
   const onActiveChangeRef = useRef(onActiveChange);
+  const onSequenceCompleteRef = useRef(onSequenceComplete);
   onActiveChangeRef.current = onActiveChange;
+  onSequenceCompleteRef.current = onSequenceComplete;
   const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   const stage = stageFor(projection);
-  const stageKey = stage
-    ? `${projection.gameId}:${projection.progression.dealNumber}:${projection.progression.dealerSeat ?? "none"}:${stage}`
-    : null;
+  const stageKey = stage ? `${projection.gameId}:${projection.progression.dealNumber}:${projection.progression.dealerSeat ?? "none"}:${stage}` : null;
 
   const sequence = useMemo(() => {
     if (!stage || projection.progression.dealerSeat == null) return [];
     const count = beatCount(projection, stage);
     const dealer = projection.progression.dealerSeat as SeatIndex;
-    return Array.from({ length: count }, (_, index) => ({
-      id: `${stageKey}:${index}`,
-      seat: recipientFor(dealer, index),
-      index,
-    }));
+    return Array.from({ length: count }, (_, index) => ({ id: `${stageKey}:${index}`, seat: recipientFor(dealer, index), index }));
   }, [projection.progression.cardsPerPlayer, projection.progression.dealerSeat, stage, stageKey]);
 
   const clearTimers = useCallback(() => {
@@ -168,17 +142,24 @@ export function DealPresentation({
     onActiveChangeRef.current?.(false);
   }, [clearTimers]);
 
-  // Layout effect is intentional: when dealer intro releases its gate, the normal-deal
-  // gate is raised again before the browser can paint the real hand/declaration UI.
+  const acknowledge = useCallback((key: string) => {
+    if (acknowledgedStageKey.current === key) return;
+    acknowledgedStageKey.current = key;
+    onSequenceCompleteRef.current?.();
+  }, []);
+
   useLayoutEffect(() => {
     if (previousGameId.current !== projection.gameId) {
       clearPresentation();
       previousGameId.current = projection.gameId;
       previousStageKey.current = null;
+      acknowledgedStageKey.current = null;
     }
 
-    if (paused || !stageKey || sequence.length === 0 || alreadyPresented(stageKey)) {
+    if (paused || !stageKey || sequence.length === 0) return;
+    if (alreadyPresented(stageKey)) {
       previousStageKey.current = stageKey;
+      if (projection.progression.phase === "DEAL_SETUP") acknowledge(stageKey);
       return;
     }
     if (stageKey === previousStageKey.current) return;
@@ -198,39 +179,26 @@ export function DealPresentation({
 
     const { staggerMs, tailMs } = dealPresentationTiming(reducedMotion);
     recordTimingDiagnostic("deal_sequence_start", {
-      reducedMotion: Boolean(reducedMotion),
-      stage,
-      dealNumber: projection.progression.dealNumber,
-      dealerSeat: projection.progression.dealerSeat ?? -1,
-      cardCount: frozenSequence.length,
-      staggerMs,
-      travelMs: reducedMotion ? 75 : 260,
-      tailMs,
-      frozenGeometryEpoch: frozenGeometry?.epoch ?? 0,
+      reducedMotion: Boolean(reducedMotion), stage, dealNumber: projection.progression.dealNumber,
+      dealerSeat: projection.progression.dealerSeat ?? -1, cardCount: frozenSequence.length,
+      staggerMs, travelMs: reducedMotion ? 75 : 260, tailMs, frozenGeometryEpoch: frozenGeometry?.epoch ?? 0,
     });
 
     frozenSequence.forEach((beat, index) => {
       timers.current.push(window.setTimeout(() => {
         setVisibleIndex(index);
-        recordTimingDiagnostic("deal_card_visible", {
-          index,
-          seat: beat.seat,
-          stage,
-          scheduledOffsetMs: index * staggerMs,
-        });
+        recordTimingDiagnostic("deal_card_visible", { index, seat: beat.seat, stage, scheduledOffsetMs: index * staggerMs });
         playGameSound("deal", beat.id);
       }, index * staggerMs));
     });
 
     const completeAt = frozenSequence.length * staggerMs + tailMs;
     timers.current.push(window.setTimeout(() => {
-      recordTimingDiagnostic("deal_sequence_complete", {
-        stage,
-        scheduledOffsetMs: completeAt,
-      });
+      recordTimingDiagnostic("deal_sequence_complete", { stage, scheduledOffsetMs: completeAt });
       clearPresentation();
+      if (projection.progression.phase === "DEAL_SETUP") acknowledge(stageKey);
     }, completeAt));
-  }, [clearPresentation, paused, projection.gameId, projection.progression.dealNumber, reducedMotion, sequence, stage, stageKey]);
+  }, [acknowledge, clearPresentation, geometry, paused, projection.gameId, projection.progression.dealNumber, projection.progression.phase, projection.viewerSeat, reducedMotion, sequence, stage, stageKey]);
 
   useLayoutEffect(() => {
     const visibility = () => {
@@ -252,17 +220,12 @@ export function DealPresentation({
   }, [clearPresentation, clearTimers]);
 
   if (beats.length === 0 || visibleIndex < 0) return null;
-
   const beat = beats[Math.min(visibleIndex, beats.length - 1)];
   if (!beat) return null;
   const pos = visualPosition(runViewerSeat, beat.seat);
 
   return (
-    <div
-      className="pointer-events-none absolute inset-0 z-30 overflow-hidden"
-      aria-hidden="true"
-      data-deal-geometry-epoch={runGeometry?.epoch ?? 0}
-    >
+    <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true" data-deal-geometry-epoch={runGeometry?.epoch ?? 0}>
       <TravelingBack key={beat.id} beat={beat} pos={pos} geometry={runGeometry} />
     </div>
   );

@@ -25,19 +25,37 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect([0, 1, 2, 3, 4, 5].map((index) => dealerSelectionRecipient(2, index))).toEqual([2, 3, 0, 1, 2, 3]);
   });
 
-  it("blocks real hands and declarations until dealer selection and actual dealing presentation finish", () => {
-    const table = read("src/components/table/GameTable.tsx");
-    const dealer = read("src/components/table/DealerSelectionPresentation.tsx");
+  it("separates lobby Start, human readiness, host Play, presentation, and gameplay", () => {
+    const room = read("src/services/roomFunctions.ts");
+    const dealerServer = read("src/server/dealerBootstrap.ts");
+    const dealerDomain = read("src/domain/dealerBootstrap.ts");
+    const route = read("src/routes/table.tsx");
+    const migration = read("supabase/migrations/20261005002000_jk006_ready_play_barrier.sql");
+
+    expect(room).toContain("ensureInitialDealerBootstrapPrepared");
+    expect(room).not.toContain("advanceGameUntilBlocked(result.gameId)");
+    expect(dealerServer).toContain("resolveInitialDealerBootstrap");
+    expect(dealerServer).toContain("activateInitialDealAfterPresentation");
+    expect(dealerDomain).toContain('phase: "DEAL_SETUP"');
+    expect(dealerDomain).toContain('currentActorSeat: null');
+    expect(dealerDomain).toContain('currentHumanDeadline: null');
+    expect(route).toContain("getProjectedGameReadiness");
+    expect(route).toContain("setProjectedGameReady");
+    expect(route).toContain("startProjectedGame");
+    expect(route).toContain("completeProjectedStartPresentation");
+    expect(route).toContain("readiness.allReady");
+    expect(migration).toContain("authorize_game_start_internal");
+    expect(migration).toContain("PLAYERS_NOT_READY");
+    expect(migration).toContain("presentation_complete");
+    expect(migration).toContain("v_phase in ('INITIAL_DEALER_SELECTION', 'DEAL_SETUP') then return null");
+  });
+
+  it("keeps private hands and legal actions hidden throughout the startup barriers", () => {
+    const projection = read("src/domain/projection.ts");
     const deal = read("src/components/table/DealPresentation.tsx");
-    expect(table).toContain("const startupPresentationActive = dealerIntroActive || dealPresentationActive");
-    expect(table).toContain("cards={startupPresentationActive ? [] : projection.cards.ownHand}");
-    expect(table).toContain("!startupPresentationActive && declarationAction");
-    expect(table).toContain("showCards={pos !== 0 && !startupPresentationActive}");
-    expect(table).toContain("onActiveChange={setDealPresentationActive}");
-    expect(dealer).toContain("onActiveChange(true)");
-    expect(dealer).toContain("if (!geometry) return clear");
-    expect(deal).toContain("onActiveChange?.(true)");
-    expect(deal).toContain("onActiveChange?.(false)");
+    expect(projection).toContain('state.progression.phase === "INITIAL_DEALER_SELECTION" || state.progression.phase === "DEAL_SETUP"');
+    expect(projection).toContain('if (state.lifecycle !== "active") return []');
+    expect(deal).toContain('projection.progression.phase === "DEAL_SETUP"');
   });
 
   it("keeps declaration choice optimistic while retaining recovery on failed command", () => {
