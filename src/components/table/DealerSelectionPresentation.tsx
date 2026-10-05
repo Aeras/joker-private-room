@@ -137,6 +137,11 @@ export function DealerSelectionPresentation({
     const firstFrame = window.requestAnimationFrame(() => {
       const secondFrame = window.requestAnimationFrame(() => {
         if (startedKey.current === selectionKey) return;
+        const openingCard = selection.openingCard ?? selection.revealedSelectionCards[0];
+        if (!openingCard) {
+          recordTimingDiagnostic("dealer_sequence_missing_opening_card");
+          return;
+        }
         startedKey.current = selectionKey;
         startTimingDiagnosticSession(projection.gameId);
 
@@ -152,7 +157,7 @@ export function DealerSelectionPresentation({
           gameId: projection.gameId,
           viewerSeat: projection.viewerSeat,
           geometry,
-          openingCard: { ...selection.openingCard },
+          openingCard: { ...openingCard },
           beats,
         };
         setRun(frozenRun);
@@ -170,7 +175,7 @@ export function DealerSelectionPresentation({
           staggerMs,
           travelMs: DEALER_SELECTION_CARD_TRAVEL_MS,
           holdMs,
-          openingCardId: selection.openingCard.id,
+          openingCardId: openingCard.id,
           cardCount: beats.length,
           firstRecipientSeat: selection.firstRecipientSeat,
           frozenGeometryEpoch: geometry.epoch,
