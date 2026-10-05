@@ -14,7 +14,7 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("JK-006 targeted gameplay timing and termination", () => {
   it("uses the requested readable presentation pacing", () => {
-    expect(DEALER_SELECTION_STAGGER_MS).toBe(350);
+    expect(DEALER_SELECTION_STAGGER_MS).toBe(500);
     expect(DEALER_SELECTION_CARD_TRAVEL_MS).toBe(340);
     expect(NORMAL_DEAL_STAGGER_MS).toBe(350);
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(500);
@@ -56,6 +56,20 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(projection).toContain('state.progression.phase === "INITIAL_DEALER_SELECTION" || state.progression.phase === "DEAL_SETUP"');
     expect(projection).toContain('if (state.lifecycle !== "active") return []');
     expect(deal).toContain('projection.progression.phase === "DEAL_SETUP"');
+  });
+
+  it("uses the shared cardinal dealing geometry for dealer selection and normal dealing", () => {
+    const dealer = read("src/components/table/DealerSelectionPresentation.tsx");
+    const deal = read("src/components/table/DealPresentation.tsx");
+    const geometry = read("src/components/table/useTableGeometry.ts");
+    expect(dealer).toContain("geometry.dealTargets[pos]");
+    expect(deal).toContain("geometry.dealTargets[pos]");
+    expect(geometry).toContain("dealTargets: Record<VisualSeat, Point>");
+  });
+
+  it("returns to the home screen immediately after a successful host end-game", () => {
+    const menu = read("src/components/table/TableUtilityMenu.tsx");
+    expect(menu).toContain('window.location.assign("/")');
   });
 
   it("keeps declaration choice optimistic while retaining recovery on failed command", () => {

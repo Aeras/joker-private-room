@@ -29,11 +29,11 @@ export function TableUtilityMenu({
     if (!isHost || ending || disabled) return;
     setEnding(true);
     const ok = await onEndGame().catch(() => false);
-    setEnding(false);
     if (ok) {
-      setConfirmOpen(false);
-      setOpen(false);
+      window.location.assign("/");
+      return;
     }
+    setEnding(false);
   };
 
   return (

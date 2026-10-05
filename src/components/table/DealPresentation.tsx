@@ -85,7 +85,7 @@ function TravelingBack({ beat, pos, geometry }: { beat: DealBeat; pos: VisualSea
   }
 
   const source = viewportPoint(geometry, geometry.usableCenter);
-  const target = viewportPoint(geometry, geometry.seatOrigins[pos]);
+  const target = viewportPoint(geometry, geometry.dealTargets[pos]);
   return (
     <div className="absolute [--card-w:clamp(1.8rem,4vw,3rem)] transition-[left,top,transform] duration-260 ease-out motion-reduce:duration-75" style={{ left: arrived ? target.x : source.x, top: arrived ? target.y : source.y, transform: `translate(-50%, -50%) scale(${arrived ? 1 : 0.58})` }}>
       <PlayingCard faceDown />
