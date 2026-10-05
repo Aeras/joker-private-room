@@ -52,11 +52,11 @@ function RevealedCard({
   const [arrived, setArrived] = useState(false);
   const pos = visualSeat(viewerSeat, beat.seat);
   const center = geometry.usableCenter;
-  const base = geometry.seatOrigins[pos];
+  const base = geometry.dealTargets[pos];
   const stackOffset = (beat.index % 4) * 4;
   const target = {
-    x: base.x + (pos === 1 ? 34 : pos === 3 ? -34 : stackOffset - 6),
-    y: base.y + (pos === 0 ? -48 : pos === 2 ? 48 : stackOffset - 6),
+    x: base.x + (pos === 0 || pos === 2 ? stackOffset - 6 : 0),
+    y: base.y + (pos === 1 || pos === 3 ? stackOffset - 6 : 0),
   };
 
   useEffect(() => {
@@ -123,8 +123,6 @@ export function DealerSelectionPresentation({
       if (startedKey.current == null) onActiveChangeRef.current(false);
       return;
     }
-    // From the moment a resolved dealer ritual is known, block all real gameplay UI.
-    // Geometry measurement is allowed to finish behind this gate; no cards/hands/actions leak through.
     onActiveChangeRef.current(true);
     if (!geometryReady || !geometry || !selection || !selectionKey) {
       recordTimingDiagnostic("dealer_waiting_for_geometry", { reducedMotion: Boolean(reducedMotion) });
@@ -132,8 +130,6 @@ export function DealerSelectionPresentation({
     }
     if (startedKey.current === selectionKey) return;
 
-    // Wait two paint frames after the first complete geometry snapshot, then freeze it.
-    // Once started, polling projections and later geometry epochs must never restart this sequence.
     const firstFrame = window.requestAnimationFrame(() => {
       const secondFrame = window.requestAnimationFrame(() => {
         if (startedKey.current === selectionKey) return;
