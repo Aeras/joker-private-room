@@ -14,18 +14,19 @@ describe("JK-001 Phase 1 — seat, timer and declaration contract", () => {
     expect(tableSeat).not.toMatch(/onCommand|system_timeout|timeout_takeover/);
   });
 
-  it("moves the primary countdown from the header to the active avatar ring", () => {
+  it("moves the primary countdown to the active avatar ring and hides it during startup presentation", () => {
     expect(gameTable).not.toContain('import { TurnTimer } from "./TurnTimer"');
     expect(gameTable).not.toContain("<TurnTimer");
-    expect(gameTable).toContain("humanDeadline: projection.progression.currentActorSeat === seat ? publicDeadline : null");
+    expect(gameTable).toContain("const startupPresentationActive = dealerIntroActive || dealPresentationActive");
+    expect(gameTable).toContain("humanDeadline: !startupPresentationActive && projection.progression.currentActorSeat === seat ? publicDeadline : null");
     expect(tableSeat).toContain("HUMAN_TURN_MS = 30_000");
     expect(tableSeat).toContain("conic-gradient(var(--gold)");
     expect(tableSeat).toContain("Ενεργός παίκτης");
   });
 
-  it("shows authoritative actual/declared progress and keeps non-color semantics", () => {
+  it("shows authoritative actual/declared progress after startup while keeping declarations hidden during dealing", () => {
     expect(gameTable).toContain("tricksTaken: projection.score.tricksTaken[seat]");
-    expect(gameTable).toContain("declaration: projection.declarations.values[seat]");
+    expect(gameTable).toContain("declaration: startupPresentationActive ? null : projection.declarations.values[seat]");
     expect(tableSeat).toContain("`${tricksTaken} / —`");
     expect(tableSeat).toContain('marker: "✓"');
     expect(tableSeat).toContain('marker: "!"');
