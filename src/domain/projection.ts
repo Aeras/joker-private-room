@@ -1,5 +1,5 @@
 import { getRuleset, type RulesetId } from "./rulesets";
-import { SUITS, type Card, type Suit } from "./cards";
+import { RANK_VALUE, SUITS, type Card, type Suit } from "./cards";
 import type { SeatIndex } from "./dealing";
 import {
   legalMoves,
@@ -114,6 +114,26 @@ function resolvedTrump(state: CanonicalGameState): Suit | null {
   return state.trump.status === "resolved" ? state.trump.suit : null;
 }
 
+export function sortHandForDisplay(hand: readonly Card[], trump: Suit | null): Card[] {
+  const suitOrder: Suit[] = trump
+    ? [trump, ...SUITS.filter((suit) => suit !== trump)]
+    : [...SUITS];
+  const suitPriority = new Map(suitOrder.map((suit, index) => [suit, index]));
+
+  return hand.slice().sort((a, b) => {
+    if (a.kind === "joker" || b.kind === "joker") {
+      if (a.kind === "joker" && b.kind === "joker") return a.id.localeCompare(b.id);
+      return a.kind === "joker" ? -1 : 1;
+    }
+
+    const suitDifference = (suitPriority.get(a.suit) ?? 99) - (suitPriority.get(b.suit) ?? 99);
+    if (suitDifference !== 0) return suitDifference;
+
+    const rankDifference = RANK_VALUE[b.rank] - RANK_VALUE[a.rank];
+    return rankDifference !== 0 ? rankDifference : a.id.localeCompare(b.id);
+  });
+}
+
 function playerView(state: CanonicalGameState, seat: SeatIndex, hand: Card[]): PlayerView {
   return {
     deckProfile: getRuleset(state.rulesetId, state.rulesVersion).deckProfile,
@@ -166,6 +186,7 @@ export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex, r
   const policy = getRuleset(state.rulesetId, state.rulesVersion);
   const masked = state.rulesetId === "panagiotis" && !revealRestrictedIdentity;
   const own = visibleOwnHand(state, seat);
+  const displayedOwnHand = sortHandForDisplay(own.hand, resolvedTrump(state));
   return {
     gameId: state.gameId,
     roomId: state.roomId,
@@ -185,7 +206,7 @@ export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex, r
       values: [...state.declarations.declarations] as CanonicalGameState["declarations"]["declarations"],
     },
     cards: {
-      ownHand: own.hand,
+      ownHand: displayedOwnHand,
       ownHandVisible: own.visible,
       exposedTrumpCard: state.cards.exposedTrumpCard,
       currentTrick: state.cards.currentTrick.map((play) => ({ ...play, card: { ...play.card } })),

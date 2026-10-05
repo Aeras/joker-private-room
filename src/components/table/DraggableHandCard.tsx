@@ -154,7 +154,7 @@ export function DraggableHandCard({
       className={cn(
         "relative select-none outline-none transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary",
         overlap && "-ml-[calc(var(--card-w)*0.36)]",
-        legal ? "touch-none" : "opacity-70",
+        legal && "touch-none",
         drag && "z-[100] cursor-grabbing transition-none",
         commitReady && "drop-shadow-[0_0_14px_var(--gold)]",
         pending && "pointer-events-none opacity-0",
