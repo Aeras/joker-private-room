@@ -83,6 +83,8 @@ function TablePage() {
   const [dialogueBusy, setDialogueBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [landscape, setLandscape] = useState(false);
+  const [visible, setVisible] = useState(() => typeof document !== "undefined" && document.visibilityState === "visible");
+  const [geometryReady, setGeometryReady] = useState(false);
   const mounted = useRef(true);
   const roomRef = useRef<Room | null>(null);
   const projectionRef = useRef<PlayerGameProjection | null>(null);
@@ -180,6 +182,52 @@ function TablePage() {
   }, []);
 
   useEffect(() => {
+    const update = () => setVisible(document.visibilityState === "visible");
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+
+  useEffect(() => {
+    const waiting = projection?.lifecycle === "starting" && projection.progression.phase === "INITIAL_DEALER_SELECTION";
+    if (!waiting || !landscape || connectionStatus !== "ready" || !visible) {
+      setGeometryReady(false);
+      return;
+    }
+
+    let frame = 0;
+    let previous: DOMRect | null = null;
+    let stableFrames = 0;
+    const sample = () => {
+      const felt = document.querySelector<HTMLElement>("#table-fullscreen-root .joker-room main > div");
+      const rect = felt?.getBoundingClientRect();
+      if (!rect || rect.width < 100 || rect.height < 100) {
+        stableFrames = 0;
+        previous = null;
+        frame = window.requestAnimationFrame(sample);
+        return;
+      }
+      if (
+        previous &&
+        Math.abs(previous.left - rect.left) < 0.5 &&
+        Math.abs(previous.top - rect.top) < 0.5 &&
+        Math.abs(previous.width - rect.width) < 0.5 &&
+        Math.abs(previous.height - rect.height) < 0.5
+      ) stableFrames += 1;
+      else stableFrames = 0;
+      previous = rect;
+      if (stableFrames >= 2) {
+        setGeometryReady(true);
+        return;
+      }
+      frame = window.requestAnimationFrame(sample);
+    };
+    setGeometryReady(false);
+    frame = window.requestAnimationFrame(sample);
+    return () => window.cancelAnimationFrame(frame);
+  }, [connectionStatus, landscape, projection?.lifecycle, projection?.progression.phase, tableEpoch, visible]);
+
+  useEffect(() => {
     mounted.current = true;
     void refreshAll();
     const gameTimer = window.setInterval(() => void refreshAll(), 1500);
@@ -199,7 +247,7 @@ function TablePage() {
       readySent.current = null;
       return;
     }
-    const shouldBeReady = landscape && connectionStatus === "ready" && document.visibilityState === "visible";
+    const shouldBeReady = landscape && visible && geometryReady && connectionStatus === "ready";
     if (readySent.current === shouldBeReady) return;
     const timer = window.setTimeout(() => {
       void setProjectedGameReady({ data: { gameId, ready: shouldBeReady } }).then((result) => {
@@ -208,16 +256,16 @@ function TablePage() {
           setReadiness(result);
         }
       });
-    }, shouldBeReady ? 450 : 0);
+    }, shouldBeReady ? 150 : 0);
     return () => window.clearTimeout(timer);
-  }, [connectionStatus, gameId, landscape, projection?.lifecycle, projection?.progression.phase]);
+  }, [connectionStatus, gameId, geometryReady, landscape, projection?.lifecycle, projection?.progression.phase, visible]);
 
   useEffect(() => {
     if (!gameId || !projection || projection.lifecycle !== "starting" || projection.progression.phase !== "DEAL_SETUP") return;
     const selection = projection.initialDealerSelection;
     if (!selection || selection.status !== "resolved") return;
     const key = `${gameId}:${selection.resolvedAtStateVersion}`;
-    if (presentationAckKey.current === key || !landscape || document.visibilityState !== "visible") return;
+    if (presentationAckKey.current === key || !landscape || !visible) return;
 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
     const dealerMs = reduced
@@ -231,9 +279,9 @@ function TablePage() {
         const currentRoom = roomRef.current;
         if (currentRoom) acceptSnapshot(currentRoom, result.projection);
       });
-    }, dealerMs + dealMs + 500);
+    }, dealerMs + dealMs + 750);
     return () => window.clearTimeout(timer);
-  }, [acceptSnapshot, gameId, landscape, projection]);
+  }, [acceptSnapshot, gameId, landscape, projection, visible]);
 
   const submit = async (command: GameplayCommand): Promise<PlayerGameProjection | null> => {
     if (!projection || busy || connectionStatusRef.current !== "ready") return null;
@@ -338,8 +386,9 @@ function TablePage() {
           <div className="min-w-52 rounded-2xl border border-primary/40 bg-black/80 px-5 py-4 text-center shadow-2xl backdrop-blur">
             <div className="text-xs uppercase tracking-[.18em] text-white/55">Παίκτες έτοιμοι</div>
             <div className="mt-1 text-lg font-semibold text-white">{readyCount}/{humanCount}</div>
+            {!geometryReady && <div className="mt-1 text-xs text-white/50">Σταθεροποίηση τραπεζιού…</div>}
             {readiness?.isHost ? (
-              <button type="button" disabled={!readiness.allReady || busy} onClick={() => void startGame()} className="mt-3 inline-flex h-14 w-14 items-center justify-center rounded-full border border-primary/60 bg-primary text-primary-foreground shadow-xl transition enabled:hover:scale-105 disabled:cursor-not-allowed disabled:opacity-35" aria-label="Έναρξη παρτίδας">
+              <button type="button" disabled={!readiness.allReady || busy || !geometryReady} onClick={() => void startGame()} className="mt-3 inline-flex h-14 w-14 items-center justify-center rounded-full border border-primary/60 bg-primary text-primary-foreground shadow-xl transition enabled:hover:scale-105 disabled:cursor-not-allowed disabled:opacity-35" aria-label="Έναρξη παρτίδας">
                 <Play className="h-7 w-7 translate-x-[1px]" fill="currentColor" />
               </button>
             ) : (
