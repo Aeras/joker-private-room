@@ -28,6 +28,7 @@ import {
   type GameStateFailureCode,
   type LoadGameStateResult,
 } from "@/server/gamePersistence";
+import { completeNineCardPresentation } from "@/server/nineCardPresentation";
 import { advanceGameUntilBlocked } from "@/server/reconciliation";
 
 export type ProjectedGameStateResult =
@@ -141,6 +142,19 @@ export const completeProjectedStartPresentation = createServerFn({ method: "POST
       const projection = projected(settled);
       return projection ? { ok: true, projection } : { ok: false, code: "SERVICE_UNAVAILABLE" };
     }
+    const loaded = await loadCanonicalGameState(data.gameId);
+    if (!loaded.ok) return { ok: false, code: loaded.code };
+    const projection = projected(loaded);
+    return projection ? { ok: true, projection } : { ok: false, code: "SERVICE_UNAVAILABLE" };
+  });
+
+export const completeProjectedNineCardPresentation = createServerFn({ method: "POST" })
+  .validator(z.object({ gameId: z.string().uuid() }))
+  .handler(async ({ data }): Promise<ProjectedGameStateResult> => {
+    const completed = await completeNineCardPresentation(data.gameId);
+    if (!completed.ok) return { ok: false, code: completed.code };
+    // Do not reconcile again here. The released trump/declaration phase must be
+    // observable before any bot can consume it on a later normal poll.
     const loaded = await loadCanonicalGameState(data.gameId);
     if (!loaded.ok) return { ok: false, code: loaded.code };
     const projection = projected(loaded);

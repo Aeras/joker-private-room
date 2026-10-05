@@ -5,6 +5,7 @@ import { jButton } from "@/components/joker/JButton";
 import { DialogueOverlay } from "@/components/table/DialogueOverlay";
 import { dealPresentationStageKey, dealPresentationWasCompleted } from "@/components/table/dealPresentationModel";
 import { dealerSelectionPresentationKey } from "@/components/table/dealerSelectionPresentationModel";
+import type { DealPresentationStage } from "@/components/table/DealPresentation";
 import { GameTable } from "@/components/table/GameTable";
 import { TableMessaging } from "@/components/table/TableMessaging";
 import {
@@ -24,6 +25,7 @@ import {
   type DialogueMessage,
 } from "@/services/dialogueFunctions";
 import {
+  completeProjectedNineCardPresentation,
   completeProjectedStartPresentation,
   getProjectedGameReadiness,
   getProjectedGameState,
@@ -125,6 +127,7 @@ function TablePage() {
   const seenDialogueMessages = useRef(new Set<string>());
   const readySent = useRef<boolean | null>(null);
   const presentationAckInFlight = useRef<string | null>(null);
+  const nineCardAckInFlight = useRef<string | null>(null);
 
   const updateConnectionStatus = useCallback((status: TableConnectionStatus) => {
     connectionStatusRef.current = status;
@@ -339,6 +342,31 @@ function TablePage() {
     };
   }, [acceptSnapshot, gameId, landscape, presentationStage, resolvedSelectionVersion, visible]);
 
+  const completeNineCardStage = useCallback(async (stage: Extract<DealPresentationStage, "initial" | "remaining">): Promise<PlayerGameProjection | null> => {
+    if (!gameId || connectionStatusRef.current !== "ready") return null;
+    const currentProjection = projectionRef.current;
+    const currentRoom = roomRef.current;
+    if (!currentProjection || !currentRoom) return null;
+    const key = `${currentProjection.gameId}:${currentProjection.progression.dealNumber}:${stage}`;
+    if (nineCardAckInFlight.current === key) return null;
+    nineCardAckInFlight.current = key;
+    try {
+      const result = await completeProjectedNineCardPresentation({ data: { gameId } });
+      if (!mounted.current) return null;
+      if (!result.ok) {
+        setError(gameplayFailureMessage(result.code));
+        return null;
+      }
+      if (acceptSnapshot(currentRoom, result.projection)) return result.projection;
+      return null;
+    } catch {
+      if (mounted.current) setError("Η φάση του 9φυλλου δεν επιβεβαιώθηκε. Γίνεται νέος συγχρονισμός…");
+      return null;
+    } finally {
+      if (nineCardAckInFlight.current === key) nineCardAckInFlight.current = null;
+    }
+  }, [acceptSnapshot, gameId]);
+
   const submit = async (command: GameplayCommand): Promise<PlayerGameProjection | null> => {
     if (!projection || busy || connectionStatusRef.current !== "ready") return null;
     setBusy(true); setError(null);
@@ -439,7 +467,7 @@ function TablePage() {
 
   return (
     <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
-      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} />
+      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onNineCardPresentationComplete={completeNineCardStage} />
       <TableMessaging key={projection.gameId} room={room} projection={projection} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} onSend={sendDialogue} />
 

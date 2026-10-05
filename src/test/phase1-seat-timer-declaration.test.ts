@@ -13,11 +13,13 @@ describe("JK-001 Phase 1 — seat, timer and declaration contract", () => {
     expect(tableSeat).not.toMatch(/onCommand|system_timeout|timeout_takeover/);
   });
 
-  it("renders the authoritative 30s countdown as a thicker clockwise traffic-light avatar ring", () => {
+  it("renders the authoritative 30s countdown only when card interaction is actually ready", () => {
     expect(gameTable).not.toContain('import { TurnTimer } from "./TurnTimer"');
     expect(gameTable).not.toContain("<TurnTimer");
     expect(gameTable).toContain("const startupPresentationActive = dealerIntroActive || dealPresentationActive");
-    expect(gameTable).toContain("humanDeadline: !startupPresentationActive && projection.progression.currentActorSeat === seat ? publicDeadline : null");
+    expect(gameTable).toContain('const countdownPhase = projection.progression.phase === "CARD_PLAY" || projection.progression.phase === "JOKER_DECISION"');
+    expect(gameTable).toContain("const isActor = !interactionPresentationActive && projection.progression.currentActorSeat === seat");
+    expect(gameTable).toContain("humanDeadline: isActor && countdownPhase ? publicDeadline : null");
     expect(tableSeat).toContain("HUMAN_TURN_MS = 30_000");
     expect(tableSeat).toContain("conic-gradient(from 0deg");
     expect(tableSeat).toContain('return "#22c55e"');

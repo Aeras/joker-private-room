@@ -170,7 +170,7 @@ describe("declaration dispatcher", () => {
 });
 
 describe("9-card trump choice", () => {
-  it("continues from the canonical 12-card cursor and exposes hands only after choice", () => {
+  it("continues from the canonical 12-card cursor but waits for remaining-deal presentation before declarations", () => {
     const deck = shuffleCards(createDeck(), seededRandom(25));
     const dealer: SeatIndex = 0;
     const initial = dealNineCardInitial(deck, dealer);
@@ -216,8 +216,11 @@ describe("9-card trump choice", () => {
     expect(result.state.cards.hands.every((hand) => hand.length === 9)).toBe(true);
     expect(result.state.cards.hiddenPartialNineCardHands).toBe(false);
     expect(result.state.trump).toEqual({ status: "resolved", suit: "hearts" });
-    expect(result.state.progression.phase).toBe("DECLARATION");
-    expect(result.state.declarations.currentDeclarerSeat).toBe(chooser);
+    expect(result.state.progression.phase).toBe("NINE_CARD_REMAINING_DEAL");
+    expect(result.state.progression.currentActorSeat).toBeNull();
+    expect(result.state.declarations.currentDeclarerSeat).toBeNull();
+    expect(result.state.declarations.legalValues).toEqual([]);
+    expect(result.state.timing.currentHumanDeadline).toBeNull();
   });
 });
 

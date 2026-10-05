@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash, webcrypto } from 'node:crypto';
-import { MAX_SYNCHRONOUS_BOT_STEPS } from '@/domain/controller';
+import { PRESENTATION_SAFE_AUTOMATIC_STEP_BUDGET } from '@/domain/controller';
 import type { CanonicalGameState } from '@/domain/gameState';
 import { reconciliationFixture } from './fixtures/reconciliationGame';
 
@@ -86,43 +86,67 @@ describe('JK-002 executable deployment artifact', () => {
     expect((await invoke()).status).toBe(401);
     expect(releases).toBe(1);
   });
-  it('takes over an overdue human, plays canonically, then stops at a future human deadline', async () => {
+
+  it('takes over an overdue human and exposes each automatic action as a separate worker tick', async () => {
     reset();
     for (const seat of state.seats) { seat.owner = { type: 'human', playerId: `human-${seat.seatIndex}` }; seat.controller = 'human'; }
     const actor = state.progression.currentActorSeat!;
     state.timing.currentHumanDeadline = new Date(Date.now() - 1000).toISOString();
-    const result = await invoke();
-    expect(result.body.results[0]).toMatchObject({ ok: true, steps: 2, stopReason: 'HUMAN_INPUT' });
+
+    const takeover = await invoke();
+    expect(takeover.body.results[0]).toMatchObject({ ok: true, steps: 1, stopReason: 'STEP_BOUND' });
     expect(state.seats[actor].controller).toBe('temporary_bot');
+    expect(commands).toEqual(['system_timeout_takeover']);
+
+    consumed = false;
+    const botPlay = await invoke();
+    expect(botPlay.body.results[0]).toMatchObject({ ok: true, steps: 1, stopReason: 'STEP_BOUND' });
     expect(commands).toEqual(['system_timeout_takeover', 'bot_declare']);
     expect(Date.parse(state.timing.currentHumanDeadline!)).toBeGreaterThan(Date.now());
-    const version = state.stateVersion; consumed = false;
+
+    const version = state.stateVersion;
+    consumed = false;
     expect((await invoke()).body.results[0]).toMatchObject({ steps: 0, stopReason: 'HUMAN_INPUT' });
     expect(state.stateVersion).toBe(version);
-    expect(JSON.stringify(result.body)).not.toMatch(/canonicalState|hands|serverEntropySeed|deck/);
+    expect(JSON.stringify(takeover.body)).not.toMatch(/canonicalState|hands|serverEntropySeed|deck/);
   });
+
   for (const rulesetId of ['popular', 'classic', 'minus', 'panagiotis'] as const) {
-  it('finishes all 24 deals across bounded browser-free ticks and finalizes exactly once: ' + rulesetId, async () => {
-    reset(); state = reconciliationFixture(rulesetId, rulesetId === 'panagiotis');
-    let ticks = 0; let bounded = 0;
-    while (state.lifecycle !== 'complete' && ticks++ < 100) {
-      consumed = false;
-      const result = await invoke();
-      expect(result.status).toBe(200);
-      expect(result.body.results[0].ok).toBe(true);
-      expect(result.body.results[0].steps).toBeLessThanOrEqual(MAX_SYNCHRONOUS_BOT_STEPS);
-      if (result.body.results[0].stopReason === 'STEP_BOUND') bounded++;
-    }
-    expect(state.lifecycle).toBe('complete');
-    expect(state.score.completedDeals).toHaveLength(24);
-    expect(state.score.roundPremia).toHaveLength(4);
-    expect(state.score.finalPlacements.every(p => p !== null)).toBe(true);
-    expect(finalized).toBe(1); expect(bounded).toBeGreaterThan(0);
-    expect(commands).toContain('settle_deal'); expect(commands).toContain('settle_round');
-    expect(versions.every((v, i) => i === 0 || v === versions[i - 1]! + 1)).toBe(true);
-    consumed = false; expect((await invoke()).body.claimed).toBe(0); expect(finalized).toBe(1);
-  }, 30000);
+    it('finishes all 24 deals across presentation-safe browser-free ticks and finalizes exactly once: ' + rulesetId, async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-05T12:00:00.000Z'));
+      try {
+        reset(); state = reconciliationFixture(rulesetId, rulesetId === 'panagiotis');
+        let ticks = 0; let bounded = 0; let presentationFallbacks = 0;
+        while (state.lifecycle !== 'complete' && ticks++ < 2000) {
+          consumed = false;
+          const result = await invoke();
+          expect(result.status).toBe(200);
+          expect(result.body.results[0].ok).toBe(true);
+          expect(result.body.results[0].steps).toBeLessThanOrEqual(PRESENTATION_SAFE_AUTOMATIC_STEP_BUDGET);
+          if (result.body.results[0].stopReason === 'STEP_BOUND') bounded++;
+          if (result.body.results[0].stopReason === 'PRESENTATION_BARRIER') {
+            const readyAt = state.timing.presentationReadyAt;
+            expect(readyAt).toBeTruthy();
+            presentationFallbacks++;
+            vi.setSystemTime(new Date(Date.parse(readyAt!) + 1));
+          }
+        }
+        expect(state.lifecycle).toBe('complete');
+        expect(state.score.completedDeals).toHaveLength(24);
+        expect(state.score.roundPremia).toHaveLength(4);
+        expect(state.score.finalPlacements.every(p => p !== null)).toBe(true);
+        expect(finalized).toBe(1); expect(bounded).toBeGreaterThan(0);
+        if (rulesetId === 'panagiotis') expect(presentationFallbacks).toBeGreaterThan(0);
+        expect(commands).toContain('settle_deal'); expect(commands).toContain('settle_round');
+        expect(versions.every((v, i) => i === 0 || v === versions[i - 1]! + 1)).toBe(true);
+        consumed = false; expect((await invoke()).body.claimed).toBe(0); expect(finalized).toBe(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    }, 30000);
   }
+
   it('releases claims after a crash and retries without changing the internal action identity', async () => {
     reset();
     const initialVersion = state.stateVersion;

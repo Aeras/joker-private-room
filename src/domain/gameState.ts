@@ -139,6 +139,8 @@ export interface CanonicalScoreState {
 export interface CanonicalTimingState {
   currentHumanDeadline: string | null;
   timeoutTakeoverActive: boolean;
+  /** Durable fallback for presentation barriers when no browser can acknowledge them. */
+  presentationReadyAt?: string | null;
 }
 
 export interface CanonicalGameState {

@@ -9,9 +9,8 @@ import type { Room } from "@/domain/players";
 import type { LocalLegalAction, PlayerGameProjection } from "@/domain/projection";
 import type { ScoreSheet } from "@/domain/scoreSheet";
 import { JButton } from "../joker/JButton";
-import { PlayingCard } from "../joker/PlayingCard";
 import { DealerSelectionPresentation } from "./DealerSelectionPresentation";
-import { DealPresentation } from "./DealPresentation";
+import { DealPresentation, type DealPresentationStage } from "./DealPresentation";
 import { DeclarationPicker } from "./DeclarationPicker";
 import { JokerChoicePicker } from "./JokerChoicePicker";
 import { LocalHandRow } from "./LocalHandRow";
@@ -22,11 +21,13 @@ import { Scoreboard } from "./Scoreboard";
 import { TableSeat } from "./TableSeat";
 import { TableUtilityMenu } from "./TableUtilityMenu";
 import { TrickPresentation } from "./TrickPresentation";
+import { TrumpIndicator, trumpAnnouncementLabel } from "./TrumpIndicator";
 import { useTableGeometry, type RectLike } from "./useTableGeometry";
 
 type Pos = 0 | 1 | 2 | 3;
 type OrientationLock = ScreenOrientation & { lock?: (orientation: "landscape") => Promise<void> };
 const HAND_REVEAL_MS = 700;
+const TRUMP_ANNOUNCEMENT_MS = 3_000;
 const SUIT_LABEL: Record<Suit, string> = { spades: "♠ Πίκες", hearts: "♥ Κούπες", diamonds: "♦ Καρό", clubs: "♣ Σπαθιά" };
 
 function authoritativeScoreSheet(projection: PlayerGameProjection): ScoreSheet {
@@ -47,7 +48,9 @@ function phaseMessage(projection: PlayerGameProjection): string {
   if (projection.lifecycle === "complete") return projection.termination?.kind === "host_ended" ? "Η παρτίδα τερματίστηκε" : "Η παρτίδα ολοκληρώθηκε";
   switch (projection.progression.phase) {
     case "INITIAL_DEALER_SELECTION": return "Επιλογή πρώτου dealer";
+    case "NINE_CARD_INITIAL_DEAL_ALL_SEATS": return "Πρώτα 3 φύλλα";
     case "NINE_CARD_TRUMP_CHOICE": return "Επιλογή ατού για το 9φυλλο";
+    case "NINE_CARD_REMAINING_DEAL": return "Συνέχεια μοιράσματος";
     case "DECLARATION": return "Δηλώσεις";
     case "CARD_PLAY": return "Παίξιμο φύλλου";
     case "JOKER_DECISION": return "Επιλογή Joker";
@@ -57,7 +60,7 @@ function phaseMessage(projection: PlayerGameProjection): string {
   }
 }
 
-export function GameTable({ room, projection, busy, error, onCommand, onReclaim, onEndGame }: {
+export function GameTable({ room, projection, busy, error, onCommand, onReclaim, onEndGame, onNineCardPresentationComplete }: {
   room: Room;
   projection: PlayerGameProjection;
   busy: boolean;
@@ -65,11 +68,14 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   onCommand: (command: GameplayCommand) => Promise<PlayerGameProjection | null>;
   onReclaim: () => Promise<void>;
   onEndGame: () => Promise<boolean>;
+  onNineCardPresentationComplete: (stage: Extract<DealPresentationStage, "initial" | "remaining">) => Promise<PlayerGameProjection | null>;
 }) {
   const tableRootRef = useRef<HTMLDivElement>(null);
   const playSubmissionLock = useRef(false);
   const handRevealTimer = useRef<number | null>(null);
+  const trumpAnnouncementTimer = useRef<number | null>(null);
   const revealedHands = useRef(new Set<string>());
+  const announcedTrumpKeys = useRef(new Set<string>());
   const tableGeometry = useTableGeometry();
   const localSeat = projection.viewerSeat;
   const [scoreOpen, setScoreOpen] = useState(false);
@@ -81,6 +87,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const [dealerIntroActive, setDealerIntroActive] = useState(() => dealerSelectionNeedsPresentation(projection));
   const [dealPresentationActive, setDealPresentationActive] = useState(false);
   const [handRevealActive, setHandRevealActive] = useState(false);
+  const [trumpAnnouncement, setTrumpAnnouncement] = useState<string | null>(null);
   const startupPresentationActive = dealerIntroActive || dealPresentationActive;
   const interactionPresentationActive = startupPresentationActive || handRevealActive;
   const clearLocalFlight = useCallback(() => setLocalPlayPresentation(null), []);
@@ -114,7 +121,10 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     }, HAND_REVEAL_MS);
   }, [projection.cards.ownHand, projection.cards.ownHandVisible, projection.gameId, projection.progression.dealNumber, projection.progression.phase]);
 
-  useEffect(() => () => { if (handRevealTimer.current != null) window.clearTimeout(handRevealTimer.current); }, []);
+  useEffect(() => () => {
+    if (handRevealTimer.current != null) window.clearTimeout(handRevealTimer.current);
+    if (trumpAnnouncementTimer.current != null) window.clearTimeout(trumpAnnouncementTimer.current);
+  }, []);
   useEffect(() => {
     const update = () => setPortrait(window.innerHeight > window.innerWidth);
     update(); window.addEventListener("resize", update); window.addEventListener("orientationchange", update);
@@ -124,6 +134,24 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   useEffect(() => { const epoch = tableGeometry.geometry?.epoch ?? 0; setLocalPlayPresentation((current) => current && current.geometryEpoch !== epoch ? null : current); }, [tableGeometry.geometry?.epoch]);
   useEffect(() => { if (!declarationAction) setPendingDeclarationValue(null); }, [projection.stateVersion, declarationAction]);
   useEffect(() => { setDealerIntroActive(dealerSelectionNeedsPresentation(projection)); }, [projection.gameId, projection.initialDealerSelection?.status === "resolved" ? projection.initialDealerSelection.resolvedAtStateVersion : null]);
+  useEffect(() => {
+    if (dealerIntroActive || dealPresentationActive) return;
+    beginHandReveal();
+  }, [beginHandReveal, dealerIntroActive, dealPresentationActive, projection.stateVersion]);
+  useEffect(() => {
+    if (projection.progression.phase !== "NINE_CARD_REMAINING_DEAL" || projection.trump.status !== "resolved") return;
+    const label = trumpAnnouncementLabel(projection.trump);
+    if (!label) return;
+    const key = `${projection.gameId}:${projection.progression.dealNumber}:${projection.trump.suit ?? "none"}`;
+    if (announcedTrumpKeys.current.has(key)) return;
+    announcedTrumpKeys.current.add(key);
+    if (trumpAnnouncementTimer.current != null) window.clearTimeout(trumpAnnouncementTimer.current);
+    setTrumpAnnouncement(label);
+    trumpAnnouncementTimer.current = window.setTimeout(() => {
+      trumpAnnouncementTimer.current = null;
+      setTrumpAnnouncement(null);
+    }, TRUMP_ANNOUNCEMENT_MS);
+  }, [projection.gameId, projection.progression.dealNumber, projection.progression.phase, projection.trump]);
 
   const commitCard = async (cardId: string, releaseRect: RectLike) => {
     if (!playAction?.cardIds.includes(cardId) || busy || playSubmissionLock.current) return;
@@ -144,6 +172,9 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     if (!declarationAction?.values.includes(value) || pendingDeclarationValue != null || busy) return;
     setPendingDeclarationValue(value); const result = await onCommand({ type: "declare", value }); if (!result) setPendingDeclarationValue(null);
   };
+  const handleDealPresentationComplete = useCallback((stage: DealPresentationStage) => {
+    if (stage === "initial" || stage === "remaining") void onNineCardPresentationComplete(stage);
+  }, [onNineCardPresentationComplete]);
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) { const root = document.getElementById("table-fullscreen-root") ?? tableRootRef.current; await root?.requestFullscreen(); const orientation = screen.orientation as OrientationLock; await orientation.lock?.("landscape").catch(() => undefined); }
@@ -161,6 +192,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
 
   const forcedEnd = projection.termination?.kind === "host_ended";
   const finalRows = projection.lifecycle === "complete" && !forcedEnd ? projection.score.finalPlacements.map((placement, seat) => ({ seat, placement, score: projection.score.cumulativeTotals[seat] ?? 0 })).sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99) || b.score - a.score) : [];
+  const showTrumpIndicator = !startupPresentationActive && (projection.cards.exposedTrumpCard != null || projection.trump.status === "resolved");
 
   return <div ref={tableRootRef} className="joker-room relative h-dvh w-full overflow-hidden bg-[#090b09]">
     {assets.tableArt && <img src={assets.tableArt} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center select-none" />}
@@ -172,8 +204,9 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       <div className="ml-auto flex items-center gap-1 pr-[max(0rem,env(safe-area-inset-right))]"><SoundToggle /><JButton variant="outlineGold" size="sm" className="h-8 px-2 bg-black/60" onClick={() => setScoreOpen(true)} aria-label="Σκορ"><Trophy className="h-4 w-4" /><span className="hidden lg:inline">Σκορ</span></JButton><TableUtilityMenu isHost={isHost} disabled={busy || projection.lifecycle === "complete"} onEndGame={onEndGame} /><JButton variant="outlineGold" size="sm" className="h-8 px-2 bg-black/60" onClick={toggleFullscreen} aria-label={fullscreen ? "Έξοδος από πλήρη οθόνη" : "Πλήρης οθόνη"}>{fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}</JButton></div>
     </header>
     <main className="absolute inset-x-[5vw] top-[10vh] bottom-[27vh]"><div ref={tableGeometry.feltRef} className="relative h-full w-full"><div ref={tableGeometry.topSeatRef} className="absolute left-1/2 top-[1%] z-20 -translate-x-1/2">{seatBlock(2, "horizontal")}</div><div ref={tableGeometry.leftSeatRef} className="absolute left-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(1, "vertical")}</div><div ref={tableGeometry.rightSeatRef} className="absolute right-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(3, "vertical")}</div><DealerSelectionPresentation projection={projection} geometry={tableGeometry.geometry} onActiveChange={setDealerIntroActive} />{!startupPresentationActive && <TrickPresentation projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} onLocalFlightSettled={clearLocalFlight} />}</div></main>
-    {!startupPresentationActive && projection.cards.exposedTrumpCard && <div className="pointer-events-none absolute left-[72%] top-[10vh] z-30 -translate-x-1/2 [--card-w:clamp(2.8rem,5vw,4rem)]"><div className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Ατού</div><PlayingCard card={projection.cards.exposedTrumpCard} /></div>}
-    <DealPresentation projection={projection} geometry={tableGeometry.geometry} paused={dealerIntroActive} onActiveChange={setDealPresentationActive} onPresentationComplete={() => beginHandReveal()} />
+    {showTrumpIndicator && <div className="pointer-events-none absolute left-[72%] top-[10vh] z-30 -translate-x-1/2 [--card-w:clamp(2.8rem,5vw,4rem)]"><div className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Ατού</div><TrumpIndicator trump={projection.trump} exposedTrumpCard={projection.cards.exposedTrumpCard} /></div>}
+    {trumpAnnouncement && <div className="pointer-events-none absolute left-1/2 top-1/2 z-[65] -translate-x-1/2 -translate-y-[4.8rem] rounded-xl border border-primary/55 bg-black/90 px-5 py-2.5 text-center text-base font-semibold text-white shadow-2xl backdrop-blur" role="status" aria-live="polite" data-trump-announcement>{trumpAnnouncement}</div>}
+    <DealPresentation projection={projection} geometry={tableGeometry.geometry} paused={dealerIntroActive} onActiveChange={setDealPresentationActive} onPresentationComplete={handleDealPresentationComplete} />
     <footer className="absolute inset-x-0 bottom-[max(.15rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center">
       {error && <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>}
       {!interactionPresentationActive && declarationAction && pendingDeclarationValue == null && <div className="animate-in slide-in-from-bottom-2 fade-in duration-200"><DeclarationPicker values={declarationValues} legalValues={declarationAction.values} busy={busy} onSelect={(value) => void submitDeclaration(value)} /></div>}
