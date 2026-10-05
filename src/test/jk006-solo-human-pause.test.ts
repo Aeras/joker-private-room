@@ -137,7 +137,7 @@ describe("JK-006 durable solo-human pause", () => {
 
   it("makes the scheduler sleep on the canonical paused marker", () => {
     const sql = readFileSync(
-      resolve(process.cwd(), "supabase/migrations/20261005120500_jk006_solo_human_pause_wake.sql"),
+      resolve(process.cwd(), "supabase/migrations/20261005120900_jk006_solo_human_pause_wake.sql"),
       "utf8",
     );
     expect(sql).toContain("v_reclaimable_text = 'true'");
