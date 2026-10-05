@@ -18,9 +18,9 @@ describe("JK-006 bot pacing", () => {
     expect(read("supabase/functions/game-reconciler/index.ts")).toContain("MAX_SYNCHRONOUS_BOT_STEPS");
   });
 
-  it("retains the existing human-readable trick presentation timing", () => {
-    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(500);
-    expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(700);
+  it("uses the slower human-readable trick presentation timing", () => {
+    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(650);
+    expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(850);
     expect(NORMAL_TRICK_HOLD_MS).toBeLessThanOrEqual(1000);
   });
 
