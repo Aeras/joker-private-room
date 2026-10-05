@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SeatIndex } from "@/domain/dealing";
-import type { PlayedCard } from "@/domain/engine";
+import type { JokerSemantic, PlayedCard } from "@/domain/engine";
 import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
 import { cn } from "@/lib/utils";
@@ -13,13 +13,21 @@ type Pos = VisualSeat;
 type DepartingStage = "holding" | "flipping" | "collecting";
 type Departing = { id: string; cards: PlayedCard[]; winnerSeat: SeatIndex; stage: DepartingStage };
 type PendingCompletion = { id: string; cards: PlayedCard[]; winnerSeat: SeatIndex };
+type JokerAnnouncement = { id: string; text: string };
 
 const FALLBACK_LANDING: Record<Pos, Point> = { 0: { x: 0, y: 38 }, 1: { x: -40, y: 0 }, 2: { x: 0, y: -38 }, 3: { x: 40, y: 0 } };
 const ROTATION: Record<Pos, number> = { 0: 2, 1: -7, 2: -2, 3: 7 };
+const JOKER_ANNOUNCEMENT_MS = 3_000;
+const SUIT_ANNOUNCEMENT = { hearts: "κούπες", diamonds: "καρό", clubs: "σπαθιά", spades: "πίκες" } as const;
 function posOf(viewerSeat: SeatIndex, seat: number): Pos { return ((seat - viewerSeat + 4) % 4) as Pos; }
 function playKey(play: PlayedCard): string { return `${play.seatIndex}:${play.card.id}`; }
 function currentSignature(cards: readonly PlayedCard[]): string { return cards.map(playKey).join("|"); }
 function acceptedPlayEventId(projection: PlayerGameProjection, trickOrdinal: number, play: PlayedCard): string { return `${projection.gameId}:${projection.progression.dealNumber}:trick:${trickOrdinal}:${play.seatIndex}:${play.card.id}`; }
+function jokerAnnouncementText(semantic: JokerSemantic): string {
+  if (semantic.context === "OPEN_TRICK") return semantic.mode === "COMPETE" ? "Τζόκερ από πάνω" : "Τζόκερ από κάτω";
+  const suit = SUIT_ANNOUNCEMENT[semantic.requestedSuit];
+  return semantic.mode === "HIGHER_SUIT" ? `Θέλω μεγαλύτερο — ${suit}` : `Παίρνουν — ${suit}`;
+}
 function relativeTransform(point: Point, center: Point, rotation: number, scale = 1, flip = 0): string {
   const x = point.x - center.x; const y = point.y - center.y;
   return `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) rotate(${rotation}deg) rotateY(${flip}deg) scale(${scale})`;
@@ -68,7 +76,7 @@ function LocalFlightCard({ presentation, projection, geometry, reducedMotion, on
   }, [presentation.status, presentation.cardId, reducedMotion, onSettled]);
   useEffect(() => {
     if (presentation.status !== "accepted" || !atTarget || settledRef.current) return;
-    const timer = window.setTimeout(() => { if (settledRef.current) return; settledRef.current = true; playGameSound("play", `${presentation.gameId}:${presentation.dealNumber}:local-flight:${presentation.cardId}:${presentation.acceptedStateVersion ?? "accepted"}`); onSettled(); }, reducedMotion ? 40 : 90);
+    const timer = window.setTimeout(() => { if (settledRef.current) return; settledRef.current = true; playGameSound("play", `${presentation.gameId}:${presentation.dealNumber}:local-flight:${presentation.cardId}:${presentation.acceptedStateVersion ?? "accepted"}`); onSettled(); }, reducedMotion ? 75 : 300);
     return () => window.clearTimeout(timer);
   }, [atTarget, onSettled, presentation, reducedMotion]);
   return <div className="absolute left-0 top-0 z-40 transition-transform duration-300 ease-out motion-reduce:duration-75" style={{ transform: relativeTransform(atTarget ? target : releasePoint, center, ROTATION[pos], atTarget ? 1 : 1.04) }} data-local-flight-card={presentation.cardId} data-local-flight-status={presentation.status}><PlayingCard card={presentation.card} /></div>;
@@ -78,7 +86,8 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const firstRender = useRef(true); const previousCurrent = useRef(""); const previousCompletedCount = useRef(projection.cards.completedTricks.length); const previousDealNumber = useRef(projection.progression.dealNumber); const previousGeometryEpoch = useRef(geometry?.epoch ?? 0);
   const displayedRef = useRef<PlayedCard[]>([]); const queueRef = useRef<PlayedCard[]>([]); const queueTimer = useRef<number | null>(null); const completionTimer = useRef<number | null>(null); const holdTimer = useRef<number | null>(null); const collectTimer = useRef<number | null>(null); const clearTimer = useRef<number | null>(null);
   const pendingCompletion = useRef<PendingCompletion | null>(null); const deferredCurrent = useRef<PlayedCard[]>([]); const localPresentationRef = useRef(localPlayPresentation); const projectionRef = useRef(projection);
-  const [displayedCards, setDisplayedCards] = useState<PlayedCard[]>([]); const [departing, setDeparting] = useState<Departing | null>(null);
+  const announcedJokers = useRef(new Set<string>());
+  const [displayedCards, setDisplayedCards] = useState<PlayedCard[]>([]); const [departing, setDeparting] = useState<Departing | null>(null); const [announcementQueue, setAnnouncementQueue] = useState<JokerAnnouncement[]>([]);
   const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   localPresentationRef.current = localPlayPresentation; projectionRef.current = projection;
 
@@ -87,6 +96,20 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   }, []);
   const replaceDisplayed = useCallback((cards: readonly PlayedCard[]) => { displayedRef.current = cards.map((play) => ({ ...play, card: { ...play.card } })); setDisplayedCards(displayedRef.current); }, []);
   const startDeferred = useCallback(() => { const deferred = deferredCurrent.current; deferredCurrent.current = []; if (deferred.length === 0) return; replaceDisplayed([]); queueRef.current = deferred.map((play) => ({ ...play, card: { ...play.card } })); }, [replaceDisplayed]);
+  const enqueueJokerAnnouncement = useCallback((play: PlayedCard) => {
+    if (play.card.kind !== "joker" || !play.joker) return;
+    const id = `${projectionRef.current.gameId}:${projectionRef.current.progression.dealNumber}:${play.seatIndex}:${play.card.id}:${JSON.stringify(play.joker)}`;
+    if (announcedJokers.current.has(id)) return;
+    announcedJokers.current.add(id);
+    setAnnouncementQueue((current) => [...current, { id, text: jokerAnnouncementText(play.joker!) }]);
+  }, []);
+
+  useEffect(() => {
+    const current = announcementQueue[0];
+    if (!current) return;
+    const timer = window.setTimeout(() => setAnnouncementQueue((items) => items[0]?.id === current.id ? items.slice(1) : items), JOKER_ANNOUNCEMENT_MS);
+    return () => window.clearTimeout(timer);
+  }, [announcementQueue]);
 
   const beginCompletion = useCallback((completion: PendingCompletion) => {
     if (departing || completionTimer.current != null) return;
@@ -112,21 +135,30 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       queueTimer.current = null;
       if (!displayedRef.current.some((play) => playKey(play) === playKey(next))) {
         displayedRef.current = [...displayedRef.current, { ...next, card: { ...next.card } }]; setDisplayedCards(displayedRef.current);
+        enqueueJokerAnnouncement(next);
         if (!isPresentationCard(localPresentationRef.current, next)) { const currentProjection = projectionRef.current; playGameSound("play", acceptedPlayEventId(currentProjection, currentProjection.cards.completedTricks.length + (currentProjection.cards.currentTrick.length > 0 ? 1 : 0), next)); }
       }
       pump();
     }, delay);
-  }, [beginCompletion, departing, reducedMotion]);
+  }, [beginCompletion, departing, enqueueJokerAnnouncement, reducedMotion]);
 
   const enqueueCommitted = useCallback((plays: readonly PlayedCard[]) => {
     const known = new Set([...displayedRef.current.map(playKey), ...queueRef.current.map(playKey)]); const local = localPresentationRef.current;
     for (const play of plays) {
       const key = playKey(play); if (known.has(key)) continue;
-      if (isPresentationCard(local, play)) { displayedRef.current = [...displayedRef.current, { ...play, card: { ...play.card } }]; setDisplayedCards(displayedRef.current); known.add(key); continue; }
+      if (isPresentationCard(local, play)) { displayedRef.current = [...displayedRef.current, { ...play, card: { ...play.card } }]; setDisplayedCards(displayedRef.current); enqueueJokerAnnouncement(play); known.add(key); continue; }
       queueRef.current.push({ ...play, card: { ...play.card } }); known.add(key);
     }
     pump();
-  }, [pump]);
+  }, [enqueueJokerAnnouncement, pump]);
+
+  useEffect(() => {
+    const canonicalPlays = [...projection.cards.completedTricks.flatMap((trick) => trick.cards), ...projection.cards.currentTrick];
+    for (const play of canonicalPlays) {
+      if (!play.joker || play.card.kind !== "joker") continue;
+      if (displayedRef.current.some((displayed) => playKey(displayed) === playKey(play))) enqueueJokerAnnouncement(play);
+    }
+  }, [enqueueJokerAnnouncement, projection.cards.completedTricks, projection.cards.currentTrick]);
 
   useEffect(() => {
     const nextEpoch = geometry?.epoch ?? 0; if (previousGeometryEpoch.current === nextEpoch) return; previousGeometryEpoch.current = nextEpoch;
@@ -170,10 +202,12 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const cards = departing?.cards ?? displayedCards;
   const visibleCards = cards.filter((play) => !isPresentationCard(localPlayPresentation, play));
   const showLocalFlight = Boolean(localPlayPresentation && geometry && !departing);
-  if (visibleCards.length === 0 && !showLocalFlight) return null;
+  const announcement = announcementQueue[0] ?? null;
+  if (visibleCards.length === 0 && !showLocalFlight && !announcement) return null;
   const rootStyle = geometry ? { left: geometry.usableCenter.x, top: geometry.usableCenter.y } : { left: "50%", top: "50%" };
   return <div className="pointer-events-none absolute z-20 h-0 w-0 [--card-w:clamp(3rem,6vw,5rem)]" style={rootStyle} data-geometry-epoch={geometry?.epoch ?? 0} data-trick-presentation-id={departing?.id ?? "current"} data-trick-departing-stage={departing?.stage ?? "none"} aria-label={departing ? "Ολοκληρωμένη μπάζα" : "Τρέχουσα μπάζα"}>
-    <span className="sr-only" aria-live="polite">{departing ? `Η μπάζα κερδήθηκε από τη θέση ${departing.winnerSeat + 1}.` : ""}</span>
+    <span className="sr-only" aria-live="polite">{departing ? `Η μπάζα κερδήθηκε από τη θέση ${departing.winnerSeat + 1}.` : announcement?.text ?? ""}</span>
+    {announcement && <div className="absolute left-0 top-[-4.4rem] z-50 -translate-x-1/2 whitespace-nowrap rounded-xl border border-amber-300/60 bg-black/88 px-4 py-2 text-center text-sm font-semibold text-white shadow-2xl backdrop-blur" data-joker-announcement={announcement.id}>{announcement.text}</div>}
     {visibleCards.map((play) => <AnimatedTrickCard key={`${departing?.id ?? "current"}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={geometry} />)}
     {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard presentation={localPlayPresentation} projection={projection} geometry={geometry} reducedMotion={reducedMotion} onSettled={onLocalFlightSettled} />}
   </div>;
