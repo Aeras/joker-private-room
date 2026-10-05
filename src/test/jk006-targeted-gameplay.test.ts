@@ -20,8 +20,8 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(DEALER_SELECTION_CARD_TRAVEL_MS).toBe(440);
     expect(NORMAL_DEAL_STAGGER_MS).toBe(500);
     expect(NORMAL_DEAL_TRAVEL_MS).toBe(440);
-    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(500);
-    expect(NORMAL_TRICK_HOLD_MS).toBe(850);
+    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(650);
+    expect(NORMAL_TRICK_HOLD_MS).toBe(900);
   });
 
   it("preserves cyclic dealer-selection recipients from the canonical random start seat", () => {
