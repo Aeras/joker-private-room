@@ -13,14 +13,25 @@ describe("JK-001 Phase 1 — seat, timer and declaration contract", () => {
     expect(tableSeat).not.toMatch(/onCommand|system_timeout|timeout_takeover/);
   });
 
-  it("moves the primary countdown to the active avatar ring and hides it during startup presentation", () => {
+  it("renders the authoritative 30s countdown as a thicker clockwise traffic-light avatar ring", () => {
     expect(gameTable).not.toContain('import { TurnTimer } from "./TurnTimer"');
     expect(gameTable).not.toContain("<TurnTimer");
     expect(gameTable).toContain("const startupPresentationActive = dealerIntroActive || dealPresentationActive");
     expect(gameTable).toContain("humanDeadline: !startupPresentationActive && projection.progression.currentActorSeat === seat ? publicDeadline : null");
     expect(tableSeat).toContain("HUMAN_TURN_MS = 30_000");
-    expect(tableSeat).toContain("conic-gradient(var(--gold)");
+    expect(tableSeat).toContain("conic-gradient(from 0deg");
+    expect(tableSeat).toContain('return "#22c55e"');
+    expect(tableSeat).toContain('return "#f59e0b"');
+    expect(tableSeat).toContain('return "#ef4444"');
+    expect(tableSeat).toContain('showCountdown ? "p-[4px]" : "p-[3px]"');
     expect(tableSeat).toContain("Ενεργός παίκτης");
+  });
+
+  it("dims only the avatar while a human seat is controlled by a temporary bot", () => {
+    expect(gameTable).toContain('projection.seats[seat].controller === "temporary_bot"');
+    expect(gameTable).toContain("isTemporarilyControlled:");
+    expect(tableSeat).toContain("stats.isTemporarilyControlled");
+    expect(tableSeat).toContain("brightness-50 opacity-65");
   });
 
   it("shows authoritative actual/declared progress after startup while keeping declarations hidden during dealing", () => {
