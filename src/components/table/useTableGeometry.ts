@@ -21,6 +21,7 @@ export interface TableGeometry {
   feltRect: RectLike;
   usableBounds: RectLike;
   usableCenter: Point;
+  dealCenter: Point;
   seatOrigins: Record<VisualSeat, Point>;
   dealTargets: Record<VisualSeat, Point>;
   trickSlots: Record<VisualSeat, Point>;
@@ -105,25 +106,29 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
     3: input.rightSeatRect ? centerOf(input.rightSeatRect, feltRect) : fallback[3],
   };
 
-  // Card dealing always targets four stable cardinal points on the playable felt,
-  // never the avatar/seat centers. This keeps dealer-selection and normal dealing
-  // aligned to bottom / left / top / right even when seat cards resize or move.
+  // Dealing has its own geometry. It is intentionally independent from seat/avatar rectangles.
+  // The source is the exact felt center and destinations are four symmetric cardinal points.
+  const dealCenter: Point = { x: width / 2, y: height / 2 };
+  const dealRadiusX = Math.max(cardWidth * 1.8, width * 0.28);
+  const dealRadiusY = Math.max(cardHeight * 1.35, height * 0.28);
+  const horizontalMargin = cardWidth * 0.6;
+  const verticalMargin = cardHeight * 0.6;
   const dealTargets: Record<VisualSeat, Point> = {
     0: {
-      x: usableCenter.x,
-      y: Math.max(usableCenter.y, usableBounds.bottom - cardHeight * 0.52),
+      x: dealCenter.x,
+      y: clamp(dealCenter.y + dealRadiusY, verticalMargin, height - verticalMargin),
     },
     1: {
-      x: Math.min(usableCenter.x, usableBounds.left + cardWidth * 0.52),
-      y: usableCenter.y,
+      x: clamp(dealCenter.x - dealRadiusX, horizontalMargin, width - horizontalMargin),
+      y: dealCenter.y,
     },
     2: {
-      x: usableCenter.x,
-      y: Math.min(usableCenter.y, usableBounds.top + cardHeight * 0.52),
+      x: dealCenter.x,
+      y: clamp(dealCenter.y - dealRadiusY, verticalMargin, height - verticalMargin),
     },
     3: {
-      x: Math.max(usableCenter.x, usableBounds.right - cardWidth * 0.52),
-      y: usableCenter.y,
+      x: clamp(dealCenter.x + dealRadiusX, horizontalMargin, width - horizontalMargin),
+      y: dealCenter.y,
     },
   };
 
@@ -131,6 +136,7 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
     feltRect,
     usableBounds,
     usableCenter,
+    dealCenter,
     seatOrigins,
     dealTargets,
     trickSlots: {
@@ -150,6 +156,7 @@ function geometrySignature(value: Omit<TableGeometry, "epoch">): string {
     p(value.feltRect.width), p(value.feltRect.height),
     p(value.usableBounds.left), p(value.usableBounds.top),
     p(value.usableBounds.right), p(value.usableBounds.bottom),
+    p(value.dealCenter.x), p(value.dealCenter.y),
     ...([0, 1, 2, 3] as VisualSeat[]).flatMap((seat) => [
       p(value.seatOrigins[seat].x), p(value.seatOrigins[seat].y),
       p(value.dealTargets[seat].x), p(value.dealTargets[seat].y),
