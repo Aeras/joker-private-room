@@ -1,10 +1,10 @@
 import { CANONICAL_BOTS } from '../../../supabase/functions/_shared/bot-catalog';
-import { createInitialDealerBootstrapState, resolveDealerBootstrapAndInitializeDealOne } from '@/domain/dealerBootstrap';
+import { activateDealOneAfterPresentation, createInitialDealerBootstrapState, resolveDealerBootstrapAndInitializeDealOne } from '@/domain/dealerBootstrap';
 import type { CanonicalGameState } from '@/domain/gameState';
 
 export function reconciliationFixture(rulesetId: import("@/domain/rulesets").RulesetId = "popular", targetPresent = false): CanonicalGameState {
   const bots = [CANONICAL_BOTS[0]!, CANONICAL_BOTS[2]!, CANONICAL_BOTS[4]!, CANONICAL_BOTS[5]!];
-  const state = resolveDealerBootstrapAndInitializeDealOne({
+  const barrier = resolveDealerBootstrapAndInitializeDealOne({
     state: createInitialDealerBootstrapState({
       gameId: '00000000-0000-4000-8000-000000000201',
       roomId: '00000000-0000-4000-8000-000000000202',
@@ -23,6 +23,7 @@ export function reconciliationFixture(rulesetId: import("@/domain/rulesets").Rul
     dealOneShuffleRandom: () => 0.271828,
     serverNow: new Date().toISOString(),
   });
+  const state = activateDealOneAfterPresentation(barrier, new Date().toISOString());
   if (targetPresent) { state.seats[1].controller = 'temporary_bot'; state.seats[1].reclaimable = true; state.timing.currentHumanDeadline = null; }
   return state;
 }
