@@ -14,7 +14,7 @@ const deno = readFileSync(
 describe("JK-002 zero-client Edge reconciler", () => {
   it("reuses the one canonical reconciliation core instead of implementing a second game engine", () => {
     expect(edge).toContain("advanceGameUntilBlockedWithDependencies");
-    expect(edge).toContain("MAX_SYNCHRONOUS_BOT_STEPS");
+    expect(edge).toContain("PRESENTATION_SAFE_AUTOMATIC_STEP_BUDGET");
     expect(edge).not.toContain("applyGameplayCommand(");
     expect(edge).not.toContain("applyOverdueTimeout(");
     expect(edge).not.toContain("settleCanonicalLifecycle(");
