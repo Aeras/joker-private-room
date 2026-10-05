@@ -54,10 +54,10 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   }, [projection.progression.cardsPerPlayer, projection.progression.dealerSeat, stage, stageKey]);
   const clearTimers = useCallback(() => { for (const timer of timers.current) window.clearTimeout(timer); timers.current = []; }, []);
   const clearPresentation = useCallback(() => { clearTimers(); setBeats([]); setVisibleIndex(-1); setRunGeometry(null); onActiveChangeRef.current?.(false); }, [clearTimers]);
-  const notifyCompletion = useCallback((key: string, completedStage: DealPresentationStage, startup: boolean) => {
+  const notifyCompletion = useCallback((key: string, presentationStage: DealPresentationStage, startup: boolean) => {
     if (acknowledgedStageKey.current === key) return;
     acknowledgedStageKey.current = key;
-    onPresentationCompleteRef.current?.(completedStage);
+    onPresentationCompleteRef.current?.(presentationStage);
     if (startup) onSequenceCompleteRef.current?.();
   }, []);
   useLayoutEffect(() => {
