@@ -5,6 +5,7 @@ import { playGameSound } from "@/lib/gameAudio";
 import { recordTimingDiagnostic, startTimingDiagnosticSession } from "@/lib/timingDiagnostics";
 import { PlayingCard } from "../joker/PlayingCard";
 import {
+  NORMAL_DEAL_TRAVEL_MS,
   dealPresentationStageKey,
   dealPresentationStorageKey,
   dealPresentationTiming,
@@ -21,10 +22,10 @@ type DealBeat = {
 type Stage = "initial" | "remaining" | "full";
 
 const FALLBACK_TARGET: Record<VisualSeat, string> = {
-  0: "translate(-50%, 42vh)",
-  1: "translate(-43vw, -50%)",
-  2: "translate(-50%, -38vh)",
-  3: "translate(38vw, -50%)",
+  0: "translate(-50%, 30vh)",
+  1: "translate(-30vw, -50%)",
+  2: "translate(-50%, -30vh)",
+  3: "translate(30vw, -50%)",
 };
 
 function stageFor(projection: PlayerGameProjection): Stage | null {
@@ -78,16 +79,30 @@ function TravelingBack({ beat, pos, geometry }: { beat: DealBeat; pos: VisualSea
 
   if (!geometry) {
     return (
-      <div className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform duration-260 ease-out motion-reduce:duration-75" style={{ transform: arrived ? FALLBACK_TARGET[pos] : "translate(-50%, -50%) scale(.58)" }}>
+      <div
+        className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform ease-out"
+        style={{
+          transitionDuration: `${NORMAL_DEAL_TRAVEL_MS}ms`,
+          transform: arrived ? FALLBACK_TARGET[pos] : "translate(-50%, -50%) scale(.58)",
+        }}
+      >
         <PlayingCard faceDown />
       </div>
     );
   }
 
-  const source = viewportPoint(geometry, geometry.usableCenter);
+  const source = viewportPoint(geometry, geometry.dealCenter);
   const target = viewportPoint(geometry, geometry.dealTargets[pos]);
   return (
-    <div className="absolute [--card-w:clamp(1.8rem,4vw,3rem)] transition-[left,top,transform] duration-260 ease-out motion-reduce:duration-75" style={{ left: arrived ? target.x : source.x, top: arrived ? target.y : source.y, transform: `translate(-50%, -50%) scale(${arrived ? 1 : 0.58})` }}>
+    <div
+      className="absolute [--card-w:clamp(1.8rem,4vw,3rem)] transition-[left,top,transform] ease-out"
+      style={{
+        left: arrived ? target.x : source.x,
+        top: arrived ? target.y : source.y,
+        transitionDuration: `${NORMAL_DEAL_TRAVEL_MS}ms`,
+        transform: `translate(-50%, -50%) scale(${arrived ? 1 : 0.58})`,
+      }}
+    >
       <PlayingCard faceDown />
     </div>
   );
@@ -118,7 +133,6 @@ export function DealPresentation({
   const onSequenceCompleteRef = useRef(onSequenceComplete);
   onActiveChangeRef.current = onActiveChange;
   onSequenceCompleteRef.current = onSequenceComplete;
-  const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   const stage = stageFor(projection);
   const stageKey = stage
@@ -189,11 +203,20 @@ export function DealPresentation({
     setVisibleIndex(-1);
     if (stage !== "remaining") playGameSound("shuffle", `${projection.gameId}:${projection.progression.dealNumber}`);
 
-    const { staggerMs, tailMs } = dealPresentationTiming(Boolean(reducedMotion));
+    const { staggerMs, tailMs } = dealPresentationTiming(false);
     recordTimingDiagnostic("deal_sequence_start", {
-      reducedMotion: Boolean(reducedMotion), stage, dealNumber: projection.progression.dealNumber,
-      dealerSeat: projection.progression.dealerSeat ?? -1, cardCount: frozenSequence.length,
-      staggerMs, travelMs: reducedMotion ? 75 : 260, tailMs, frozenGeometryEpoch: frozenGeometry?.epoch ?? 0,
+      browserReducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
+      gameplayReducedMotionOverride: false,
+      stage,
+      dealNumber: projection.progression.dealNumber,
+      dealerSeat: projection.progression.dealerSeat ?? -1,
+      cardCount: frozenSequence.length,
+      staggerMs,
+      travelMs: NORMAL_DEAL_TRAVEL_MS,
+      tailMs,
+      frozenGeometryEpoch: frozenGeometry?.epoch ?? 0,
+      dealCenterX: frozenGeometry?.dealCenter.x ?? null,
+      dealCenterY: frozenGeometry?.dealCenter.y ?? null,
     });
 
     frozenSequence.forEach((beat, index) => {
@@ -211,7 +234,7 @@ export function DealPresentation({
       clearPresentation();
       if (projection.progression.phase === "DEAL_SETUP") acknowledge(stageKey);
     }, completeAt));
-  }, [acknowledge, clearPresentation, geometry, paused, projection.gameId, projection.progression.dealNumber, projection.progression.phase, projection.viewerSeat, reducedMotion, sequence, stage, stageKey]);
+  }, [acknowledge, clearPresentation, geometry, paused, projection.gameId, projection.progression.dealNumber, projection.progression.phase, projection.viewerSeat, sequence, stage, stageKey]);
 
   useLayoutEffect(() => {
     const visibility = () => {
