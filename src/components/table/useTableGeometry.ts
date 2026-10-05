@@ -22,6 +22,7 @@ export interface TableGeometry {
   usableBounds: RectLike;
   usableCenter: Point;
   seatOrigins: Record<VisualSeat, Point>;
+  dealTargets: Record<VisualSeat, Point>;
   trickSlots: Record<VisualSeat, Point>;
   localHandCenter: Point;
   trickCardSize: { width: number; height: number };
@@ -104,11 +105,34 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
     3: input.rightSeatRect ? centerOf(input.rightSeatRect, feltRect) : fallback[3],
   };
 
+  // Card dealing always targets four stable cardinal points on the playable felt,
+  // never the avatar/seat centers. This keeps dealer-selection and normal dealing
+  // aligned to bottom / left / top / right even when seat cards resize or move.
+  const dealTargets: Record<VisualSeat, Point> = {
+    0: {
+      x: usableCenter.x,
+      y: Math.max(usableCenter.y, usableBounds.bottom - cardHeight * 0.52),
+    },
+    1: {
+      x: Math.min(usableCenter.x, usableBounds.left + cardWidth * 0.52),
+      y: usableCenter.y,
+    },
+    2: {
+      x: usableCenter.x,
+      y: Math.min(usableCenter.y, usableBounds.top + cardHeight * 0.52),
+    },
+    3: {
+      x: Math.max(usableCenter.x, usableBounds.right - cardWidth * 0.52),
+      y: usableCenter.y,
+    },
+  };
+
   return {
     feltRect,
     usableBounds,
     usableCenter,
     seatOrigins,
+    dealTargets,
     trickSlots: {
       0: { x: usableCenter.x, y: usableCenter.y + verticalOffset },
       1: { x: usableCenter.x - horizontalOffset, y: usableCenter.y },
@@ -128,6 +152,7 @@ function geometrySignature(value: Omit<TableGeometry, "epoch">): string {
     p(value.usableBounds.right), p(value.usableBounds.bottom),
     ...([0, 1, 2, 3] as VisualSeat[]).flatMap((seat) => [
       p(value.seatOrigins[seat].x), p(value.seatOrigins[seat].y),
+      p(value.dealTargets[seat].x), p(value.dealTargets[seat].y),
     ]),
   ].join(":");
 }
