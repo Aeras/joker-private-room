@@ -11,6 +11,41 @@ function timingForActor(state: CanonicalGameState, actor: SeatIndex, serverNow: 
   };
 }
 
+/**
+ * A freshly-created chooser-style nine-card deal is intentionally converted
+ * into a non-interactive presentation stage before persistence. The cards and
+ * chooser identity are already canonical, but no actor/deadline may run until
+ * the 3x4 initial deal has actually been shown.
+ */
+export function holdNineCardInitialDealForPresentation(state: CanonicalGameState): CanonicalGameState {
+  if (
+    state.lifecycle !== "active" ||
+    state.progression.phase !== "NINE_CARD_TRUMP_CHOICE" ||
+    state.progression.cardsPerPlayer !== 9 ||
+    state.progression.dealerSeat == null ||
+    state.progression.firstDeclarerSeat == null ||
+    state.trump.status !== "chooser_pending" ||
+    state.cards.hands.some((hand) => hand.length !== 3) ||
+    !state.cards.hiddenPartialNineCardHands
+  ) return state;
+
+  return {
+    ...state,
+    progression: {
+      ...state.progression,
+      phase: "NINE_CARD_INITIAL_DEAL_ALL_SEATS",
+      currentActorSeat: null,
+    },
+    declarations: {
+      ...state.declarations,
+      currentDeclarerSeat: null,
+      legalValues: [],
+      forbiddenDealerValue: null,
+    },
+    timing: { currentHumanDeadline: null, timeoutTakeoverActive: false },
+  };
+}
+
 export function activateNineCardTrumpChoiceAfterPresentation(
   state: CanonicalGameState,
   serverNow: string,
