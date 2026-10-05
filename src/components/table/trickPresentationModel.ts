@@ -1,12 +1,14 @@
 import type { PlayedCard } from "@/domain/engine";
 
-export const NORMAL_TRICK_PLAY_SPACING_MS = 500;
-export const REDUCED_TRICK_PLAY_SPACING_MS = 100;
-export const NORMAL_TRICK_HOLD_MS = 850;
-export const NORMAL_TRICK_COLLECT_MS = 260;
+// Keep live bot/remote plays visibly sequential. The next visible play should not
+// begin until the previous card has had time to settle on the felt.
+export const NORMAL_TRICK_PLAY_SPACING_MS = 650;
+export const REDUCED_TRICK_PLAY_SPACING_MS = 120;
+export const NORMAL_TRICK_HOLD_MS = 900;
+export const NORMAL_TRICK_COLLECT_MS = 300;
 export const REDUCED_TRICK_HOLD_MS = 180;
 export const REDUCED_TRICK_COLLECT_MS = 100;
-export const COLLISION_FAST_FORWARD_MS = 140;
+export const COLLISION_FAST_FORWARD_MS = 160;
 
 export function completedTrickPresentationId(input: {
   gameId: string;
