@@ -49,7 +49,7 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
     ? relativeTransform(collectTarget, center, ROTATION[pos], 0.58, 180)
     : departedTransform(arrived, faceDown, landing, origin, center, pos);
   return <div className={cn("absolute left-0 top-0 transition-all duration-[340ms] ease-out motion-reduce:duration-75 [transform-style:preserve-3d]", winner && departingStage && "z-30 drop-shadow-[0_0_16px_var(--gold)]", collecting && !winner && "opacity-85")} style={{ transform }}>
-    <PlayingCard card={faceDown ? undefined : play.card} faceDown={faceDown} />
+    {faceDown ? <PlayingCard faceDown /> : <PlayingCard card={play.card} />}
   </div>;
 }
 function departedTransform(arrived: boolean, faceDown: boolean, landing: Point, origin: Point, center: Point, pos: Pos): string {
