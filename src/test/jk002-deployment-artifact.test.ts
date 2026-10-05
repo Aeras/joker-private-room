@@ -124,12 +124,14 @@ describe('JK-002 executable deployment artifact', () => {
   }, 30000);
   }
   it('releases claims after a crash and retries without changing the internal action identity', async () => {
-    reset(); failPersist = true;
+    reset();
+    const initialVersion = state.stateVersion;
+    failPersist = true;
     const failed = await invoke();
     expect(failed.body.results[0]).toMatchObject({ ok: false, code: 'SERVICE_UNAVAILABLE' });
-    expect(state.stateVersion).toBe(2); expect(releases).toBe(1); expect(claimed).toBe(false);
+    expect(state.stateVersion).toBe(initialVersion); expect(releases).toBe(1); expect(claimed).toBe(false);
     failPersist = false; consumed = false;
     expect((await invoke()).body.results[0].ok).toBe(true);
-    expect(state.stateVersion).toBeGreaterThan(2);
+    expect(state.stateVersion).toBeGreaterThan(initialVersion);
   });
 });
