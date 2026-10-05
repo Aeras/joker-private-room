@@ -105,9 +105,34 @@ function visibleOwnHand(state: CanonicalGameState, seat: SeatIndex): { hand: Car
   if (state.progression.phase === "INITIAL_DEALER_SELECTION" || state.progression.phase === "DEAL_SETUP") {
     return { hand: [], visible: false };
   }
-  if (!state.cards.hiddenPartialNineCardHands) return { hand: state.cards.hands[seat].slice(), visible: true };
-  if (state.trump.status === "chooser_pending" && state.trump.chooserSeat === seat) return { hand: state.cards.hands[seat].slice(), visible: true };
+  const hand = state.cards.hands[seat].slice();
+  const pendingJokerId =
+    state.progression.phase === "JOKER_DECISION" && state.joker.pendingForSeat === seat
+      ? state.joker.cardId
+      : null;
+  const presentedHand = pendingJokerId ? hand.filter((card) => card.id !== pendingJokerId) : hand;
+  if (!state.cards.hiddenPartialNineCardHands) return { hand: presentedHand, visible: true };
+  if (state.trump.status === "chooser_pending" && state.trump.chooserSeat === seat) return { hand: presentedHand, visible: true };
   return { hand: [], visible: false };
+}
+
+function projectedCurrentTrick(state: CanonicalGameState): PlayedCard[] {
+  const current = state.cards.currentTrick.map((play) => ({ ...play, card: { ...play.card } }));
+  if (
+    state.progression.phase !== "JOKER_DECISION" ||
+    state.joker.pendingForSeat == null ||
+    !state.joker.cardId ||
+    current.some((play) => play.card.id === state.joker.cardId)
+  ) return current;
+
+  const pendingCard = state.cards.hands[state.joker.pendingForSeat]
+    .find((card) => card.id === state.joker.cardId);
+  if (!pendingCard || pendingCard.kind !== "joker") return current;
+
+  // Presentation-only pending play: the canonical card remains in the hand
+  // until its semantic choice is committed, but every viewer should see the
+  // already-thrown Joker stay on the table while that choice is pending.
+  return [...current, { seatIndex: state.joker.pendingForSeat, card: { ...pendingCard } }];
 }
 
 function resolvedTrump(state: CanonicalGameState): Suit | null {
@@ -219,7 +244,7 @@ export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex, r
       ownHand: displayedOwnHand,
       ownHandVisible: own.visible,
       exposedTrumpCard: state.cards.exposedTrumpCard,
-      currentTrick: state.cards.currentTrick.map((play) => ({ ...play, card: { ...play.card } })),
+      currentTrick: projectedCurrentTrick(state),
       completedTricks: state.cards.completedTricks.map((trick) => ({
         winnerSeat: trick.winnerSeat,
         cards: trick.cards.map((play) => ({ ...play, card: { ...play.card } })),
