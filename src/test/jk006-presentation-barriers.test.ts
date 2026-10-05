@@ -48,7 +48,7 @@ describe("JK-006 presentation barriers", () => {
     expect(NINE_CARD_REMAINING_PRESENTATION_FALLBACK_MS).toBe(15_000);
     const state = read("src/domain/gameState.ts");
     const reconciliation = read("src/server/reconciliationCore.ts");
-    const migration = read("supabase/migrations/20261005174500_jk006_nine_card_presentation_wake.sql");
+    const migration = read("supabase/migrations/20261005190038_jk006_nine_card_presentation_wake.sql");
     expect(state).toContain("presentationReadyAt?: string | null");
     expect(reconciliation).toContain("PRESENTATION_BARRIER");
     expect(reconciliation).toContain("nineCardPresentationFallbackIsDue");
