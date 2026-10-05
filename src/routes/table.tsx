@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Play } from "lucide-react";
 import { jButton } from "@/components/joker/JButton";
 import { DialogueOverlay } from "@/components/table/DialogueOverlay";
+import { dealPresentationStageKey, dealPresentationWasCompleted } from "@/components/table/dealPresentationModel";
+import { dealerSelectionPresentationKey } from "@/components/table/dealerSelectionPresentationModel";
 import { GameTable } from "@/components/table/GameTable";
 import { TableMessaging } from "@/components/table/TableMessaging";
 import {
@@ -71,6 +73,35 @@ function stableReplyBucket(input: string): number {
   return hash >>> 0;
 }
 
+type StartupPresentationStage = "idle" | "dealer" | "deal" | "ack";
+
+function storageHas(key: string | null): boolean {
+  if (!key || typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function startupPresentationStage(projection: PlayerGameProjection | null): StartupPresentationStage {
+  if (!projection || projection.lifecycle !== "starting" || projection.progression.phase !== "DEAL_SETUP") return "idle";
+  const selection = projection.initialDealerSelection;
+  if (!selection || selection.status !== "resolved") return "idle";
+
+  const dealerKey = dealerSelectionPresentationKey(projection);
+  if (!storageHas(dealerKey)) return "dealer";
+
+  const dealKey = dealPresentationStageKey(
+    projection.gameId,
+    projection.progression.dealNumber,
+    projection.progression.dealerSeat,
+    "full",
+  );
+  if (!dealPresentationWasCompleted(dealKey)) return "deal";
+  return "ack";
+}
+
 function TablePage() {
   const { code, gameId } = Route.useSearch();
   const [room, setRoom] = useState<Room | null>(null);
@@ -79,6 +110,7 @@ function TablePage() {
   const [messages, setMessages] = useState<DialogueMessage[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<TableConnectionStatus>("initial-loading");
   const [tableEpoch, setTableEpoch] = useState(0);
+  const [presentationTick, setPresentationTick] = useState(0);
   const [busy, setBusy] = useState(false);
   const [dialogueBusy, setDialogueBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +124,7 @@ function TablePage() {
   const previousProjectionRef = useRef<PlayerGameProjection | null>(null);
   const seenDialogueMessages = useRef(new Set<string>());
   const readySent = useRef<boolean | null>(null);
-  const presentationAckKey = useRef<string | null>(null);
+  const presentationAckInFlight = useRef<string | null>(null);
 
   const updateConnectionStatus = useCallback((status: TableConnectionStatus) => {
     connectionStatusRef.current = status;
@@ -262,27 +294,49 @@ function TablePage() {
   }, [connectionStatus, gameId, geometryReady, landscape, projection?.lifecycle, projection?.progression.phase, visible]);
 
   useEffect(() => {
-    if (!gameId || !projection || projection.lifecycle !== "starting" || projection.progression.phase !== "DEAL_SETUP") return;
+    if (projection?.lifecycle !== "starting" || projection.progression.phase !== "DEAL_SETUP") return;
+    const timer = window.setInterval(() => setPresentationTick((value) => value + 1), 50);
+    return () => window.clearInterval(timer);
+  }, [projection?.gameId, projection?.lifecycle, projection?.progression.phase]);
+
+  const presentationStage = startupPresentationStage(projection);
+  void presentationTick;
+
+  useEffect(() => {
+    if (!gameId || !projection || presentationStage !== "ack" || !landscape || !visible) return;
     const selection = projection.initialDealerSelection;
     if (!selection || selection.status !== "resolved") return;
     const key = `${gameId}:${selection.resolvedAtStateVersion}`;
-    if (presentationAckKey.current === key || !landscape || !visible) return;
+    if (presentationAckInFlight.current === key) return;
 
-    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
-    const dealerMs = reduced
-      ? 90 + selection.revealedSelectionCards.length * 90 + 160
-      : 300 + selection.revealedSelectionCards.length * 350 + 700;
-    const dealMs = reduced ? 4 * 90 + 120 : 4 * 350 + 320;
-    const timer = window.setTimeout(() => {
-      presentationAckKey.current = key;
-      void completeProjectedStartPresentation({ data: { gameId } }).then((result) => {
-        if (!result.ok || !mounted.current) return;
-        const currentRoom = roomRef.current;
-        if (currentRoom) acceptSnapshot(currentRoom, result.projection);
-      });
-    }, dealerMs + dealMs + 750);
-    return () => window.clearTimeout(timer);
-  }, [acceptSnapshot, gameId, landscape, projection, visible]);
+    let cancelled = false;
+    let retryTimer = 0;
+    const sendAck = async () => {
+      if (cancelled || presentationAckInFlight.current === key) return;
+      presentationAckInFlight.current = key;
+      try {
+        const result = await completeProjectedStartPresentation({ data: { gameId } });
+        if (cancelled || !mounted.current) return;
+        if (result.ok) {
+          const currentRoom = roomRef.current;
+          if (currentRoom) acceptSnapshot(currentRoom, result.projection);
+          return;
+        }
+        setError(gameplayFailureMessage(result.code));
+      } catch {
+        if (!cancelled && mounted.current) setError("Η ολοκλήρωση του μοιράσματος δεν επιβεβαιώθηκε. Γίνεται νέα προσπάθεια…");
+      }
+      presentationAckInFlight.current = null;
+      if (!cancelled) retryTimer = window.setTimeout(() => void sendAck(), 1000);
+    };
+
+    void sendAck();
+    return () => {
+      cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      if (presentationAckInFlight.current === key) presentationAckInFlight.current = null;
+    };
+  }, [acceptSnapshot, gameId, landscape, presentationStage, projection?.initialDealerSelection, visible]);
 
   const submit = async (command: GameplayCommand): Promise<PlayerGameProjection | null> => {
     if (!projection || busy || connectionStatusRef.current !== "ready") return null;
@@ -375,10 +429,16 @@ function TablePage() {
   const waitingForPlay = projection.lifecycle === "starting" && projection.progression.phase === "INITIAL_DEALER_SELECTION";
   const humanCount = readiness?.humans.length ?? room.seats.filter((seat) => seat.occupant.type === "human").length;
   const readyCount = readiness ? readiness.humans.filter((human) => human.ready).length : null;
+  const tableProjection: PlayerGameProjection = presentationStage === "dealer"
+    ? {
+        ...projection,
+        progression: { ...projection.progression, phase: "INITIAL_DEALER_SELECTION" },
+      }
+    : projection;
 
   return (
     <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
-      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={projection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} />
+      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} />
       <TableMessaging key={projection.gameId} room={room} projection={projection} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} onSend={sendDialogue} />
 
