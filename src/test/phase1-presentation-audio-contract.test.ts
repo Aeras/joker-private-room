@@ -24,16 +24,18 @@ describe("JK-001 Phase 1 / JK-006 presentation authority", () => {
   });
 
   it("uses session-scoped presentation markers and clears on reconnect/interruption", () => {
-    expect(deal).toContain("sessionStorage.getItem(presentationStorageKey(stageKey))");
-    expect(deal).toContain("sessionStorage.setItem(presentationStorageKey(stageKey), \"1\")");
+    expect(deal).toContain("dealPresentationStorageKey(stageKey)");
+    expect(deal).toContain("sessionStorage.setItem(dealPresentationStorageKey(stageKey), \"1\")");
+    expect(deal).toContain("dealPresentationWasCompleted(stageKey)");
     expect(deal).toContain("for (const timer of timers.current) window.clearTimeout(timer)");
     expect(deal).toContain('window.addEventListener("orientationchange", interrupt)');
     expect(deal).toContain('document.addEventListener("visibilitychange", visibility)');
   });
 
-  it("animates deal backs and committed cards from measured origins toward viewer-relative destinations", () => {
+  it("animates deal backs from true felt-center geometry and committed cards from measured seat origins", () => {
     expect(deal).toContain("window.requestAnimationFrame(() => setArrived(true))");
-    expect(deal).toContain("geometry.seatOrigins[pos]");
+    expect(deal).toContain("geometry.dealCenter");
+    expect(deal).toContain("geometry.dealTargets[pos]");
     expect(trick).toContain("geometry?.seatOrigins[pos]");
     expect(trick).toContain("geometry.trickSlots[pos]");
     expect(trick).toContain("window.requestAnimationFrame(() => setArrived(true))");
@@ -68,8 +70,9 @@ describe("JK-001 Phase 1 / JK-006 presentation authority", () => {
 
   it("integrates measured presentation layers without changing gameplay command semantics", () => {
     expect(table).toContain("<TrickPresentation");
+    expect(table).toContain("<DealPresentation");
     expect(table).toContain("geometry={tableGeometry.geometry}");
-    expect(table).toContain("<DealPresentation projection={projection} geometry={tableGeometry.geometry} paused={dealerIntroActive} />");
+    expect(table).toContain("paused={dealerIntroActive}");
     expect(table).toContain('await onCommand({ type: "play_card", cardId })');
   });
 });

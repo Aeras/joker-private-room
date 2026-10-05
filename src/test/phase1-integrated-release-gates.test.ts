@@ -66,13 +66,14 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
     expect(table).not.toContain("await playGameSound");
   });
 
-  it("supports interruption and reduced motion without replaying history", () => {
+  it("supports interruption while keeping dealing timing independent from browser reduced motion", () => {
     expect(gesture).toContain('window.addEventListener("orientationchange"');
     expect(deal).toContain('window.addEventListener("orientationchange", interrupt)');
     expect(trick).toContain('window.addEventListener("orientationchange", interrupt)');
-    expect(deal).toContain("prefers-reduced-motion: reduce");
+    expect(deal).not.toContain("motion-reduce:duration-75");
+    expect(deal).toContain("dealPresentationTiming(false)");
     expect(trick).toContain("prefers-reduced-motion: reduce");
-    expect(deal).toContain("sessionStorage.getItem(presentationStorageKey(stageKey))");
+    expect(deal).toContain("dealPresentationWasCompleted(stageKey)");
     expect(trick).toContain("firstRender.current");
   });
 

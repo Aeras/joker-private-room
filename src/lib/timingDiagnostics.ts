@@ -7,8 +7,7 @@ import {
 import {
   NORMAL_DEAL_STAGGER_MS,
   NORMAL_DEAL_TAIL_MS,
-  REDUCED_DEAL_STAGGER_MS,
-  REDUCED_DEAL_TAIL_MS,
+  NORMAL_DEAL_TRAVEL_MS,
 } from "@/components/table/dealPresentationModel";
 import {
   NORMAL_TRICK_COLLECT_MS,
@@ -65,6 +64,7 @@ export function startTimingDiagnosticSession(gameId: string): void {
   recordTimingDiagnostic("session_start", {
     gameId,
     reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
+    gameplayDealMotionOverride: "fixed",
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
     devicePixelRatio: window.devicePixelRatio,
@@ -85,26 +85,27 @@ export function recordTimingDiagnostic(event: string, details: DiagnosticDetails
 }
 
 function activeRuntimeTimings() {
-  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  const browserReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   return {
-    reducedMotion,
+    reducedMotion: browserReducedMotion,
+    gameplayDealMotionOverride: "fixed",
     dealer: {
-      cueMs: reducedMotion ? 90 : DEALER_START_CUE_MS,
-      spacingMs: reducedMotion ? 90 : DEALER_SELECTION_STAGGER_MS,
-      travelMs: reducedMotion ? 75 : DEALER_SELECTION_CARD_TRAVEL_MS,
-      winnerHoldMs: reducedMotion ? 160 : DEALER_SELECTION_WINNER_HOLD_MS,
+      cueMs: DEALER_START_CUE_MS,
+      spacingMs: DEALER_SELECTION_STAGGER_MS,
+      travelMs: DEALER_SELECTION_CARD_TRAVEL_MS,
+      winnerHoldMs: DEALER_SELECTION_WINNER_HOLD_MS,
     },
     normalDeal: {
-      spacingMs: reducedMotion ? REDUCED_DEAL_STAGGER_MS : NORMAL_DEAL_STAGGER_MS,
-      travelMs: reducedMotion ? 75 : 260,
-      tailMs: reducedMotion ? REDUCED_DEAL_TAIL_MS : NORMAL_DEAL_TAIL_MS,
+      spacingMs: NORMAL_DEAL_STAGGER_MS,
+      travelMs: NORMAL_DEAL_TRAVEL_MS,
+      tailMs: NORMAL_DEAL_TAIL_MS,
     },
     trick: {
-      playSpacingMs: reducedMotion ? REDUCED_TRICK_PLAY_SPACING_MS : NORMAL_TRICK_PLAY_SPACING_MS,
-      holdMs: reducedMotion ? REDUCED_TRICK_HOLD_MS : NORMAL_TRICK_HOLD_MS,
-      collectMs: reducedMotion ? REDUCED_TRICK_COLLECT_MS : NORMAL_TRICK_COLLECT_MS,
-      cardTransitionMs: reducedMotion ? 75 : 300,
-      localFlightMs: reducedMotion ? 75 : 300,
+      playSpacingMs: browserReducedMotion ? REDUCED_TRICK_PLAY_SPACING_MS : NORMAL_TRICK_PLAY_SPACING_MS,
+      holdMs: browserReducedMotion ? REDUCED_TRICK_HOLD_MS : NORMAL_TRICK_HOLD_MS,
+      collectMs: browserReducedMotion ? REDUCED_TRICK_COLLECT_MS : NORMAL_TRICK_COLLECT_MS,
+      cardTransitionMs: browserReducedMotion ? 75 : 300,
+      localFlightMs: browserReducedMotion ? 75 : 300,
     },
     polling: {
       gameStateMs: 1500,
