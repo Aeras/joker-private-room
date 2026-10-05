@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { selectAutomaticGameplayCommand } from "@/bots/runtime";
-import { resolveDealerBootstrapAndInitializeDealOne, createInitialDealerBootstrapState } from "@/domain/dealerBootstrap";
+import { activateDealOneAfterPresentation, resolveDealerBootstrapAndInitializeDealOne, createInitialDealerBootstrapState } from "@/domain/dealerBootstrap";
 import { applyGameplayCommand } from "@/domain/gameplayCommands";
 import { settleCanonicalLifecycle } from "@/domain/gameLifecycle";
 import { projectGameForSeat } from "@/domain/projection";
@@ -44,13 +44,14 @@ function mixedTierGame(seed: number): CanonicalGameState {
     ],
   });
 
-  return resolveDealerBootstrapAndInitializeDealOne({
+  const barrier = resolveDealerBootstrapAndInitializeDealOne({
     state: pending,
     firstRecipientRandom: random,
     selectionShuffleRandom: random,
     dealOneShuffleRandom: random,
     serverNow: "2026-10-04T08:00:00.000Z",
   });
+  return activateDealOneAfterPresentation(barrier, "2026-10-04T08:00:05.000Z");
 }
 
 function simulate(seed: number): CanonicalGameState {
