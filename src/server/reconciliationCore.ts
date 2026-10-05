@@ -3,6 +3,7 @@ import { planAutomaticGameplayStep, type AutomaticStepStopReason } from "@/bots/
 import { applyOverdueTimeout, isSoloHumanPaused } from "@/domain/controller";
 import { settleCanonicalLifecycle } from "@/domain/gameLifecycle";
 import type { CanonicalGameState } from "@/domain/gameState";
+import { holdNineCardInitialDealForPresentation } from "@/domain/nineCardPresentation";
 import { randomIterator } from "@/server/internalDeterminism";
 
 export type ReconciliationFailureCode =
@@ -121,18 +122,22 @@ async function lifecycleTransition(
   if (!transition.ok) return { kind: "failure", result: { ok: false, code: "INVALID_CANONICAL_STATE" } };
   if (!transition.changed) return { kind: "none" };
 
+  // Chooser-style 9-card deals are persisted at an explicit presentation
+  // barrier. The same lifecycle transition/version prepares the 3-card hands,
+  // but no actor/deadline is released until presentation completion is acked.
+  const nextState = holdNineCardInitialDealForPresentation(transition.state);
   const phase = state.progression.phase;
   const actionId = await dependencies.actionId(
     gameId,
     `lifecycle-v1:${loaded.stateVersion}:${state.progression.dealNumber}:${phase}`,
   );
 
-  const persisted = transition.state.lifecycle === "complete"
+  const persisted = nextState.lifecycle === "complete"
     ? await dependencies.finalize({
         gameId,
         actionId,
         expectedStateVersion: loaded.stateVersion,
-        newState: transition.state,
+        newState: nextState,
       })
     : await dependencies.persist({
         gameId,
@@ -145,15 +150,16 @@ async function lifecycleTransition(
           round: state.progression.round,
           fromPhase: phase,
           transition: transition.transition,
+          presentationBarrier: nextState.progression.phase === "NINE_CARD_INITIAL_DEAL_ALL_SEATS" ? "nine_card_initial" : null,
         },
-        newState: transition.state,
+        newState: nextState,
       });
 
   if (!persisted.ok) {
     if (persisted.code === "STALE_STATE") return { kind: "stale" };
     return { kind: "failure", result: failureFromPersist(persisted) };
   }
-  return transition.state.lifecycle === "complete"
+  return nextState.lifecycle === "complete"
     ? { kind: "complete", replayed: persisted.replayed }
     : { kind: "committed", replayed: persisted.replayed };
 }
