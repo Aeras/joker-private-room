@@ -17,15 +17,16 @@ type DealBeat = {
   id: string;
   seat: SeatIndex;
   index: number;
+  stackIndex: number;
 };
 
 type Stage = "initial" | "remaining" | "full";
 
 const FALLBACK_TARGET: Record<VisualSeat, string> = {
-  0: "translate(-50%, 30vh)",
-  1: "translate(-30vw, -50%)",
-  2: "translate(-50%, -30vh)",
-  3: "translate(30vw, -50%)",
+  0: "translate(-50%, 22vh)",
+  1: "translate(-26vw, -50%)",
+  2: "translate(-50%, -22vh)",
+  3: "translate(26vw, -50%)",
 };
 
 function stageFor(projection: PlayerGameProjection): Stage | null {
@@ -60,6 +61,13 @@ function viewportPoint(geometry: TableGeometry, local: Point): Point {
   };
 }
 
+function stackedTarget(base: Point, pos: VisualSeat, stackIndex: number): Point {
+  const offset = stackIndex * 6;
+  if (pos === 3) return { x: base.x - offset, y: base.y + stackIndex * 2 };
+  if (pos === 1) return { x: base.x + offset, y: base.y + stackIndex * 2 };
+  return { x: base.x + offset, y: base.y + stackIndex * 2 };
+}
+
 function markPresented(stageKey: string): void {
   if (typeof window === "undefined") return;
   try {
@@ -82,6 +90,7 @@ function TravelingBack({ beat, pos, geometry }: { beat: DealBeat; pos: VisualSea
       <div
         className="absolute left-1/2 top-1/2 [--card-w:clamp(1.8rem,4vw,3rem)] transition-transform ease-out"
         style={{
+          zIndex: 30 + beat.stackIndex,
           transitionDuration: `${NORMAL_DEAL_TRAVEL_MS}ms`,
           transform: arrived ? FALLBACK_TARGET[pos] : "translate(-50%, -50%) scale(.58)",
         }}
@@ -92,13 +101,15 @@ function TravelingBack({ beat, pos, geometry }: { beat: DealBeat; pos: VisualSea
   }
 
   const source = viewportPoint(geometry, geometry.dealCenter);
-  const target = viewportPoint(geometry, geometry.dealTargets[pos]);
+  const baseTarget = viewportPoint(geometry, geometry.dealTargets[pos]);
+  const target = stackedTarget(baseTarget, pos, beat.stackIndex);
   return (
     <div
       className="absolute [--card-w:clamp(1.8rem,4vw,3rem)] transition-[left,top,transform] ease-out"
       style={{
         left: arrived ? target.x : source.x,
         top: arrived ? target.y : source.y,
+        zIndex: 30 + beat.stackIndex,
         transitionDuration: `${NORMAL_DEAL_TRAVEL_MS}ms`,
         transform: `translate(-50%, -50%) scale(${arrived ? 1 : 0.58})`,
       }}
@@ -148,7 +159,12 @@ export function DealPresentation({
     if (!stage || projection.progression.dealerSeat == null) return [];
     const count = beatCount(projection, stage);
     const dealer = projection.progression.dealerSeat as SeatIndex;
-    return Array.from({ length: count }, (_, index) => ({ id: `${stageKey}:${index}`, seat: recipientFor(dealer, index), index }));
+    return Array.from({ length: count }, (_, index) => ({
+      id: `${stageKey}:${index}`,
+      seat: recipientFor(dealer, index),
+      index,
+      stackIndex: Math.floor(index / 4),
+    }));
   }, [projection.progression.cardsPerPlayer, projection.progression.dealerSeat, stage, stageKey]);
 
   const clearTimers = useCallback(() => {
@@ -260,13 +276,14 @@ export function DealPresentation({
   }, [clearPresentation, clearTimers, stageKey]);
 
   if (beats.length === 0 || visibleIndex < 0) return null;
-  const beat = beats[Math.min(visibleIndex, beats.length - 1)];
-  if (!beat) return null;
-  const pos = visualPosition(runViewerSeat, beat.seat);
+  const visibleBeats = beats.slice(0, visibleIndex + 1);
 
   return (
     <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true" data-deal-geometry-epoch={runGeometry?.epoch ?? 0}>
-      <TravelingBack key={beat.id} beat={beat} pos={pos} geometry={runGeometry} />
+      {visibleBeats.map((beat) => {
+        const pos = visualPosition(runViewerSeat, beat.seat);
+        return <TravelingBack key={beat.id} beat={beat} pos={pos} geometry={runGeometry} />;
+      })}
     </div>
   );
 }
