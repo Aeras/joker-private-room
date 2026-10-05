@@ -53,7 +53,7 @@ describe("JK-004 measured table geometry", () => {
     expect(geometry.seatOrigins[0]).toEqual({ x: 400, y: 460 });
   });
 
-  it("keeps dealing on four cardinal centers independent of avatar centers", () => {
+  it("keeps dealing symmetric around the exact felt center independent of avatars", () => {
     const geometry = computeTableGeometry({
       feltRect: rect(100, 50, 800, 400),
       topSeatRect: rect(430, 70, 140, 60),
@@ -63,13 +63,12 @@ describe("JK-004 measured table geometry", () => {
       viewportWidth: 900,
     });
 
-    expect(geometry.dealTargets[0].x).toBeCloseTo(geometry.usableCenter.x, 5);
-    expect(geometry.dealTargets[2].x).toBeCloseTo(geometry.usableCenter.x, 5);
-    expect(geometry.dealTargets[1].y).toBeCloseTo(geometry.usableCenter.y, 5);
-    expect(geometry.dealTargets[3].y).toBeCloseTo(geometry.usableCenter.y, 5);
-    expect(geometry.dealTargets[0].y).toBeGreaterThan(geometry.usableCenter.y);
-    expect(geometry.dealTargets[2].y).toBeLessThan(geometry.usableCenter.y);
-    expect(geometry.dealTargets[1].x).toBeLessThan(geometry.usableCenter.x);
-    expect(geometry.dealTargets[3].x).toBeGreaterThan(geometry.usableCenter.x);
+    expect(geometry.dealCenter).toEqual({ x: 400, y: 200 });
+    expect(geometry.dealTargets[0].x).toBe(geometry.dealCenter.x);
+    expect(geometry.dealTargets[2].x).toBe(geometry.dealCenter.x);
+    expect(geometry.dealTargets[1].y).toBe(geometry.dealCenter.y);
+    expect(geometry.dealTargets[3].y).toBe(geometry.dealCenter.y);
+    expect(geometry.dealTargets[0].y - geometry.dealCenter.y).toBeCloseTo(geometry.dealCenter.y - geometry.dealTargets[2].y, 5);
+    expect(geometry.dealTargets[3].x - geometry.dealCenter.x).toBeCloseTo(geometry.dealCenter.x - geometry.dealTargets[1].x, 5);
   });
 });
