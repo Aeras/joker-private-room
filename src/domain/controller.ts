@@ -4,7 +4,7 @@ import type { CanonicalGameState } from "./gameState";
 import { projectGameForSeat, type PlayerGameProjection } from "./projection";
 
 export const HUMAN_TURN_TIMEOUT_MS = 30_000;
-export const MAX_SYNCHRONOUS_BOT_STEPS = 32;
+export const MAX_SYNCHRONOUS_BOT_STEPS = 1;
 
 export type ControlTransitionResult =
   | { ok: true; changed: false; state: CanonicalGameState }
