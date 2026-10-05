@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { assets } from "@/assets/registry";
 import {
   hasCardAssetFailed,
@@ -69,7 +69,7 @@ function CardArtwork({
 }: {
   artwork: string;
   alt: string;
-  fallback: React.ReactNode;
+  fallback: ReactNode;
 }) {
   const [loaded, setLoaded] = useState(() => isCardAssetReady(artwork));
   const [failed, setFailed] = useState(() => hasCardAssetFailed(artwork));
