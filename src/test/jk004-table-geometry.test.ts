@@ -14,6 +14,7 @@ describe("JK-004 measured table geometry", () => {
       rightSeatRect: rect(820, 260, 120, 100),
       localSeatRect: rect(420, 610, 160, 70),
       viewportWidth: 1000,
+      viewportHeight: 700,
     });
 
     expect(geometry.usableCenter.x).toBeCloseTo(450, 0);
@@ -27,6 +28,7 @@ describe("JK-004 measured table geometry", () => {
     const geometry = computeTableGeometry({
       feltRect: rect(0, 0, 900, 500),
       viewportWidth: 1000,
+      viewportHeight: 700,
     });
 
     expect(geometry.trickSlots[0].x).toBe(geometry.usableCenter.x);
@@ -45,6 +47,7 @@ describe("JK-004 measured table geometry", () => {
       rightSeatRect: rect(780, 190, 100, 80),
       localSeatRect: rect(430, 480, 140, 60),
       viewportWidth: 900,
+      viewportHeight: 600,
     });
 
     expect(geometry.seatOrigins[2]).toEqual({ x: 400, y: 50 });
@@ -53,22 +56,24 @@ describe("JK-004 measured table geometry", () => {
     expect(geometry.seatOrigins[0]).toEqual({ x: 400, y: 460 });
   });
 
-  it("keeps dealing symmetric around the exact felt center independent of avatars", () => {
+  it("anchors dealing to the visible viewport cross rather than the shortened felt container", () => {
     const geometry = computeTableGeometry({
-      feltRect: rect(100, 50, 800, 400),
-      topSeatRect: rect(430, 70, 140, 60),
-      leftSeatRect: rect(120, 190, 100, 80),
-      rightSeatRect: rect(780, 190, 100, 80),
-      localSeatRect: rect(430, 480, 140, 60),
-      viewportWidth: 900,
+      feltRect: rect(50, 70, 900, 440),
+      topSeatRect: rect(430, 80, 140, 60),
+      leftSeatRect: rect(60, 230, 100, 80),
+      rightSeatRect: rect(840, 230, 100, 80),
+      localSeatRect: rect(430, 560, 140, 60),
+      viewportWidth: 1000,
+      viewportHeight: 700,
     });
 
-    expect(geometry.dealCenter).toEqual({ x: 400, y: 200 });
-    expect(geometry.dealTargets[0].x).toBe(geometry.dealCenter.x);
-    expect(geometry.dealTargets[2].x).toBe(geometry.dealCenter.x);
-    expect(geometry.dealTargets[1].y).toBe(geometry.dealCenter.y);
-    expect(geometry.dealTargets[3].y).toBe(geometry.dealCenter.y);
-    expect(geometry.dealTargets[0].y - geometry.dealCenter.y).toBeCloseTo(geometry.dealCenter.y - geometry.dealTargets[2].y, 5);
-    expect(geometry.dealTargets[3].x - geometry.dealCenter.x).toBeCloseTo(geometry.dealCenter.x - geometry.dealTargets[1].x, 5);
+    // Viewport center (500,350) converted into felt-local coordinates.
+    expect(geometry.dealCenter).toEqual({ x: 450, y: 280 });
+
+    // 24% / 50% / 76% horizontally and 28% / 50% / 72% vertically in viewport space.
+    expect(geometry.dealTargets[1]).toEqual({ x: 190, y: 280 });
+    expect(geometry.dealTargets[3]).toEqual({ x: 710, y: 280 });
+    expect(geometry.dealTargets[2]).toEqual({ x: 450, y: 126 });
+    expect(geometry.dealTargets[0]).toEqual({ x: 450, y: 434 });
   });
 });

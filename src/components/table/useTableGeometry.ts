@@ -36,9 +36,12 @@ interface GeometryInput {
   rightSeatRect?: RectLike | null | undefined;
   localSeatRect?: RectLike | null | undefined;
   viewportWidth: number;
+  viewportHeight: number;
 }
 
 const GAP = 12;
+const DEAL_RADIUS_X_VIEWPORT = 0.26;
+const DEAL_RADIUS_Y_VIEWPORT = 0.22;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -106,30 +109,26 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
     3: input.rightSeatRect ? centerOf(input.rightSeatRect, feltRect) : fallback[3],
   };
 
-  // Dealing has its own geometry. It is intentionally independent from seat/avatar rectangles.
-  // The source is the exact felt center and destinations are four symmetric cardinal points.
-  const dealCenter: Point = { x: width / 2, y: height / 2 };
-  const dealRadiusX = Math.max(cardWidth * 1.8, width * 0.28);
-  const dealRadiusY = Math.max(cardHeight * 1.35, height * 0.28);
-  const horizontalMargin = cardWidth * 0.6;
-  const verticalMargin = cardHeight * 0.6;
+  // Dealing is positioned against the visible table viewport rather than the narrower
+  // felt interaction container (which intentionally stops above the local hand/footer).
+  // Convert those viewport-space cardinal points back into felt-local coordinates so
+  // both the felt-mounted dealer ritual and the root-mounted normal deal share them.
+  const viewportCenter = {
+    x: input.viewportWidth / 2,
+    y: input.viewportHeight / 2,
+  };
+  const toFeltLocal = (point: Point): Point => ({
+    x: point.x - feltRect.left,
+    y: point.y - feltRect.top,
+  });
+  const dealCenter = toFeltLocal(viewportCenter);
+  const dealRadiusX = input.viewportWidth * DEAL_RADIUS_X_VIEWPORT;
+  const dealRadiusY = input.viewportHeight * DEAL_RADIUS_Y_VIEWPORT;
   const dealTargets: Record<VisualSeat, Point> = {
-    0: {
-      x: dealCenter.x,
-      y: clamp(dealCenter.y + dealRadiusY, verticalMargin, height - verticalMargin),
-    },
-    1: {
-      x: clamp(dealCenter.x - dealRadiusX, horizontalMargin, width - horizontalMargin),
-      y: dealCenter.y,
-    },
-    2: {
-      x: dealCenter.x,
-      y: clamp(dealCenter.y - dealRadiusY, verticalMargin, height - verticalMargin),
-    },
-    3: {
-      x: clamp(dealCenter.x + dealRadiusX, horizontalMargin, width - horizontalMargin),
-      y: dealCenter.y,
-    },
+    0: toFeltLocal({ x: viewportCenter.x, y: viewportCenter.y + dealRadiusY }),
+    1: toFeltLocal({ x: viewportCenter.x - dealRadiusX, y: viewportCenter.y }),
+    2: toFeltLocal({ x: viewportCenter.x, y: viewportCenter.y - dealRadiusY }),
+    3: toFeltLocal({ x: viewportCenter.x + dealRadiusX, y: viewportCenter.y }),
   };
 
   return {
@@ -192,6 +191,7 @@ export function useTableGeometry(): {
       rightSeatRect: rightSeatRef.current?.getBoundingClientRect(),
       localSeatRect: localSeatRef.current?.getBoundingClientRect(),
       viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
     });
     const signature = geometrySignature(next);
     if (signature === signatureRef.current) return;
