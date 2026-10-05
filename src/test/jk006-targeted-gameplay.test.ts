@@ -61,7 +61,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(deal).toContain('projection.progression.phase === "DEAL_SETUP"');
   });
 
-  it("uses true felt-center dealing geometry for dealer selection and normal dealing", () => {
+  it("uses viewport-centered cross geometry for dealer selection and normal dealing", () => {
     const dealer = read("src/components/table/DealerSelectionPresentation.tsx");
     const deal = read("src/components/table/DealPresentation.tsx");
     const geometry = read("src/components/table/useTableGeometry.ts");
@@ -69,8 +69,19 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(dealer).toContain("geometry.dealTargets[pos]");
     expect(deal).toContain("geometry.dealCenter");
     expect(deal).toContain("geometry.dealTargets[pos]");
-    expect(geometry).toContain("dealCenter: Point");
-    expect(geometry).toContain("const dealCenter: Point = { x: width / 2, y: height / 2 }");
+    expect(geometry).toContain("viewportHeight: number");
+    expect(geometry).toContain("input.viewportHeight / 2");
+    expect(geometry).toContain("point.y - feltRect.top");
+  });
+
+  it("keeps already dealt cards visible as accumulating per-seat stacks until the sequence completes", () => {
+    const dealer = read("src/components/table/DealerSelectionPresentation.tsx");
+    const deal = read("src/components/table/DealPresentation.tsx");
+    expect(dealer).toContain("stackIndex: Math.floor(index / 4)");
+    expect(deal).toContain("stackIndex: Math.floor(index / 4)");
+    expect(deal).toContain("const visibleBeats = beats.slice(0, visibleIndex + 1)");
+    expect(deal).toContain("visibleBeats.map((beat)");
+    expect(deal).not.toContain("const beat = beats[Math.min(visibleIndex, beats.length - 1)]");
   });
 
   it("does not let browser reduced-motion accelerate dealing", () => {
@@ -84,7 +95,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
   it("returns to the home screen immediately after a successful host end-game", () => {
     const menu = read("src/components/table/TableUtilityMenu.tsx");
     const projectionService = read("src/services/gameProjectionFunctions.ts");
-    const migration = read("supabase/migrations/20261005062000_jk006_termination_terminal_payload.sql");
+    const migration = read("supabase/migrations/20261005062610_jk006_termination_terminal_payload.sql");
     expect(menu).toContain('window.location.assign("/")');
     expect(projectionService).not.toContain("const loaded = await loadCanonicalGameState(data.gameId);\n    if (!loaded.ok) return { ok: false, code: loaded.code };\n    const projection = projected(loaded);\n    return projection\n      ? { ok: true, replayed: result.replayed, projection }");
     expect(projectionService).toContain("terminal.canonicalState");
