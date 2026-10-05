@@ -12,6 +12,9 @@ const SUIT_META: Record<Suit, { symbol: string; label: string; tone: string }> =
 
 const SUIT_ORDER: Suit[] = ["hearts", "diamonds", "clubs", "spades"];
 
+const CENTER_PANEL =
+  "fixed left-1/2 top-1/2 z-[85] -translate-x-1/2 -translate-y-1/2 pointer-events-auto";
+
 export function JokerChoicePicker({
   options,
   busy,
@@ -55,31 +58,43 @@ export function JokerChoicePicker({
     );
 
     return (
-      <div className="mb-2 overflow-hidden rounded-2xl border border-primary/35 bg-black/85 shadow-2xl backdrop-blur">
-        {row("HIGHER_SUIT", "Θέλω μεγαλύτερο")}
-        {row("SUIT_WINS", "Παίρνουν")}
+      <div className={CENTER_PANEL} data-joker-choice-position="table-center">
+        <div className="overflow-hidden rounded-2xl border border-primary/35 bg-black/88 shadow-2xl backdrop-blur-md">
+          {row("HIGHER_SUIT", "Θέλω μεγαλύτερο")}
+          {row("SUIT_WINS", "Παίρνουν")}
+        </div>
       </div>
     );
   }
 
   if (openTrickOptions.length > 0) {
+    const compete = openTrickOptions.find((option) => option.mode === "COMPETE");
+    const fromBelow = openTrickOptions.find((option) => option.mode === "FROM_BELOW");
+
     return (
-      <div className="mb-2 overflow-hidden rounded-xl border border-primary/35 bg-black/90 shadow-2xl backdrop-blur">
-        <div className="border-b border-white/10 px-3 py-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
-          Τζόκερ
-        </div>
-        <div className="flex">
-          {openTrickOptions.map((option) => (
+      <div className={CENTER_PANEL} data-joker-choice-position="table-center">
+        <div className="rounded-2xl border border-white/15 bg-black/72 p-2.5 shadow-2xl backdrop-blur-md">
+          <div className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+            Τζόκερ
+          </div>
+          <div className="flex items-center justify-center gap-2.5">
             <button
-              key={option.mode}
               type="button"
-              disabled={busy}
-              onClick={() => onSelect(option)}
-              className="min-w-36 border-l border-white/10 px-4 py-2.5 text-sm font-semibold text-foreground transition-colors first:border-l-0 enabled:hover:bg-primary/15 enabled:active:bg-primary/25 disabled:opacity-40"
+              disabled={busy || !compete}
+              onClick={() => compete && onSelect(compete)}
+              className="h-11 min-w-[9rem] rounded-xl border border-red-300/60 bg-red-600 px-4 text-sm font-bold text-white shadow-[0_8px_22px_rgba(185,28,28,.28)] transition-transform enabled:hover:-translate-y-0.5 enabled:hover:bg-red-500 enabled:active:translate-y-0 disabled:opacity-40"
             >
-              {option.mode === "COMPETE" ? "Τζόκερ από πάνω" : "Τζόκερ από κάτω"}
+              Τζόκερ από πάνω
             </button>
-          ))}
+            <button
+              type="button"
+              disabled={busy || !fromBelow}
+              onClick={() => fromBelow && onSelect(fromBelow)}
+              className="h-11 min-w-[9rem] rounded-xl border border-[#b99a5d] bg-white px-4 text-sm font-bold text-black shadow-[0_8px_22px_rgba(0,0,0,.24)] transition-transform enabled:hover:-translate-y-0.5 enabled:bg-white enabled:active:translate-y-0 disabled:opacity-40"
+            >
+              Τζόκερ από κάτω
+            </button>
+          </div>
         </div>
       </div>
     );
