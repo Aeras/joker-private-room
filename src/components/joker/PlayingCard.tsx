@@ -57,7 +57,7 @@ export function PlayingCard({
   );
 }
 
-function CardFace({ card, artwork }: { card: Card; artwork?: string }) {
+function CardFace({ card, artwork }: { card: Card; artwork: string | undefined }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
