@@ -16,6 +16,10 @@ function parseServerTime(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function humanOwnedSeatCount(state: CanonicalGameState): number {
+  return state.seats.reduce((count, seat) => count + (seat.owner.type === "human" ? 1 : 0), 0);
+}
+
 export function humanDeadlineFromServerTime(serverNow: string): string {
   const now = parseServerTime(serverNow);
   if (now == null) throw new Error("Invalid server time");
@@ -44,6 +48,13 @@ export function applyOverdueTimeout(
   if (actor == null) return { ok: true, changed: false, state };
   const seat = state.seats[actor];
   if (seat.owner.type !== "human" || seat.controller !== "human") {
+    return { ok: true, changed: false, state };
+  }
+
+  // A solo human playing against three permanent bots must never be replaced by
+  // another bot. Expiry becomes a pause boundary; durable pause/wake handling is
+  // owned by the reconciliation layer rather than changing seat identity here.
+  if (humanOwnedSeatCount(state) <= 1) {
     return { ok: true, changed: false, state };
   }
 
