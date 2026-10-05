@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { CARD_ASSET_URLS } from "@/assets/cardPreload";
+import {
+  NORMAL_TRICK_HOLD_MS,
+  NORMAL_TRICK_PLAY_SPACING_MS,
+} from "@/components/table/trickPresentationModel";
 import type { SeatIndex } from "@/domain/dealing";
 import {
   GAME_STATE_SCHEMA_VERSION,
@@ -81,7 +86,7 @@ function jokerPendingState(): CanonicalGameState {
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
-describe("JK-006 card-face loading and Joker decision presentation", () => {
+describe("JK-006 card artwork, Joker decision, and trick pacing", () => {
   it("keeps a thrown pending Joker on the projected table and out of the thrower's visible hand", () => {
     const state = jokerPendingState();
     const thrower = projectGameForSeat(state, 0);
@@ -101,17 +106,35 @@ describe("JK-006 card-face loading and Joker decision presentation", () => {
     });
   });
 
-  it("uses an immediate semantic card face until PNG artwork has loaded", () => {
-    const source = read("src/components/joker/PlayingCard.tsx");
-    expect(source).toContain('data-card-semantic-fallback="true"');
-    expect(source).toContain('data-card-artwork-loaded={loaded ? "true" : "false"}');
-    expect(source).toContain('loaded ? "opacity-100" : "opacity-0"');
+  it("preloads the complete canonical visual deck", () => {
+    expect(CARD_ASSET_URLS).toHaveLength(39);
+    expect(new Set(CARD_ASSET_URLS).size).toBe(39);
+    expect(CARD_ASSET_URLS).toContain("/cards/joker_red.png");
+    expect(CARD_ASSET_URLS).toContain("/cards/joker_black.png");
+    expect(CARD_ASSET_URLS).toContain("/cards/card_back.png");
   });
 
-  it("uses the requested explicit over/under Joker labels", () => {
+  it("does not flash the semantic face during normal PNG loading", () => {
+    const source = read("src/components/joker/PlayingCard.tsx");
+    expect(source).toContain("preloadCardAsset");
+    expect(source).toContain("!loaded && !failed");
+    expect(source).toContain("failed && fallback");
+    expect(source).toContain('data-card-artwork-loaded={loaded ? "true" : "false"}');
+  });
+
+  it("centers the Joker choice and visually differentiates over/under", () => {
     const source = read("src/components/table/JokerChoicePicker.tsx");
+    expect(source).toContain('data-joker-choice-position="table-center"');
+    expect(source).toContain("fixed left-1/2 top-1/2");
     expect(source).toContain("Τζόκερ από πάνω");
+    expect(source).toContain("bg-red-600");
     expect(source).toContain("Τζόκερ από κάτω");
+    expect(source).toContain("bg-white");
     expect(source).not.toContain("Joker ψηλά");
+  });
+
+  it("paces live trick plays so the previous card can settle before the next one appears", () => {
+    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBeGreaterThanOrEqual(600);
+    expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(850);
   });
 });
