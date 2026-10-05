@@ -73,11 +73,63 @@ function state(): CanonicalGameState {
   };
 }
 
+function replaceWithPermanentBot(game: CanonicalGameState, seatIndex: 0 | 1 | 2 | 3): void {
+  game.seats[seatIndex] = {
+    seatIndex,
+    owner: {
+      type: "bot",
+      botId: `bot-${seatIndex}`,
+      displayName: `Bot ${seatIndex}`,
+      personalityId: `bot-${seatIndex}`,
+      strategyProfileId: "strong-basic-v1",
+      catalogVersion: "test-v1",
+    },
+    controller: "permanent_bot",
+    connected: true,
+    takeoverAt: null,
+    reclaimable: false,
+  };
+}
+
+function soloHumanState(): CanonicalGameState {
+  const game = state();
+  replaceWithPermanentBot(game, 1);
+  replaceWithPermanentBot(game, 2);
+  replaceWithPermanentBot(game, 3);
+  return game;
+}
+
+function twoHumanState(): CanonicalGameState {
+  const game = state();
+  replaceWithPermanentBot(game, 2);
+  replaceWithPermanentBot(game, 3);
+  return game;
+}
+
 describe("controller timeout/reclaim", () => {
   it("does not time out before the authoritative server deadline", () => {
     const original = state();
     const result = applyOverdueTimeout(original, "2026-10-03T19:00:29.999Z");
     expect(result).toEqual({ ok: true, changed: false, state: original });
+  });
+
+  it("keeps the sole human in control after timeout so a solo-vs-bots game pauses", () => {
+    const original = soloHumanState();
+    const result = applyOverdueTimeout(original, "2026-10-03T19:00:30.000Z");
+    expect(result).toEqual({ ok: true, changed: false, state: original });
+    expect(original.seats[0].owner).toEqual({ type: "human", playerId: "player-0" });
+    expect(original.seats[0].controller).toBe("human");
+    expect(original.seats[0].reclaimable).toBe(false);
+  });
+
+  it("still transfers control when at least two human-owned seats exist", () => {
+    const original = twoHumanState();
+    const result = applyOverdueTimeout(original, "2026-10-03T19:00:30.000Z");
+    expect(result.ok && result.changed).toBe(true);
+    if (!result.ok || !result.changed) return;
+    expect(result.state.seats[0].owner).toEqual({ type: "human", playerId: "player-0" });
+    expect(result.state.seats[0].controller).toBe("temporary_bot");
+    expect(result.state.seats[0].reclaimable).toBe(true);
   });
 
   it("changes controller only after timeout and preserves ownership/hand/score", () => {
