@@ -20,6 +20,7 @@ type RevealedBeat = {
   card: Card;
   seat: 0 | 1 | 2 | 3;
   index: number;
+  stackIndex: number;
 };
 
 type FrozenRun = {
@@ -38,6 +39,12 @@ function relativeTransform(point: Point, center: Point, scale = 1): string {
   return `translate(calc(-50% + ${point.x - center.x}px), calc(-50% + ${point.y - center.y}px)) scale(${scale})`;
 }
 
+function stackedTarget(base: Point, pos: VisualSeat, stackIndex: number): Point {
+  const offset = stackIndex * 6;
+  if (pos === 3) return { x: base.x - offset, y: base.y + stackIndex * 2 };
+  return { x: base.x + offset, y: base.y + stackIndex * 2 };
+}
+
 function RevealedCard({
   beat,
   viewerSeat,
@@ -53,11 +60,7 @@ function RevealedCard({
   const pos = visualSeat(viewerSeat, beat.seat);
   const center = geometry.dealCenter;
   const base = geometry.dealTargets[pos];
-  const stackOffset = (beat.index % 4) * 4;
-  const target = {
-    x: base.x + (pos === 0 || pos === 2 ? stackOffset - 6 : 0),
-    y: base.y + (pos === 1 || pos === 3 ? stackOffset - 6 : 0),
-  };
+  const target = stackedTarget(base, pos, beat.stackIndex);
 
   useEffect(() => {
     setArrived(false);
@@ -69,6 +72,7 @@ function RevealedCard({
     <div
       className={`absolute left-0 top-0 [--card-w:clamp(2.4rem,5vw,3.8rem)] transition-transform ease-out ${finalAce ? "z-40 drop-shadow-[0_0_18px_var(--gold)]" : "z-30"}`}
       style={{
+        zIndex: finalAce ? 60 : 30 + beat.stackIndex,
         transitionDuration: `${DEALER_SELECTION_CARD_TRAVEL_MS}ms`,
         transform: relativeTransform(arrived ? target : center, center, arrived ? 1 : 0.72),
       }}
@@ -140,6 +144,7 @@ export function DealerSelectionPresentation({
           card: { ...card },
           seat: dealerSelectionRecipient(selection.firstRecipientSeat, index),
           index,
+          stackIndex: Math.floor(index / 4),
         }));
         const frozenRun: FrozenRun = {
           key: selectionKey,
