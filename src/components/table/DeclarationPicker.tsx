@@ -14,11 +14,11 @@ export function DeclarationPicker({
   const legal = new Set(legalValues);
 
   return (
-    <div className="mb-3 w-[min(32rem,90vw)] overflow-hidden rounded-2xl border border-primary/35 bg-black/85 text-center shadow-2xl backdrop-blur">
-      <div className="border-b border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+    <div className="mb-3 w-fit overflow-hidden rounded-2xl border border-black/15 bg-white text-center shadow-2xl">
+      <div className="border-b border-black/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-black/75">
         Δήλωσε μπάζες
       </div>
-      <div className="grid grid-cols-5">
+      <div className="grid grid-cols-5 gap-px bg-black/10 p-px">
         {values.map((value) => {
           const allowed = legal.has(value);
           const disabled = busy || !allowed;
@@ -31,9 +31,11 @@ export function DeclarationPicker({
               aria-label={declarationAccessibleLabel(value)}
               title={allowed ? declarationAccessibleLabel(value) : "Δεν είναι διαθέσιμη σε αυτή τη μοιρασιά."}
               onClick={() => allowed && onSelect(value)}
-              className="flex h-12 items-center justify-center border-b border-r border-white/10 px-2 text-base font-bold text-foreground transition-colors enabled:hover:bg-primary/15 enabled:active:bg-primary/25 disabled:cursor-not-allowed disabled:text-white/20"
+              className="flex h-12 w-12 items-center justify-center bg-white text-base font-extrabold text-black transition-colors enabled:hover:bg-black/5 enabled:active:bg-black/10 disabled:cursor-not-allowed disabled:bg-[#f3f3f3] disabled:text-[#a8a8a8]"
             >
-              {value === 0 ? "Πάσο" : value}
+              <span className={value === 0 ? "text-[11px] font-extrabold" : undefined}>
+                {value === 0 ? "Πάσο" : value}
+              </span>
             </button>
           );
         })}
