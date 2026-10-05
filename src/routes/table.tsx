@@ -300,13 +300,14 @@ function TablePage() {
   }, [projection?.gameId, projection?.lifecycle, projection?.progression.phase]);
 
   const presentationStage = startupPresentationStage(projection);
+  const resolvedSelectionVersion = projection?.initialDealerSelection?.status === "resolved"
+    ? projection.initialDealerSelection.resolvedAtStateVersion
+    : null;
   void presentationTick;
 
   useEffect(() => {
-    if (!gameId || !projection || presentationStage !== "ack" || !landscape || !visible) return;
-    const selection = projection.initialDealerSelection;
-    if (!selection || selection.status !== "resolved") return;
-    const key = `${gameId}:${selection.resolvedAtStateVersion}`;
+    if (!gameId || resolvedSelectionVersion == null || presentationStage !== "ack" || !landscape || !visible) return;
+    const key = `${gameId}:${resolvedSelectionVersion}`;
     if (presentationAckInFlight.current === key) return;
 
     let cancelled = false;
@@ -336,7 +337,7 @@ function TablePage() {
       if (retryTimer) window.clearTimeout(retryTimer);
       if (presentationAckInFlight.current === key) presentationAckInFlight.current = null;
     };
-  }, [acceptSnapshot, gameId, landscape, presentationStage, projection?.initialDealerSelection, visible]);
+  }, [acceptSnapshot, gameId, landscape, presentationStage, resolvedSelectionVersion, visible]);
 
   const submit = async (command: GameplayCommand): Promise<PlayerGameProjection | null> => {
     if (!projection || busy || connectionStatusRef.current !== "ready") return null;
