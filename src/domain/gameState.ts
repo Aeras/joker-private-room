@@ -63,7 +63,7 @@ export type InitialDealerSelectionState =
   | {
       status: "resolved";
       bootstrapActionId: string;
-      openingCard: Card;
+      openingCard?: Card;
       firstRecipientSeat: SeatIndex;
       revealedSelectionCards: Card[];
       selectedDealerSeat: SeatIndex;
