@@ -52,4 +52,24 @@ describe("JK-004 measured table geometry", () => {
     expect(geometry.seatOrigins[3]).toEqual({ x: 730, y: 180 });
     expect(geometry.seatOrigins[0]).toEqual({ x: 400, y: 460 });
   });
+
+  it("keeps dealing on four cardinal centers independent of avatar centers", () => {
+    const geometry = computeTableGeometry({
+      feltRect: rect(100, 50, 800, 400),
+      topSeatRect: rect(430, 70, 140, 60),
+      leftSeatRect: rect(120, 190, 100, 80),
+      rightSeatRect: rect(780, 190, 100, 80),
+      localSeatRect: rect(430, 480, 140, 60),
+      viewportWidth: 900,
+    });
+
+    expect(geometry.dealTargets[0].x).toBeCloseTo(geometry.usableCenter.x, 5);
+    expect(geometry.dealTargets[2].x).toBeCloseTo(geometry.usableCenter.x, 5);
+    expect(geometry.dealTargets[1].y).toBeCloseTo(geometry.usableCenter.y, 5);
+    expect(geometry.dealTargets[3].y).toBeCloseTo(geometry.usableCenter.y, 5);
+    expect(geometry.dealTargets[0].y).toBeGreaterThan(geometry.usableCenter.y);
+    expect(geometry.dealTargets[2].y).toBeLessThan(geometry.usableCenter.y);
+    expect(geometry.dealTargets[1].x).toBeLessThan(geometry.usableCenter.x);
+    expect(geometry.dealTargets[3].x).toBeGreaterThan(geometry.usableCenter.x);
+  });
 });
