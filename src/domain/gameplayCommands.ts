@@ -16,6 +16,7 @@ import {
 } from "./engine";
 import { humanDeadlineFromServerTime } from "./controller";
 import type { CanonicalGameState, ControllerType } from "./gameState";
+import { holdNineCardRemainingDealForPresentation } from "./nineCardPresentation";
 
 export type GameplayCommand =
   | { type: "declare"; value: number }
@@ -80,7 +81,7 @@ function timingForActor(
   serverNow: string,
   preserveDeadline = false,
 ): CanonicalGameState["timing"] {
-  if (actor == null) return { currentHumanDeadline: null, timeoutTakeoverActive: false };
+  if (actor == null) return { currentHumanDeadline: null, timeoutTakeoverActive: false, presentationReadyAt: null };
   const controller = state.seats[actor].controller;
   return {
     currentHumanDeadline:
@@ -90,6 +91,7 @@ function timingForActor(
           : humanDeadlineFromServerTime(serverNow)
         : null,
     timeoutTakeoverActive: timeoutActiveForActor(state, actor),
+    presentationReadyAt: null,
   };
 }
 
@@ -112,25 +114,13 @@ function applyDeclarationCommand(
   if (state.progression.phase !== "DECLARATION") return { ok: false, code: "WRONG_PHASE" };
   const dealerSeat = state.progression.dealerSeat;
   const firstLeaderSeat = state.progression.firstLeaderSeat;
-  if (dealerSeat == null || firstLeaderSeat == null) {
-    return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
-  }
-  if (state.declarations.currentDeclarerSeat !== seat || state.progression.currentActorSeat !== seat) {
-    return { ok: false, code: "NOT_CURRENT_ACTOR" };
-  }
-  if (seat === dealerSeat && state.declarations.forbiddenDealerValue === value) {
-    return { ok: false, code: "FORBIDDEN_DEALER_DECLARATION" };
-  }
+  if (dealerSeat == null || firstLeaderSeat == null) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
+  if (state.declarations.currentDeclarerSeat !== seat || state.progression.currentActorSeat !== seat) return { ok: false, code: "NOT_CURRENT_ACTOR" };
+  if (seat === dealerSeat && state.declarations.forbiddenDealerValue === value) return { ok: false, code: "FORBIDDEN_DEALER_DECLARATION" };
 
   let declarations: CanonicalGameState["declarations"]["declarations"];
   try {
-    declarations = applyDeclaration({
-      cardsPerPlayer: state.progression.cardsPerPlayer,
-      dealerSeat,
-      seatIndex: seat,
-      declarations: state.declarations.declarations,
-      declared: value,
-    });
+    declarations = applyDeclaration({ cardsPerPlayer: state.progression.cardsPerPlayer, dealerSeat, seatIndex: seat, declarations: state.declarations.declarations, declared: value });
   } catch {
     return { ok: false, code: "INVALID_DECLARATION" };
   }
@@ -143,13 +133,7 @@ function applyDeclarationCommand(
         ...state,
         stateVersion: state.stateVersion + 1,
         progression: { ...state.progression, phase: "CARD_PLAY", currentActorSeat: actor },
-        declarations: {
-          ...state.declarations,
-          currentDeclarerSeat: null,
-          declarations,
-          legalValues: [],
-          forbiddenDealerValue: null,
-        },
+        declarations: { ...state.declarations, currentDeclarerSeat: null, declarations, legalValues: [], forbiddenDealerValue: null },
         timing: timingForActor(state, actor, serverNow),
       },
     };
@@ -161,15 +145,9 @@ function applyDeclarationCommand(
     ...state.declarations,
     currentDeclarerSeat: actor,
     declarations,
-    legalValues: legalDeclarationValues({
-      cardsPerPlayer: state.progression.cardsPerPlayer,
-      dealerSeat,
-      seatIndex: actor,
-      declarations,
-    }),
+    legalValues: legalDeclarationValues({ cardsPerPlayer: state.progression.cardsPerPlayer, dealerSeat, seatIndex: actor, declarations }),
     forbiddenDealerValue: null,
   };
-
   const intermediate = { ...state, declarations: declarationState } as CanonicalGameState;
   declarationState.forbiddenDealerValue = forbiddenDealerValue(intermediate, actor);
 
@@ -192,11 +170,7 @@ function applyTrumpChoice(
   serverNow: string,
 ): GameplayCommandResult {
   if (state.progression.phase !== "NINE_CARD_TRUMP_CHOICE") return { ok: false, code: "WRONG_PHASE" };
-  if (
-    state.trump.status !== "chooser_pending" ||
-    state.trump.chooserSeat !== seat ||
-    state.progression.currentActorSeat !== seat
-  ) return { ok: false, code: "NOT_CURRENT_ACTOR" };
+  if (state.trump.status !== "chooser_pending" || state.trump.chooserSeat !== seat || state.progression.currentActorSeat !== seat) return { ok: false, code: "NOT_CURRENT_ACTOR" };
   if (suit !== null && !SUITS.includes(suit)) return { ok: false, code: "INVALID_TRUMP_CHOICE" };
 
   const dealerSeat = state.progression.dealerSeat;
@@ -205,40 +179,50 @@ function applyTrumpChoice(
 
   let completed;
   try {
-    completed = completeNineCardDeal(state.cards.deck, dealerSeat, {
-      cursor: state.cards.drawCursor,
-      hands: state.cards.hands,
-    });
+    completed = completeNineCardDeal(state.cards.deck, dealerSeat, { cursor: state.cards.drawCursor, hands: state.cards.hands });
   } catch {
     return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
   }
 
+  const remainderState: CanonicalGameState = {
+    ...state,
+    stateVersion: state.stateVersion + 1,
+    progression: { ...state.progression, phase: "NINE_CARD_REMAINING_DEAL", currentActorSeat: null },
+    cards: {
+      ...state.cards,
+      hands: completed.hands,
+      drawCursor: completed.cursor,
+      hiddenPartialNineCardHands: false,
+      exposedTrumpCard: null,
+    },
+    declarations: {
+      ...state.declarations,
+      currentDeclarerSeat: null,
+      declarations: [null, null, null, null],
+      legalValues: [],
+      forbiddenDealerValue: null,
+    },
+    trump: { status: "resolved", suit },
+    timing: { currentHumanDeadline: null, timeoutTakeoverActive: false, presentationReadyAt: null },
+  };
+
+  const held = holdNineCardRemainingDealForPresentation(remainderState, serverNow);
+  if (held.timing.presentationReadyAt) return { ok: true, state: held };
+
+  const declarations: CanonicalGameState["declarations"]["declarations"] = [null, null, null, null];
   return {
     ok: true,
     state: {
-      ...state,
-      stateVersion: state.stateVersion + 1,
-      progression: {
-        ...state.progression,
-        phase: "NINE_CARD_REMAINING_DEAL",
-        currentActorSeat: null,
-      },
-      cards: {
-        ...state.cards,
-        hands: completed.hands,
-        drawCursor: completed.cursor,
-        hiddenPartialNineCardHands: false,
-        exposedTrumpCard: null,
-      },
+      ...remainderState,
+      progression: { ...remainderState.progression, phase: "DECLARATION", currentActorSeat: firstDeclarerSeat },
       declarations: {
-        ...state.declarations,
-        currentDeclarerSeat: null,
-        declarations: [null, null, null, null],
-        legalValues: [],
+        ...remainderState.declarations,
+        currentDeclarerSeat: firstDeclarerSeat,
+        declarations,
+        legalValues: legalDeclarationValues({ cardsPerPlayer: 9, dealerSeat, seatIndex: firstDeclarerSeat, declarations }),
         forbiddenDealerValue: null,
       },
-      trump: { status: "resolved", suit },
-      timing: { currentHumanDeadline: null, timeoutTakeoverActive: false },
+      timing: timingForActor(remainderState, firstDeclarerSeat, serverNow),
     },
   };
 }
@@ -296,17 +280,8 @@ function completeCommittedPlay(args: {
     state: {
       ...state,
       stateVersion: state.stateVersion + 1,
-      progression: {
-        ...state.progression,
-        phase: dealFinished ? "DEAL_RESULT" : "CARD_PLAY",
-        currentActorSeat: actor,
-      },
-      cards: {
-        ...state.cards,
-        hands,
-        currentTrick: [],
-        completedTricks: [...state.cards.completedTricks, { cards: currentTrick, winnerSeat: winner }],
-      },
+      progression: { ...state.progression, phase: dealFinished ? "DEAL_RESULT" : "CARD_PLAY", currentActorSeat: actor },
+      cards: { ...state.cards, hands, currentTrick: [], completedTricks: [...state.cards.completedTricks, { cards: currentTrick, winnerSeat: winner }] },
       joker: { pendingForSeat: null, cardId: null, semantic: null },
       score: { ...state.score, tricksTaken },
       timing: timingForActor(state, actor, serverNow),
@@ -314,21 +289,12 @@ function completeCommittedPlay(args: {
   };
 }
 
-function applyCardPlay(
-  state: CanonicalGameState,
-  seat: SeatIndex,
-  cardId: string,
-  serverNow: string,
-): GameplayCommandResult {
+function applyCardPlay(state: CanonicalGameState, seat: SeatIndex, cardId: string, serverNow: string): GameplayCommandResult {
   if (state.progression.phase !== "CARD_PLAY") return { ok: false, code: "WRONG_PHASE" };
   if (state.progression.currentActorSeat !== seat) return { ok: false, code: "NOT_CURRENT_ACTOR" };
 
   let legal: Card[];
-  try {
-    legal = legalMoves(playerView(state, seat));
-  } catch {
-    return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
-  }
+  try { legal = legalMoves(playerView(state, seat)); } catch { return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" }; }
   const card = legal.find((candidate) => candidate.id === cardId);
   if (!card) return { ok: false, code: "ILLEGAL_CARD" };
 
@@ -352,24 +318,14 @@ function applyCardPlay(
 
 function validJokerSemantic(state: CanonicalGameState, semantic: JokerSemantic): boolean {
   if (state.cards.currentTrick.length === 0) {
-    return semantic.context === "LEAD" &&
-      (semantic.mode === "HIGHER_SUIT" || semantic.mode === "SUIT_WINS") &&
-      SUITS.includes(semantic.requestedSuit);
+    return semantic.context === "LEAD" && (semantic.mode === "HIGHER_SUIT" || semantic.mode === "SUIT_WINS") && SUITS.includes(semantic.requestedSuit);
   }
-  return semantic.context === "OPEN_TRICK" &&
-    (semantic.mode === "COMPETE" || semantic.mode === "FROM_BELOW");
+  return semantic.context === "OPEN_TRICK" && (semantic.mode === "COMPETE" || semantic.mode === "FROM_BELOW");
 }
 
-function applyJokerChoice(
-  state: CanonicalGameState,
-  seat: SeatIndex,
-  semantic: JokerSemantic,
-  serverNow: string,
-): GameplayCommandResult {
+function applyJokerChoice(state: CanonicalGameState, seat: SeatIndex, semantic: JokerSemantic, serverNow: string): GameplayCommandResult {
   if (state.progression.phase !== "JOKER_DECISION") return { ok: false, code: "WRONG_PHASE" };
-  if (state.progression.currentActorSeat !== seat || state.joker.pendingForSeat !== seat) {
-    return { ok: false, code: "NOT_CURRENT_ACTOR" };
-  }
+  if (state.progression.currentActorSeat !== seat || state.joker.pendingForSeat !== seat) return { ok: false, code: "NOT_CURRENT_ACTOR" };
   if (!state.joker.cardId) return { ok: false, code: "JOKER_CHOICE_REQUIRED" };
   if (!validJokerSemantic(state, semantic)) return { ok: false, code: "INVALID_JOKER_CHOICE" };
 
@@ -378,13 +334,7 @@ function applyJokerChoice(
   const nextHand = removeCard(state.cards.hands[seat], card.id);
   if (!nextHand) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
 
-  return completeCommittedPlay({
-    state,
-    seat,
-    play: { seatIndex: seat, card, joker: semantic },
-    nextHand,
-    serverNow,
-  });
+  return completeCommittedPlay({ state, seat, play: { seatIndex: seat, card, joker: semantic }, nextHand, serverNow });
 }
 
 /** Human and bot callers use this same pure transition surface. */
@@ -395,18 +345,12 @@ export function applyGameplayCommand(args: ApplyGameplayCommandArgs): GameplayCo
   if (!validServerTime(serverNow)) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
   if (state.lifecycle !== "active") return { ok: false, code: "WRONG_PHASE" };
   if (state.seats[seat]?.seatIndex !== seat) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
-  if (expectedController && state.seats[seat].controller !== expectedController) {
-    return { ok: false, code: "CONTROLLER_CHANGED" };
-  }
+  if (expectedController && state.seats[seat].controller !== expectedController) return { ok: false, code: "CONTROLLER_CHANGED" };
 
   switch (command.type) {
-    case "declare":
-      return applyDeclarationCommand(state, seat, command.value, serverNow);
-    case "choose_trump":
-      return applyTrumpChoice(state, seat, command.suit, serverNow);
-    case "play_card":
-      return applyCardPlay(state, seat, command.cardId, serverNow);
-    case "choose_joker_semantic":
-      return applyJokerChoice(state, seat, command.semantic, serverNow);
+    case "declare": return applyDeclarationCommand(state, seat, command.value, serverNow);
+    case "choose_trump": return applyTrumpChoice(state, seat, command.suit, serverNow);
+    case "play_card": return applyCardPlay(state, seat, command.cardId, serverNow);
+    case "choose_joker_semantic": return applyJokerChoice(state, seat, command.semantic, serverNow);
   }
 }
