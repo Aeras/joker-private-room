@@ -4,7 +4,12 @@ import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
 import { recordTimingDiagnostic, startTimingDiagnosticSession } from "@/lib/timingDiagnostics";
 import { PlayingCard } from "../joker/PlayingCard";
-import { dealPresentationTiming } from "./dealPresentationModel";
+import {
+  dealPresentationStageKey,
+  dealPresentationStorageKey,
+  dealPresentationTiming,
+  dealPresentationWasCompleted,
+} from "./dealPresentationModel";
 import type { Point, TableGeometry, VisualSeat } from "./useTableGeometry";
 
 type DealBeat = {
@@ -54,17 +59,13 @@ function viewportPoint(geometry: TableGeometry, local: Point): Point {
   };
 }
 
-function presentationStorageKey(stageKey: string): string {
-  return `joker:deal-presented:${stageKey}`;
-}
-
-function alreadyPresented(stageKey: string): boolean {
-  return typeof window !== "undefined" && window.sessionStorage.getItem(presentationStorageKey(stageKey)) === "1";
-}
-
 function markPresented(stageKey: string): void {
   if (typeof window === "undefined") return;
-  window.sessionStorage.setItem(presentationStorageKey(stageKey), "1");
+  try {
+    window.sessionStorage.setItem(dealPresentationStorageKey(stageKey), "1");
+  } catch {
+    // Presentation completion must not depend on storage availability.
+  }
 }
 
 function TravelingBack({ beat, pos, geometry }: { beat: DealBeat; pos: VisualSeat; geometry: TableGeometry | null }) {
@@ -120,7 +121,14 @@ export function DealPresentation({
   const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   const stage = stageFor(projection);
-  const stageKey = stage ? `${projection.gameId}:${projection.progression.dealNumber}:${projection.progression.dealerSeat ?? "none"}:${stage}` : null;
+  const stageKey = stage
+    ? dealPresentationStageKey(
+        projection.gameId,
+        projection.progression.dealNumber,
+        projection.progression.dealerSeat,
+        stage,
+      )
+    : null;
 
   const sequence = useMemo(() => {
     if (!stage || projection.progression.dealerSeat == null) return [];
@@ -156,8 +164,13 @@ export function DealPresentation({
       acknowledgedStageKey.current = null;
     }
 
-    if (paused || !stageKey || sequence.length === 0) return;
-    if (alreadyPresented(stageKey)) {
+    if (paused) {
+      clearPresentation();
+      if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null;
+      return;
+    }
+    if (!stageKey || sequence.length === 0) return;
+    if (dealPresentationWasCompleted(stageKey)) {
       previousStageKey.current = stageKey;
       if (projection.progression.phase === "DEAL_SETUP") acknowledge(stageKey);
       return;
@@ -166,7 +179,6 @@ export function DealPresentation({
 
     startTimingDiagnosticSession(projection.gameId);
     previousStageKey.current = stageKey;
-    markPresented(stageKey);
     onActiveChangeRef.current?.(true);
     const frozenSequence = sequence.map((beat) => ({ ...beat }));
     const frozenGeometry = geometry;
@@ -177,7 +189,7 @@ export function DealPresentation({
     setVisibleIndex(-1);
     if (stage !== "remaining") playGameSound("shuffle", `${projection.gameId}:${projection.progression.dealNumber}`);
 
-    const { staggerMs, tailMs } = dealPresentationTiming(reducedMotion);
+    const { staggerMs, tailMs } = dealPresentationTiming(Boolean(reducedMotion));
     recordTimingDiagnostic("deal_sequence_start", {
       reducedMotion: Boolean(reducedMotion), stage, dealNumber: projection.progression.dealNumber,
       dealerSeat: projection.progression.dealerSeat ?? -1, cardCount: frozenSequence.length,
@@ -195,6 +207,7 @@ export function DealPresentation({
     const completeAt = frozenSequence.length * staggerMs + tailMs;
     timers.current.push(window.setTimeout(() => {
       recordTimingDiagnostic("deal_sequence_complete", { stage, scheduledOffsetMs: completeAt });
+      markPresented(stageKey);
       clearPresentation();
       if (projection.progression.phase === "DEAL_SETUP") acknowledge(stageKey);
     }, completeAt));
@@ -205,9 +218,13 @@ export function DealPresentation({
       if (document.visibilityState !== "visible") {
         recordTimingDiagnostic("deal_sequence_interrupted", { visibilityState: document.visibilityState });
         clearPresentation();
+        if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null;
       }
     };
-    const interrupt = () => clearPresentation();
+    const interrupt = () => {
+      clearPresentation();
+      if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null;
+    };
     window.addEventListener("orientationchange", interrupt);
     window.addEventListener("blur", interrupt);
     document.addEventListener("visibilitychange", visibility);
@@ -217,7 +234,7 @@ export function DealPresentation({
       document.removeEventListener("visibilitychange", visibility);
       clearTimers();
     };
-  }, [clearPresentation, clearTimers]);
+  }, [clearPresentation, clearTimers, stageKey]);
 
   if (beats.length === 0 || visibleIndex < 0) return null;
   const beat = beats[Math.min(visibleIndex, beats.length - 1)];
