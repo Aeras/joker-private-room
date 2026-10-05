@@ -2,14 +2,16 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import {
-  NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS,
-} from "@/components/table/DealPresentation";
+import { NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS } from "@/components/table/DealPresentation";
 import {
   NORMAL_TRICK_INTER_PLAY_BEAT_MS,
   NORMAL_TRICK_PLAY_SPACING_MS,
   NORMAL_TRICK_SETTLE_MS,
 } from "@/components/table/trickPresentationModel";
+import {
+  NINE_CARD_INITIAL_PRESENTATION_FALLBACK_MS,
+  NINE_CARD_REMAINING_PRESENTATION_FALLBACK_MS,
+} from "@/domain/nineCardPresentation";
 
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
@@ -39,6 +41,21 @@ describe("JK-006 presentation barriers", () => {
     expect(commands).toContain("currentActorSeat: null");
     expect(service).toContain("activateNineCardTrumpChoiceAfterPresentation");
     expect(service).toContain("activateNineCardDeclarationAfterPresentation");
+  });
+
+  it("has a durable server fallback when no browser can acknowledge a nine-card stage", () => {
+    expect(NINE_CARD_INITIAL_PRESENTATION_FALLBACK_MS).toBe(8_000);
+    expect(NINE_CARD_REMAINING_PRESENTATION_FALLBACK_MS).toBe(15_000);
+    const state = read("src/domain/gameState.ts");
+    const reconciliation = read("src/server/reconciliationCore.ts");
+    const migration = read("supabase/migrations/20261005174500_jk006_nine_card_presentation_wake.sql");
+    expect(state).toContain("presentationReadyAt?: string | null");
+    expect(reconciliation).toContain("PRESENTATION_BARRIER");
+    expect(reconciliation).toContain("nineCardPresentationFallbackIsDue");
+    expect(reconciliation).toContain("system_nine_card_presentation_fallback");
+    expect(migration).toContain("NINE_CARD_INITIAL_DEAL_ALL_SEATS");
+    expect(migration).toContain("NINE_CARD_REMAINING_DEAL");
+    expect(migration).toContain("presentationReadyAt");
   });
 
   it("gives the trump announcement a readability beat before remaining cards move", () => {
