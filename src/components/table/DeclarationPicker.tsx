@@ -1,8 +1,4 @@
-import { JButton } from "../joker/JButton";
-import {
-  declarationAccessibleLabel,
-  declarationDisplayValue,
-} from "./tableControlModel";
+import { declarationAccessibleLabel } from "./tableControlModel";
 
 export function DeclarationPicker({
   values,
@@ -16,32 +12,29 @@ export function DeclarationPicker({
   onSelect: (value: number) => void;
 }) {
   const legal = new Set(legalValues);
-  const columns = values.length > 7 ? 5 : Math.max(1, values.length);
 
   return (
-    <div className="mb-3 max-w-[94vw] rounded-2xl border border-primary/30 bg-black/80 p-3 text-center shadow-2xl backdrop-blur">
-      <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+    <div className="mb-3 w-[min(32rem,90vw)] overflow-hidden rounded-2xl border border-primary/35 bg-black/85 text-center shadow-2xl backdrop-blur">
+      <div className="border-b border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
         Δήλωσε μπάζες
       </div>
-      <div
-        className="grid gap-2"
-        style={{ gridTemplateColumns: `repeat(${columns}, minmax(3rem, 1fr))` }}
-      >
+      <div className="grid grid-cols-5">
         {values.map((value) => {
           const allowed = legal.has(value);
+          const disabled = busy || !allowed;
           return (
-            <JButton
+            <button
               key={value}
-              size="sm"
-              className="h-12 min-w-12 px-3 text-base font-bold"
-              disabled={busy || !allowed}
-              aria-disabled={busy || !allowed}
+              type="button"
+              disabled={disabled}
+              aria-disabled={disabled}
               aria-label={declarationAccessibleLabel(value)}
-              title={!allowed ? "Δεν επιτρέπεται για τον dealer." : declarationAccessibleLabel(value)}
+              title={allowed ? declarationAccessibleLabel(value) : "Δεν είναι διαθέσιμη σε αυτή τη μοιρασιά."}
               onClick={() => allowed && onSelect(value)}
+              className="flex h-12 items-center justify-center border-b border-r border-white/10 px-2 text-base font-bold text-foreground transition-colors enabled:hover:bg-primary/15 enabled:active:bg-primary/25 disabled:cursor-not-allowed disabled:text-white/20"
             >
-              {declarationDisplayValue(value)}
-            </JButton>
+              {value === 0 ? "Πάσο" : value}
+            </button>
           );
         })}
       </div>

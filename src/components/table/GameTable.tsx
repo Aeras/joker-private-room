@@ -13,6 +13,7 @@ import { PlayingCard } from "../joker/PlayingCard";
 import { DealerSelectionPresentation } from "./DealerSelectionPresentation";
 import { DealPresentation } from "./DealPresentation";
 import { DeclarationPicker } from "./DeclarationPicker";
+import { JokerChoicePicker } from "./JokerChoicePicker";
 import { LocalHandRow } from "./LocalHandRow";
 import {
   projectionContainsPendingCard,
@@ -86,15 +87,6 @@ function phaseMessage(projection: PlayerGameProjection): string {
   }
 }
 
-function jokerLabel(
-  action: Extract<LocalLegalAction, { type: "choose_joker_semantic" }>["options"][number],
-): string {
-  if (action.context === "OPEN_TRICK")
-    return action.mode === "COMPETE" ? "Joker ψηλά" : "Joker από κάτω";
-  const mode = action.mode === "HIGHER_SUIT" ? "Μεγαλύτερο" : "Κερδίζει";
-  return `${mode} ${SUIT_LABEL[action.requestedSuit]}`;
-}
-
 export function GameTable({
   room,
   projection,
@@ -140,7 +132,7 @@ export function GameTable({
   const jokerAction = legalAction(projection, "choose_joker_semantic");
   const reclaimAction = legalAction(projection, "reclaim_control");
   const declarationValues = declarationAction
-    ? Array.from({ length: projection.progression.cardsPerPlayer + 1 }, (_, value) => value)
+    ? Array.from({ length: 10 }, (_, value) => value)
     : [];
   const viewerOccupant = room.seats[localSeat]?.occupant;
   const isHost = viewerOccupant?.type === "human" && viewerOccupant.player.id === room.hostId;
@@ -353,15 +345,15 @@ export function GameTable({
           {!startupPresentationActive && (
             <TrickPresentation projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} onLocalFlightSettled={clearLocalFlight} />
           )}
-
-          {!startupPresentationActive && projection.cards.exposedTrumpCard && (
-            <div className="absolute left-[59%] top-[54%] -translate-y-1/2 [--card-w:clamp(2rem,4vw,3.4rem)]">
-              <div className="mb-1 text-center text-[10px] uppercase tracking-wider text-white/60">Ατού</div>
-              <PlayingCard card={projection.cards.exposedTrumpCard} />
-            </div>
-          )}
         </div>
       </main>
+
+      {!startupPresentationActive && projection.cards.exposedTrumpCard && (
+        <div className="pointer-events-none absolute left-[72%] top-[10vh] z-30 -translate-x-1/2 [--card-w:clamp(2.8rem,5vw,4rem)]">
+          <div className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Ατού</div>
+          <PlayingCard card={projection.cards.exposedTrumpCard} />
+        </div>
+      )}
 
       <DealPresentation
         projection={projection}
@@ -392,13 +384,11 @@ export function GameTable({
         )}
 
         {!startupPresentationActive && jokerAction && (
-          <div className="mb-2 flex max-w-[94vw] flex-wrap justify-center gap-1 rounded-xl bg-black/70 p-2 backdrop-blur">
-            {jokerAction.options.map((semantic, index) => (
-              <JButton key={`${semantic.context}-${semantic.mode}-${index}`} size="sm" disabled={busy} onClick={() => onCommand({ type: "choose_joker_semantic", semantic })}>
-                {jokerLabel(semantic)}
-              </JButton>
-            ))}
-          </div>
+          <JokerChoicePicker
+            options={jokerAction.options}
+            busy={busy}
+            onSelect={(semantic) => void onCommand({ type: "choose_joker_semantic", semantic })}
+          />
         )}
 
         {!startupPresentationActive && reclaimAction && (

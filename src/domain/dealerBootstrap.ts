@@ -130,9 +130,11 @@ export function createInitialDealerBootstrapState(
 
 /**
  * Resolves the dealer ritual and independently shuffles/deals Deal 1, but stops
- * at DEAL_SETUP. This is a canonical presentation barrier: no actor, no human
- * deadline, and no automatic controller may advance until every human client has
- * completed the dealer + deal presentation.
+ * at DEAL_SETUP. The first shuffled selection card is an exposed center card
+ * with no recipient; dealer distribution starts from the second card. This is
+ * a canonical presentation barrier: no actor, no human deadline, and no
+ * automatic controller may advance until every human client has completed the
+ * dealer + deal presentation.
  */
 export function resolveDealerBootstrapAndInitializeDealOne(
   args: ResolveDealerBootstrapArgs,
@@ -153,14 +155,17 @@ export function resolveDealerBootstrapAndInitializeDealOne(
 
   const firstRecipientSeat = chooseUniformFirstRecipient(args.firstRecipientRandom);
   const selectionDeck = shuffleCards(createDeck(getRuleset(state.rulesetId, state.rulesVersion).deckProfile), args.selectionShuffleRandom);
-  const selection = selectInitialDealer(selectionDeck, firstRecipientSeat);
-  const revealedSelectionCards = selectionDeck.slice(0, selection.revealedCount);
+  const openingCard = selectionDeck[0];
+  if (!openingCard) throw new Error("Dealer-selection deck is empty");
+  const distributedDeck = selectionDeck.slice(1);
+  const selection = selectInitialDealer(distributedDeck, firstRecipientSeat);
+  const revealedSelectionCards = distributedDeck.slice(0, selection.revealedCount);
   const lastRevealed = revealedSelectionCards.at(-1);
   if (!lastRevealed || lastRevealed.kind !== "standard" || lastRevealed.rank !== "A") {
     throw new Error("Dealer bootstrap did not end on an Ace");
   }
   if (revealedSelectionCards.slice(0, -1).some((card) => card.kind === "standard" && card.rank === "A")) {
-    throw new Error("Dealer bootstrap prefix contains an earlier Ace");
+    throw new Error("Dealer bootstrap prefix contains an earlier distributed Ace");
   }
 
   const dealerSeat = selection.dealerSeat;
@@ -188,6 +193,7 @@ export function resolveDealerBootstrapAndInitializeDealOne(
     initialDealerSelection: {
       status: "resolved",
       bootstrapActionId: pendingSelection.bootstrapActionId,
+      openingCard,
       firstRecipientSeat,
       revealedSelectionCards,
       selectedDealerSeat: dealerSeat,
