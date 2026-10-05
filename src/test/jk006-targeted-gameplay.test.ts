@@ -30,7 +30,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     const dealerServer = read("src/server/dealerBootstrap.ts");
     const dealerDomain = read("src/domain/dealerBootstrap.ts");
     const route = read("src/routes/table.tsx");
-    const migration = read("supabase/migrations/20261005002000_jk006_ready_play_barrier.sql");
+    const migration = read("supabase/migrations/20261005003230_jk006_ready_play_barrier.sql");
 
     expect(room).toContain("ensureInitialDealerBootstrapPrepared");
     expect(room).not.toContain("advanceGameUntilBlocked(result.gameId)");
