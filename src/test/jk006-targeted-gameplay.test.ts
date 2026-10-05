@@ -4,9 +4,10 @@ import { resolve } from "node:path";
 import {
   DEALER_SELECTION_CARD_TRAVEL_MS,
   DEALER_SELECTION_STAGGER_MS,
+  DEALER_START_CUE_MS,
   dealerSelectionRecipient,
 } from "@/components/table/dealerSelectionPresentationModel";
-import { NORMAL_DEAL_STAGGER_MS } from "@/components/table/dealPresentationModel";
+import { NORMAL_DEAL_STAGGER_MS, NORMAL_DEAL_TRAVEL_MS } from "@/components/table/dealPresentationModel";
 import { NORMAL_TRICK_HOLD_MS, NORMAL_TRICK_PLAY_SPACING_MS } from "@/components/table/trickPresentationModel";
 
 const root = process.cwd();
@@ -14,9 +15,11 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("JK-006 targeted gameplay timing and termination", () => {
   it("uses the requested readable presentation pacing", () => {
+    expect(DEALER_START_CUE_MS).toBe(500);
     expect(DEALER_SELECTION_STAGGER_MS).toBe(500);
-    expect(DEALER_SELECTION_CARD_TRAVEL_MS).toBe(340);
-    expect(NORMAL_DEAL_STAGGER_MS).toBe(350);
+    expect(DEALER_SELECTION_CARD_TRAVEL_MS).toBe(440);
+    expect(NORMAL_DEAL_STAGGER_MS).toBe(500);
+    expect(NORMAL_DEAL_TRAVEL_MS).toBe(440);
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(500);
     expect(NORMAL_TRICK_HOLD_MS).toBe(850);
   });
@@ -58,18 +61,35 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(deal).toContain('projection.progression.phase === "DEAL_SETUP"');
   });
 
-  it("uses the shared cardinal dealing geometry for dealer selection and normal dealing", () => {
+  it("uses true felt-center dealing geometry for dealer selection and normal dealing", () => {
     const dealer = read("src/components/table/DealerSelectionPresentation.tsx");
     const deal = read("src/components/table/DealPresentation.tsx");
     const geometry = read("src/components/table/useTableGeometry.ts");
+    expect(dealer).toContain("geometry.dealCenter");
     expect(dealer).toContain("geometry.dealTargets[pos]");
+    expect(deal).toContain("geometry.dealCenter");
     expect(deal).toContain("geometry.dealTargets[pos]");
-    expect(geometry).toContain("dealTargets: Record<VisualSeat, Point>");
+    expect(geometry).toContain("dealCenter: Point");
+    expect(geometry).toContain("const dealCenter: Point = { x: width / 2, y: height / 2 }");
+  });
+
+  it("does not let browser reduced-motion accelerate dealing", () => {
+    const dealer = read("src/components/table/DealerSelectionPresentation.tsx");
+    const deal = read("src/components/table/DealPresentation.tsx");
+    expect(dealer).toContain("gameplayReducedMotionOverride: false");
+    expect(deal).toContain("gameplayReducedMotionOverride: false");
+    expect(deal).not.toContain("motion-reduce:duration-75");
   });
 
   it("returns to the home screen immediately after a successful host end-game", () => {
     const menu = read("src/components/table/TableUtilityMenu.tsx");
+    const projectionService = read("src/services/gameProjectionFunctions.ts");
+    const migration = read("supabase/migrations/20261005062000_jk006_termination_terminal_payload.sql");
     expect(menu).toContain('window.location.assign("/")');
+    expect(projectionService).not.toContain("const loaded = await loadCanonicalGameState(data.gameId);\n    if (!loaded.ok) return { ok: false, code: loaded.code };\n    const projection = projected(loaded);\n    return projection\n      ? { ok: true, replayed: result.replayed, projection }");
+    expect(projectionService).toContain("terminal.canonicalState");
+    expect(migration).toContain("'canonicalState', v_new_state");
+    expect(migration).toContain("'viewerSeat', v_viewer_seat");
   });
 
   it("keeps declaration choice optimistic while retaining recovery on failed command", () => {
