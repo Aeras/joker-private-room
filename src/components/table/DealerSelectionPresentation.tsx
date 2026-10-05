@@ -28,6 +28,7 @@ type FrozenRun = {
   gameId: string;
   viewerSeat: number;
   geometry: TableGeometry;
+  openingCard: Card;
   beats: RevealedBeat[];
 };
 
@@ -70,7 +71,7 @@ function RevealedCard({
 
   return (
     <div
-      className={`absolute left-0 top-0 [--card-w:clamp(2.4rem,5vw,3.8rem)] transition-transform ease-out ${finalAce ? "z-40 drop-shadow-[0_0_18px_var(--gold)]" : "z-30"}`}
+      className={`absolute left-0 top-0 [--card-w:clamp(2.8rem,5.6vw,4.4rem)] transition-transform ease-out ${finalAce ? "z-40 drop-shadow-[0_0_18px_var(--gold)]" : "z-30"}`}
       style={{
         zIndex: finalAce ? 60 : 30 + beat.stackIndex,
         transitionDuration: `${DEALER_SELECTION_CARD_TRAVEL_MS}ms`,
@@ -97,7 +98,7 @@ export function DealerSelectionPresentation({
   onActiveChange: (active: boolean) => void;
 }) {
   const [run, setRun] = useState<FrozenRun | null>(null);
-  const [cueVisible, setCueVisible] = useState(false);
+  const [openingVisible, setOpeningVisible] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
   const timers = useRef<number[]>([]);
   const startupFrames = useRef<number[]>([]);
@@ -151,11 +152,12 @@ export function DealerSelectionPresentation({
           gameId: projection.gameId,
           viewerSeat: projection.viewerSeat,
           geometry,
+          openingCard: { ...selection.openingCard },
           beats,
         };
         setRun(frozenRun);
         setVisibleCount(0);
-        setCueVisible(true);
+        setOpeningVisible(true);
         playGameSound("shuffle", `${projection.gameId}:dealer-selection`);
 
         const cueMs = DEALER_START_CUE_MS;
@@ -168,6 +170,7 @@ export function DealerSelectionPresentation({
           staggerMs,
           travelMs: DEALER_SELECTION_CARD_TRAVEL_MS,
           holdMs,
+          openingCardId: selection.openingCard.id,
           cardCount: beats.length,
           firstRecipientSeat: selection.firstRecipientSeat,
           frozenGeometryEpoch: geometry.epoch,
@@ -177,7 +180,6 @@ export function DealerSelectionPresentation({
 
         beats.forEach((beat, index) => {
           timers.current.push(window.setTimeout(() => {
-            if (index === 0) setCueVisible(false);
             setVisibleCount(index + 1);
             recordTimingDiagnostic("dealer_card_visible", {
               index,
@@ -193,7 +195,7 @@ export function DealerSelectionPresentation({
         timers.current.push(window.setTimeout(() => {
           recordTimingDiagnostic("dealer_sequence_complete", { scheduledOffsetMs: completeAt });
           markDealerSelectionPresented(projection);
-          setCueVisible(false);
+          setOpeningVisible(false);
           setVisibleCount(0);
           setRun(null);
           onActiveChangeRef.current(false);
@@ -212,7 +214,7 @@ export function DealerSelectionPresentation({
         visibilityState: document.visibilityState,
       });
       startedKey.current = null;
-      setCueVisible(false);
+      setOpeningVisible(false);
       setVisibleCount(0);
       setRun(null);
       onActiveChangeRef.current(true);
@@ -232,7 +234,7 @@ export function DealerSelectionPresentation({
 
   useEffect(() => () => clearTimers(), [clearTimers]);
 
-  if (!run || (!cueVisible && visibleCount === 0)) return null;
+  if (!run || (!openingVisible && visibleCount === 0)) return null;
   const visible = run.beats.slice(0, visibleCount);
   const finalIndex = run.beats.length - 1;
 
@@ -242,9 +244,9 @@ export function DealerSelectionPresentation({
       style={{ left: run.geometry.dealCenter.x, top: run.geometry.dealCenter.y }}
       aria-hidden="true"
     >
-      {cueVisible && (
-        <div className="absolute left-0 top-0 z-20 -translate-x-1/2 -translate-y-1/2 [--card-w:clamp(2.6rem,5vw,4rem)] drop-shadow-xl">
-          <PlayingCard faceDown />
+      {openingVisible && (
+        <div className="absolute left-0 top-0 z-20 -translate-x-1/2 -translate-y-1/2 [--card-w:clamp(3rem,5.8vw,4.6rem)] drop-shadow-xl">
+          <PlayingCard card={run.openingCard} />
         </div>
       )}
       {visible.map((beat) => (
