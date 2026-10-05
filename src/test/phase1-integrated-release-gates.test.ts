@@ -24,7 +24,10 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
     expect(seat).toContain("<PlayerAvatar");
     expect(seat).toContain("· ΕΣΥ");
     expect(seat).toContain("D");
-    expect(seat).toContain("conic-gradient(var(--gold)");
+    expect(seat).toContain("conic-gradient(from 0deg");
+    expect(seat).toContain('return "#22c55e"');
+    expect(seat).toContain('return "#f59e0b"');
+    expect(seat).toContain('return "#ef4444"');
     expect(projection).toContain("currentHumanDeadline: state.timing.currentHumanDeadline");
   });
 
@@ -56,6 +59,7 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
     expect(trick).not.toMatch(/resolveTrick|calculateWinner/);
     expect(trick).toContain("trickPresentationTiming(reducedMotion)");
     expect(trickModel).toContain("NORMAL_TRICK_HOLD_MS = 850");
+    expect(trickModel).toContain("NORMAL_TRICK_INTER_PLAY_BEAT_MS = 1_000");
   });
 
   it("uses best-effort deduplicated audio with no gameplay dependency", () => {
