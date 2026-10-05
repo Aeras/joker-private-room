@@ -71,7 +71,7 @@ function RevealedCard({
 
   return (
     <div
-      className={`absolute left-0 top-0 [--card-w:clamp(2.8rem,5.6vw,4.4rem)] transition-transform ease-out ${finalAce ? "z-40 drop-shadow-[0_0_18px_var(--gold)]" : "z-30"}`}
+      className={`absolute left-0 top-0 [--card-w:clamp(2.95rem,5.8vw,4.6rem)] transition-transform ease-out ${finalAce ? "z-40 drop-shadow-[0_0_18px_var(--gold)]" : "z-30"}`}
       style={{
         zIndex: finalAce ? 60 : 30 + beat.stackIndex,
         transitionDuration: `${DEALER_SELECTION_CARD_TRAVEL_MS}ms`,
@@ -250,7 +250,7 @@ export function DealerSelectionPresentation({
       aria-hidden="true"
     >
       {openingVisible && (
-        <div className="absolute left-0 top-0 z-20 -translate-x-1/2 -translate-y-1/2 [--card-w:clamp(3rem,5.8vw,4.6rem)] drop-shadow-xl">
+        <div className="absolute left-0 top-0 z-20 -translate-x-1/2 -translate-y-1/2 [--card-w:clamp(3.15rem,6vw,4.8rem)] drop-shadow-xl">
           <PlayingCard card={run.openingCard} />
         </div>
       )}
