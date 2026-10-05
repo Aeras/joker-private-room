@@ -69,3 +69,9 @@ export function preloadCardAssets(): Promise<void> {
   fullDeckPreload = Promise.all(CARD_ASSET_URLS.map((url) => preloadCardAsset(url))).then(() => undefined);
   return fullDeckPreload;
 }
+
+// PlayingCard imports this module as part of the gameplay bundle, so start warming
+// all 39 canonical assets before the first individual card actually needs them.
+if (typeof window !== "undefined") {
+  void preloadCardAssets();
+}
