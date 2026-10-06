@@ -226,11 +226,22 @@ function TablePage() {
   }, []);
 
   useEffect(() => {
-    const update = () => setVisible(document.visibilityState === "visible");
+    const update = () => {
+      const nextVisible = document.visibilityState === "visible";
+      setVisible(nextVisible);
+      if (nextVisible) {
+        void refreshAll();
+        void refreshDialogue();
+      }
+    };
     update();
     document.addEventListener("visibilitychange", update);
-    return () => document.removeEventListener("visibilitychange", update);
-  }, []);
+    window.addEventListener("focus", update);
+    return () => {
+      document.removeEventListener("visibilitychange", update);
+      window.removeEventListener("focus", update);
+    };
+  }, [refreshAll, refreshDialogue]);
 
   useEffect(() => {
     const waiting = projection?.lifecycle === "starting" && projection.progression.phase === "INITIAL_DEALER_SELECTION";
