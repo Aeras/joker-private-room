@@ -167,20 +167,20 @@ describe("AI banter provider boundary", () => {
   });
   it("rejects near-duplicate wording and avoids recently used fallback lines", async () => {
     expect(dialogueLineTooSimilar(
-      "Μιχάλης, πάλι αλλού δήλωσες κι αλλού κατέληξες!",
-      ["ka-monika: Μιχάλης, πάλι αλλού δήλωσες κι αλλού κατέληξες."],
+      "Αυτό πόνεσε! Και φαινόταν από πριν.",
+      ["ka-monika: Αυτό πόνεσε. Και φαινόταν από πριν."],
     )).toBe(true);
 
     const repeatedContext: DialogueGenerationContext = {
       ...context,
-      recentBanter: ["ka-monika: Μιχάλης, πάλι αλλού δήλωσες κι αλλού κατέληξες."],
+      recentBanter: ["ka-monika: Αυτό πόνεσε. Και φαινόταν από πριν."],
     };
     const fallback = pickDialoguePreset(repeatedContext, () => 0);
-    expect(fallback).not.toBe("Μιχάλης, πάλι αλλού δήλωσες κι αλλού κατέληξες.");
+    expect(fallback).not.toBe("Αυτό πόνεσε. Και φαινόταν από πριν.");
 
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
-        JSON.stringify({ output: [{ type: "message", content: [{ type: "output_text", text: "Μιχάλης, πάλι αλλού δήλωσες κι αλλού κατέληξες!" }] }] }),
+        JSON.stringify({ output: [{ type: "message", content: [{ type: "output_text", text: "Αυτό πόνεσε! Και φαινόταν από πριν." }] }] }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       ),
     );
