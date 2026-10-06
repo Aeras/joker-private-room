@@ -175,9 +175,9 @@ describe("AI banter Phase D — privacy and authority release gates", () => {
     expect(edge).not.toContain("canonical_state");
   });
 
-  it("keeps GEMINI_API_KEY server-only and the browser session opaque", () => {
+  it("keeps XAI_API_KEY server-only and the browser session opaque", () => {
     expect(edge).toContain('Deno.env.get("XAI_API_KEY")');
-    expect(edge).not.toContain("VITE_GEMINI");
+    expect(edge).not.toContain("VITE_XAI");
     expect(service).toContain("getCookie(SESSION_COOKIE)");
     expect(service).not.toContain("XAI_API_KEY");
     expect(table).not.toContain("XAI_API_KEY");
