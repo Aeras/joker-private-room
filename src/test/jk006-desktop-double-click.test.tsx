@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DraggableHandCard } from "@/components/table/DraggableHandCard";
 import { shouldCommitCardRelease } from "@/components/table/cardGesture";
@@ -11,7 +12,7 @@ vi.mock("@/components/joker/PlayingCard", () => ({
 const card: Card = { kind: "standard", id: "h-A", suit: "hearts", rank: "A" };
 const rect = { left: 10, top: 20, right: 70, bottom: 110, width: 60, height: 90 };
 
-function view(overrides: Partial<React.ComponentProps<typeof DraggableHandCard>> = {}) {
+function view(overrides: Partial<ComponentProps<typeof DraggableHandCard>> = {}) {
   const onCommit = vi.fn(async () => undefined);
   const result = render(
     <DraggableHandCard
