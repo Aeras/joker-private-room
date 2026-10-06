@@ -30,6 +30,7 @@ const DIALOGUE_EVENT_TYPES = new Set<DialogueEventType>([
   "COMEBACK",
   "SCORE_COLLAPSE",
   "BOT_REVENGE_SUCCESS",
+  "TRICK_WON",
   "ROUND_END",
   "GAME_END",
   "HUMAN_MESSAGE_TO_BOT",
