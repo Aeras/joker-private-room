@@ -44,9 +44,27 @@ function canonicalCardFace(card: Card): string | undefined {
   return `/cards/${card.suit}_${rankAssetName[card.rank]}.png`;
 }
 
+const tableAvatarNames = new Set(["archimandritis", "giobis", "giorgos_nousios", "git", "ka_monika", "mixalis", "mounara", "theia_tamara", "thomoulis"]);
+function tableAvatar(url: string | undefined): string | undefined {
+  if (!url) return url;
+  let pathname = url;
+  if (!url.startsWith("/") || url.startsWith("//")) {
+    if (typeof window === "undefined") return url;
+    try { const parsed = new URL(url, window.location.origin); if (parsed.origin !== window.location.origin) return url; pathname = parsed.pathname; } catch { return url; }
+  }
+  const match = /^\/avatars\/([a-z_]+)\.png$/.exec(pathname);
+  return match && tableAvatarNames.has(match[1]!) ? "/avatars/table/" + match[1] + ".webp" : url;
+}
+function cardArtwork(url: string): string {
+  const known = /^\/cards\/(?:card_back|joker_red|joker_black|(?:hearts|diamonds|clubs|spades)_(?:6|7|8|9|10|jack|queen|king|ace))\.png$/.test(url);
+  return known ? url.replace("/cards/", "/cards/optimized/").replace(/\.png$/, ".webp") : url;
+}
+
 export const assets = {
   cardBack: "/cards/card_back.png",
-  tableArt: "/table/table_background.png",
+  tableArt: "/table/optimized/table_background.webp",
+  cardArtwork,
+  tableAvatar,
   cardFace: canonicalCardFace,
   avatar: (_id: string, displayName?: string): string | undefined => {
     const key = displayName?.trim().toLowerCase();

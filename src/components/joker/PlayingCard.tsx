@@ -4,6 +4,7 @@ import {
   hasCardAssetFailed,
   isCardAssetReady,
   preloadCardAsset,
+  resolvedCardArtwork,
 } from "@/assets/cardPreload";
 import { cardLabel, isRedSuit, SUIT_SYMBOL, type Card } from "@/domain/cards";
 import { cn } from "@/lib/utils";
@@ -95,9 +96,8 @@ function CardArtwork({
       {failed && fallback}
       {!failed && (
         <img
-          src={artwork}
+          src={resolvedCardArtwork(artwork)}
           alt={alt}
-          onLoad={() => setLoaded(true)}
           onError={() => setFailed(true)}
           className={cn(
             "absolute inset-0 h-full w-full object-cover transition-opacity duration-75",

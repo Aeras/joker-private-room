@@ -1,3 +1,4 @@
+import { acknowledgePlayedEvent } from "./turnPresentation";
 import { describe, expect, it } from "vitest";
 
 import { createDeck, shuffleCards, type Card, type StandardCard } from "./cards";
@@ -135,6 +136,8 @@ describe("declaration dispatcher", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) throw new Error(result.code);
       state = result.state;
+      const boundary = state.timing.turnPresentation;
+      if (boundary) for (const viewer of boundary.requiredSeats) state = acknowledgePlayedEvent(state, viewer, boundary.token, "2026-10-04T06:00:00.000Z").state;
     }
 
     expect(state.declarations.declarations.every((value) => value != null)).toBe(true);
@@ -232,6 +235,8 @@ describe("card/Joker command dispatcher", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) throw new Error(result.code);
       state = result.state;
+      const boundary = state.timing.turnPresentation;
+      if (boundary) for (const viewer of boundary.requiredSeats) state = acknowledgePlayedEvent(state, viewer, boundary.token, "2026-10-04T06:00:00.000Z").state;
     }
     expect(state.progression.phase).toBe("DEAL_RESULT");
     expect(state.cards.completedTricks[0]?.winnerSeat).toBe(3);
@@ -269,6 +274,8 @@ describe("card/Joker command dispatcher", () => {
     expect(state.progression.phase).toBe("JOKER_DECISION");
     expect(state.cards.hands[1].map((card) => card.id)).toContain("joker-1");
 
+    const boundary = state.timing.turnPresentation!;
+    for (const viewer of boundary.requiredSeats) state = acknowledgePlayedEvent(state, viewer, boundary.token, "2026-10-04T06:00:00.000Z").state;
     expect(apply(state, 1, { type: "choose_joker_semantic", semantic: { context: "OPEN_TRICK", mode: "COMPETE" } })).toEqual({ ok: false, code: "INVALID_JOKER_CHOICE" });
 
     const chosen = apply(state, 1, {

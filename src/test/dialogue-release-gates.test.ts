@@ -305,7 +305,7 @@ describe("AI banter Phase D — provider failure and UX release gates", () => {
 
   it("exposes required external-AI disclosure only at the human-to-bot AI surface", () => {
     expect(overlay).toContain("room.botSettings.aiEnabled");
-    expect(overlay).toContain("μπορεί να επεξεργαστεί από εξωτερικό πάροχο AI");
+    expect(overlay.replace(/\s+/g, " ")).toContain("μπορεί να επεξεργαστεί από εξωτερικό πάροχο AI");
     expect(service).toContain('action: "human-message"');
   });
 });

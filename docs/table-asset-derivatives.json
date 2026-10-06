@@ -1,0 +1,835 @@
+[
+  {
+    "source": "/cards/card_back.png",
+    "derivative": "/cards/optimized/card_back.webp",
+    "sourceBytes": 629114,
+    "derivativeBytes": 419696,
+    "sourceDimensions": [
+      433,
+      632
+    ],
+    "derivativeDimensions": [
+      433,
+      632
+    ],
+    "sourceSha256": "c27f03c4c3417e12a6626e83ea0edfbe2892ecc200a5e730ab5b595884f2f20c",
+    "derivativeSha256": "6ce7a0a519d2ea8f3bbf46876d119efc7850319c4f5152d8271df58868498624",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/clubs_10.png",
+    "derivative": "/cards/optimized/clubs_10.webp",
+    "sourceBytes": 117440,
+    "derivativeBytes": 75396,
+    "sourceDimensions": [
+      274,
+      334
+    ],
+    "derivativeDimensions": [
+      274,
+      334
+    ],
+    "sourceSha256": "f2f0a0ab6e31a46970eac9300f89e81966058420ac9627fbe325ff80f1fa25ca",
+    "derivativeSha256": "3dc80bc4c9959f7c3e0327c6ab4591e87a2bf5c6ab02126179fc9129e132a443",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/clubs_6.png",
+    "derivative": "/cards/optimized/clubs_6.webp",
+    "sourceBytes": 105149,
+    "derivativeBytes": 66678,
+    "sourceDimensions": [
+      271,
+      337
+    ],
+    "derivativeDimensions": [
+      271,
+      337
+    ],
+    "sourceSha256": "74adc933a569233d051a7ffeb2be94f4da451faf270e3a4e00b8c04fb920836b",
+    "derivativeSha256": "e7bfaf2f30fde364015a1c2fa63e019b66c065ce18c43f4dbf2d3126cef023c5",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/clubs_7.png",
+    "derivative": "/cards/optimized/clubs_7.webp",
+    "sourceBytes": 107285,
+    "derivativeBytes": 68668,
+    "sourceDimensions": [
+      274,
+      337
+    ],
+    "derivativeDimensions": [
+      274,
+      337
+    ],
+    "sourceSha256": "989a0bc2b7c77f02644ca1beb815f32b4325c715c51a776f488cc91ccc4ee34c",
+    "derivativeSha256": "65832433bf9d66803792bcd558e4f555160a0a7935f068d649f28b725478424f",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/clubs_8.png",
+    "derivative": "/cards/optimized/clubs_8.webp",
+    "sourceBytes": 111894,
+    "derivativeBytes": 70954,
+    "sourceDimensions": [
+      273,
+      337
+    ],
+    "derivativeDimensions": [
+      273,
+      337
+    ],
+    "sourceSha256": "96e6962fe06a19a58c8332880eb7e53ea61aeebb870c16419f11e7c3f8df04f5",
+    "derivativeSha256": "9e1d7cc613f865697572369b558bd67f02afb8873fc4d8396f025906f5ecc669",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/clubs_9.png",
+    "derivative": "/cards/optimized/clubs_9.webp",
+    "sourceBytes": 113075,
+    "derivativeBytes": 71928,
+    "sourceDimensions": [
+      271,
+      334
+    ],
+    "derivativeDimensions": [
+      271,
+      334
+    ],
+    "sourceSha256": "5873ace57bb7c70b75386a3cabdd3958c65f329993176488cee292a644f1ae41",
+    "derivativeSha256": "5fdb4aa5e9ccbb6919fc337696d9ced5b00c48426405d625f6424ec98d34e6d1",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/clubs_ace.png",
+    "derivative": "/cards/optimized/clubs_ace.webp",
+    "sourceBytes": 127722,
+    "derivativeBytes": 80354,
+    "sourceDimensions": [
+      273,
+      337
+    ],
+    "derivativeDimensions": [
+      273,
+      337
+    ],
+    "sourceSha256": "eeb57370f77d6874c6f9b5dcbcfb58af77c0ed0bf6d88d92bdd87e98c55a6f7c",
+    "derivativeSha256": "1b238a9df3a6907f7f3787feb994607baad571d0d207dbc769763824f094bd6f",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/clubs_jack.png",
+    "derivative": "/cards/optimized/clubs_jack.webp",
+    "sourceBytes": 172137,
+    "derivativeBytes": 113504,
+    "sourceDimensions": [
+      273,
+      334
+    ],
+    "derivativeDimensions": [
+      273,
+      334
+    ],
+    "sourceSha256": "786a3359252079a9214e35a248831972da008aeee64ddacc93e9e9bd071155bf",
+    "derivativeSha256": "29514b4887e3d3d0fc0b001ec588913ce0b4c45881f8794673284183f1a34809",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/clubs_king.png",
+    "derivative": "/cards/optimized/clubs_king.webp",
+    "sourceBytes": 183827,
+    "derivativeBytes": 121522,
+    "sourceDimensions": [
+      274,
+      337
+    ],
+    "derivativeDimensions": [
+      274,
+      337
+    ],
+    "sourceSha256": "ee883bb828b76e45cbf3b48e9cd2e799268419f7e8d3fa9ce59c5524e06b614c",
+    "derivativeSha256": "ff6219b183355279b2e17c701f4a7fe86cbf2f5219b52ba9d3ad7c8f30f02d67",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/clubs_queen.png",
+    "derivative": "/cards/optimized/clubs_queen.webp",
+    "sourceBytes": 174058,
+    "derivativeBytes": 114710,
+    "sourceDimensions": [
+      271,
+      337
+    ],
+    "derivativeDimensions": [
+      271,
+      337
+    ],
+    "sourceSha256": "f7ee61391f174724cec53776d5b638fd95672f1e01fc680ef7d3d56af108b0a7",
+    "derivativeSha256": "2e633477ab4d388cf510d95d6521e89755ce415bac0465e58a1d77b44b803cf4",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/diamonds_10.png",
+    "derivative": "/cards/optimized/diamonds_10.webp",
+    "sourceBytes": 110959,
+    "derivativeBytes": 69784,
+    "sourceDimensions": [
+      277,
+      326
+    ],
+    "derivativeDimensions": [
+      277,
+      326
+    ],
+    "sourceSha256": "7cc2fe84ea673765a4da12dce796007de39b329b7eef69e75be34540d65b1133",
+    "derivativeSha256": "036c7ef9fbd3071a47aa15774ed2e67a5f9ed88628a35d2ee0c68f20957ebcc3",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/diamonds_6.png",
+    "derivative": "/cards/optimized/diamonds_6.webp",
+    "sourceBytes": 102165,
+    "derivativeBytes": 63800,
+    "sourceDimensions": [
+      267,
+      329
+    ],
+    "derivativeDimensions": [
+      267,
+      329
+    ],
+    "sourceSha256": "56e846d4c4547352f4df3ddf5506a4087d1d3b55bb020da7553e5c950ad0df06",
+    "derivativeSha256": "b316a85c818526de1c1df70785534b5d59b844100462bb6c4656be0a8a345858",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/diamonds_7.png",
+    "derivative": "/cards/optimized/diamonds_7.webp",
+    "sourceBytes": 105911,
+    "derivativeBytes": 65988,
+    "sourceDimensions": [
+      277,
+      329
+    ],
+    "derivativeDimensions": [
+      277,
+      329
+    ],
+    "sourceSha256": "032f657de2d3b09d362d50b734aad544c4fb841d531c2e2857e7d394c2a7714f",
+    "derivativeSha256": "97dd63164a6ec98979fac5ac6b4f48d3b65c953f13dcafdef009114da8c46327",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/diamonds_8.png",
+    "derivative": "/cards/optimized/diamonds_8.webp",
+    "sourceBytes": 105201,
+    "derivativeBytes": 65546,
+    "sourceDimensions": [
+      267,
+      329
+    ],
+    "derivativeDimensions": [
+      267,
+      329
+    ],
+    "sourceSha256": "7fbdf3215631acb69222f6bd35cf5f8a941a9bf5dd2f45be9afa476d893d6d3f",
+    "derivativeSha256": "6ff706bc8c082c525e14b3850af9da92b00d8af9b67b0d9b590a01402ec5cb95",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/diamonds_9.png",
+    "derivative": "/cards/optimized/diamonds_9.webp",
+    "sourceBytes": 106023,
+    "derivativeBytes": 65744,
+    "sourceDimensions": [
+      267,
+      328
+    ],
+    "derivativeDimensions": [
+      267,
+      328
+    ],
+    "sourceSha256": "33c972c3bf94f180ff68196dca2a53f7e13aa8efe67fd0a35d2c230588452da5",
+    "derivativeSha256": "b0220b468b7b7ede687c191c5bb7ccb3654160eb1ed34cf440e973d397acdb81",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/diamonds_ace.png",
+    "derivative": "/cards/optimized/diamonds_ace.webp",
+    "sourceBytes": 129575,
+    "derivativeBytes": 82022,
+    "sourceDimensions": [
+      267,
+      337
+    ],
+    "derivativeDimensions": [
+      267,
+      337
+    ],
+    "sourceSha256": "df2b177c26e8579b05e7221d8acffc3255da2fdad4e6bce7d2cea2d77281dde9",
+    "derivativeSha256": "d9677f1840a9e25df040b8f4d00796049b80cbbcd1fe5048f2b0bb9d89d788dc",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/diamonds_jack.png",
+    "derivative": "/cards/optimized/diamonds_jack.webp",
+    "sourceBytes": 165158,
+    "derivativeBytes": 110970,
+    "sourceDimensions": [
+      267,
+      327
+    ],
+    "derivativeDimensions": [
+      267,
+      327
+    ],
+    "sourceSha256": "18cbefdaa0b4ac4d36de7c39fc622ea55c2ac94a34116ed6b58dd24dc2a965e3",
+    "derivativeSha256": "f74d8c998076dd2dfb759743298ee2735fe7f5146e00437424276d888bfd1737",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/diamonds_king.png",
+    "derivative": "/cards/optimized/diamonds_king.webp",
+    "sourceBytes": 174206,
+    "derivativeBytes": 115846,
+    "sourceDimensions": [
+      277,
+      337
+    ],
+    "derivativeDimensions": [
+      277,
+      337
+    ],
+    "sourceSha256": "c9a76e5402c6e36dad75d75ac29f1efeae266d7418236baa3aae9e960376a144",
+    "derivativeSha256": "1d8a874aadd26bcfc66410e42e9569ea60dfe11dbcdf948aa1dcf9a3286f1cea",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/diamonds_queen.png",
+    "derivative": "/cards/optimized/diamonds_queen.webp",
+    "sourceBytes": 171221,
+    "derivativeBytes": 114208,
+    "sourceDimensions": [
+      267,
+      337
+    ],
+    "derivativeDimensions": [
+      267,
+      337
+    ],
+    "sourceSha256": "fdbcdbf11556b1233fc036863d64ce0166eb6103561121accb77cbe46267c4c4",
+    "derivativeSha256": "7820e4739c0fbb680a7092850be3cae25534998271e5b21892d6c9da5b24a31c",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/hearts_10.png",
+    "derivative": "/cards/optimized/hearts_10.webp",
+    "sourceBytes": 103207,
+    "derivativeBytes": 65154,
+    "sourceDimensions": [
+      253,
+      324
+    ],
+    "derivativeDimensions": [
+      253,
+      324
+    ],
+    "sourceSha256": "fee54cce61368cd20caf50431f4231eac9c2a4658e6a75cde6c500af7c4005e1",
+    "derivativeSha256": "15d36198cb4d1c85a41e70249c88820c4c5bc96fcb91b77bd0a259786c429850",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/hearts_6.png",
+    "derivative": "/cards/optimized/hearts_6.webp",
+    "sourceBytes": 96481,
+    "derivativeBytes": 60186,
+    "sourceDimensions": [
+      255,
+      332
+    ],
+    "derivativeDimensions": [
+      255,
+      332
+    ],
+    "sourceSha256": "b0e42ebfb08036d6fc3004a141334134d45103375db832e94536f9e7a4f69260",
+    "derivativeSha256": "5133c90bae86fc326adb09bef0e97639364773cc9baf0707c192ca0350533358",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/hearts_7.png",
+    "derivative": "/cards/optimized/hearts_7.webp",
+    "sourceBytes": 97384,
+    "derivativeBytes": 60856,
+    "sourceDimensions": [
+      253,
+      330
+    ],
+    "derivativeDimensions": [
+      253,
+      330
+    ],
+    "sourceSha256": "0d9fe853d19e71a6c1d8c8e0f75ad6e8ec25f4b3eb56f0c0c047bb2a70e25c55",
+    "derivativeSha256": "c8e3d33339402362209e16afec8758bd4ce18b09c860d0afc364f4474b84088a",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/hearts_8.png",
+    "derivative": "/cards/optimized/hearts_8.webp",
+    "sourceBytes": 99933,
+    "derivativeBytes": 62854,
+    "sourceDimensions": [
+      253,
+      330
+    ],
+    "derivativeDimensions": [
+      253,
+      330
+    ],
+    "sourceSha256": "7cd807ed03ce79bac0f2501f988a7f49723cc217cb71a860fb9b8befdff3e331",
+    "derivativeSha256": "3bdd52fb74054e7a5853d67decf32f9e8ec98c9a7de9343fd4da5af4b5d320b4",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/hearts_9.png",
+    "derivative": "/cards/optimized/hearts_9.webp",
+    "sourceBytes": 101048,
+    "derivativeBytes": 63526,
+    "sourceDimensions": [
+      254,
+      324
+    ],
+    "derivativeDimensions": [
+      254,
+      324
+    ],
+    "sourceSha256": "1628f4840dd7c276a0e1bbcb3df9bc0a7af38203bbe3b1458480af53c76c15eb",
+    "derivativeSha256": "3ba1801c8bf681255a03318a057ffa91467497ba3d46d39def08835e421c2ab4",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/hearts_ace.png",
+    "derivative": "/cards/optimized/hearts_ace.webp",
+    "sourceBytes": 123444,
+    "derivativeBytes": 78770,
+    "sourceDimensions": [
+      253,
+      331
+    ],
+    "derivativeDimensions": [
+      253,
+      331
+    ],
+    "sourceSha256": "ea3f8ed1368ab25c0a894138544f4b969a65598b8780348bfefa5a558fd3c82f",
+    "derivativeSha256": "5ca379c184117eaf5162f1510507ea498fd4c4f73aa43bc34c85cb06f655bb8f",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/hearts_jack.png",
+    "derivative": "/cards/optimized/hearts_jack.webp",
+    "sourceBytes": 152653,
+    "derivativeBytes": 104132,
+    "sourceDimensions": [
+      253,
+      324
+    ],
+    "derivativeDimensions": [
+      253,
+      324
+    ],
+    "sourceSha256": "d27c8930ba1ed5d4ca1950064a0687660030be6de1b76e8a40380a597cd546e8",
+    "derivativeSha256": "b544d88075f57bfa501b56ea3cc5e554376307401b39d5921df87044bbdcc20d",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/hearts_king.png",
+    "derivative": "/cards/optimized/hearts_king.webp",
+    "sourceBytes": 153933,
+    "derivativeBytes": 103854,
+    "sourceDimensions": [
+      253,
+      331
+    ],
+    "derivativeDimensions": [
+      253,
+      331
+    ],
+    "sourceSha256": "185310f3d9ee638527a9294632ac27c4117aabdb34e52c45076a01ce0221c5e5",
+    "derivativeSha256": "400f7d088d4aa614c542cd870fc264975bf70455dcb05ce7530e1f2740f6fda9",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/hearts_queen.png",
+    "derivative": "/cards/optimized/hearts_queen.webp",
+    "sourceBytes": 159491,
+    "derivativeBytes": 106798,
+    "sourceDimensions": [
+      254,
+      331
+    ],
+    "derivativeDimensions": [
+      254,
+      331
+    ],
+    "sourceSha256": "315878cbc5cf47e8b4df96f33fd1dce01001c427e14427c44207823f99b93cc6",
+    "derivativeSha256": "ce10b758169b38586744a9ff22a39d3fdaeea23d81cb130b2bc69df96a5c7708",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/joker_black.png",
+    "derivative": "/cards/optimized/joker_black.webp",
+    "sourceBytes": 463788,
+    "derivativeBytes": 306946,
+    "sourceDimensions": [
+      424,
+      631
+    ],
+    "derivativeDimensions": [
+      424,
+      631
+    ],
+    "sourceSha256": "60a7f00f98ae22d5208a4c296e0e177655aa9c29642ca19f0b99484806a75db1",
+    "derivativeSha256": "ac3f51d21084d4f111a51f3a44601c1579916f83dd5ba593d9e25a2e88426605",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/joker_red.png",
+    "derivative": "/cards/optimized/joker_red.webp",
+    "sourceBytes": 456195,
+    "derivativeBytes": 300204,
+    "sourceDimensions": [
+      432,
+      632
+    ],
+    "derivativeDimensions": [
+      432,
+      632
+    ],
+    "sourceSha256": "4f1fdcc34355bcf8bf7400017fc65e536f57eb61edce299bd35c1685da7c51c0",
+    "derivativeSha256": "4accc56a43d909f8a4a62738c303765a5dcff5bc6ed72661acebd880b46401d0",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/spades_10.png",
+    "derivative": "/cards/optimized/spades_10.webp",
+    "sourceBytes": 115169,
+    "derivativeBytes": 72944,
+    "sourceDimensions": [
+      264,
+      335
+    ],
+    "derivativeDimensions": [
+      264,
+      335
+    ],
+    "sourceSha256": "0bd0035e8edd3849b3187dea01c7da89420346049895e27cf62a30ddf0976b82",
+    "derivativeSha256": "2e3aaaac6bc94ed0cc06c2cfe799d32cc0b234874bcb21de5a8116802463deda",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/spades_6.png",
+    "derivative": "/cards/optimized/spades_6.webp",
+    "sourceBytes": 108574,
+    "derivativeBytes": 68510,
+    "sourceDimensions": [
+      263,
+      339
+    ],
+    "derivativeDimensions": [
+      263,
+      339
+    ],
+    "sourceSha256": "8a522afa60901c1664c51a162517425e89761ad48f6e64323226ee51aa7ab528",
+    "derivativeSha256": "d21431e804052db3f16fffc34688ce056a9f782c577c89c97be96847bdcd0343",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/spades_7.png",
+    "derivative": "/cards/optimized/spades_7.webp",
+    "sourceBytes": 110172,
+    "derivativeBytes": 69494,
+    "sourceDimensions": [
+      264,
+      339
+    ],
+    "derivativeDimensions": [
+      264,
+      339
+    ],
+    "sourceSha256": "55d9619c48ec5376421c76d51f5465acf386c223d6afe0611a0a99216efedf18",
+    "derivativeSha256": "ebddc6ca75ccdc4c6e56ef3790a1817a6a63029377623c17c52304bd9dba329e",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/spades_8.png",
+    "derivative": "/cards/optimized/spades_8.webp",
+    "sourceBytes": 113668,
+    "derivativeBytes": 71816,
+    "sourceDimensions": [
+      264,
+      339
+    ],
+    "derivativeDimensions": [
+      264,
+      339
+    ],
+    "sourceSha256": "c789e992c50253009681f3436163880396444164c399d8cb528970e8cb97387c",
+    "derivativeSha256": "33807bd9b53e5c9d675e49d2f1a6e5baab887a71d2515363c86a6efbd0fb2468",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/spades_9.png",
+    "derivative": "/cards/optimized/spades_9.webp",
+    "sourceBytes": 113616,
+    "derivativeBytes": 71690,
+    "sourceDimensions": [
+      263,
+      335
+    ],
+    "derivativeDimensions": [
+      263,
+      335
+    ],
+    "sourceSha256": "35738e0fbb55ed7344e858d7cee46e9d4f75fe90b2e4535f1267f5bc8c530c5d",
+    "derivativeSha256": "2c3c25a73b29500359719b9e29cbc2d8fcc083518df8b92674fd471d4453823c",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/spades_ace.png",
+    "derivative": "/cards/optimized/spades_ace.webp",
+    "sourceBytes": 135003,
+    "derivativeBytes": 85706,
+    "sourceDimensions": [
+      264,
+      337
+    ],
+    "derivativeDimensions": [
+      264,
+      337
+    ],
+    "sourceSha256": "9b9a4e1be3fcf249c06c3d03ed7209502a5ff29e3483ee24f87847084e5ce53b",
+    "derivativeSha256": "f37b50d2c38e46d38d4274fb1dc1d486d0fad5569a9e22f2b49ed6a84e7638b1",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/spades_jack.png",
+    "derivative": "/cards/optimized/spades_jack.webp",
+    "sourceBytes": 163798,
+    "derivativeBytes": 109232,
+    "sourceDimensions": [
+      264,
+      335
+    ],
+    "derivativeDimensions": [
+      264,
+      335
+    ],
+    "sourceSha256": "69c2194d1952ce7656b39b48ac0028bc9887e67b0f8482d99964b809d5b57e7e",
+    "derivativeSha256": "ebf78ce63d16947dce24b3b7905704109e159f8a670fec00ba26efb659b72833",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/spades_king.png",
+    "derivative": "/cards/optimized/spades_king.webp",
+    "sourceBytes": 164452,
+    "derivativeBytes": 109576,
+    "sourceDimensions": [
+      264,
+      337
+    ],
+    "derivativeDimensions": [
+      264,
+      337
+    ],
+    "sourceSha256": "4ada5c7ffa5d403bb9135914edcfd2fb520b194090d4f9246bcb865313a85dcd",
+    "derivativeSha256": "33685f9fea623487d09a398903cc6054e72139a9e4fbae21f216722fc4eab760",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/cards/spades_queen.png",
+    "derivative": "/cards/optimized/spades_queen.webp",
+    "sourceBytes": 165345,
+    "derivativeBytes": 108766,
+    "sourceDimensions": [
+      263,
+      337
+    ],
+    "derivativeDimensions": [
+      263,
+      337
+    ],
+    "sourceSha256": "acd06c3d21139e1e51311ea6870ae9dcc56e67f17a02cce4b9543af7c88aec8e",
+    "derivativeSha256": "2e5b123536dcff955bdccb6153c7d8a086b41db53bdfa79c9897e5808282baea",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/table/table_background.png",
+    "derivative": "/table/optimized/table_background.webp",
+    "sourceBytes": 736057,
+    "derivativeBytes": 544514,
+    "sourceDimensions": [
+      1136,
+      466
+    ],
+    "derivativeDimensions": [
+      1136,
+      466
+    ],
+    "sourceSha256": "ec266f6174ec451207e3f01bebc7520435ba9a23715c20feb33c042d7acf669a",
+    "derivativeSha256": "25684e2113f36ac75dd61c40a39f2660783494f57ddb3220bbc2eb68b11486a6",
+    "sameDimensionsPixelExact": true
+  },
+  {
+    "source": "/avatars/archimandritis.png",
+    "derivative": "/avatars/table/archimandritis.webp",
+    "sourceBytes": 2278921,
+    "derivativeBytes": 27524,
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "derivativeDimensions": [
+      256,
+      256
+    ],
+    "sourceSha256": "2e3cb18a64de3d68b24457e288c29e7f930da524fa8a00da71601bc798f047cb",
+    "derivativeSha256": "12c80b11a2f6ea6d1fdeff5643abf5627778f0fdc808d5b4742f6e7ed396654f",
+    "sameDimensionsPixelExact": false
+  },
+  {
+    "source": "/avatars/giobis.png",
+    "derivative": "/avatars/table/giobis.webp",
+    "sourceBytes": 2047491,
+    "derivativeBytes": 29348,
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "derivativeDimensions": [
+      256,
+      256
+    ],
+    "sourceSha256": "6e36d15ed9414867d0d93fd868f1fab671d13452d29f62afc3bf45085934dcb9",
+    "derivativeSha256": "4239939ecc301b4ea553866b2a3887af22f7e0ca612238d7ed8c434e005b1f69",
+    "sameDimensionsPixelExact": false
+  },
+  {
+    "source": "/avatars/giorgos_nousios.png",
+    "derivative": "/avatars/table/giorgos_nousios.webp",
+    "sourceBytes": 2030337,
+    "derivativeBytes": 23666,
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "derivativeDimensions": [
+      256,
+      256
+    ],
+    "sourceSha256": "e888de78e85742a499805e306ed0b8b2366fb6327ce09397ebb6b1ce9d8c4864",
+    "derivativeSha256": "001a101cc413d04b796d66e8c20814341cf97649d9dacf68feb35de4947013fe",
+    "sameDimensionsPixelExact": false
+  },
+  {
+    "source": "/avatars/git.png",
+    "derivative": "/avatars/table/git.webp",
+    "sourceBytes": 1945024,
+    "derivativeBytes": 26138,
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "derivativeDimensions": [
+      256,
+      256
+    ],
+    "sourceSha256": "8acd40c40a4180e55e76c8827b8d0cb916395d1ce93083dd428d5f7457edac3a",
+    "derivativeSha256": "fa1d5bac805a1958fc7b0ecb776e86957f4eb7d0d0030531ab29e559db886840",
+    "sameDimensionsPixelExact": false
+  },
+  {
+    "source": "/avatars/ka_monika.png",
+    "derivative": "/avatars/table/ka_monika.webp",
+    "sourceBytes": 2315977,
+    "derivativeBytes": 30956,
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "derivativeDimensions": [
+      256,
+      256
+    ],
+    "sourceSha256": "e3b1b71270ca364f4e3a4be70ede2ba5d472602892bedd033f622d6aa106452a",
+    "derivativeSha256": "16299263958ee341ccdce81588dcbf1c45095897ce65284817813f1d5ff3cbcc",
+    "sameDimensionsPixelExact": false
+  },
+  {
+    "source": "/avatars/mixalis.png",
+    "derivative": "/avatars/table/mixalis.webp",
+    "sourceBytes": 2257866,
+    "derivativeBytes": 31128,
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "derivativeDimensions": [
+      256,
+      256
+    ],
+    "sourceSha256": "13675e51c6c100a6e29b6f0539350181af12ec13fb8e8d3670d872107d28c5ff",
+    "derivativeSha256": "f99f9431a29deca602192fc4cdb318ed3dfa4f6de936e47da72961729583fd61",
+    "sameDimensionsPixelExact": false
+  },
+  {
+    "source": "/avatars/mounara.png",
+    "derivative": "/avatars/table/mounara.webp",
+    "sourceBytes": 2364723,
+    "derivativeBytes": 32420,
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "derivativeDimensions": [
+      256,
+      256
+    ],
+    "sourceSha256": "36403b0ab24d0381898b88adb8df77c88c642cc3cb6b2183e24c2a6ae9c364d1",
+    "derivativeSha256": "08923de0563ad05c544b864a3392c0aacb5ecd483acc80ef2eb916495f69e477",
+    "sameDimensionsPixelExact": false
+  },
+  {
+    "source": "/avatars/theia_tamara.png",
+    "derivative": "/avatars/table/theia_tamara.webp",
+    "sourceBytes": 2325827,
+    "derivativeBytes": 34092,
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "derivativeDimensions": [
+      256,
+      256
+    ],
+    "sourceSha256": "233976414e1066918eec202318bd2b3a21d6cd1260ba262ce66c73eaac2217d8",
+    "derivativeSha256": "c92ecbefd0d7161085b02296fb748d9f81239f98dc250c3d21cf195e1a6fe6a6",
+    "sameDimensionsPixelExact": false
+  },
+  {
+    "source": "/avatars/thomoulis.png",
+    "derivative": "/avatars/table/thomoulis.webp",
+    "sourceBytes": 2222419,
+    "derivativeBytes": 24672,
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "derivativeDimensions": [
+      256,
+      256
+    ],
+    "sourceSha256": "24dc09bb92e85a4ff8a5b73513fc364733cc1ef33807368077fce88d22c8ec94",
+    "derivativeSha256": "03218f58bcc8106751b59d644b18068956be26569fae6b0b3282f5e712c1569e",
+    "sameDimensionsPixelExact": false
+  }
+]

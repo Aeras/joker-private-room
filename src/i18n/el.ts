@@ -1,6 +1,8 @@
 /** Greek UI strings. Flat object — easy to swap for a locale map later. */
 export const t = {
   appName: "JOKER",
+  botComposerOpen: "Μήνυμα σε bot",
+  botComposerClose: "Κλείσιμο bots",
   subtitle: "Ιδιωτικό παιχνίδι",
   createGame: "Δημιουργία παιχνιδιού",
   joinGame: "Συμμετοχή σε παιχνίδι",

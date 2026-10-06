@@ -1,3 +1,4 @@
+import { retainedPresentationTail } from "./presentationTail";
 import { prepareGameplayDeck } from "./deckPolicy";
 import { getRuleset, type Ruleset } from "./rulesets";
 import { humanDeadlineFromServerTime } from "./controller";
@@ -137,6 +138,7 @@ function nextDealState(
         exposedTrumpCard: null,
         currentTrick: [],
         completedTricks: [],
+        presentationTail: retainedPresentationTail(state),
       },
       declarations: initialDeclarations(dealerSeat, firstDeclarerSeat, 9),
       trump: { status: "chooser_pending", chooserSeat: firstDeclarerSeat },
@@ -173,6 +175,7 @@ function nextDealState(
       exposedTrumpCard: dealt.revealedTrumpCard,
       currentTrick: [],
       completedTricks: [],
+      presentationTail: retainedPresentationTail(state),
     },
     declarations: initialDeclarations(dealerSeat, firstDeclarerSeat, nextInfo.cardsPerPlayer),
     trump: { status: "resolved", suit: dealt.trump },
@@ -349,6 +352,7 @@ export function settleCanonicalLifecycle(args: {
 }): LifecycleTransitionResult {
   try { getRuleset(args.state.rulesetId, args.state.rulesVersion); } catch { return { ok: false, code: "INVALID_LIFECYCLE_STATE" }; }
   if (!validServerTime(args.serverNow)) return { ok: false, code: "INVALID_LIFECYCLE_STATE" };
+  if (args.state.timing.turnPresentation) return { ok: true, changed: false, state: args.state };
   if (args.state.lifecycle !== "active") return { ok: true, changed: false, state: args.state };
   if (args.state.progression.phase === "DEAL_RESULT") {
     return settleDeal(args.state, args.nextDealRandom ?? null, args.serverNow);

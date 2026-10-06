@@ -19,6 +19,9 @@ import {
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
+// The four former presentation source-string checks are replaced by behavioral
+// optimization-motion-ownership, optimization-ordered-presentation and
+// optimization-responsive-hand tests. Ref/refactor names are not lifecycle guarantees.
 describe("JK-006 targeted gameplay timing and termination", () => {
   it("uses the requested readable presentation pacing", () => {
     expect(DEALER_START_CUE_MS).toBe(500);
@@ -91,18 +94,6 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(deal).toContain("visibleBeats.map((beat)");
   });
 
-  it("reveals the local hand smoothly before declaration/trump controls appear", () => {
-    const table = read("src/components/table/GameTable.tsx");
-    const hand = read("src/components/table/LocalHandRow.tsx");
-    const deal = read("src/components/table/DealPresentation.tsx");
-    expect(table).toContain("HAND_REVEAL_MS = 700");
-    expect(table).toContain("interactionPresentationActive");
-    expect(table).toContain("revealing={handRevealActive}");
-    expect(deal).toContain("onPresentationCompleteRef.current?.(presentationStage)");
-    expect(hand).toContain('data-hand-reveal="true"');
-    expect(hand).toContain("rotateY(180deg)");
-    expect(hand).toContain("duration-[620ms]");
-  });
 
   it("shows the 30-second ring only after declarations enter card play", () => {
     const table = read("src/components/table/GameTable.tsx");
@@ -136,33 +127,8 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(table).toContain("pendingDeclarationValue == null");
   });
 
-  it("uses a bounded sequential committed-play presentation queue", () => {
-    const trick = read("src/components/table/TrickPresentation.tsx");
-    expect(trick).toContain("queueRef");
-    expect(trick).toContain("pendingCompletion");
-    expect(trick).toContain("deferredCurrent");
-    expect(trick).toContain("playSpacingMs");
-    expect(trick).toContain("projection.cards.completedTricks");
-  });
 
-  it("settles the fourth card, flips the trick face-down, then collects it to the winner", () => {
-    const trick = read("src/components/table/TrickPresentation.tsx");
-    expect(trick).toContain('type DepartingStage = "holding" | "flipping" | "collecting"');
-    expect(trick).toContain("completionTimer");
-    expect(trick).toContain('stage: "flipping"');
-    expect(trick).toContain('stage: "collecting"');
-    expect(trick).toContain("faceDown ? <PlayingCard faceDown /> : <PlayingCard card={play.card} />");
-    expect(trick).toContain("collectTarget");
-  });
 
-  it("continues local flight immediately and supports server rejection rollback", () => {
-    const model = read("src/components/table/localPlayPresentation.ts");
-    const trick = read("src/components/table/TrickPresentation.tsx");
-    expect(model).toContain('status: "submitted" | "accepted" | "rejected"');
-    expect(model).toContain("completedTricks.some");
-    expect(trick).toContain('presentation.status === "rejected"');
-    expect(trick).toContain("setAtTarget(true)");
-  });
 
   it("keeps fullscreen utilities inside the fullscreen root and chat in safe area", () => {
     const route = read("src/routes/table.tsx");

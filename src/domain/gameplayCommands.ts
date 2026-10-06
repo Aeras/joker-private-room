@@ -1,3 +1,4 @@
+import { holdPlayedEvent } from "./turnPresentation";
 import { getRuleset } from "./rulesets";
 import { SUITS, type Card, type Suit } from "./cards";
 import {
@@ -25,6 +26,7 @@ export type GameplayCommand =
   | { type: "choose_joker_semantic"; semantic: JokerSemantic };
 
 export type GameplayCommandFailureCode =
+  | "PRESENTATION_PENDING"
   | "NOT_CURRENT_ACTOR"
   | "WRONG_PHASE"
   | "INVALID_DECLARATION"
@@ -347,10 +349,14 @@ export function applyGameplayCommand(args: ApplyGameplayCommandArgs): GameplayCo
   if (state.seats[seat]?.seatIndex !== seat) return { ok: false, code: "INTERNAL_STATE_INVARIANT_FAILED" };
   if (expectedController && state.seats[seat].controller !== expectedController) return { ok: false, code: "CONTROLLER_CHANGED" };
 
+  if (state.timing.turnPresentation) return { ok: false, code: "PRESENTATION_PENDING" };
+  let result: GameplayCommandResult;
   switch (command.type) {
-    case "declare": return applyDeclarationCommand(state, seat, command.value, serverNow);
-    case "choose_trump": return applyTrumpChoice(state, seat, command.suit, serverNow);
-    case "play_card": return applyCardPlay(state, seat, command.cardId, serverNow);
-    case "choose_joker_semantic": return applyJokerChoice(state, seat, command.semantic, serverNow);
+    case "declare": result = applyDeclarationCommand(state, seat, command.value, serverNow); break;
+    case "choose_trump": result = applyTrumpChoice(state, seat, command.suit, serverNow); break;
+    case "play_card": result = applyCardPlay(state, seat, command.cardId, serverNow); break;
+    case "choose_joker_semantic": result = applyJokerChoice(state, seat, command.semantic, serverNow); break;
   }
+  return result.ok && (command.type === "play_card" || command.type === "choose_joker_semantic")
+    ? { ok: true, state: holdPlayedEvent(result.state, serverNow) } : result;
 }

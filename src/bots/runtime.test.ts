@@ -174,7 +174,7 @@ describe("automatic bot strategy selection", () => {
 });
 
 describe("persisted automatic progression", () => {
-  it("commits consecutive bot decisions as separate CAS mutations and stops on human input", async () => {
+  it("commits one bot play then blocks for human presentation acknowledgement", async () => {
     let state = baseState();
     const expectedVersions: number[] = [];
     const commandTypes: string[] = [];
@@ -204,10 +204,11 @@ describe("persisted automatic progression", () => {
       },
     });
 
-    expect(result).toEqual({ ok: true, steps: 2, stateVersion: 12, stopReason: "HUMAN_INPUT" });
-    expect(expectedVersions).toEqual([10, 11]);
-    expect(commandTypes).toEqual(["bot_play_card", "bot_play_card"]);
-    expect(state.progression.currentActorSeat).toBe(2);
+    expect(result).toEqual({ ok: true, steps: 1, stateVersion: 11, stopReason: "PRESENTATION_BARRIER" });
+    expect(expectedVersions).toEqual([10]);
+    expect(commandTypes).toEqual(["bot_play_card"]);
+    expect(state.progression.currentActorSeat).toBe(1);
+    expect(state.timing.currentHumanDeadline).toBeNull();
   });
 
   it("lets a reclaim/version winner cancel a stale temporary-bot action without rollback", async () => {

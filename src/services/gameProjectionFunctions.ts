@@ -28,6 +28,7 @@ import {
   type GameStateFailureCode,
   type LoadGameStateResult,
 } from "@/server/gamePersistence";
+import { completeTurnPresentation } from "@/server/turnPresentation";
 import { completeNineCardPresentation } from "@/server/nineCardPresentation";
 import { advanceGameUntilBlocked } from "@/server/reconciliation";
 
@@ -149,9 +150,9 @@ export const completeProjectedStartPresentation = createServerFn({ method: "POST
   });
 
 export const completeProjectedNineCardPresentation = createServerFn({ method: "POST" })
-  .validator(z.object({ gameId: z.string().uuid() }))
+  .validator(z.object({ gameId: z.string().uuid(), dealNumber: z.number().int().min(1).max(24), stage: z.enum(["full", "initial", "remaining"]) }))
   .handler(async ({ data }): Promise<ProjectedGameStateResult> => {
-    const completed = await completeNineCardPresentation(data.gameId);
+    const completed = await completeNineCardPresentation(data.gameId, data.dealNumber, data.stage);
     if (!completed.ok) return { ok: false, code: completed.code };
     // Do not reconcile again here. The released trump/declaration phase must be
     // observable before any bot can consume it on a later normal poll.
@@ -226,4 +227,15 @@ export const terminateProjectedGame = createServerFn({ method: "POST" })
       owner?.type === "human" && owner.playerId === RESTRICTED_HOST_ID,
     );
     return { ok: true, replayed: result.replayed, projection };
+  });
+
+export const completeProjectedTurnPresentation = createServerFn({ method: "POST" })
+  .validator(z.object({ gameId: z.string().uuid(), token: z.number().int().nonnegative() }))
+  .handler(async ({ data }): Promise<ProjectedGameStateResult> => {
+    const result = await completeTurnPresentation(data.gameId, data.token);
+    if (!result.ok) return { ok: false, code: result.code };
+    const loaded = await loadCanonicalGameState(data.gameId);
+    if (!loaded.ok) return { ok: false, code: loaded.code };
+    const projection = projected(loaded);
+    return projection ? { ok: true, projection } : { ok: false, code: "SERVICE_UNAVAILABLE" };
   });

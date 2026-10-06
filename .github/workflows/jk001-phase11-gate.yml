@@ -70,7 +70,9 @@ jobs:
           grep -q 'advanceGameUntilBlocked' src/services/gameProjectionFunctions.ts
           ! grep -q 'progressAutomaticGameplay' src/services/gameProjectionFunctions.ts
           ! grep -q 'resolveOverdueTimeoutBeforeRead' src/services/gameProjectionFunctions.ts
-          grep -q 'advanceGameUntilBlocked(result.gameId)' src/services/roomFunctions.ts
+          # Lobby Start prepares the shell; PR #84 intentionally blocks gameplay.
+          grep -q 'ensureInitialDealerBootstrapPrepared' src/services/roomFunctions.ts
+          ! grep -q 'advanceGameUntilBlocked(result.gameId)' src/services/roomFunctions.ts
       - name: No Phase 12 scope guard
         id: no_phase12
         continue-on-error: true

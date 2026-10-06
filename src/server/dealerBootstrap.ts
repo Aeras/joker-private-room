@@ -1,3 +1,4 @@
+import { holdOrdinaryDealForPresentation } from "@/domain/dealPresentationBarrier";
 import { getRuleset } from "@/domain/rulesets";
 import { RESERVED_TARGET_ID } from "@/server/rulesetIdentity";
 import type { SeatIndex } from "@/domain/dealing";
@@ -246,7 +247,8 @@ export async function activateInitialDealAfterPresentation(
 
   let nextState;
   try {
-    nextState = activateDealOneAfterPresentation(loaded.canonicalState, new Date().toISOString());
+    const serverNow = new Date().toISOString();
+    nextState = holdOrdinaryDealForPresentation(activateDealOneAfterPresentation(loaded.canonicalState, serverNow), serverNow);
   } catch {
     return { ok: false, code: "INVALID_CANONICAL_STATE" };
   }

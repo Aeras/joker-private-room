@@ -28,7 +28,9 @@ describe("JK-002 active-game lookup and routing", () => {
   it("fails Home closed on lookup failure and offers direct return when an active game exists", () => {
     const home = read("src/routes/index.tsx");
     expect(home).toContain('activeLookup.status === "error"');
-    expect(home).toContain("Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού");
+    // Current main already replaced the old error copy with an explicit retry.
+    expect(home).toContain("Δοκιμή ξανά");
+    expect(home).toContain("onClick={() => void activeLookup.refresh()}");
     expect(home).toContain("Επιστροφή στο παιχνίδι");
     expect(home).toContain('to="/table"');
     expect(home).toContain("activeLookup.activeGame.gameId");

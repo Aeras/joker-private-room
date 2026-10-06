@@ -53,7 +53,7 @@ export function applyOverdueTimeout(
   serverNow: string,
 ): ControlTransitionResult {
   if (parseServerTime(serverNow) == null) return { ok: false, code: "INVALID_SERVER_TIME" };
-  if (state.lifecycle !== "active" || !isHumanDeadlineOverdue(state, serverNow)) {
+  if (state.timing.turnPresentation || state.lifecycle !== "active" || !isHumanDeadlineOverdue(state, serverNow)) {
     return { ok: true, changed: false, state };
   }
 
@@ -139,8 +139,9 @@ export function applyReclaimControl(
       stateVersion: state.stateVersion + 1,
       seats,
       timing: {
+        ...state.timing,
         currentHumanDeadline:
-          state.progression.currentActorSeat === seatIndex
+          state.timing.turnPresentation ? null : state.progression.currentActorSeat === seatIndex
             ? humanDeadlineFromServerTime(serverNow)
             : state.timing.currentHumanDeadline,
         timeoutTakeoverActive: false,

@@ -1,5 +1,6 @@
+import { SnapshotAdmission } from "@/components/table/snapshotAdmission";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Play } from "lucide-react";
 import { jButton } from "@/components/joker/JButton";
 import { DialogueOverlay } from "@/components/table/DialogueOverlay";
@@ -25,6 +26,7 @@ import {
   type DialogueMessage,
 } from "@/services/dialogueFunctions";
 import {
+  completeProjectedTurnPresentation,
   completeProjectedNineCardPresentation,
   completeProjectedStartPresentation,
   getProjectedGameReadiness,
@@ -119,6 +121,9 @@ function TablePage() {
   const [landscape, setLandscape] = useState(false);
   const [visible, setVisible] = useState(() => typeof document !== "undefined" && document.visibilityState === "visible");
   const [geometryReady, setGeometryReady] = useState(false);
+  const admission = useMemo(() => new SnapshotAdmission(`${code}:${gameId}`), [code, gameId]);
+  const activeAdmission = useRef(admission);
+  activeAdmission.current = admission;
   const mounted = useRef(true);
   const roomRef = useRef<Room | null>(null);
   const projectionRef = useRef<PlayerGameProjection | null>(null);
@@ -145,7 +150,9 @@ function TablePage() {
   }, []);
 
   const acceptSnapshot = useCallback((nextRoom: Room, nextProjection: PlayerGameProjection): boolean => {
+    if (!mounted.current || activeAdmission.current !== admission) return false;
     if (!gameId || !isCoherentTableSnapshot({ room: nextRoom, projection: nextProjection, expectedGameId: gameId })) return false;
+    if (!admission.admit(nextProjection.stateVersion)) return true; // Obsolete, coherent response: ignore without disconnecting.
     const restoring = connectionStatusRef.current !== "ready";
     roomRef.current = nextRoom;
     projectionRef.current = nextProjection;
@@ -156,7 +163,7 @@ function TablePage() {
     updateConnectionStatus("ready");
     if (restoring) setTableEpoch((value) => value + 1);
     return true;
-  }, [gameId, triggerPublicDialogue, updateConnectionStatus]);
+  }, [admission, gameId, triggerPublicDialogue, updateConnectionStatus]);
 
   const markRefreshFailure = useCallback((message: string) => {
     setError(message);
@@ -165,17 +172,19 @@ function TablePage() {
 
   const refreshAll = useCallback(async () => {
     if (!code || !gameId) return markRefreshFailure("Δεν βρέθηκε έγκυρη ενεργή παρτίδα.");
+    const request = admission.beginRequest();
     const [roomResult, gameResult] = await Promise.all([
       getProductionRoom({ data: { code } }),
       getProjectedGameState({ data: { gameId } }),
     ]);
-    if (!mounted.current) return;
+    if (!mounted.current || activeAdmission.current !== admission) return;
+    if ((!roomResult.ok || !gameResult.ok) && !admission.acceptsFailure(request)) return;
     if (!roomResult.ok) return markRefreshFailure(gameplayFailureMessage(roomResult.code));
     if (!gameResult.ok) return markRefreshFailure(gameplayFailureMessage(gameResult.code));
     if (!acceptSnapshot(roomResult.room, gameResult.projection)) {
       markRefreshFailure("Η κατάσταση του δωματίου και της παρτίδας δεν συμφωνεί ακόμη. Γίνεται επανασύνδεση.");
     }
-  }, [acceptSnapshot, code, gameId, markRefreshFailure]);
+  }, [acceptSnapshot, admission, code, gameId, markRefreshFailure]);
 
   const refreshReadiness = useCallback(async () => {
     if (!gameId) return;
@@ -265,17 +274,21 @@ function TablePage() {
   useEffect(() => {
     mounted.current = true;
     void refreshAll();
-    void refreshReadiness();
     const gameTimer = window.setInterval(() => void refreshAll(), 1500);
     const dialogueTimer = window.setInterval(() => void refreshDialogue(), 1000);
-    const readinessTimer = window.setInterval(() => void refreshReadiness(), 750);
     return () => {
       mounted.current = false;
       window.clearInterval(gameTimer);
       window.clearInterval(dialogueTimer);
-      window.clearInterval(readinessTimer);
     };
-  }, [refreshAll, refreshDialogue, refreshReadiness]);
+  }, [refreshAll, refreshDialogue]);
+
+  useEffect(() => {
+    if (projection?.lifecycle !== "starting") return;
+    void refreshReadiness();
+    const timer = window.setInterval(() => void refreshReadiness(), 750);
+    return () => window.clearInterval(timer);
+  }, [projection?.lifecycle, refreshReadiness]);
 
   useEffect(() => {
     const waiting = projection?.lifecycle === "starting" && projection.progression.phase === "INITIAL_DEALER_SELECTION";
@@ -298,8 +311,9 @@ function TablePage() {
 
   useEffect(() => {
     if (projection?.lifecycle !== "starting" || projection.progression.phase !== "DEAL_SETUP") return;
-    const timer = window.setInterval(() => setPresentationTick((value) => value + 1), 50);
-    return () => window.clearInterval(timer);
+    const complete = () => setPresentationTick(value => value + 1);
+    window.addEventListener("joker:presentation-completed", complete);
+    return () => window.removeEventListener("joker:presentation-completed", complete);
   }, [projection?.gameId, projection?.lifecycle, projection?.progression.phase]);
 
   const presentationStage = startupPresentationStage(projection);
@@ -342,16 +356,16 @@ function TablePage() {
     };
   }, [acceptSnapshot, gameId, landscape, presentationStage, resolvedSelectionVersion, visible]);
 
-  const completeNineCardStage = useCallback(async (stage: Extract<DealPresentationStage, "initial" | "remaining">): Promise<PlayerGameProjection | null> => {
+  const completeNineCardStage = useCallback(async (stage: DealPresentationStage, dealNumber: number): Promise<PlayerGameProjection | null> => {
     if (!gameId || connectionStatusRef.current !== "ready") return null;
     const currentProjection = projectionRef.current;
     const currentRoom = roomRef.current;
     if (!currentProjection || !currentRoom) return null;
-    const key = `${currentProjection.gameId}:${currentProjection.progression.dealNumber}:${stage}`;
+    const key = `${currentProjection.gameId}:${dealNumber}:${stage}`;
     if (nineCardAckInFlight.current === key) return null;
     nineCardAckInFlight.current = key;
     try {
-      const result = await completeProjectedNineCardPresentation({ data: { gameId } });
+      const result = await completeProjectedNineCardPresentation({ data: { gameId, dealNumber, stage } });
       if (!mounted.current) return null;
       if (!result.ok) {
         setError(gameplayFailureMessage(result.code));
@@ -367,6 +381,14 @@ function TablePage() {
     }
   }, [acceptSnapshot, gameId]);
 
+  const completeTurn = useCallback(async (token: number) => {
+    if (!gameId || connectionStatusRef.current !== "ready" || !roomRef.current) return false;
+    const result = await completeProjectedTurnPresentation({ data: { gameId, token } });
+    if (!mounted.current || !result.ok) return false;
+    acceptSnapshot(roomRef.current, result.projection);
+    return true;
+  }, [acceptSnapshot, gameId]);
+
   const submit = async (command: GameplayCommand): Promise<PlayerGameProjection | null> => {
     if (!projection || busy || connectionStatusRef.current !== "ready") return null;
     setBusy(true); setError(null);
@@ -374,7 +396,7 @@ function TablePage() {
       const result = await submitProjectedGameplayCommand({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion, command } });
       if (result.ok) {
         const currentRoom = roomRef.current;
-        if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return result.projection;
+        if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return projectionRef.current;
         await refreshAll(); return null;
       }
       if (mounted.current) setError(gameplayFailureMessage(result.code));
@@ -467,7 +489,7 @@ function TablePage() {
 
   return (
     <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
-      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onNineCardPresentationComplete={completeNineCardStage} />
+      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onTurnPresentationComplete={completeTurn} onNineCardPresentationComplete={completeNineCardStage} />
       <TableMessaging key={projection.gameId} room={room} projection={projection} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} onSend={sendDialogue} />
 

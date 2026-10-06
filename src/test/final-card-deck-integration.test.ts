@@ -72,7 +72,7 @@ describe("JK-001 final card deck integration", () => {
 
     expect(playingCard).toContain("assets.cardFace(card)");
     expect(playingCard).toContain("assets.cardBack");
-    expect(hand).toContain("<PlayingCard card={card}");
+    expect(hand).toMatch(/<PlayingCard\s+card=\{card\}/);
     expect(trick).toContain("<PlayingCard card={play.card} />");
     expect(deal).toContain("<PlayingCard faceDown />");
   });

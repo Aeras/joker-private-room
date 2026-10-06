@@ -1,3 +1,5 @@
+import { assets } from "@/assets/registry";
+import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Card } from "@/domain/cards";
 import type { PlayerGameProjection } from "@/domain/projection";
@@ -97,6 +99,8 @@ export function DealerSelectionPresentation({
   geometry: TableGeometry | null;
   onActiveChange: (active: boolean) => void;
 }) {
+  const [interrupted, setInterrupted] = useState(document.visibilityState === "hidden");
+  const [resumeGeneration, resume] = useState(0);
   const [run, setRun] = useState<FrozenRun | null>(null);
   const [openingVisible, setOpeningVisible] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
@@ -112,6 +116,8 @@ export function DealerSelectionPresentation({
   const selectionKey = selection
     ? `${projection.gameId}:${selection.resolvedAtStateVersion}`
     : null;
+  const openingAssetCard = selection?.openingCard ?? selection?.revealedSelectionCards[0];
+  const artworkSettled = useCriticalCardArtwork([assets.cardBack, openingAssetCard ? assets.cardFace(openingAssetCard) : undefined]);
   const geometryReady = geometry != null;
   const needsPresentation = Boolean(selectionKey && selection && dealerSelectionNeedsPresentation(projection));
 
@@ -123,12 +129,13 @@ export function DealerSelectionPresentation({
   }, []);
 
   useEffect(() => {
+    if (interrupted) return;
     if (!needsPresentation) {
       if (startedKey.current == null) onActiveChangeRef.current(false);
       return;
     }
     onActiveChangeRef.current(true);
-    if (!geometryReady || !geometry || !selection || !selectionKey) {
+    if (!artworkSettled || !geometryReady || !geometry || !selection || !selectionKey) {
       recordTimingDiagnostic("dealer_waiting_for_geometry");
       return;
     }
@@ -209,11 +216,12 @@ export function DealerSelectionPresentation({
       startupFrames.current.push(secondFrame);
     });
     startupFrames.current.push(firstFrame);
-  }, [geometryReady, needsPresentation, selectionKey]);
+  }, [geometryReady, needsPresentation, selectionKey, interrupted, resumeGeneration, geometry, projection, selection, artworkSettled]);
 
   useEffect(() => {
     const interrupt = () => {
-      if (!run || !selectionKey || run.key !== selectionKey) return;
+      setInterrupted(true);
+      if (!selectionKey || (run && run.key !== selectionKey)) return;
       clearTimers();
       recordTimingDiagnostic("dealer_sequence_interrupted", {
         visibilityState: document.visibilityState,
@@ -224,14 +232,16 @@ export function DealerSelectionPresentation({
       setRun(null);
       onActiveChangeRef.current(true);
     };
-    const visibility = () => {
-      if (document.visibilityState !== "visible") interrupt();
-    };
-    window.addEventListener("orientationchange", interrupt);
+    const restore = () => { if (document.visibilityState !== "hidden") { setInterrupted(false); resume(n => n + 1); } };
+    const orientation = () => { interrupt(); restore(); };
+    const visibility = () => { if (document.visibilityState === "hidden") interrupt(); else restore(); };
+    window.addEventListener("orientationchange", orientation);
+    window.addEventListener("focus", restore);
     window.addEventListener("blur", interrupt);
     document.addEventListener("visibilitychange", visibility);
     return () => {
-      window.removeEventListener("orientationchange", interrupt);
+      window.removeEventListener("orientationchange", orientation);
+      window.removeEventListener("focus", restore);
       window.removeEventListener("blur", interrupt);
       document.removeEventListener("visibilitychange", visibility);
     };

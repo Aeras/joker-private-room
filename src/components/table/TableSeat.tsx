@@ -111,7 +111,8 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
         <PlayerAvatar
           name={name}
           isBot={o.type === "bot"}
-          imageUrl={explicitAvatar ?? assets.avatar(id, name)}
+          imageUrl={assets.tableAvatar(explicitAvatar ?? assets.avatar(id, name))}
+          fallbackImageUrl={explicitAvatar ?? assets.avatar(id, name)}
           size="lg"
           className={cn(
             avatarSize,

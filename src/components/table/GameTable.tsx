@@ -23,6 +23,7 @@ import { TableUtilityMenu } from "./TableUtilityMenu";
 import { TrickPresentation } from "./TrickPresentation";
 import { TrumpIndicator, trumpAnnouncementLabel } from "./TrumpIndicator";
 import { useTableGeometry, type RectLike } from "./useTableGeometry";
+import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 
 type Pos = 0 | 1 | 2 | 3;
 type OrientationLock = ScreenOrientation & { lock?: (orientation: "landscape") => Promise<void> };
@@ -60,7 +61,7 @@ function phaseMessage(projection: PlayerGameProjection): string {
   }
 }
 
-export function GameTable({ room, projection, busy, error, onCommand, onReclaim, onEndGame, onNineCardPresentationComplete }: {
+export function GameTable({ room, projection, busy, error, onCommand, onReclaim, onEndGame, onNineCardPresentationComplete, onTurnPresentationComplete }: {
   room: Room;
   projection: PlayerGameProjection;
   busy: boolean;
@@ -68,7 +69,8 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   onCommand: (command: GameplayCommand) => Promise<PlayerGameProjection | null>;
   onReclaim: () => Promise<void>;
   onEndGame: () => Promise<boolean>;
-  onNineCardPresentationComplete: (stage: Extract<DealPresentationStage, "initial" | "remaining">) => Promise<PlayerGameProjection | null>;
+  onTurnPresentationComplete?: (token: number) => Promise<boolean>;
+  onNineCardPresentationComplete: (stage: DealPresentationStage, dealNumber: number) => Promise<PlayerGameProjection | null>;
 }) {
   const tableRootRef = useRef<HTMLDivElement>(null);
   const playSubmissionLock = useRef(false);
@@ -85,11 +87,20 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const [pendingDeclarationValue, setPendingDeclarationValue] = useState<number | null>(null);
   const [localPlayPresentation, setLocalPlayPresentation] = useState<LocalPlayPresentation | null>(null);
   const [dealerIntroActive, setDealerIntroActive] = useState(() => dealerSelectionNeedsPresentation(projection));
+  const [trickPresentationBusy, setTrickPresentationBusy] = useState(false);
   const [dealPresentationActive, setDealPresentationActive] = useState(false);
+  const [pendingPresentationAck, setPendingPresentationAck] = useState<{ stage: DealPresentationStage; dealNumber: number } | null>(null);
   const [handRevealActive, setHandRevealActive] = useState(false);
   const [trumpAnnouncement, setTrumpAnnouncement] = useState<string | null>(null);
+  const ownArtworkSettled = useCriticalCardArtwork(projection.cards.ownHandVisible
+    ? [assets.cardBack, ...projection.cards.ownHand.map(card => assets.cardFace(card))]
+    : []);
   const startupPresentationActive = dealerIntroActive || dealPresentationActive;
-  const interactionPresentationActive = startupPresentationActive || handRevealActive;
+  const interactionPresentationActive = startupPresentationActive || handRevealActive || trickPresentationBusy || !ownArtworkSettled;
+  const completeVisibleTurn = useCallback(async (token: number) => {
+    if (startupPresentationActive || handRevealActive || !ownArtworkSettled || portrait || !tableGeometry.geometry || localPlayPresentation) return false;
+    return onTurnPresentationComplete ? onTurnPresentationComplete(token) : false;
+  }, [startupPresentationActive, handRevealActive, ownArtworkSettled, portrait, tableGeometry.geometry, localPlayPresentation, onTurnPresentationComplete]);
   const clearLocalFlight = useCallback(() => setLocalPlayPresentation(null), []);
 
   const names = room.seats.map((seat) => seat.occupant.type === "human" ? seat.occupant.player.displayName : seat.occupant.type === "bot" ? seat.occupant.bot.displayName : `Θέση ${seat.index + 1}`);
@@ -108,8 +119,8 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const presentedPhaseMessage = dealerIntroActive ? "Επιλογή πρώτου dealer" : dealPresentationActive ? "Μοίρασμα φύλλων" : handRevealActive ? "Άνοιγμα φύλλων" : phaseMessage(projection);
 
   const beginHandReveal = useCallback(() => {
-    if (!projection.cards.ownHandVisible || projection.cards.ownHand.length === 0) return;
-    if (projection.progression.phase !== "DECLARATION" && projection.progression.phase !== "NINE_CARD_TRUMP_CHOICE") return;
+    if (!ownArtworkSettled || !projection.cards.ownHandVisible || projection.cards.ownHand.length === 0) return;
+    if (projection.progression.phase !== "DECLARATION" && projection.progression.phase !== "NINE_CARD_TRUMP_CHOICE" && projection.progression.phase !== "DEAL_PRESENTATION" && projection.progression.phase !== "NINE_CARD_INITIAL_DEAL_ALL_SEATS" && projection.progression.phase !== "NINE_CARD_REMAINING_DEAL") return;
     const key = `${projection.gameId}:${projection.progression.dealNumber}:${projection.cards.ownHand.length}`;
     if (revealedHands.current.has(key)) return;
     revealedHands.current.add(key);
@@ -119,7 +130,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       handRevealTimer.current = null;
       setHandRevealActive(false);
     }, HAND_REVEAL_MS);
-  }, [projection.cards.ownHand, projection.cards.ownHandVisible, projection.gameId, projection.progression.dealNumber, projection.progression.phase]);
+  }, [ownArtworkSettled, projection.cards.ownHand, projection.cards.ownHandVisible, projection.gameId, projection.progression.dealNumber, projection.progression.phase]);
 
   useEffect(() => () => {
     if (handRevealTimer.current != null) window.clearTimeout(handRevealTimer.current);
@@ -131,7 +142,6 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     return () => { window.removeEventListener("resize", update); window.removeEventListener("orientationchange", update); };
   }, []);
   useEffect(() => { const change = () => setFullscreen(Boolean(document.fullscreenElement)); document.addEventListener("fullscreenchange", change); return () => document.removeEventListener("fullscreenchange", change); }, []);
-  useEffect(() => { const epoch = tableGeometry.geometry?.epoch ?? 0; setLocalPlayPresentation((current) => current && current.geometryEpoch !== epoch ? null : current); }, [tableGeometry.geometry?.epoch]);
   useEffect(() => { if (!declarationAction) setPendingDeclarationValue(null); }, [projection.stateVersion, declarationAction]);
   useEffect(() => { setDealerIntroActive(dealerSelectionNeedsPresentation(projection)); }, [projection.gameId, projection.initialDealerSelection?.status === "resolved" ? projection.initialDealerSelection.resolvedAtStateVersion : null]);
   useEffect(() => {
@@ -154,7 +164,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   }, [projection.gameId, projection.progression.dealNumber, projection.progression.phase, projection.trump]);
 
   const commitCard = async (cardId: string, releaseRect: RectLike) => {
-    if (!playAction?.cardIds.includes(cardId) || busy || playSubmissionLock.current) return;
+    if (!playAction?.cardIds.includes(cardId) || busy || interactionPresentationActive || playSubmissionLock.current) return;
     const card = projection.cards.ownHand.find((candidate) => candidate.id === cardId); if (!card) return;
     playSubmissionLock.current = true; setSubmittingCardId(cardId);
     const geometryEpoch = tableGeometry.geometry?.epoch ?? 0;
@@ -162,7 +172,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     setLocalPlayPresentation(presentation);
     try {
       const authoritative = await onCommand({ type: "play_card", cardId });
-      if (!authoritative || !presentation || authoritative.gameId !== presentation.gameId || authoritative.progression.dealNumber !== presentation.dealNumber || authoritative.stateVersion <= presentation.sourceStateVersion || !projectionContainsPendingCard(presentation, authoritative.cards.currentTrick, authoritative.cards.completedTricks)) {
+      if (!authoritative || !presentation || authoritative.gameId !== presentation.gameId || authoritative.progression.dealNumber < presentation.dealNumber || authoritative.stateVersion <= presentation.sourceStateVersion || !projectionContainsPendingCard(presentation, authoritative.progression.dealNumber === presentation.dealNumber ? authoritative.cards.currentTrick : [], [...(authoritative.progression.dealNumber === presentation.dealNumber ? authoritative.cards.completedTricks : []), ...(authoritative.cards.presentationTail ?? []).filter(trick => trick.dealNumber === presentation.dealNumber)])) {
         setLocalPlayPresentation((current) => current && current.cardId === cardId ? { ...current, status: "rejected" } : current); return;
       }
       setLocalPlayPresentation((current) => current && current.cardId === cardId && current.sourceStateVersion === presentation.sourceStateVersion ? { ...current, status: "accepted", acceptedStateVersion: authoritative.stateVersion } : current);
@@ -173,8 +183,23 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     setPendingDeclarationValue(value); const result = await onCommand({ type: "declare", value }); if (!result) setPendingDeclarationValue(null);
   };
   const handleDealPresentationComplete = useCallback((stage: DealPresentationStage) => {
-    if (stage === "initial" || stage === "remaining") void onNineCardPresentationComplete(stage);
-  }, [onNineCardPresentationComplete]);
+    if (stage === "full" && projection.progression.phase !== "DEAL_PRESENTATION") return;
+    setPendingPresentationAck({ stage, dealNumber: projection.progression.dealNumber });
+  }, [projection.progression.dealNumber, projection.progression.phase]);
+  useEffect(() => {
+    if (!pendingPresentationAck || !ownArtworkSettled) return;
+    let timer: number | undefined;
+    const schedule = () => {
+      if (timer != null) window.clearTimeout(timer);
+      if (document.visibilityState === "hidden" || window.innerHeight > window.innerWidth) return;
+      timer = window.setTimeout(() => {
+        void onNineCardPresentationComplete(pendingPresentationAck.stage, pendingPresentationAck.dealNumber);
+        setPendingPresentationAck(null);
+      }, HAND_REVEAL_MS);
+    };
+    schedule(); document.addEventListener("visibilitychange", schedule); window.addEventListener("focus", schedule); window.addEventListener("orientationchange", schedule);
+    return () => { if (timer != null) window.clearTimeout(timer); document.removeEventListener("visibilitychange", schedule); window.removeEventListener("focus", schedule); window.removeEventListener("orientationchange", schedule); };
+  }, [pendingPresentationAck, onNineCardPresentationComplete, ownArtworkSettled]);
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) { const root = document.getElementById("table-fullscreen-root") ?? tableRootRef.current; await root?.requestFullscreen(); const orientation = screen.orientation as OrientationLock; await orientation.lock?.("landscape").catch(() => undefined); }
@@ -203,21 +228,21 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       <div className="ml-2 rounded-lg bg-black/60 px-2 py-1 text-xs text-white/75 backdrop-blur">Γύρος {projection.progression.round} · Μοιρασιά {projection.progression.dealNumber}/24 · {presentedPhaseMessage}</div>
       <div className="ml-auto flex items-center gap-1 pr-[max(0rem,env(safe-area-inset-right))]"><SoundToggle /><JButton variant="outlineGold" size="sm" className="h-8 px-2 bg-black/60" onClick={() => setScoreOpen(true)} aria-label="Σκορ"><Trophy className="h-4 w-4" /><span className="hidden lg:inline">Σκορ</span></JButton><TableUtilityMenu isHost={isHost} disabled={busy || projection.lifecycle === "complete"} onEndGame={onEndGame} /><JButton variant="outlineGold" size="sm" className="h-8 px-2 bg-black/60" onClick={toggleFullscreen} aria-label={fullscreen ? "Έξοδος από πλήρη οθόνη" : "Πλήρης οθόνη"}>{fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}</JButton></div>
     </header>
-    <main className="absolute inset-x-[5vw] top-[10vh] bottom-[27vh]"><div ref={tableGeometry.feltRef} className="relative h-full w-full"><div ref={tableGeometry.topSeatRef} className="absolute left-1/2 top-[1%] z-20 -translate-x-1/2">{seatBlock(2, "horizontal")}</div><div ref={tableGeometry.leftSeatRef} className="absolute left-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(1, "vertical")}</div><div ref={tableGeometry.rightSeatRef} className="absolute right-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(3, "vertical")}</div><DealerSelectionPresentation projection={projection} geometry={tableGeometry.geometry} onActiveChange={setDealerIntroActive} />{!startupPresentationActive && <TrickPresentation projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} onLocalFlightSettled={clearLocalFlight} />}</div></main>
+    <main className="absolute inset-x-[5vw] top-[10vh] bottom-[27vh]"><div ref={tableGeometry.feltRef} className="relative h-full w-full"><div ref={tableGeometry.topSeatRef} className="absolute left-1/2 top-[1%] z-20 -translate-x-1/2">{seatBlock(2, "horizontal")}</div><div ref={tableGeometry.leftSeatRef} className="absolute left-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(1, "vertical")}</div><div ref={tableGeometry.rightSeatRef} className="absolute right-[2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(3, "vertical")}</div><DealerSelectionPresentation projection={projection} geometry={tableGeometry.geometry} onActiveChange={setDealerIntroActive} />{<TrickPresentation projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} onLocalFlightSettled={clearLocalFlight} onBusyChange={setTrickPresentationBusy} onPresentationReady={completeVisibleTurn} />}</div></main>
     {showTrumpIndicator && <div className="pointer-events-none absolute left-[72%] top-[10vh] z-30 -translate-x-1/2 [--card-w:clamp(2.8rem,5vw,4rem)]"><div className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Ατού</div><TrumpIndicator trump={projection.trump} exposedTrumpCard={projection.cards.exposedTrumpCard} /></div>}
     {trumpAnnouncement && <div className="pointer-events-none absolute left-1/2 top-1/2 z-[65] -translate-x-1/2 -translate-y-[4.8rem] rounded-xl border border-primary/55 bg-black/90 px-5 py-2.5 text-center text-base font-semibold text-white shadow-2xl backdrop-blur" role="status" aria-live="polite" data-trump-announcement>{trumpAnnouncement}</div>}
-    <DealPresentation projection={projection} geometry={tableGeometry.geometry} paused={dealerIntroActive} onActiveChange={setDealPresentationActive} onPresentationComplete={handleDealPresentationComplete} />
+    <DealPresentation projection={projection} geometry={tableGeometry.geometry} paused={dealerIntroActive || trickPresentationBusy} onActiveChange={setDealPresentationActive} onPresentationComplete={handleDealPresentationComplete} />
     <footer className="absolute inset-x-0 bottom-[max(.15rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center">
       {error && <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>}
       {!interactionPresentationActive && declarationAction && pendingDeclarationValue == null && <div className="animate-in slide-in-from-bottom-2 fade-in duration-200"><DeclarationPicker values={declarationValues} legalValues={declarationAction.values} busy={busy} onSelect={(value) => void submitDeclaration(value)} /></div>}
       {!interactionPresentationActive && pendingDeclarationValue != null && <div className="mb-2 rounded-lg bg-black/70 px-3 py-1 text-xs text-white/60">Η δήλωση καταχωρείται…</div>}
       {!interactionPresentationActive && trumpAction && <div className="mb-2 flex max-w-[94vw] flex-wrap justify-center gap-1 rounded-xl bg-black/70 p-2 backdrop-blur">{trumpAction.suits.map((suit) => <JButton key={suit ?? "none"} size="sm" disabled={busy} onClick={() => onCommand({ type: "choose_trump", suit })}>{suit ? SUIT_LABEL[suit] : "Χωρίς ατού"}</JButton>)}</div>}
-      {!startupPresentationActive && jokerAction && <JokerChoicePicker options={jokerAction.options} busy={busy} onSelect={(semantic) => void onCommand({ type: "choose_joker_semantic", semantic })} />}
+      {!interactionPresentationActive && jokerAction && <JokerChoicePicker options={jokerAction.options} busy={busy} onSelect={(semantic) => void onCommand({ type: "choose_joker_semantic", semantic })} />}
       {!interactionPresentationActive && reclaimAction && <JButton className="mb-2" variant="outlineGold" size="sm" disabled={busy} onClick={onReclaim}>Πάρε ξανά τον έλεγχο</JButton>}
-      <LocalHandRow cards={startupPresentationActive ? [] : projection.cards.ownHand} visible={!startupPresentationActive && projection.cards.ownHandVisible} legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []} blocked={interactionPresentationActive || busy || Boolean(submittingCardId)} pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null} authorityKey={handAuthorityKey} geometry={tableGeometry.geometry} revealing={handRevealActive} onCommit={commitCard} />
+      <LocalHandRow cards={startupPresentationActive ? [] : projection.cards.ownHand} visible={!startupPresentationActive && projection.cards.ownHandVisible && ownArtworkSettled} legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []} blocked={interactionPresentationActive || busy || Boolean(submittingCardId)} pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null} authorityKey={handAuthorityKey} geometry={tableGeometry.geometry} revealing={handRevealActive} onCommit={commitCard} />
       <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
     </footer>
-    {projection.lifecycle === "complete" && <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl border border-primary/40 bg-card/95 p-6 text-center shadow-2xl"><h2 className="font-display text-2xl text-primary">{forcedEnd ? "Η παρτίδα τερματίστηκε" : "Τελικό αποτέλεσμα"}</h2>{forcedEnd ? <p className="mt-3 text-sm text-white/70">Ο host τερμάτισε την παρτίδα. Όλοι οι παίκτες έχουν αποδεσμευτεί.</p> : <div className="mt-4 space-y-2">{finalRows.map((row) => <div key={row.seat} className="flex items-center justify-between rounded-xl bg-secondary/70 px-4 py-2"><span>{row.placement}η θέση · {nameAt(row.seat)}</span><strong className="tabular-nums">{row.score}</strong></div>)}</div>}<div className="mt-5 flex justify-center gap-2">{!forcedEnd && <JButton variant="outlineGold" onClick={() => setScoreOpen(true)}>Αναλυτικό σκορ</JButton>}<Link to="/" className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground">Αρχική</Link></div></div></div>}
+    {projection.lifecycle === "complete" && (forcedEnd || !trickPresentationBusy) && <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl border border-primary/40 bg-card/95 p-6 text-center shadow-2xl"><h2 className="font-display text-2xl text-primary">{forcedEnd ? "Η παρτίδα τερματίστηκε" : "Τελικό αποτέλεσμα"}</h2>{forcedEnd ? <p className="mt-3 text-sm text-white/70">Ο host τερμάτισε την παρτίδα. Όλοι οι παίκτες έχουν αποδεσμευτεί.</p> : <div className="mt-4 space-y-2">{finalRows.map((row) => <div key={row.seat} className="flex items-center justify-between rounded-xl bg-secondary/70 px-4 py-2"><span>{row.placement}η θέση · {nameAt(row.seat)}</span><strong className="tabular-nums">{row.score}</strong></div>)}</div>}<div className="mt-5 flex justify-center gap-2">{!forcedEnd && <JButton variant="outlineGold" onClick={() => setScoreOpen(true)}>Αναλυτικό σκορ</JButton>}<Link to="/" className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground">Αρχική</Link></div></div></div>}
     <div className="relative z-[120]"><Scoreboard open={scoreOpen} onClose={() => setScoreOpen(false)} playerNames={names} sheet={sheet} projection={projection} /></div>
   </div>;
 }
