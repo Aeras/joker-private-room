@@ -225,6 +225,15 @@ describe("AI banter Phase D — server-side cost and abuse release gates", () =>
     expect(deliverySql).toContain("active_generation_until");
   });
 
+  it("keeps direct human-to-bot messages outside automatic banter cooldown", () => {
+    expect(humanPrioritySql).toContain("if not p_is_human_message then");
+    expect(humanPrioritySql).toContain("DIALOGUE_COOLDOWN");
+    expect(humanPrioritySql).toContain("DIALOGUE_SPEAKER_COOLDOWN");
+    expect(humanPrioritySql).toContain("v_human_messages_in_window >= 4");
+    expect(humanPrioritySql).toContain("DIALOGUE_CONCURRENCY_LIMIT");
+    expect(humanPrioritySql).toContain("v_total_ai_calls >= 120");
+  });
+
   it("enforces speech/AI policy before provider calls and reply depth at the server boundary", () => {
     expect(deliverySql).toContain("DIALOGUE_DISABLED");
     expect(deliverySql).toContain("p_provider_call and not coalesce((v_policy->>'aiEnabled')::boolean, false)");
