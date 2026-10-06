@@ -94,6 +94,13 @@ export function derivePublicDialogueEvents(
         deal: next.progression.dealNumber,
       }, 30);
       if (derived) events.push(derived);
+    } else if (trick && room.botSettings.intensity === "chaos") {
+      const derived = event(next, room, "TRICK_WON", trick.winnerSeat, {
+        round: next.progression.round,
+        deal: next.progression.dealNumber,
+        publicSummary: `${occupantName(room, trick.winnerSeat)} κέρδισε την μπάζα.`,
+      }, 31);
+      if (derived) events.push(derived);
     }
   }
 
