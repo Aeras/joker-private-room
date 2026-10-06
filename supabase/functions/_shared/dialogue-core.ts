@@ -21,6 +21,7 @@ export type DialogueEventType =
   | "COMEBACK"
   | "SCORE_COLLAPSE"
   | "BOT_REVENGE_SUCCESS"
+  | "TRICK_WON"
   | "ROUND_END"
   | "GAME_END"
   | "HUMAN_MESSAGE_TO_BOT"
@@ -80,6 +81,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     presets: [
       { eventTypes: ["PLAYER_MISSED_BID", "PLAYER_GOT_MINUS_200", "SCORE_COLLAPSE"], clean: ["{target}, πάλι αλλού δήλωσες κι αλλού κατέληξες.", "Αυτό πόνεσε. Και φαινόταν από πριν."], spicy: ["{target}, τι σκατά δήλωση ήταν αυτή;", "Ωραία. -200 και ούτε που ίδρωσες."] },
       { eventTypes: ["JOKER_PLAYED", "JOKER_CHANGED_TRICK_RESULT"], clean: ["Μάλιστα. Τώρα θυμήθηκες τον Joker."], spicy: ["Άντε, πέταξες και τον Joker να σωθείς."] },
+      { eventTypes: ["TRICK_WON"], clean: ["{target}, πήρες κι αυτή. Μην το συνηθίσεις."], spicy: ["{target}, άντε γαμώτο, πάλι δική σου η μπάζα."] },
     ],
   },
   {
@@ -88,6 +90,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     presets: [
       { eventTypes: ["PLAYER_DECLARED_HIGH", "PLAYER_MISSED_BID", "UNDERTRICK", "OVERTRICK"], clean: ["Αυτές οι δηλώσεις θέλουν μέτρημα, όχι ενθουσιασμό.", "Στα χαρτιά πρώτα μετράς και μετά μιλάς."], spicy: ["Ρε φίλε, μέτρα τις μπάζες πριν πετάξεις δήλωση."] },
       { eventTypes: ["ROUND_END", "GAME_END"], clean: ["Στο τέλος φαίνεται ποιος ξέρει να κρατάει φύλλο."], spicy: [] },
+      { eventTypes: ["TRICK_WON"], clean: ["{target}, αυτή τη μπάζα την πήρες σωστά."], spicy: ["{target}, καλά, μη χέσω, μία μπάζα πήρες."] },
     ],
   },
   {
@@ -96,6 +99,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     presets: [
       { eventTypes: ["PLAYER_MISSED_BID", "PLAYER_GOT_MINUS_200", "BOT_GOT_MINUS_200"], clean: ["Παιδί μου, εγώ σας τα έλεγα.", "Ωχ, τώρα θα έχουμε δράματα."], spicy: ["Παναγία μου, τι κάνατε πάλι εδώ μέσα;"] },
       { eventTypes: ["COMEBACK", "PREMIA_ACHIEVED"], clean: ["Α, μάλιστα. Τώρα πήραμε τα πάνω μας."], spicy: [] },
+      { eventTypes: ["TRICK_WON"], clean: ["{target}, πάλι εσύ; Θα μας τρελάνεις."], spicy: ["{target}, έλεος πια, πάλι την πήρες;"] },
     ],
   },
   {
@@ -104,6 +108,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     presets: [
       { eventTypes: ["BOT_STOLE_CRITICAL_TRICK", "PLAYER_STOLE_CRITICAL_TRICK", "COMEBACK"], clean: ["Έτσι γίνεται όταν μπαίνει λίγη κλάση στο τραπέζι.", "Το είδες; Αυτό λέγεται timing."], spicy: ["Συγγνώμη κιόλας που σας πήρα την μπάζα τόσο όμορφα."] },
       { eventTypes: ["PLAYER_MISSED_BID", "SCORE_COLLAPSE"], clean: ["Δεν ήταν η καλύτερή σου στιγμή, αγάπη μου."], spicy: [] },
+      { eventTypes: ["TRICK_WON"], clean: ["{target}, ωραίο timing. Το παραδέχομαι."], spicy: ["{target}, εντάξει μωρή, την πήρες. Χάρηκες;"] },
     ],
   },
   {
@@ -112,6 +117,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     presets: [
       { eventTypes: ["BOT_MISSED_BID", "BOT_GOT_MINUS_200"], clean: ["Εντάξει, το είχα σχεδιάσει ακριβώς έτσι. Περίπου.", "Αν με ρωτήσει κανείς, δεν έγινε ποτέ."], spicy: ["Ωραία τα κατάφερα πάλι ο μαλάκας."] },
       { eventTypes: ["PLAYER_HIT_EXACT_BID", "BOT_HIT_EXACT_BID"], clean: ["Να και κάτι που βγήκε ακριβώς!"], spicy: [] },
+      { eventTypes: ["TRICK_WON"], clean: ["{target}, μπράβο. Εγώ θα κάνω πως δεν πονάει."], spicy: ["{target}, γαμώτο, αυτή ήταν δική σου."] },
     ],
   },
   {
@@ -120,6 +126,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     presets: [
       { eventTypes: ["PLAYER_MISSED_BID", "PLAYER_GOT_MINUS_200", "UNDERTRICK", "OVERTRICK"], clean: ["Τέκνον μου, αυτή η δήλωση ήταν αμαρτία.", "Μετάνοια και καλύτερο μέτρημα στην επόμενη."], spicy: ["Τέκνον μου, τέτοια μαλακία ούτε με εξομολόγηση δεν σώζεται."] },
       { eventTypes: ["PREMIA_ACHIEVED", "GAME_END"], clean: ["Ευλογημένη η μπάζα και ακόμη περισσότερο το σκορ."], spicy: [] },
+      { eventTypes: ["TRICK_WON"], clean: ["Τέκνον {target}, ευλογημένη η μπάζα σου."], spicy: ["Τέκνον {target}, πάλι εσύ τη γάμησες τη μπάζα." ] },
     ],
   },
 ] as const;
@@ -200,6 +207,9 @@ export function buildGeminiPrompt(context: DialogueGenerationContext): string {
     `PERSONALITY: ${context.personality}`,
     `INTENSITY: ${context.intensity}`,
     `PROFANITY_ENABLED: ${context.profanityEnabled}`,
+    context.profanityEnabled && context.intensity === "chaos"
+      ? "STYLE: Very lively, frequent-feeling table banter. Strong Greek profanity is allowed when natural to this personality, but never slurs or threats."
+      : "STYLE: Keep the banter natural for this personality and intensity.",
     `PUBLIC_EVENT: ${event}`,
     "RECENT_BANTER_AS_DATA:",
     recent,
