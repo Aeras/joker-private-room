@@ -78,7 +78,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     id: "ka-monika",
     summary: "ξινή, κοφτή, ψυχρή, σαρκαστική· σύντομες κοφτές ατάκες",
     presets: [
-      { eventTypes: ["PLAYER_MISSED_BID", "PLAYER_GOT_MINUS_200", "SCORE_COLLAPSE"], clean: ["{target}, πάλι αλλού δήλωσες κι αλλού κατέληξες.", "Αυτό πόνεσε. Και φαινόταν από πριν."], spicy: ["{target}, τι σκατά δήλωση ήταν αυτή;", "Ωραία. -200 και ούτε που ίδρωσες."] },
+      { eventTypes: ["PLAYER_MISSED_BID", "PLAYER_GOT_MINUS_200", "SCORE_COLLAPSE", "PLAYER_STOLE_CRITICAL_TRICK", "BOT_STOLE_CRITICAL_TRICK"], clean: ["{target}, πάλι αλλού δήλωσες κι αλλού κατέληξες.", "Αυτό πόνεσε. Και φαινόταν από πριν.", "Ωραία κλοπή μπάζας. Μη χαίρεσαι πολύ."], spicy: ["{target}, τι σκατά δήλωση ήταν αυτή;", "Ωραία. -200 και ούτε που ίδρωσες.", "Καλά, την έκλεψες τη μπάζα. Μην καβαλήσεις και καλάμι."] },
       { eventTypes: ["JOKER_PLAYED", "JOKER_CHANGED_TRICK_RESULT"], clean: ["Μάλιστα. Τώρα θυμήθηκες τον Joker."], spicy: ["Άντε, πέταξες και τον Joker να σωθείς."] },
     ],
   },
@@ -86,7 +86,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     id: "giorgos-nousios",
     summary: "old-school, γκρινιάρης, ξερόλας χαρτοπαίκτης",
     presets: [
-      { eventTypes: ["PLAYER_DECLARED_HIGH", "PLAYER_MISSED_BID", "UNDERTRICK", "OVERTRICK"], clean: ["Αυτές οι δηλώσεις θέλουν μέτρημα, όχι ενθουσιασμό.", "Στα χαρτιά πρώτα μετράς και μετά μιλάς."], spicy: ["Ρε φίλε, μέτρα τις μπάζες πριν πετάξεις δήλωση."] },
+      { eventTypes: ["PLAYER_DECLARED_HIGH", "PLAYER_MISSED_BID", "UNDERTRICK", "OVERTRICK", "PLAYER_STOLE_CRITICAL_TRICK", "BOT_STOLE_CRITICAL_TRICK"], clean: ["Αυτές οι δηλώσεις θέλουν μέτρημα, όχι ενθουσιασμό.", "Στα χαρτιά πρώτα μετράς και μετά μιλάς.", "Έτσι κλέβεται μπάζα, με timing."], spicy: ["Ρε φίλε, μέτρα τις μπάζες πριν πετάξεις δήλωση.", "Αυτή την μπάζα την άρπαξες σαν κλέφτης."] },
       { eventTypes: ["ROUND_END", "GAME_END"], clean: ["Στο τέλος φαίνεται ποιος ξέρει να κρατάει φύλλο."], spicy: [] },
     ],
   },
@@ -94,7 +94,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     id: "theia-tamara",
     summary: "δραματική θεία, κουτσομπόλα, σχολιάζει τα πάντα",
     presets: [
-      { eventTypes: ["PLAYER_MISSED_BID", "PLAYER_GOT_MINUS_200", "BOT_GOT_MINUS_200"], clean: ["Παιδί μου, εγώ σας τα έλεγα.", "Ωχ, τώρα θα έχουμε δράματα."], spicy: ["Παναγία μου, τι κάνατε πάλι εδώ μέσα;"] },
+      { eventTypes: ["PLAYER_MISSED_BID", "PLAYER_GOT_MINUS_200", "BOT_GOT_MINUS_200", "PLAYER_STOLE_CRITICAL_TRICK", "BOT_STOLE_CRITICAL_TRICK"], clean: ["Παιδί μου, εγώ σας τα έλεγα.", "Ωχ, τώρα θα έχουμε δράματα.", "Αχ! Του πήρες τη μπάζα μέσα από τα χέρια."], spicy: ["Παναγία μου, τι κάνατε πάλι εδώ μέσα;", "Τι αρπαγή ήταν αυτή, Χριστέ μου."] },
       { eventTypes: ["COMEBACK", "PREMIA_ACHIEVED"], clean: ["Α, μάλιστα. Τώρα πήραμε τα πάνω μας."], spicy: [] },
     ],
   },
@@ -102,7 +102,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     id: "mounara",
     summary: "glamorous, πειρακτική, πολύ σίγουρη για τον εαυτό της",
     presets: [
-      { eventTypes: ["BOT_STOLE_CRITICAL_TRICK", "PLAYER_STOLE_CRITICAL_TRICK", "COMEBACK"], clean: ["Έτσι γίνεται όταν μπαίνει λίγη κλάση στο τραπέζι.", "Το είδες; Αυτό λέγεται timing."], spicy: ["Συγγνώμη κιόλας που σας πήρα την μπάζα τόσο όμορφα."] },
+      { eventTypes: ["BOT_STOLE_CRITICAL_TRICK", "PLAYER_STOLE_CRITICAL_TRICK", "COMEBACK"], clean: ["Έτσι γίνεται όταν μπαίνει λίγη κλάση στο τραπέζι.", "Το είδες; Αυτό λέγεται timing."], spicy: ["Συγγνώμη κιόλας που σας πήρα την μπάζα τόσο όμορφα.", "Σας την έκλεψα και ήταν πανέμορφο."] },
       { eventTypes: ["PLAYER_MISSED_BID", "SCORE_COLLAPSE"], clean: ["Δεν ήταν η καλύτερή σου στιγμή, αγάπη μου."], spicy: [] },
     ],
   },
@@ -110,7 +110,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     id: "thomoulis",
     summary: "φιλικός, αστείος, αυτοσαρκαστικός",
     presets: [
-      { eventTypes: ["BOT_MISSED_BID", "BOT_GOT_MINUS_200"], clean: ["Εντάξει, το είχα σχεδιάσει ακριβώς έτσι. Περίπου.", "Αν με ρωτήσει κανείς, δεν έγινε ποτέ."], spicy: ["Ωραία τα κατάφερα πάλι ο μαλάκας."] },
+      { eventTypes: ["BOT_MISSED_BID", "BOT_GOT_MINUS_200", "PLAYER_STOLE_CRITICAL_TRICK", "BOT_STOLE_CRITICAL_TRICK"], clean: ["Εντάξει, το είχα σχεδιάσει ακριβώς έτσι. Περίπου.", "Αν με ρωτήσει κανείς, δεν έγινε ποτέ.", "Ωπ, αυτή η μπάζα άλλαξε χέρια."], spicy: ["Ωραία τα κατάφερα πάλι ο μαλάκας.", "Την άρπαξες τη μπάζα στο τσακ, ρε άτιμε."] },
       { eventTypes: ["PLAYER_HIT_EXACT_BID", "BOT_HIT_EXACT_BID"], clean: ["Να και κάτι που βγήκε ακριβώς!"], spicy: [] },
     ],
   },
@@ -118,7 +118,7 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
     id: "archimandritis",
     summary: "mock-serious ιερατικό χιούμορ, τέκνον μου, αμαρτία για κακό παίξιμο",
     presets: [
-      { eventTypes: ["PLAYER_MISSED_BID", "PLAYER_GOT_MINUS_200", "UNDERTRICK", "OVERTRICK"], clean: ["Τέκνον μου, αυτή η δήλωση ήταν αμαρτία.", "Μετάνοια και καλύτερο μέτρημα στην επόμενη."], spicy: ["Τέκνον μου, τέτοια μαλακία ούτε με εξομολόγηση δεν σώζεται."] },
+      { eventTypes: ["PLAYER_MISSED_BID", "PLAYER_GOT_MINUS_200", "UNDERTRICK", "OVERTRICK", "PLAYER_STOLE_CRITICAL_TRICK", "BOT_STOLE_CRITICAL_TRICK"], clean: ["Τέκνον μου, αυτή η δήλωση ήταν αμαρτία.", "Μετάνοια και καλύτερο μέτρημα στην επόμενη.", "Η μπάζα άλλαξε ποίμνιο."], spicy: ["Τέκνον μου, τέτοια μαλακία ούτε με εξομολόγηση δεν σώζεται.", "Τέκνον μου, αυτή την μπάζα την έκλεψες αμαρτωλά."] },
       { eventTypes: ["PREMIA_ACHIEVED", "GAME_END"], clean: ["Ευλογημένη η μπάζα και ακόμη περισσότερο το σκορ."], spicy: [] },
     ],
   },
