@@ -1,4 +1,3 @@
-import { holdPlayedEvent } from "./turnPresentation";
 import { getRuleset } from "./rulesets";
 import { SUITS, type Card, type Suit } from "./cards";
 import {
@@ -357,6 +356,5 @@ export function applyGameplayCommand(args: ApplyGameplayCommandArgs): GameplayCo
     case "play_card": result = applyCardPlay(state, seat, command.cardId, serverNow); break;
     case "choose_joker_semantic": result = applyJokerChoice(state, seat, command.semantic, serverNow); break;
   }
-  return result.ok && (command.type === "play_card" || command.type === "choose_joker_semantic")
-    ? { ok: true, state: holdPlayedEvent(result.state, serverNow) } : result;
+  return result;
 }
