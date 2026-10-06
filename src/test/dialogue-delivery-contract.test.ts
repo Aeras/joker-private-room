@@ -9,6 +9,10 @@ const hardening = readFileSync(
   "supabase/migrations/20261004112919_jk001_ai_banter_phase_c_delivery_hardening.sql",
   "utf8",
 );
+const xaiMigration = readFileSync(
+  "supabase/migrations/20261006154500_jk006_xai_banter_provider.sql",
+  "utf8",
+);
 const serverEvents = readFileSync(
   "supabase/migrations/20261004115502_jk001_ai_banter_phase_c_server_event_resolution.sql",
   "utf8",
@@ -83,7 +87,7 @@ describe("AI banter Phase C delivery contract", () => {
     expect(overlay).toContain("room.botSettings.aiEnabled");
   });
 
-  it("publishes only preset/gemini ephemeral text after a claimed event", () => {
+  it("publishes only preset/xai ephemeral text after a claimed event", () => {
     expect(edge).toContain('admin.rpc("claim_dialogue_event_internal"');
     expect(edge).toContain('admin.rpc("publish_dialogue_message_internal"');
     expect(migration).toContain("DIALOGUE_EVENT_NOT_CLAIMED");

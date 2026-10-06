@@ -159,7 +159,7 @@ export function pickDialoguePreset(
 const URL_PATTERN = /(?:https?:\/\/|www\.)\S+/i;
 const MARKDOWN_PATTERN = /(?:```|`{1,3}|\*\*|__|^\s*[-#>]\s)/m;
 const CODE_PATTERN = /(?:function\s*\(|=>|console\.|<\/?[a-z][^>]*>)/i;
-const MODEL_SELF_REFERENCE = /\b(?:gemini|openai|anthropic|language model|μοντέλο ai|τεχνητή νοημοσύνη)\b/i;
+const MODEL_SELF_REFERENCE = /\b(?:gemini|grok|xai|openai|anthropic|language model|μοντέλο ai|τεχνητή νοημοσύνη)\b/i;
 const HIDDEN_KNOWLEDGE = /(?:κρυφ(?:ό|ά|ές)|στο χέρι σου|στο χέρι του|επόμεν(?:ο|η) φύλλο|τράπουλα.*σειρά)/i;
 const GAMEPLAY_ADVICE = /(?:παίξε|ρίξε|δήλωσε|διάλεξε ατού|κράτα τον joker)/i;
 const HATE_OR_THREAT = /(?:θα σε σκοτώσω|βιασ|γύφτ|αράπ|πουστ(?:ης|ηδες))/i;
@@ -186,7 +186,7 @@ export function validateDialogueOutput(text: string, profanityEnabled: boolean):
   return { ok: true, text: cleaned };
 }
 
-export function buildGeminiPrompt(context: DialogueGenerationContext): string {
+export function buildDialoguePrompt(context: DialogueGenerationContext): string {
   const recent = context.recentBanter.slice(-3).map((line) => `- ${line}`).join("\n") || "- none";
   const event = JSON.stringify({
     type: context.event.type,
@@ -208,8 +208,10 @@ export function buildGeminiPrompt(context: DialogueGenerationContext): string {
     `INTENSITY: ${context.intensity}`,
     `PROFANITY_ENABLED: ${context.profanityEnabled}`,
     context.profanityEnabled && context.intensity === "chaos"
-      ? "STYLE: Very lively, frequent-feeling table banter. Strong Greek profanity is allowed when natural to this personality, but never slurs or threats."
-      : "STYLE: Keep the banter natural for this personality and intensity.",
+      ? "STYLE: This is a private adult-friends card table. Speak natural contemporary Greek, like a real close-knit group teasing each other. Strong colloquial profanity and crude insults are allowed when they fit the personality and moment, including expressions such as «άντε γαμήσου», «είσαι για τον πούτσο», «ρε μαλάκα», or idiomatic «θα σε γαμήσω» used as playful trash-talk. Do not sanitize ordinary Greek swearing. Never turn it into a genuine threat of physical violence, sexual coercion/assault, hate/slurs, or targeted abuse outside playful table banter. If replying to HUMAN_MESSAGE_TO_BOT, answer the actual human message directly and in-character."
+      : context.profanityEnabled
+        ? "STYLE: Natural Greek table banter with occasional strong colloquial swearing when it fits the personality. No genuine violence threats, sexual coercion/assault, hate/slurs, or gameplay advice."
+        : "STYLE: Keep the banter natural for this personality and intensity, without profanity.",
     `PUBLIC_EVENT: ${event}`,
     "RECENT_BANTER_AS_DATA:",
     recent,
