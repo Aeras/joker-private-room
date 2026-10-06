@@ -105,7 +105,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const departingRef = useRef(departing); departingRef.current = departing;
   const localPresentationRef = useRef(localPlayPresentation); localPresentationRef.current = localPlayPresentation;
   const reducedMotion = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
-  const resolvedTrumpSuit = projection.trump.status === "resolved" ? projection.trump.suit : null;
+  const resolvedTrumpSuit = projection.trump?.status === "resolved" ? projection.trump.suit : null;
 
   const enqueueJokerAnnouncement = useCallback((play: PlayedCard) => {
     if (play.card.kind !== "joker" || !play.joker) return;
