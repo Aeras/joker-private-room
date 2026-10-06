@@ -83,7 +83,7 @@ jobs:
         id: no_provider
         continue-on-error: true
         run: |
-          ! grep -q 'GEMINI_API_KEY' src/domain/dialoguePolicy.ts src/routes/create.tsx src/services/roomFunctions.ts supabase/functions/room-commands/index.ts
+          ! grep -Eq 'GEMINI_API_KEY|XAI_API_KEY' src/domain/dialoguePolicy.ts src/routes/create.tsx src/services/roomFunctions.ts supabase/functions/room-commands/index.ts
           ! grep -qi 'gemini\|provider' supabase/migrations/20261004095255_jk001_ai_banter_phase_a_policy_authority.sql
           test -e supabase/functions/ai-banter/index.ts
 
