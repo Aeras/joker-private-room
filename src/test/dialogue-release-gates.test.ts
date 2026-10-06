@@ -24,6 +24,10 @@ const resolverSql = readFileSync(
   "supabase/migrations/20261004115502_jk001_ai_banter_phase_c_server_event_resolution.sql",
   "utf8",
 );
+const trickWonResolverSql = readFileSync(
+  "supabase/migrations/20261006150500_jk006_trick_won_dialogue_resolver.sql",
+  "utf8",
+);
 const edge = readFileSync("supabase/functions/ai-banter/index.ts", "utf8");
 const service = readFileSync("src/services/dialogueFunctions.ts", "utf8");
 const table = readFileSync("src/routes/table.tsx", "utf8");
@@ -173,6 +177,13 @@ describe("AI banter Phase D — privacy and authority release gates", () => {
     expect(resolverSql).toContain("g.canonical_state");
     expect(resolverSql).toContain("return jsonb_build_object(");
     expect(edge).not.toContain("canonical_state");
+  });
+
+  it("validates Chaos TRICK_WON events against the latest completed public trick", () => {
+    expect(trickWonResolverSql).toContain("v_event_type = 'TRICK_WON'");
+    expect(trickWonResolverSql).toContain("'{cards,completedTricks}'");
+    expect(trickWonResolverSql).toContain("winnerSeat");
+    expect(trickWonResolverSql).toContain("v_salt <> 31");
   });
 
   it("keeps GEMINI_API_KEY server-only and the browser session opaque", () => {
