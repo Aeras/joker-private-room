@@ -30,6 +30,18 @@ Verification: 9 new ordered/recovery/domain tests and 6 motion tests passed. The
 
 Phase 3 remains open: ordinary later deals and aggregate/scoped presentation acknowledgement. The pass is not complete.
 
+### Phase 3 — canonical presentation eligibility
+
+Ordinary deals now have an explicit `DEAL_PRESENTATION` boundary with no actor, declaration eligibility or human deadline. Existing nine initial/remainder stages remain canonical. Acknowledgements include deal/stage and use authenticated viewer identity; all human-owned seats must complete. Concurrent acknowledgement CAS retries retain the other seat's completion. Delayed earlier-stage/deal acknowledgements are ignored rather than releasing a newer barrier. A hand-reveal completion window is acknowledged only while visible and landscape, without depending on projection identity. Deal 1 keeps its existing aggregate startup barrier and then exposes the own-hand reveal under the same non-interactive ordinary boundary.
+
+The existing durable `presentationReadyAt` mechanism remains. Its fallback now includes a bounded 30-second delivery/reconnect allowance beyond the presentation budget. This allowance is an explicit absent-client policy; it cannot guarantee that an arbitrarily slow/absent device finished presentation. Physical multiplayer acceptance must validate this boundary and takeover/reclaim behavior before production use.
+
+The CLI-created owner-applied migration restores blocked startup wake exclusions and schedules ordinary barriers at their fallback instant. It has not been applied to any database. `supabase/tests/optimization_presentation_wake.sql` is a read-only transactional acceptance check for the owner after applying the migration; it has not been executed here.
+
+Verification: 9 behavioral barrier/protocol tests cover human/bot first actors, human aggregation, scoped stale acknowledgement, reconnect/idempotency, CAS race and zero-client fallback. Together with ordered presentation, solo timeout and compiled worker tests, 30 passed; 71 related tests passed. TypeScript and production build passed before the final Deal 1 reveal integration, which requires the subsequent phase verification.
+
+Remaining architectural risk: ordered visible delivery is now lossless within its bounded journal, but canonical turn deadlines are not leased to each client's visible trick cursor. A delayed client can still spend part of a turn catching up. A server-owned per-turn presentation contract needs review and multi-client timing evidence; this draft does not claim that this P0 interaction-readiness risk is eliminated. Do not substitute larger arbitrary sleeps or a client rules engine for that contract.
+
 | OPT | Current disposition | Remaining work |
 |---|---|---|
 | 001 | PARTIAL | Phase 1 fixes motion handoff; geometry/recovery integration still to verify in Phase 2 |

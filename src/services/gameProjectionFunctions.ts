@@ -149,9 +149,9 @@ export const completeProjectedStartPresentation = createServerFn({ method: "POST
   });
 
 export const completeProjectedNineCardPresentation = createServerFn({ method: "POST" })
-  .validator(z.object({ gameId: z.string().uuid() }))
+  .validator(z.object({ gameId: z.string().uuid(), dealNumber: z.number().int().min(1).max(24), stage: z.enum(["full", "initial", "remaining"]) }))
   .handler(async ({ data }): Promise<ProjectedGameStateResult> => {
-    const completed = await completeNineCardPresentation(data.gameId);
+    const completed = await completeNineCardPresentation(data.gameId, data.dealNumber, data.stage);
     if (!completed.ok) return { ok: false, code: completed.code };
     // Do not reconcile again here. The released trump/declaration phase must be
     // observable before any bot can consume it on a later normal poll.

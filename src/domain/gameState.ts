@@ -1,3 +1,4 @@
+import type { PresentationBoundary } from "./dealPresentationBarrier";
 import type { RulesetId, RulesVersion } from "./rulesets";
 import type { Card, Suit } from "./cards";
 import type { Declarations } from "./declarations";
@@ -13,6 +14,7 @@ export type CanonicalGameTermination = { kind: "host_ended"; endedAt: string };
 export type CanonicalGamePhase =
   | "INITIAL_DEALER_SELECTION"
   | "DEAL_SETUP"
+  | "DEAL_PRESENTATION"
   | "TRUMP_REVEAL_1_TO_8"
   | "NINE_CARD_INITIAL_DEAL_ALL_SEATS"
   | "NINE_CARD_TRUMP_CHOICE"
@@ -146,6 +148,7 @@ export interface CanonicalScoreState {
 }
 
 export interface CanonicalTimingState {
+  presentationBoundary?: PresentationBoundary;
   currentHumanDeadline: string | null;
   timeoutTakeoverActive: boolean;
   /** Durable fallback for presentation barriers when no browser can acknowledge them. */

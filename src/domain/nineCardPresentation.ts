@@ -1,3 +1,4 @@
+import { presentationBoundary, PRESENTATION_RECOVERY_ALLOWANCE_MS } from "./dealPresentationBarrier";
 import { humanDeadlineFromServerTime } from "./controller";
 import { legalDeclarationValues } from "./declarations";
 import type { SeatIndex } from "./dealing";
@@ -76,7 +77,8 @@ export function holdNineCardInitialDealForPresentation(
     timing: {
       currentHumanDeadline: null,
       timeoutTakeoverActive: false,
-      presentationReadyAt: presentationReadyAt(serverNow, NINE_CARD_INITIAL_PRESENTATION_FALLBACK_MS),
+      presentationBoundary: presentationBoundary(state, "initial"),
+      presentationReadyAt: presentationReadyAt(serverNow, NINE_CARD_INITIAL_PRESENTATION_FALLBACK_MS + PRESENTATION_RECOVERY_ALLOWANCE_MS),
     },
   };
 }
@@ -139,7 +141,8 @@ export function holdNineCardRemainingDealForPresentation(
     timing: {
       currentHumanDeadline: null,
       timeoutTakeoverActive: false,
-      presentationReadyAt: presentationReadyAt(serverNow, NINE_CARD_REMAINING_PRESENTATION_FALLBACK_MS),
+      presentationBoundary: presentationBoundary(state, "remaining"),
+      presentationReadyAt: presentationReadyAt(serverNow, NINE_CARD_REMAINING_PRESENTATION_FALLBACK_MS + PRESENTATION_RECOVERY_ALLOWANCE_MS),
     },
   };
 }

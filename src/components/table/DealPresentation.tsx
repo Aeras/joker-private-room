@@ -18,7 +18,7 @@ export type DealPresentationStage = "initial" | "remaining" | "full";
 export const NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS = 1_800;
 const FALLBACK_TARGET: Record<VisualSeat, string> = { 0: "translate(-50%, 22vh)", 1: "translate(-26vw, -50%)", 2: "translate(-50%, -22vh)", 3: "translate(26vw, -50%)" };
 function stageFor(projection: PlayerGameProjection): DealPresentationStage | null {
-  if (projection.progression.phase === "DEAL_SETUP") return "full";
+  if (projection.progression.phase === "DEAL_SETUP" || projection.progression.phase === "DEAL_PRESENTATION") return "full";
   if (projection.progression.cardsPerPlayer === 9 && projection.rulesetId !== "classic") {
     if (projection.progression.phase === "NINE_CARD_INITIAL_DEAL_ALL_SEATS") return "initial";
     if (projection.progression.phase === "NINE_CARD_REMAINING_DEAL") return "remaining";

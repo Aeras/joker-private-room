@@ -1,3 +1,4 @@
+import { activateOrdinaryDealAfterPresentation, holdOrdinaryDealForPresentation } from "@/domain/dealPresentationBarrier";
 import { getRuleset } from "@/domain/rulesets";
 import { planAutomaticGameplayStep, type AutomaticStepStopReason } from "@/bots/progression";
 import { applyOverdueTimeout, isSoloHumanPaused } from "@/domain/controller";
@@ -112,7 +113,7 @@ async function lifecycleTransition(
   if (!transition.ok) return { kind: "failure", result: { ok: false, code: "INVALID_CANONICAL_STATE" } };
   if (!transition.changed) return { kind: "none" };
 
-  const nextState = holdNineCardInitialDealForPresentation(transition.state, transitionNow);
+  const nextState = holdOrdinaryDealForPresentation(holdNineCardInitialDealForPresentation(transition.state, transitionNow), transitionNow);
   const phase = state.progression.phase;
   const actionId = await dependencies.actionId(gameId, `lifecycle-v1:${loaded.stateVersion}:${state.progression.dealNumber}:${phase}`);
 
@@ -168,13 +169,15 @@ export async function advanceGameUntilBlockedWithDependencies(
     }
 
     const serverNow = dependencies.now();
-    if (isNineCardPresentationBarrier(state)) {
-      if (!nineCardPresentationFallbackIsDue(state, serverNow)) {
+    if (isNineCardPresentationBarrier(state) || state.progression.phase === "DEAL_PRESENTATION") {
+      if (!(state.progression.phase === "DEAL_PRESENTATION" ? Boolean(state.timing.presentationReadyAt && Date.parse(state.timing.presentationReadyAt) <= Date.parse(serverNow)) : nineCardPresentationFallbackIsDue(state, serverNow))) {
         return { ok: true, stateVersion: loaded.stateVersion, steps: committedSteps, stopReason: "PRESENTATION_BARRIER" };
       }
       let released: CanonicalGameState;
       try {
-        released = state.progression.phase === "NINE_CARD_INITIAL_DEAL_ALL_SEATS"
+        released = state.progression.phase === "DEAL_PRESENTATION"
+          ? activateOrdinaryDealAfterPresentation(state, serverNow)
+          : state.progression.phase === "NINE_CARD_INITIAL_DEAL_ALL_SEATS"
           ? activateNineCardTrumpChoiceAfterPresentation(state, serverNow)
           : activateNineCardDeclarationAfterPresentation(state, serverNow);
       } catch {

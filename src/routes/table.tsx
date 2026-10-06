@@ -350,16 +350,16 @@ function TablePage() {
     };
   }, [acceptSnapshot, gameId, landscape, presentationStage, resolvedSelectionVersion, visible]);
 
-  const completeNineCardStage = useCallback(async (stage: Extract<DealPresentationStage, "initial" | "remaining">): Promise<PlayerGameProjection | null> => {
+  const completeNineCardStage = useCallback(async (stage: DealPresentationStage, dealNumber: number): Promise<PlayerGameProjection | null> => {
     if (!gameId || connectionStatusRef.current !== "ready") return null;
     const currentProjection = projectionRef.current;
     const currentRoom = roomRef.current;
     if (!currentProjection || !currentRoom) return null;
-    const key = `${currentProjection.gameId}:${currentProjection.progression.dealNumber}:${stage}`;
+    const key = `${currentProjection.gameId}:${dealNumber}:${stage}`;
     if (nineCardAckInFlight.current === key) return null;
     nineCardAckInFlight.current = key;
     try {
-      const result = await completeProjectedNineCardPresentation({ data: { gameId } });
+      const result = await completeProjectedNineCardPresentation({ data: { gameId, dealNumber, stage } });
       if (!mounted.current) return null;
       if (!result.ok) {
         setError(gameplayFailureMessage(result.code));

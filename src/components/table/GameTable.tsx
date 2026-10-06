@@ -68,7 +68,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   onCommand: (command: GameplayCommand) => Promise<PlayerGameProjection | null>;
   onReclaim: () => Promise<void>;
   onEndGame: () => Promise<boolean>;
-  onNineCardPresentationComplete: (stage: Extract<DealPresentationStage, "initial" | "remaining">) => Promise<PlayerGameProjection | null>;
+  onNineCardPresentationComplete: (stage: DealPresentationStage, dealNumber: number) => Promise<PlayerGameProjection | null>;
 }) {
   const tableRootRef = useRef<HTMLDivElement>(null);
   const playSubmissionLock = useRef(false);
@@ -87,6 +87,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const [dealerIntroActive, setDealerIntroActive] = useState(() => dealerSelectionNeedsPresentation(projection));
   const [trickPresentationBusy, setTrickPresentationBusy] = useState(false);
   const [dealPresentationActive, setDealPresentationActive] = useState(false);
+  const [pendingPresentationAck, setPendingPresentationAck] = useState<{ stage: DealPresentationStage; dealNumber: number } | null>(null);
   const [handRevealActive, setHandRevealActive] = useState(false);
   const [trumpAnnouncement, setTrumpAnnouncement] = useState<string | null>(null);
   const startupPresentationActive = dealerIntroActive || dealPresentationActive;
@@ -110,7 +111,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
 
   const beginHandReveal = useCallback(() => {
     if (!projection.cards.ownHandVisible || projection.cards.ownHand.length === 0) return;
-    if (projection.progression.phase !== "DECLARATION" && projection.progression.phase !== "NINE_CARD_TRUMP_CHOICE") return;
+    if (projection.progression.phase !== "DECLARATION" && projection.progression.phase !== "NINE_CARD_TRUMP_CHOICE" && projection.progression.phase !== "DEAL_PRESENTATION" && projection.progression.phase !== "NINE_CARD_INITIAL_DEAL_ALL_SEATS" && projection.progression.phase !== "NINE_CARD_REMAINING_DEAL") return;
     const key = `${projection.gameId}:${projection.progression.dealNumber}:${projection.cards.ownHand.length}`;
     if (revealedHands.current.has(key)) return;
     revealedHands.current.add(key);
@@ -173,8 +174,23 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     setPendingDeclarationValue(value); const result = await onCommand({ type: "declare", value }); if (!result) setPendingDeclarationValue(null);
   };
   const handleDealPresentationComplete = useCallback((stage: DealPresentationStage) => {
-    if (stage === "initial" || stage === "remaining") void onNineCardPresentationComplete(stage);
-  }, [onNineCardPresentationComplete]);
+    if (stage === "full" && projection.progression.phase !== "DEAL_PRESENTATION") return;
+    setPendingPresentationAck({ stage, dealNumber: projection.progression.dealNumber });
+  }, [projection.progression.dealNumber, projection.progression.phase]);
+  useEffect(() => {
+    if (!pendingPresentationAck) return;
+    let timer: number | undefined;
+    const schedule = () => {
+      if (timer != null) window.clearTimeout(timer);
+      if (document.visibilityState === "hidden" || window.innerHeight > window.innerWidth) return;
+      timer = window.setTimeout(() => {
+        void onNineCardPresentationComplete(pendingPresentationAck.stage, pendingPresentationAck.dealNumber);
+        setPendingPresentationAck(null);
+      }, HAND_REVEAL_MS);
+    };
+    schedule(); document.addEventListener("visibilitychange", schedule); window.addEventListener("focus", schedule); window.addEventListener("orientationchange", schedule);
+    return () => { if (timer != null) window.clearTimeout(timer); document.removeEventListener("visibilitychange", schedule); window.removeEventListener("focus", schedule); window.removeEventListener("orientationchange", schedule); };
+  }, [pendingPresentationAck, onNineCardPresentationComplete]);
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) { const root = document.getElementById("table-fullscreen-root") ?? tableRootRef.current; await root?.requestFullscreen(); const orientation = screen.orientation as OrientationLock; await orientation.lock?.("landscape").catch(() => undefined); }
