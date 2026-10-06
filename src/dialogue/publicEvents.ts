@@ -95,6 +95,21 @@ export function derivePublicDialogueEvents(
       }, 30);
       if (derived) events.push(derived);
     }
+
+    if (room.botSettings.intensity === "chaos" && trick && !trick.cards.some((play) => play.card.kind === "joker")) {
+      const leaderSeat = trick.cards[0]?.seatIndex;
+      if (leaderSeat != null && trick.winnerSeat !== leaderSeat) {
+        const winner = room.seats[trick.winnerSeat]?.occupant;
+        const type: DialogueEventType =
+          winner?.type === "bot" ? "BOT_STOLE_CRITICAL_TRICK" : "PLAYER_STOLE_CRITICAL_TRICK";
+        const derived = event(next, room, type, trick.winnerSeat, {
+          round: next.progression.round,
+          deal: next.progression.dealNumber,
+          publicSummary: `${occupantName(room, trick.winnerSeat)} πήρε την μπάζα ενώ δεν άνοιξε τη μπάζα.`,
+        }, 60 + trick.winnerSeat);
+        if (derived) events.push(derived);
+      }
+    }
   }
 
   if (next.score.roundPremia.length > previous.score.roundPremia.length) {
