@@ -36,7 +36,7 @@ function base() {
 }
 beforeEach(() => vi.clearAllMocks());
 describe("server turn presentation eligibility", () => {
-  it("a canonical play defers the next actor's deadline and blocks human and bot decisions", () => {
+  it("a committed play immediately makes the next authoritative human turn eligible", () => {
     const state = base();
     const card = state.cards.hands[0][0]!;
     const result = applyGameplayCommand({
@@ -47,20 +47,13 @@ describe("server turn presentation eligibility", () => {
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.timing.currentHumanDeadline).toBeNull();
-    expect(result.state.timing.turnPresentation?.token).toBe(result.state.stateVersion);
-    expect(projectGameForSeat(result.state, 1).local.legalActions).toEqual([]);
-    expect(
-      applyGameplayCommand({
-        state: result.state,
-        seat: 1,
-        command: { type: "declare", value: 0 },
-        serverNow: now,
-      }),
-    ).toEqual({ ok: false, code: "PRESENTATION_PENDING" });
+    expect(result.state.timing.turnPresentation).toBeUndefined();
+    expect(result.state.timing.currentHumanDeadline).toBe("2026-10-06T00:00:30.000Z");
+    expect(result.state.progression.currentActorSeat).toBe(1);
+    expect(projectGameForSeat(result.state, 1).local.legalActions.some((action) => action.type === "play_card")).toBe(true);
     expect(planAutomaticGameplayStep(result.state, now)).toEqual({
       ok: false,
-      stopReason: "PRESENTATION_BARRIER",
+      stopReason: "HUMAN_ACTION_REQUIRED",
     });
   });
   it("retains first ack, excludes bots, and starts a full deadline only on the last actual ack", () => {
@@ -103,7 +96,7 @@ describe("server turn presentation eligibility", () => {
     expect(holdPlayedEvent(bots, now)).toBe(bots);
   });
   it.each(["CARD_PLAY", "DEAL_RESULT"] as const)(
-    "worker cannot pass %s until bounded fallback; release consumes one step",
+    "worker releases a legacy %s presentation boundary immediately, before fallbackAt",
     async (phase) => {
       let state = holdPlayedEvent(base(), now);
       state.progression.phase = phase;
@@ -117,7 +110,6 @@ describe("server turn presentation eligibility", () => {
           replayed: false,
         };
       });
-      let time = "2026-10-06T00:00:29.000Z";
       const dependencies: ReconciliationDependencies = {
         load: async () => ({
           ok: true,
@@ -129,19 +121,18 @@ describe("server turn presentation eligibility", () => {
         finalize: vi.fn(),
         actionId: async () => "id",
         randomUnits: async () => [],
-        now: () => time,
+        now: () => "2026-10-06T00:00:01.000Z",
       };
-      expect(
-        await advanceGameUntilBlockedWithDependencies(state.gameId, 1, dependencies),
-      ).toMatchObject({ stopReason: "PRESENTATION_BARRIER", steps: 0 });
-      expect(persist).not.toHaveBeenCalled();
-      time = "2026-10-06T00:00:30.000Z";
       expect(
         await advanceGameUntilBlockedWithDependencies(state.gameId, 1, dependencies),
       ).toMatchObject({ stopReason: "STEP_BOUND", steps: 1 });
       expect(state.timing.turnPresentation).toBeUndefined();
-      expect(state.timing.currentHumanDeadline).toBe("2026-10-06T00:01:00.000Z");
+      expect(state.timing.currentHumanDeadline).toBe("2026-10-06T00:00:31.000Z");
       expect(persist).toHaveBeenCalledTimes(1);
+      expect(persist.mock.calls[0]?.[0]).toMatchObject({
+        commandType: "system_turn_presentation_release",
+        commandPayload: { source: "legacy_nonblocking_release" },
+      });
     },
   );
   it("authenticated CAS retry preserves the competing human acknowledgement", async () => {
