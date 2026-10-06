@@ -9,6 +9,7 @@ import type { PlayerGameProjection } from "@/domain/projection";
 import type { PlayedCard } from "@/domain/engine";
 
 vi.mock("@/lib/gameAudio", () => ({ playGameSound: vi.fn() }));
+vi.mock("@/components/table/useCriticalCardArtwork", () => ({ useCriticalCardArtwork: () => true }));
 const rect = { left: 40, top: 40, right: 760, bottom: 290, width: 720, height: 250 };
 const geometry = { ...computeTableGeometry({ feltRect: rect, viewportWidth: 800, viewportHeight: 400 }), epoch: 1 };
 const cards: PlayedCard[] = [0, 1, 2, 3].map((seatIndex) => ({ seatIndex: seatIndex as 0 | 1 | 2 | 3, card: { kind: "standard", id: "card" + seatIndex, suit: "hearts", rank: "A" } }));

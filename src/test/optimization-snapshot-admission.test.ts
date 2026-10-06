@@ -16,6 +16,7 @@ describe("monotonic snapshot admission", () => {
     const fresh = admission.beginRequest();
     admission.admit(10, fresh.sequence);
     expect(admission.acceptsFailure(old)).toBe(false);
+    expect(admission.admit(10, old.sequence)).toBe(false); // Older equal-version metadata is not valid.
     expect(admission.admit(10)).toBe(true);
     admission.admit(11);
     expect(admission.acceptsFailure(fresh)).toBe(false);

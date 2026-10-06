@@ -273,17 +273,21 @@ function TablePage() {
   useEffect(() => {
     mounted.current = true;
     void refreshAll();
-    void refreshReadiness();
     const gameTimer = window.setInterval(() => void refreshAll(), 1500);
     const dialogueTimer = window.setInterval(() => void refreshDialogue(), 1000);
-    const readinessTimer = window.setInterval(() => void refreshReadiness(), 750);
     return () => {
       mounted.current = false;
       window.clearInterval(gameTimer);
       window.clearInterval(dialogueTimer);
-      window.clearInterval(readinessTimer);
     };
-  }, [refreshAll, refreshDialogue, refreshReadiness]);
+  }, [refreshAll, refreshDialogue]);
+
+  useEffect(() => {
+    if (projection?.lifecycle !== "starting") return;
+    void refreshReadiness();
+    const timer = window.setInterval(() => void refreshReadiness(), 750);
+    return () => window.clearInterval(timer);
+  }, [projection?.lifecycle, refreshReadiness]);
 
   useEffect(() => {
     const waiting = projection?.lifecycle === "starting" && projection.progression.phase === "INITIAL_DEALER_SELECTION";
@@ -306,8 +310,9 @@ function TablePage() {
 
   useEffect(() => {
     if (projection?.lifecycle !== "starting" || projection.progression.phase !== "DEAL_SETUP") return;
-    const timer = window.setInterval(() => setPresentationTick((value) => value + 1), 50);
-    return () => window.clearInterval(timer);
+    const complete = () => setPresentationTick(value => value + 1);
+    window.addEventListener("joker:presentation-completed", complete);
+    return () => window.removeEventListener("joker:presentation-completed", complete);
   }, [projection?.gameId, projection?.lifecycle, projection?.progression.phase]);
 
   const presentationStage = startupPresentationStage(projection);

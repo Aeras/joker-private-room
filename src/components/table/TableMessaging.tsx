@@ -52,15 +52,12 @@ export function TableMessaging({
       try {
         const result = await getTableMessages({ data: { gameId: projection.gameId } });
         if (!cancelled && currentGeneration === generation.current && result.ok) {
-          setMessages((previous) => mergeLiveTableMessages(previous, result.messages, result.serverNow, started, Date.now()));
+          setMessages((previous) => !previous.length && !result.messages.length ? previous : mergeLiveTableMessages(previous, result.messages, result.serverNow, started, Date.now()));
         }
       } finally {
         pending = false;
       }
     };
-    const tick = setInterval(() => {
-      setMessages((m) => m.filter((x) => x.localExpiresAt > Date.now()));
-    }, 50);
     const polling = setInterval(() => { void poll().catch(() => undefined); }, 1000);
     const visibility = () => {
       clear();
@@ -72,12 +69,18 @@ export function TableMessaging({
     return () => {
       cancelled = true;
       invalidate();
-      clearInterval(tick);
       clearInterval(polling);
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("pagehide", clear);
     };
   }, [projection.gameId, projection.lifecycle]);
+
+  useEffect(() => {
+    if (!messages.length) return;
+    const nextExpiry = Math.min(...messages.map(message => message.localExpiresAt));
+    const timer = window.setTimeout(() => setMessages(current => { const live = current.filter(message => message.localExpiresAt > Date.now()); return live.length === current.length ? current : live; }), Math.max(0, nextExpiry - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [messages]);
 
   if (projection.lifecycle === "complete") return null;
   const recipients = [

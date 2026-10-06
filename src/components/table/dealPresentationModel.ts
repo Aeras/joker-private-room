@@ -1,3 +1,4 @@
+import { presentationWasCompleted } from "./presentationCompletion";
 export const NORMAL_DEAL_STAGGER_MS = 500;
 export const NORMAL_DEAL_TRAVEL_MS = 440;
 export const NORMAL_DEAL_TAIL_MS = 320;
@@ -19,11 +20,4 @@ export function dealPresentationStorageKey(stageKey: string): string {
   return `joker:deal-presented:${stageKey}`;
 }
 
-export function dealPresentationWasCompleted(stageKey: string): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.sessionStorage.getItem(dealPresentationStorageKey(stageKey)) === "1";
-  } catch {
-    return false;
-  }
-}
+export function dealPresentationWasCompleted(stageKey: string): boolean { return presentationWasCompleted(dealPresentationStorageKey(stageKey)); }

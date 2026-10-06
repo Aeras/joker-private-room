@@ -1,0 +1,884 @@
+[
+  {
+    "source": "/cards/card_back.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/card_back.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/card_back.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_10.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_10.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_10.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_6.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_6.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_6.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_7.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_7.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_7.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_8.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_8.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_8.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_9.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_9.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_9.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_ace.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_ace.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_ace.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_jack.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_jack.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_jack.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_king.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_king.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_king.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_queen.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_queen.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/clubs_queen.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_10.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_10.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_10.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_6.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_6.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_6.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_7.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_7.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_7.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_8.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_8.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_8.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_9.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_9.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_9.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_ace.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_ace.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_ace.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_jack.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_jack.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_jack.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_king.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_king.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_king.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_queen.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_queen.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/diamonds_queen.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_10.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_10.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_10.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_6.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_6.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_6.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_7.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_7.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_7.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_8.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_8.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_8.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_9.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_9.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_9.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_ace.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_ace.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_ace.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_jack.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_jack.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_jack.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_king.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_king.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_king.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_queen.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_queen.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/hearts_queen.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/joker_black.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/joker_black.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/joker_black.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/joker_red.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/joker_red.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/joker_red.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_10.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_10.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_10.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_6.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_6.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_6.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_7.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_7.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_7.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_8.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_8.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_8.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_9.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_9.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_9.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_ace.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_ace.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_ace.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_jack.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_jack.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_jack.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_king.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_king.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_king.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_queen.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_queen.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/cards/spades_queen.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/table/table_background.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/table/table_background.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/table/table_background.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 0.0,
+    "rmsRGB": 0.0
+  },
+  {
+    "source": "/avatars/archimandritis.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 1.0334,
+    "rmsRGB": 1.8388
+  },
+  {
+    "source": "/avatars/archimandritis.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 1.5986,
+    "rmsRGB": 2.979
+  },
+  {
+    "source": "/avatars/archimandritis.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 2.12,
+    "rmsRGB": 4.0315
+  },
+  {
+    "source": "/avatars/giobis.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 1.2848,
+    "rmsRGB": 2.3267
+  },
+  {
+    "source": "/avatars/giobis.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 2.0887,
+    "rmsRGB": 4.0442
+  },
+  {
+    "source": "/avatars/giobis.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 2.7035,
+    "rmsRGB": 5.3439
+  },
+  {
+    "source": "/avatars/giorgos_nousios.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 1.0065,
+    "rmsRGB": 1.6349
+  },
+  {
+    "source": "/avatars/giorgos_nousios.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 1.6247,
+    "rmsRGB": 2.7938
+  },
+  {
+    "source": "/avatars/giorgos_nousios.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 2.0458,
+    "rmsRGB": 3.5953
+  },
+  {
+    "source": "/avatars/git.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 1.2784,
+    "rmsRGB": 2.3269
+  },
+  {
+    "source": "/avatars/git.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 2.0368,
+    "rmsRGB": 4.0117
+  },
+  {
+    "source": "/avatars/git.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 2.5394,
+    "rmsRGB": 5.1318
+  },
+  {
+    "source": "/avatars/ka_monika.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 1.3538,
+    "rmsRGB": 2.112
+  },
+  {
+    "source": "/avatars/ka_monika.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 2.1744,
+    "rmsRGB": 3.5576
+  },
+  {
+    "source": "/avatars/ka_monika.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 2.6961,
+    "rmsRGB": 4.487
+  },
+  {
+    "source": "/avatars/mixalis.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 1.1147,
+    "rmsRGB": 2.0993
+  },
+  {
+    "source": "/avatars/mixalis.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 1.7575,
+    "rmsRGB": 3.5316
+  },
+  {
+    "source": "/avatars/mixalis.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 2.3323,
+    "rmsRGB": 4.7155
+  },
+  {
+    "source": "/avatars/mounara.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 1.1426,
+    "rmsRGB": 1.8746
+  },
+  {
+    "source": "/avatars/mounara.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 1.7893,
+    "rmsRGB": 3.0655
+  },
+  {
+    "source": "/avatars/mounara.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 2.2935,
+    "rmsRGB": 4.0443
+  },
+  {
+    "source": "/avatars/theia_tamara.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 1.5393,
+    "rmsRGB": 2.6047
+  },
+  {
+    "source": "/avatars/theia_tamara.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 2.6942,
+    "rmsRGB": 4.9895
+  },
+  {
+    "source": "/avatars/theia_tamara.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 3.4304,
+    "rmsRGB": 6.5291
+  },
+  {
+    "source": "/avatars/thomoulis.png",
+    "dpr": 1,
+    "meanAbsoluteRGB": 0.9192,
+    "rmsRGB": 1.611
+  },
+  {
+    "source": "/avatars/thomoulis.png",
+    "dpr": 2,
+    "meanAbsoluteRGB": 1.4309,
+    "rmsRGB": 2.656
+  },
+  {
+    "source": "/avatars/thomoulis.png",
+    "dpr": 3,
+    "meanAbsoluteRGB": 1.9087,
+    "rmsRGB": 3.575
+  }
+]

@@ -1,3 +1,6 @@
+import { assets } from "@/assets/registry";
+import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
+import { markPresentationCompleted } from "./presentationCompletion";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { nextSeat, type SeatIndex } from "@/domain/dealing";
 import type { PlayerGameProjection } from "@/domain/projection";
@@ -31,15 +34,16 @@ function recipientFor(dealerSeat: SeatIndex, beatIndex: number): SeatIndex { ret
 function visualPosition(viewerSeat: SeatIndex, seat: SeatIndex): VisualSeat { return ((seat - viewerSeat + 4) % 4) as VisualSeat; }
 function viewportPoint(geometry: TableGeometry, local: Point): Point { return { x: geometry.feltRect.left + local.x, y: geometry.feltRect.top + local.y }; }
 function stackedTarget(base: Point, pos: VisualSeat, stackIndex: number): Point { const offset = stackIndex * 6; if (pos === 3) return { x: base.x - offset, y: base.y + stackIndex * 2 }; if (pos === 1) return { x: base.x + offset, y: base.y + stackIndex * 2 }; return { x: base.x + offset, y: base.y + stackIndex * 2 }; }
-function markPresented(stageKey: string): void { if (typeof window === "undefined") return; try { window.sessionStorage.setItem(dealPresentationStorageKey(stageKey), "1"); } catch { /* optional presentation storage */ } }
+function markPresented(stageKey: string): void { markPresentationCompleted(dealPresentationStorageKey(stageKey)); }
 function TravelingBack({ beat, pos, geometry }: { beat: DealBeat; pos: VisualSeat; geometry: TableGeometry | null }) {
   const [arrived, setArrived] = useState(false);
   useLayoutEffect(() => { setArrived(false); const frame = window.requestAnimationFrame(() => setArrived(true)); return () => window.cancelAnimationFrame(frame); }, [beat.id]);
   if (!geometry) return <div className="absolute left-1/2 top-1/2 [--card-w:clamp(2.3rem,4.8vw,3.65rem)] transition-transform ease-out" style={{ zIndex: 30 + beat.stackIndex, transitionDuration: `${NORMAL_DEAL_TRAVEL_MS}ms`, transform: arrived ? FALLBACK_TARGET[pos] : "translate(-50%, -50%) scale(.58)" }}><PlayingCard faceDown /></div>;
   const source = viewportPoint(geometry, geometry.dealCenter); const baseTarget = viewportPoint(geometry, geometry.dealTargets[pos]); const target = stackedTarget(baseTarget, pos, beat.stackIndex);
-  return <div className="absolute [--card-w:clamp(2.3rem,4.8vw,3.65rem)] transition-[left,top,transform] ease-out" style={{ left: arrived ? target.x : source.x, top: arrived ? target.y : source.y, zIndex: 30 + beat.stackIndex, transitionDuration: `${NORMAL_DEAL_TRAVEL_MS}ms`, transform: `translate(-50%, -50%) scale(${arrived ? 1 : 0.58})` }}><PlayingCard faceDown /></div>;
+  return <div className="absolute [--card-w:clamp(2.3rem,4.8vw,3.65rem)] transition-transform ease-out" style={{ left: source.x, top: source.y, zIndex: 30 + beat.stackIndex, transitionDuration: `${NORMAL_DEAL_TRAVEL_MS}ms`, transform: `translate(calc(-50% + ${arrived ? target.x - source.x : 0}px), calc(-50% + ${arrived ? target.y - source.y : 0}px)) scale(${arrived ? 1 : 0.58})` }}><PlayingCard faceDown /></div>;
 }
 export function DealPresentation({ projection, geometry = null, paused = false, onActiveChange, onSequenceComplete, onPresentationComplete }: { projection: PlayerGameProjection; geometry?: TableGeometry | null; paused?: boolean; onActiveChange?: (active: boolean) => void; onSequenceComplete?: () => void; onPresentationComplete?: (stage: DealPresentationStage) => void }) {
+  const artworkSettled = useCriticalCardArtwork([assets.cardBack]);
   const [interrupted, setInterrupted] = useState(document.visibilityState === "hidden");
   const [resumeGeneration, resume] = useState(0);
   const previousGameId = useRef(projection.gameId); const previousStageKey = useRef<string | null>(null); const acknowledgedStageKey = useRef<string | null>(null);
@@ -56,8 +60,9 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   const clearTimers = useCallback(() => { for (const timer of timers.current) window.clearTimeout(timer); timers.current = []; }, []);
   const clearPresentation = useCallback(() => { clearTimers(); setBeats([]); setVisibleIndex(-1); setRunGeometry(null); onActiveChangeRef.current?.(false); }, [clearTimers]);
   const notifyCompletion = useCallback((key: string, presentationStage: DealPresentationStage, startup: boolean) => {
-    if (acknowledgedStageKey.current === key) return;
-    acknowledgedStageKey.current = key;
+    const completionScope = `${key}:${startup ? "startup" : "gameplay"}`;
+    if (acknowledgedStageKey.current === completionScope) return;
+    acknowledgedStageKey.current = completionScope;
     onPresentationCompleteRef.current?.(presentationStage);
     if (startup) onSequenceCompleteRef.current?.();
   }, []);
@@ -73,6 +78,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
       return;
     }
     if (stageKey === previousStageKey.current) return;
+    if (!artworkSettled) { onActiveChangeRef.current?.(true); return; }
     startTimingDiagnosticSession(projection.gameId); previousStageKey.current = stageKey; onActiveChangeRef.current?.(true);
     const frozenSequence = sequence.map((beat) => ({ ...beat })); const frozenGeometry = geometry; const frozenViewerSeat = projection.viewerSeat;
     setRunGeometry(frozenGeometry); setRunViewerSeat(frozenViewerSeat); setBeats(frozenSequence); setVisibleIndex(-1);
@@ -86,7 +92,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     });
     const completeAt = leadInMs + frozenSequence.length * staggerMs + tailMs;
     timers.current.push(window.setTimeout(() => { recordTimingDiagnostic("deal_sequence_complete", { stage: presentationStage, scheduledOffsetMs: completeAt }); markPresented(stageKey); notifyCompletion(stageKey, presentationStage, startup); clearPresentation(); }, completeAt));
-  }, [clearPresentation, geometry, notifyCompletion, paused, projection.gameId, projection.progression.dealNumber, projection.progression.dealerSeat, projection.progression.phase, projection.viewerSeat, sequence, stage, stageKey, interrupted, resumeGeneration]);
+  }, [clearPresentation, geometry, notifyCompletion, paused, projection.gameId, projection.progression.dealNumber, projection.progression.dealerSeat, projection.progression.phase, projection.viewerSeat, sequence, stage, stageKey, interrupted, resumeGeneration, artworkSettled]);
   useLayoutEffect(() => {
     const interrupt = () => { setInterrupted(true); clearPresentation(); if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null; };
     const restore = () => { if (document.visibilityState !== "hidden") { setInterrupted(false); resume(n => n + 1); } };

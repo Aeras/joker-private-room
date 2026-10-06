@@ -1,3 +1,6 @@
+import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
+import { assets } from "@/assets/registry";
+import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 import { TrickPresentationJournal } from "./trickPresentationJournal";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SeatIndex } from "@/domain/dealing";
@@ -114,6 +117,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
 
   useEffect(() => { if (journal.current.ingest(projection)) revise(n => n + 1); }, [projection]);
   const active = journal.current.active;
+  const artworkSettled = useCriticalCardArtwork([assets.cardBack, ...(active?.cards.map(play => assets.cardFace(play.card)) ?? [])]);
   useEffect(() => {
     if (activeId.current === active?.id) return;
     activeId.current = active?.id ?? null;
@@ -129,7 +133,10 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     if (paused) return;
     if (stage === "landing") {
       if (landedCards.current.has(playKey(play))) return;
-      landedCards.current.add(playKey(play)); revise(n => n + 1); return;
+      landedCards.current.add(playKey(play));
+      playGameSound("play", journal.current.active?.id + ":" + playKey(play));
+      recordTimingDiagnostic("trick_card_landed", { trickId: journal.current.active?.id ?? "none", seat: play.seatIndex, cardId: play.card.id });
+      revise(n => n + 1); return;
     }
     const current = departingRef.current;
     if (!current || current.stage !== stage) return;
@@ -139,6 +146,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     if (stage === "flipping") {
       const next = { ...current, stage: "collecting" as const }; departingRef.current = next; setDeparting(next);
     } else if (stage === "collecting") {
+      recordTimingDiagnostic("trick_collection_complete", { trickId: current.id, winnerSeat: current.winnerSeat });
       journal.current.collect(current.id); departingRef.current = null; setDeparting(null); revise(n => n + 1);
     }
   }, [paused]);
@@ -149,7 +157,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   }, [onLocalFlightSettled]);
 
   useEffect(() => {
-    if (paused || !active || activeId.current !== active.id || departing) return;
+    if (!artworkSettled || paused || !active || activeId.current !== active.id || departing) return;
     // A local accepted play joins this same surface only after its flight lands.
     const next = active.cards[displayedCards.length];
     if (next) {
@@ -158,7 +166,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       const delay = local || !displayedCards.length ? 0 : trickPresentationTiming(reducedMotion).interPlayBeatMs;
       const show = () => {
         setDisplayedCards(cards => [...cards, next]); enqueueJokerAnnouncement(next);
-        if (!local) playGameSound("play", active.id + ":" + playKey(next));
+        recordTimingDiagnostic("trick_card_launch", { trickId: active.id, seat: next.seatIndex, cardId: next.card.id });
       };
       if (local) { show(); return undefined; }
       const timer = window.setTimeout(show, delay);
@@ -167,9 +175,10 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     if (active.winnerSeat == null || localPlayPresentation || !active.cards.every(play => landedCards.current.has(playKey(play)))) return;
     stageCards.current.clear();
     const completion: Departing = { id: active.id, cards: [...active.cards], winnerSeat: active.winnerSeat, stage: "holding" };
+    recordTimingDiagnostic("trick_hold_start", { trickId: completion.id, holdMs: trickPresentationTiming(reducedMotion).holdMs });
     departingRef.current = completion; setDeparting(completion);
     return undefined;
-  }, [active, active?.cards.length, active?.winnerSeat, displayedCards, departing, paused, reducedMotion, localPlayPresentation, enqueueJokerAnnouncement, revision]);
+  }, [active, active?.cards.length, active?.winnerSeat, displayedCards, departing, paused, reducedMotion, localPlayPresentation, enqueueJokerAnnouncement, revision, artworkSettled]);
 
   useEffect(() => {
     if (paused || departing?.stage !== "holding") return;

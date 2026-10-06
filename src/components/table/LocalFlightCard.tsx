@@ -1,3 +1,4 @@
+import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlayingCard } from "../joker/PlayingCard";
 import { playGameSound } from "@/lib/gameAudio";
@@ -21,12 +22,13 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const callback = useRef(onSettled); callback.current = onSettled;
   const duration = reducedMotion ? REDUCED_LOCAL_FLIGHT_MS : LOCAL_FLIGHT_MS;
   const rejected = presentation.status === "rejected";
-  const completeMotion = useCallback(() => { if (rejected) setReturned(true); else setLanded(true); }, [rejected]);
+  const motionCompleted = useRef(new Set<string>());
+  const completeMotion = useCallback(() => { const stage = rejected ? "returned" : "landed"; if (motionCompleted.current.has(stage)) return; motionCompleted.current.add(stage); recordTimingDiagnostic("local_flight_" + stage, { cardId: presentation.cardId, durationMs: duration }); if (rejected) setReturned(true); else setLanded(true); }, [rejected, duration, presentation.cardId]);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => setLaunched(true));
+    const frame = requestAnimationFrame(() => { recordTimingDiagnostic("local_flight_launch", { cardId: presentation.cardId, durationMs: duration }); setLaunched(true); });
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [duration, presentation.cardId]);
   useEffect(() => {
     if (!launched && !rejected) return;
     const timer = window.setTimeout(completeMotion, duration + MOTION_FALLBACK_SLACK_MS);

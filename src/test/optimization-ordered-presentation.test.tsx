@@ -13,6 +13,7 @@ import type { PlayerGameProjection } from "@/domain/projection";
 import type { CanonicalGameState } from "@/domain/gameState";
 import type { PlayedCard } from "@/domain/engine";
 vi.mock("@/lib/gameAudio", () => ({ playGameSound: vi.fn() }));
+vi.mock("@/components/table/useCriticalCardArtwork", () => ({ useCriticalCardArtwork: () => true }));
 vi.mock("@/lib/timingDiagnostics", () => ({ recordTimingDiagnostic: vi.fn(), startTimingDiagnosticSession: vi.fn() }));
 const rect = { left: 40, top: 40, right: 760, bottom: 290, width: 720, height: 250 };
 const geometry = { ...computeTableGeometry({ feltRect: rect, viewportWidth: 800, viewportHeight: 400 }), epoch: 1 };
@@ -56,6 +57,14 @@ describe("ordered public trick journal", () => {
 });
 
 describe("presentation interruption and geometry", () => {
+  it("already-dealt first hand acknowledges reveal scope without replaying the deal", () => {
+    const complete = vi.fn(); const projection = snapshot(); projection.gameId = "firststage-reveal";
+    const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);
+    tick(2320); expect(complete).toHaveBeenCalledTimes(1);
+    view.rerender(<DealPresentation projection={{ ...projection, lifecycle: "active", progression: { ...projection.progression, phase: "DEAL_PRESENTATION" } }} geometry={geometry} onPresentationComplete={complete} />);
+    expect(complete).toHaveBeenCalledTimes(2); expect(view.container.childElementCount).toBe(0);
+    tick(5000); expect(complete).toHaveBeenCalledTimes(2);
+  });
   it("presents a three-trick batch exactly once; resize/blur/collection keep cursor", () => {
     const props = { geometry, localPlayPresentation: null, onLocalFlightSettled: vi.fn() };
     const view = render(<TrickPresentation {...props} projection={snapshot()} />);

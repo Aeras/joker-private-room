@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -5,16 +6,20 @@ import { cn } from "@/lib/utils";
 export function PlayerAvatar({
   name,
   imageUrl,
+  fallbackImageUrl,
   isBot,
   size = "md",
   className,
 }: {
   name: string;
   imageUrl?: string | undefined;
+  fallbackImageUrl?: string | undefined;
   isBot?: boolean;
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const displayedUrl = failedUrl === imageUrl ? fallbackImageUrl : imageUrl;
   const dims = { sm: "h-9 w-9 text-sm", md: "h-12 w-12 text-base", lg: "h-16 w-16 text-xl" }[size];
   return (
     <div
@@ -24,8 +29,8 @@ export function PlayerAvatar({
         className,
       )}
     >
-      {imageUrl ? (
-        <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
+      {displayedUrl ? (
+        <img src={displayedUrl} alt={name} decoding="async" onError={() => setFailedUrl(imageUrl ?? null)} className="h-full w-full object-cover" />
       ) : isBot ? (
         <Bot className="h-1/2 w-1/2" />
       ) : (

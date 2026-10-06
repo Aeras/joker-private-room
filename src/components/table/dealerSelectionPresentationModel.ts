@@ -1,3 +1,4 @@
+import { markPresentationCompleted, presentationWasCompleted } from "./presentationCompletion";
 import { nextSeat, type SeatIndex } from "@/domain/dealing";
 import type { PlayerGameProjection } from "@/domain/projection";
 
@@ -23,11 +24,11 @@ export function dealerSelectionPresentationKey(projection: PlayerGameProjection)
 export function dealerSelectionNeedsPresentation(projection: PlayerGameProjection): boolean {
   const key = dealerSelectionPresentationKey(projection);
   if (!key || typeof window === "undefined") return false;
-  return window.sessionStorage.getItem(key) !== "1";
+  return !presentationWasCompleted(key);
 }
 
 export function markDealerSelectionPresented(projection: PlayerGameProjection): void {
   const key = dealerSelectionPresentationKey(projection);
   if (!key || typeof window === "undefined") return;
-  window.sessionStorage.setItem(key, "1");
+  markPresentationCompleted(key);
 }

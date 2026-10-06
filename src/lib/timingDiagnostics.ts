@@ -25,6 +25,10 @@ import {
 const STORAGE_KEY = "joker:timing-diagnostics:v1";
 const SESSION_KEY = "joker:timing-diagnostics:game-id";
 const MAX_EVENTS = 800;
+let captured: TimingDiagnosticEvent[] = [];
+let captureGameId: string | null = null;
+let nextSequence = 1;
+let persistenceTimer: number | null = null;
 
 type DiagnosticDetails = Record<string, string | number | boolean | null>;
 
@@ -37,7 +41,7 @@ type TimingDiagnosticEvent = {
 };
 
 function browserAvailable(): boolean {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+  return typeof window !== "undefined";
 }
 
 function readEvents(): TimingDiagnosticEvent[] {
@@ -53,40 +57,29 @@ function readEvents(): TimingDiagnosticEvent[] {
 function writeEvents(events: TimingDiagnosticEvent[]): void {
   if (!browserAvailable()) return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(events.slice(-MAX_EVENTS)));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+    if (captureGameId) window.localStorage.setItem(SESSION_KEY, captureGameId);
   } catch {
     // Diagnostics must never affect gameplay if storage is unavailable/full.
   }
 }
 
-export function startTimingDiagnosticSession(gameId: string): void {
-  if (!browserAvailable()) return;
-  const current = window.localStorage.getItem(SESSION_KEY);
-  if (current === gameId) return;
-  window.localStorage.setItem(SESSION_KEY, gameId);
-  writeEvents([]);
-  recordTimingDiagnostic("session_start", {
-    gameId,
-    reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
-    gameplayDealMotionOverride: "fixed",
-    viewportWidth: window.innerWidth,
-    viewportHeight: window.innerHeight,
-    devicePixelRatio: window.devicePixelRatio,
-  });
+export function flushTimingDiagnostics(): void {
+  if (persistenceTimer != null) { window.clearTimeout(persistenceTimer); persistenceTimer = null; }
+  if (captured.length) writeEvents(captured);
 }
-
+export function startTimingDiagnosticSession(gameId: string): void {
+  if (!browserAvailable() || captureGameId === gameId) return;
+  captureGameId = gameId; captured = []; nextSequence = 1;
+  recordTimingDiagnostic("session_start", { gameId, reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false, gameplayDealMotionOverride: "fixed", viewportWidth: window.innerWidth, viewportHeight: window.innerHeight, devicePixelRatio: window.devicePixelRatio });
+}
 export function recordTimingDiagnostic(event: string, details: DiagnosticDetails = {}): void {
   if (!browserAvailable()) return;
-  const events = readEvents();
-  events.push({
-    seq: events.length === 0 ? 1 : (events[events.length - 1]?.seq ?? 0) + 1,
-    event,
-    epochMs: Date.now(),
-    performanceMs: Math.round(performance.now() * 1000) / 1000,
-    details,
-  });
-  writeEvents(events);
+  captured.push({ seq: nextSequence++, event, epochMs: Date.now(), performanceMs: Math.round(performance.now() * 1000) / 1000, details: { ...details } });
+  if (captured.length > MAX_EVENTS) captured.splice(0, captured.length - MAX_EVENTS);
+  if (persistenceTimer == null) persistenceTimer = window.setTimeout(flushTimingDiagnostics, 500);
 }
+if (typeof window !== "undefined") window.addEventListener("pagehide", flushTimingDiagnostics);
 
 function activeRuntimeTimings() {
   const browserReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -124,9 +117,9 @@ export function exportTimingDiagnosticsFile(): boolean {
   const payload = {
     schema: "joker-timing-diagnostics-v1",
     exportedAt: new Date().toISOString(),
-    gameId: window.localStorage.getItem(SESSION_KEY),
+    gameId: captureGameId,
     runtime: activeRuntimeTimings(),
-    events: readEvents(),
+    events: captured.length ? captured.slice() : readEvents(),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);

@@ -10,7 +10,7 @@ export class SnapshotAdmission {
   }
 
   admit(version: number, sequence = this.request): boolean {
-    if (!Number.isSafeInteger(version) || version < this.version) return false;
+    if (!Number.isSafeInteger(version) || version < this.version || (version === this.version && sequence < this.lastSuccess)) return false;
     this.version = version;
     this.lastSuccess = Math.max(this.lastSuccess, sequence);
     return true;

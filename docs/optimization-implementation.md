@@ -42,6 +42,18 @@ Verification: 9 behavioral barrier/protocol tests cover human/bot first actors, 
 
 Remaining architectural risk: ordered visible delivery is now lossless within its bounded journal, but canonical turn deadlines are not leased to each client's visible trick cursor. A delayed client can still spend part of a turn catching up. A server-owned per-turn presentation contract needs review and multi-client timing evidence; this draft does not claim that this P0 interaction-readiness risk is eliminated. Do not substitute larger arbitrary sleeps or a client rules engine for that contract.
 
+### Phase 4 — decoded assets, runtime producers and compression
+
+The existing shared cache and canonical PNG registry identities remain. Readiness means decoded success, with retryable/terminal failure distinguished, one coalesced request, two bounded attempts and original-PNG fallback. Dealer/deal and active-trick presentation wait for a small immediately required set, not the full deck. Semantic fallback releases the readiness gate after terminal failure. Already-cached images still await decode. Real artwork no longer becomes ready solely from an image `onLoad` handler.
+
+Normal dealing animates only transform from a fixed source origin; card order, destination, stacking and cadence are unchanged. Empty chat expiry uses no timer and live chat schedules only the next expiry. Startup completion uses explicit completion events and a bounded in-memory completion marker when storage is denied, replacing 50 ms marker polling. Readiness polling stops outside startup. Equal-version snapshot admission additionally rejects older request metadata.
+
+Diagnostics capture at most 800 events in memory and persist in 500 ms batches/pagehide/export paths; animation callbacks do not parse or rewrite localStorage. Actual local/remote landing and completed collection milestones are recorded. Both local and remote play sounds use landing, with existing bounded audio deduplication unchanged.
+
+`scripts/optimize-table-assets.py` preserves every original. 39 card WebPs and the background preserve source dimensions and exact decoded RGBA pixels; 9 table-avatar derivatives use 256×256 WebP. Table-only URL resolution is limited to reviewed local avatar identities; arbitrary external/custom URLs remain unchanged and the original URL is the image-error fallback. Combined originals are 26,734,116 bytes and derivatives 4,842,790 bytes. Manifest/source hashes and 147 DPR 1/2/3 resampling comparisons are in the two JSON documents. All 40 full-resolution lossless images were independently compared byte-for-byte after decoding; avatar DPR 3 comparisons were visually reviewed in the contact sheet. This is target-density artifact comparison; physical-device DPR browser testing remains pending.
+
+Verification: 35 related runtime tests; 54 targeted assets/ruleset/identity/freshness tests; 23 motion/ordered/runtime tests after final scope correction passed. TypeScript, production client/SSR build and affected-file lint passed. Browser confirmed decoded `/cards/optimized/card_back.webp`, fixed left/top origin and transform-only normal dealing. The existing 500 ms deal cadence and 850 ms trick hold remain. Already-dealt first-hand reveal uses a separate completion scope and cannot suppress its server acknowledgement.
+
 | OPT | Current disposition | Remaining work |
 |---|---|---|
 | 001 | PARTIAL | Phase 1 fixes motion handoff; geometry/recovery integration still to verify in Phase 2 |

@@ -1,3 +1,5 @@
+import { assets } from "@/assets/registry";
+import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Card } from "@/domain/cards";
 import type { PlayerGameProjection } from "@/domain/projection";
@@ -114,6 +116,8 @@ export function DealerSelectionPresentation({
   const selectionKey = selection
     ? `${projection.gameId}:${selection.resolvedAtStateVersion}`
     : null;
+  const openingAssetCard = selection?.openingCard ?? selection?.revealedSelectionCards[0];
+  const artworkSettled = useCriticalCardArtwork([assets.cardBack, openingAssetCard ? assets.cardFace(openingAssetCard) : undefined]);
   const geometryReady = geometry != null;
   const needsPresentation = Boolean(selectionKey && selection && dealerSelectionNeedsPresentation(projection));
 
@@ -131,7 +135,7 @@ export function DealerSelectionPresentation({
       return;
     }
     onActiveChangeRef.current(true);
-    if (!geometryReady || !geometry || !selection || !selectionKey) {
+    if (!artworkSettled || !geometryReady || !geometry || !selection || !selectionKey) {
       recordTimingDiagnostic("dealer_waiting_for_geometry");
       return;
     }
@@ -212,7 +216,7 @@ export function DealerSelectionPresentation({
       startupFrames.current.push(secondFrame);
     });
     startupFrames.current.push(firstFrame);
-  }, [geometryReady, needsPresentation, selectionKey, interrupted, resumeGeneration, geometry, projection, selection]);
+  }, [geometryReady, needsPresentation, selectionKey, interrupted, resumeGeneration, geometry, projection, selection, artworkSettled]);
 
   useEffect(() => {
     const interrupt = () => {
