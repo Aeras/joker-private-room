@@ -164,4 +164,17 @@ describe("server turn presentation eligibility", () => {
     state.seats[0].reclaimable = true;
     expect(releasePlayedEvent(state, now).timing.currentHumanDeadline).toBeNull();
   });
+  it("foreground recovery refreshes authority and remounts presentation-only state", () => {
+    const route = require("node:fs").readFileSync("src/routes/table.tsx", "utf8");
+    const wake = require("node:fs").readFileSync(
+      "supabase/migrations/20261006182000_jk006_nonblocking_turn_presentation.sql",
+      "utf8",
+    );
+    expect(route).toContain("returningFromBackground");
+    expect(route).toContain("setTableEpoch((value) => value + 1)");
+    expect(route).toContain("void refreshAll()");
+    expect(route).toContain('window.addEventListener("focus", focus)');
+    expect(wake).toContain("return p_server_now;");
+    expect(wake).not.toContain("return coalesce(v_presentation_ready, p_server_now)");
+  });
 });
