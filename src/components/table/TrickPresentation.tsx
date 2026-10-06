@@ -85,7 +85,10 @@ function departedTransform(arrived: boolean, faceDown: boolean, landing: Point, 
   return relativeTransform(origin, center, ROTATION[pos], 0.92, 0);
 }
 
-export function TrickPresentation({ projection, geometry, localPlayPresentation, onLocalFlightSettled, onBusyChange }: { projection: PlayerGameProjection; geometry: TableGeometry | null; localPlayPresentation: LocalPlayPresentation | null; onLocalFlightSettled: () => void; onBusyChange?: (busy: boolean) => void }) {
+export function TrickPresentation({ projection, geometry, localPlayPresentation, onLocalFlightSettled, onBusyChange, onPresentationReady }: { projection: PlayerGameProjection; geometry: TableGeometry | null; localPlayPresentation: LocalPlayPresentation | null; onLocalFlightSettled: () => void; onBusyChange?: (busy: boolean) => void; onPresentationReady?: (token: number) => Promise<boolean> }) {
+  const readyCallback = useRef(onPresentationReady); readyCallback.current = onPresentationReady;
+  const acknowledgedTokens = useRef(new Set<number>());
+  const [ackAttempt, retryAck] = useState(0);
   const journal = useRef(new TrickPresentationJournal());
   const [revision, revise] = useState(0);
   const [displayedCards, setDisplayedCards] = useState<PlayedCard[]>([]);
@@ -204,6 +207,27 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const busy = Boolean(active && (active.id !== currentId || departing || displayedCards.length < active.cards.length || displayedCards.some(play => !landedCards.current.has(playKey(play)))));
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
+  const hasPresentationGeometry = Boolean(geometry);
+  const localMotionPending = Boolean(localPlayPresentation);
+  const token = projection.timing?.turnPresentation?.token;
+  const alreadyAcknowledged = projection.timing?.turnPresentation?.completedSeats.includes(projection.viewerSeat);
+  useEffect(() => {
+    if (token == null || alreadyAcknowledged || paused || !artworkSettled || localMotionPending || !hasPresentationGeometry || acknowledgedTokens.current.has(token)) return;
+    let cancelled = false; let timer: number | undefined;
+    const settle = async () => {
+      const current = journal.current.active;
+      if (departingRef.current || (current && (current.winnerSeat != null || current.cards.some(play => !landedCards.current.has(playKey(play)))))) return;
+      try {
+        const accepted = await readyCallback.current?.(token);
+        if (!cancelled && accepted) {
+          acknowledgedTokens.current.add(token);
+          while (acknowledgedTokens.current.size > 96) acknowledgedTokens.current.delete(acknowledgedTokens.current.values().next().value!);
+        } else if (!cancelled) timer = window.setTimeout(() => retryAck(n => n + 1), 1_500);
+      } catch { if (!cancelled) timer = window.setTimeout(() => retryAck(n => n + 1), 1_500); }
+    };
+    void settle();
+    return () => { cancelled = true; if (timer != null) window.clearTimeout(timer); };
+  }, [token, alreadyAcknowledged, paused, artworkSettled, hasPresentationGeometry, localMotionPending, revision, departing?.stage, resumeGeneration, ackAttempt]);
   const cards = departing?.cards ?? displayedCards;
   const visibleCards = cards.filter((play) => !isPresentationCard(localPlayPresentation, play));
   const showLocalFlight = Boolean(localPlayPresentation && geometry && !departing);

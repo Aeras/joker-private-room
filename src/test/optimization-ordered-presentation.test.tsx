@@ -25,6 +25,20 @@ beforeEach(() => { vi.useFakeTimers(); sessionStorage.clear(); vi.stubGlobal("re
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("ordered public trick journal", () => {
+  it("does not acknowledge a fourth-card boundary during landing, hold, flip or collection", async () => {
+    const ready = vi.fn(async () => true);
+    const props = { geometry, localPlayPresentation: null, onLocalFlightSettled: vi.fn(), onPresentationReady: ready };
+    const view = render(<TrickPresentation {...props} projection={snapshot()} />);
+    const projection = snapshot(1); projection.timing = { currentHumanDeadline: null, turnPresentation: { token: 10, requiredSeats: [0], completedSeats: [], fallbackAt: "2026-10-06T00:00:30.000Z" } };
+    view.rerender(<TrickPresentation {...props} projection={projection} />);
+    for (let card = 0; card < 4; card++) { tick(card ? 1000 : 0); tick(16); const surfaces = Array.from(view.container.querySelector("[data-trick-presentation-id]")!.children).filter(el => (el as HTMLElement).style.transitionDuration); finish(surfaces.at(-1)!); }
+    expect(ready).not.toHaveBeenCalled(); tick(850); expect(ready).not.toHaveBeenCalled();
+    const surfaces = Array.from(view.container.querySelector("[data-trick-presentation-id]")!.children).filter(el => (el as HTMLElement).style.transitionDuration);
+    surfaces.forEach(finish); expect(ready).not.toHaveBeenCalled();
+    fireEvent.blur(window); surfaces.forEach(finish); expect(ready).not.toHaveBeenCalled(); fireEvent.focus(window);
+    surfaces.forEach(finish); await act(async () => {}); expect(ready).toHaveBeenCalledExactlyOnceWith(10);
+    view.rerender(<TrickPresentation {...props} geometry={{ ...geometry, epoch: 7 }} projection={{ ...projection }} />); tick(2000); expect(ready).toHaveBeenCalledTimes(1);
+  });
   it("canonical next-deal transition and projection retain the authoritative outgoing winner", () => {
     const state = reconciliationFixture();
     state.progression.phase = "DEAL_RESULT"; state.cards.hands = [[], [], [], []]; state.cards.currentTrick = []; state.cards.completedTricks = [trick(1)]; state.declarations.declarations = [0, 0, 1, 0]; state.score.tricksTaken = [0, 0, 1, 0];

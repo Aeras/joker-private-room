@@ -4,6 +4,7 @@ import { projectGameForSeat } from "@/domain/projection";
 import { selectAutomaticGameplayCommand } from "./runtime";
 
 export type AutomaticStepStopReason =
+  | "PRESENTATION_BARRIER"
   | "GAME_NOT_ACTIVE"
   | "NO_ACTOR"
   | "HUMAN_INPUT"
@@ -30,6 +31,7 @@ export function planAutomaticGameplayStep(
   serverNow: string,
 ): AutomaticStepPlan {
   if (state.lifecycle !== "active") return { ok: false, stopReason: "GAME_NOT_ACTIVE" };
+  if (state.timing.turnPresentation) return { ok: false, stopReason: "PRESENTATION_BARRIER" };
   const actor = state.progression.currentActorSeat;
   if (actor == null) return { ok: false, stopReason: "NO_ACTOR" };
 

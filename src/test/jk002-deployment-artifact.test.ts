@@ -118,7 +118,7 @@ describe('JK-002 executable deployment artifact', () => {
       try {
         reset(); state = reconciliationFixture(rulesetId, rulesetId === 'panagiotis');
         let ticks = 0; let bounded = 0; let presentationFallbacks = 0;
-        while (state.lifecycle !== 'complete' && ticks++ < 2000) {
+        while (state.lifecycle !== 'complete' && ticks++ < 4000) {
           consumed = false;
           const result = await invoke();
           expect(result.status).toBe(200);
@@ -126,7 +126,7 @@ describe('JK-002 executable deployment artifact', () => {
           expect(result.body.results[0].steps).toBeLessThanOrEqual(PRESENTATION_SAFE_AUTOMATIC_STEP_BUDGET);
           if (result.body.results[0].stopReason === 'STEP_BOUND') bounded++;
           if (result.body.results[0].stopReason === 'PRESENTATION_BARRIER') {
-            const readyAt = state.timing.presentationReadyAt;
+            const readyAt = state.timing.turnPresentation?.fallbackAt ?? state.timing.presentationReadyAt;
             expect(readyAt).toBeTruthy();
             presentationFallbacks++;
             vi.setSystemTime(new Date(Date.parse(readyAt!) + 1));

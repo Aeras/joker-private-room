@@ -26,6 +26,7 @@ import {
   type DialogueMessage,
 } from "@/services/dialogueFunctions";
 import {
+  completeProjectedTurnPresentation,
   completeProjectedNineCardPresentation,
   completeProjectedStartPresentation,
   getProjectedGameReadiness,
@@ -380,6 +381,14 @@ function TablePage() {
     }
   }, [acceptSnapshot, gameId]);
 
+  const completeTurn = useCallback(async (token: number) => {
+    if (!gameId || connectionStatusRef.current !== "ready" || !roomRef.current) return false;
+    const result = await completeProjectedTurnPresentation({ data: { gameId, token } });
+    if (!mounted.current || !result.ok) return false;
+    acceptSnapshot(roomRef.current, result.projection);
+    return true;
+  }, [acceptSnapshot, gameId]);
+
   const submit = async (command: GameplayCommand): Promise<PlayerGameProjection | null> => {
     if (!projection || busy || connectionStatusRef.current !== "ready") return null;
     setBusy(true); setError(null);
@@ -480,7 +489,7 @@ function TablePage() {
 
   return (
     <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
-      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onNineCardPresentationComplete={completeNineCardStage} />
+      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onTurnPresentationComplete={completeTurn} onNineCardPresentationComplete={completeNineCardStage} />
       <TableMessaging key={projection.gameId} room={room} projection={projection} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} onSend={sendDialogue} />
 

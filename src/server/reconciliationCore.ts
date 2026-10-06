@@ -1,3 +1,4 @@
+import { releasePlayedEvent } from "@/domain/turnPresentation";
 import { activateOrdinaryDealAfterPresentation, holdOrdinaryDealForPresentation } from "@/domain/dealPresentationBarrier";
 import { getRuleset } from "@/domain/rulesets";
 import { planAutomaticGameplayStep, type AutomaticStepStopReason } from "@/bots/progression";
@@ -169,6 +170,17 @@ export async function advanceGameUntilBlockedWithDependencies(
     }
 
     const serverNow = dependencies.now();
+    if (state.timing.turnPresentation) {
+      const boundary = state.timing.turnPresentation;
+      if (Date.parse(boundary.fallbackAt) > Date.parse(serverNow)) return { ok: true, stateVersion: loaded.stateVersion, steps: committedSteps, stopReason: "PRESENTATION_BARRIER" };
+      const persisted = await dependencies.persist({ gameId, actionId: await dependencies.actionId(gameId, `turn-presentation-fallback:${boundary.token}:${loaded.stateVersion}`), commandType: "system_turn_presentation_fallback", expectedStateVersion: loaded.stateVersion, commandPayload: { token: boundary.token, source: "bounded_absent_client_fallback" }, newState: releasePlayedEvent(state, serverNow) });
+      if (!persisted.ok) {
+        if (persisted.code === "STALE_STATE") { staleRaces += 1; continue; }
+        return failureFromPersist(persisted);
+      }
+      if (!persisted.replayed) committedSteps += 1;
+      continue;
+    }
     if (isNineCardPresentationBarrier(state) || state.progression.phase === "DEAL_PRESENTATION") {
       if (!(state.progression.phase === "DEAL_PRESENTATION" ? Boolean(state.timing.presentationReadyAt && Date.parse(state.timing.presentationReadyAt) <= Date.parse(serverNow)) : nineCardPresentationFallbackIsDue(state, serverNow))) {
         return { ok: true, stateVersion: loaded.stateVersion, steps: committedSteps, stopReason: "PRESENTATION_BARRIER" };

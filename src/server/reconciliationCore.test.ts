@@ -161,7 +161,7 @@ function inMemoryDependencies(initial: CanonicalGameState) {
 }
 
 describe("JK-002 shared reconciliation core", () => {
-  it("continues permanent-bot actions until the next human decision using canonical gameplay", async () => {
+  it("blocks automatic canonical progression after a play until presentation is released", async () => {
     const memory = inMemoryDependencies(baseState());
     const result = await advanceGameUntilBlockedWithDependencies(
       "11111111-1111-4111-8111-111111111111",
@@ -169,10 +169,11 @@ describe("JK-002 shared reconciliation core", () => {
       memory.dependencies,
     );
 
-    expect(result).toMatchObject({ ok: true, steps: 2, stopReason: "HUMAN_INPUT" });
-    expect(memory.persistedCommands).toEqual(["bot_play_card", "bot_play_card"]);
-    expect(memory.getState().progression.currentActorSeat).toBe(2);
-    expect(memory.getState().cards.currentTrick.map((play) => play.seatIndex)).toEqual([0, 1]);
+    expect(result).toMatchObject({ ok: true, steps: 1, stopReason: "PRESENTATION_BARRIER" });
+    expect(memory.persistedCommands).toEqual(["bot_play_card"]);
+    expect(memory.getState().progression.currentActorSeat).toBe(1);
+    expect(memory.getState().timing.currentHumanDeadline).toBeNull();
+    expect(memory.getState().cards.currentTrick.map((play) => play.seatIndex)).toEqual([0]);
   });
 
   it("returns STEP_BOUND after the configured safety budget while leaving canonical state advanced", async () => {

@@ -18,6 +18,13 @@ begin
     if private.derive_game_next_wakeup_internal(v_state, 'active', v_now) is distinct from v_ready then raise exception 'Presentation wake must equal durable boundary'; end if;
     if private.derive_game_next_wakeup_internal(v_state, 'complete', v_now) is not null then raise exception 'Terminal game must not wake'; end if;
   end loop;
+  foreach v_state in array array[
+    '{"progression":{"phase":"CARD_PLAY","currentActorSeat":0},"timing":{"turnPresentation":{"fallbackAt":"2026-10-06T00:00:45Z"}}}'::jsonb,
+    '{"progression":{"phase":"DEAL_RESULT"},"timing":{"turnPresentation":{"fallbackAt":"2026-10-06T00:00:45Z"}}}'::jsonb
+  ] loop
+    if private.derive_game_next_wakeup_internal(v_state, 'active', v_now) is distinct from v_ready then raise exception 'Turn boundary must precede actor/result wake'; end if;
+    if private.derive_game_next_wakeup_internal(v_state, 'complete', v_now) is not null then raise exception 'Ended turn must not wake'; end if;
+  end loop;
 end;
 $$;
 rollback;

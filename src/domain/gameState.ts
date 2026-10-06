@@ -148,6 +148,7 @@ export interface CanonicalScoreState {
 }
 
 export interface CanonicalTimingState {
+  turnPresentation?: import("./turnPresentation").TurnPresentationBoundary;
   presentationBoundary?: PresentationBoundary;
   currentHumanDeadline: string | null;
   timeoutTakeoverActive: boolean;

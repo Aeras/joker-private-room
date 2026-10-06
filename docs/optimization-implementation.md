@@ -98,3 +98,12 @@ Timing tuning is intentionally not chosen yet: the user requires correctness fir
 | 022 | SKIPPED — measurement required | No measured drag-render bottleneck |
 
 Refreshed-review CUR-001 (superseded overlay) and CUR-002 (unscoped acknowledgement) have behavioral fixes/tests. CUR-003 is reduced by aggregate readiness and bounded fallback, but fallback/absent-client policy and per-turn presentation eligibility still require production acceptance. This is a draft implementation, not a completed optimization pass. No database migration or deployment has been applied.
+
+
+## Completion follow-up — authoritative turn presentation
+
+The previously remaining P0 is addressed by a canonical turnPresentation boundary created after every card/Joker event with human owners. The next gameplay command, bot action, timeout and deal/round settlement remain blocked until all required human seats acknowledge actual landing/collection (or a durable 30-second absent-client fallback). Acknowledgement token is frozen at the played event version and does not change as seats acknowledge or reclaim. Server-derived seat identity and CAS retries retain concurrent acknowledgements. Fresh deadlines begin on release; a previously paused human stays paused. All-bot simulations bypass this boundary. Reconnect deliberately hydrates the latest settled snapshot. Fallback is an explicit liveness policy: beyond 30 seconds without acknowledgements, normal timeout policy resumes; indefinite background absence is not an indefinite gameplay lease.
+
+Targeted tests cover delayed readiness, old/future/duplicate tokens, bot exclusion, reclaim/timeout, worker one-step fallback, final trick/deal-result hold, CAS races, and real component acknowledgement after collection. Browser fixture acknowledgement observed after completion, not during hold/flip/collection. Production database, merge, deployment and live acceptance are recorded separately after execution. Previous paragraphs remain the historical implementation ledger.
+
+Validation follow-up: 381 tests / 63 files pass, direct TypeScript and production build pass. The two wake migrations were applied to the external Joker Supabase project (versions 20261006071456 and 20261006071516); transactional SQL assertions for startup, ordinary/nine-card stages, turn boundaries and terminal wakes pass. Repository filenames match the actual database history. No game data was modified by these migrations/tests.

@@ -71,7 +71,7 @@ export interface PlayerGameProjection {
     completedDeals: NonNullable<CanonicalGameState["score"]["completedDeals"]>;
     roundPremia: NonNullable<CanonicalGameState["score"]["roundPremia"]>;
   };
-  timing?: { currentHumanDeadline: string | null };
+  timing?: { currentHumanDeadline: string | null; turnPresentation?: import("./turnPresentation").TurnPresentationBoundary };
   local: {
     legalActions: LocalLegalAction[];
     reclaimAvailable: boolean;
@@ -189,6 +189,7 @@ function jokerOptions(state: CanonicalGameState): JokerSemantic[] {
 
 function localLegalActions(state: CanonicalGameState, seat: SeatIndex, visibleHand: Card[]): LocalLegalAction[] {
   if (state.lifecycle !== "active") return [];
+  if (state.timing.turnPresentation) return state.seats[seat].reclaimable ? [{ type: "reclaim_control" }] : [];
   const localSeat = state.seats[seat];
 
   // A sole human paused on timeout keeps controller="human" and may only
@@ -272,7 +273,8 @@ export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex, r
         totalsAfterPremia: [...record.totalsAfterPremia],
       })),
     },
-    timing: { currentHumanDeadline: state.timing.currentHumanDeadline },
+    timing: { currentHumanDeadline: state.timing.currentHumanDeadline,
+      ...(state.timing.turnPresentation ? { turnPresentation: { ...state.timing.turnPresentation, requiredSeats: [...state.timing.turnPresentation.requiredSeats], completedSeats: [...state.timing.turnPresentation.completedSeats] } } : {}) },
     local: {
       legalActions: localLegalActions(state, seat, own.hand),
       reclaimAvailable: state.lifecycle === "active" && state.seats[seat].owner.type === "human" && state.seats[seat].reclaimable,

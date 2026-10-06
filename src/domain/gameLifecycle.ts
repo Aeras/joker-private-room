@@ -352,6 +352,7 @@ export function settleCanonicalLifecycle(args: {
 }): LifecycleTransitionResult {
   try { getRuleset(args.state.rulesetId, args.state.rulesVersion); } catch { return { ok: false, code: "INVALID_LIFECYCLE_STATE" }; }
   if (!validServerTime(args.serverNow)) return { ok: false, code: "INVALID_LIFECYCLE_STATE" };
+  if (args.state.timing.turnPresentation) return { ok: true, changed: false, state: args.state };
   if (args.state.lifecycle !== "active") return { ok: true, changed: false, state: args.state };
   if (args.state.progression.phase === "DEAL_RESULT") {
     return settleDeal(args.state, args.nextDealRandom ?? null, args.serverNow);
