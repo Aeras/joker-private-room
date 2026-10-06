@@ -81,20 +81,20 @@ describe("presentation interruption and geometry", () => {
       view.rerender(<DealPresentation projection={{ ...projection }} geometry={{ ...geometry, epoch: 3 }} onPresentationComplete={complete} />);
       visible.mockReturnValue("visible"); fireEvent(document, new Event("visibilitychange"));
     } else { fireEvent(window, new Event("orientationchange")); }
-    tick(2320); expect(complete).toHaveBeenCalledOnce();
+    tick(1624); expect(complete).toHaveBeenCalledOnce();
   });
-  it.each([["NINE_CARD_INITIAL_DEAL_ALL_SEATS", 12, 6000], ["NINE_CARD_REMAINING_DEAL", 24, 14000]] as const)("%s presents %i backs without private identities", (phase, count, elapsed) => {
+  it.each([["NINE_CARD_INITIAL_DEAL_ALL_SEATS", 12, 4200], ["NINE_CARD_REMAINING_DEAL", 24, 10200]] as const)("%s presents %i backs without private identities", (phase, count, elapsed) => {
     const projection = snapshot(); projection.gameId = `private-stage-${phase}`; projection.progression.phase = phase; projection.progression.cardsPerPlayer = 9;
     const complete = vi.fn(); const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);
     tick(elapsed);
     expect(view.container.querySelectorAll('[aria-label="Κλειστό φύλλο"]')).toHaveLength(count);
     expect(view.container.querySelectorAll('img[alt]:not([alt=""])')).toHaveLength(0);
-    expect(complete).not.toHaveBeenCalled(); tick(320); expect(complete).toHaveBeenCalledOnce();
+    expect(complete).not.toHaveBeenCalled(); tick(224); expect(complete).toHaveBeenCalledOnce();
   });
   it("already-dealt first hand acknowledges reveal scope without replaying the deal", () => {
     const complete = vi.fn(); const projection = snapshot(); projection.gameId = "firststage-reveal";
     const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);
-    tick(2320); expect(complete).toHaveBeenCalledTimes(1);
+    tick(1624); expect(complete).toHaveBeenCalledTimes(1);
     view.rerender(<DealPresentation projection={{ ...projection, lifecycle: "active", progression: { ...projection.progression, phase: "DEAL_PRESENTATION" } }} geometry={geometry} onPresentationComplete={complete} />);
     expect(complete).toHaveBeenCalledTimes(2); expect(view.container.childElementCount).toBe(0);
     tick(5000); expect(complete).toHaveBeenCalledTimes(2);
@@ -135,7 +135,7 @@ describe("presentation interruption and geometry", () => {
     const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} onActiveChange={active} />);
     tick(500); fireEvent.blur(window); tick(5000); expect(complete).not.toHaveBeenCalled();
     view.rerender(<DealPresentation projection={{ ...projection }} geometry={geometry} onPresentationComplete={complete} onActiveChange={active} />);
-    fireEvent.focus(window); tick(2320); expect(complete).toHaveBeenCalledTimes(1);
+    fireEvent.focus(window); tick(1624); expect(complete).toHaveBeenCalledTimes(1);
     fireEvent.blur(window); fireEvent.focus(window); tick(5000); expect(complete).toHaveBeenCalledTimes(1);
   });
   it("server fallback phase change clears an interrupted nine-card overlay", () => {
