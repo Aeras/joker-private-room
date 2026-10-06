@@ -3,6 +3,7 @@ import { assets } from "@/assets/registry";
 import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 import { TrickPresentationJournal } from "./trickPresentationJournal";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Suit } from "@/domain/cards";
 import type { SeatIndex } from "@/domain/dealing";
 import type { JokerSemantic, PlayedCard } from "@/domain/engine";
 import type { PlayerGameProjection } from "@/domain/projection";
@@ -23,11 +24,12 @@ type JokerAnnouncement = { id: string; text: string };
 const FALLBACK_LANDING: Record<Pos, Point> = { 0: { x: 0, y: 38 }, 1: { x: -40, y: 0 }, 2: { x: 0, y: -38 }, 3: { x: 40, y: 0 } };
 const ROTATION: Record<Pos, number> = { 0: 2, 1: -7, 2: -2, 3: 7 };
 const JOKER_ANNOUNCEMENT_MS = 3_000;
-const SUIT_ANNOUNCEMENT = { hearts: "κούπες", diamonds: "καρό", clubs: "σπαθιά", spades: "πίκες" } as const;
+const SUIT_ANNOUNCEMENT = { hearts: "κούπες", diamonds: "καρό", clubs: "σπαθιά", spades: "μπαστούνια" } as const;
 function posOf(viewerSeat: SeatIndex, seat: number): Pos { return ((seat - viewerSeat + 4) % 4) as Pos; }
 function playKey(play: PlayedCard): string { return `${play.seatIndex}:${play.card.id}`; }
-function jokerAnnouncementText(semantic: JokerSemantic): string | null {
+function jokerAnnouncementText(semantic: JokerSemantic, trumpSuit: Suit | null): string | null {
   if (semantic.context === "OPEN_TRICK") return null;
+  if (semantic.mode === "HIGHER_SUIT" && trumpSuit === semantic.requestedSuit) return "Θέλω μεγαλύτερο ατού";
   const suit = SUIT_ANNOUNCEMENT[semantic.requestedSuit];
   return semantic.mode === "HIGHER_SUIT" ? `Θέλω μεγαλύτερο — ${suit}` : `Παίρνουν — ${suit}`;
 }
@@ -103,16 +105,17 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const departingRef = useRef(departing); departingRef.current = departing;
   const localPresentationRef = useRef(localPlayPresentation); localPresentationRef.current = localPlayPresentation;
   const reducedMotion = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+  const resolvedTrumpSuit = projection.trump.status === "resolved" ? projection.trump.suit : null;
 
   const enqueueJokerAnnouncement = useCallback((play: PlayedCard) => {
     if (play.card.kind !== "joker" || !play.joker) return;
     const id = journal.current.active?.id + ":" + playKey(play) + ":" + JSON.stringify(play.joker);
     if (announcedJokers.current.has(id)) return;
     announcedJokers.current.add(id);
-    const text = jokerAnnouncementText(play.joker!);
+    const text = jokerAnnouncementText(play.joker!, resolvedTrumpSuit);
     if (!text) return;
     setAnnouncementQueue(items => [...items, { id, text }]);
-  }, []);
+  }, [resolvedTrumpSuit]);
   const announcementId = announcementQueue[0]?.id;
   useEffect(() => {
     if (!announcementId) return;
