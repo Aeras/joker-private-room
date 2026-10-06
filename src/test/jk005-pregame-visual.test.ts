@@ -35,6 +35,22 @@ describe("landscape pregame application shell", () => {
     expect(css).toContain("@media (orientation: portrait)");
   });
 
+  it("keeps Create auth and setup compact and aligned in landscape", () => {
+    const create = read("src/routes/create.tsx");
+    const css = read("src/pregame.css");
+
+    expect(create).toContain("pregame-auth-control");
+    expect(create).toContain("pregame-host-control");
+    expect(create).toContain("pregame-pin-input");
+    expect(create).toContain("pregame-rule-card");
+    expect(create).toContain("pregame-bot-panel");
+    expect(create).toContain("pregame-create-cta");
+    expect(css).toContain(".pregame-auth-control");
+    expect(css).toContain(".pregame-rule-card");
+    expect(css).toContain(".pregame-create-footer");
+    expect(css).toContain("@media (orientation: landscape) and (max-height: 520px)");
+  });
+
   it("exposes host bot selection from lobby seats without replacing the table UI", () => {
     const lobby = read("src/routes/lobby.tsx");
     const roomFunctions = read("src/services/roomFunctions.ts");

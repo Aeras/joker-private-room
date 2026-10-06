@@ -222,19 +222,97 @@
 
 .pregame-auth-card {
   display: grid;
-  width: min(100%, 65rem);
-  grid-template-columns: .85fr 1fr .8fr;
+  width: min(100%, 62rem);
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, .82fr) minmax(10rem, .72fr);
   align-items: end;
-  gap: clamp(.8rem, 2vw, 1.4rem);
+  gap: clamp(.7rem, 1.7vw, 1.15rem);
+}
+
+.pregame-auth-block,
+.pregame-auth-action {
+  min-width: 0;
+}
+
+.pregame-auth-control {
+  height: clamp(3.65rem, 12.5vh, 4.35rem);
+  min-height: 3.65rem;
+  border-radius: .9rem!important;
+}
+
+.pregame-host-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 2.2vw, 1.45rem);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pregame-pin-input {
+  padding: 0 1rem!important;
+  font-size: clamp(1.45rem, 3.4vw, 2rem)!important;
+  letter-spacing: .38em!important;
+}
+
+.pregame-auth-action {
+  display: flex;
+  align-items: flex-end;
 }
 
 .pregame-create-grid {
   display: grid;
-  width: min(100%, 68rem);
+  width: min(100%, 66rem);
   margin: 0 auto;
-  grid-template-columns: 1.08fr .92fr;
-  gap: clamp(1rem, 3vw, 2.3rem);
+  grid-template-columns: minmax(0, 1.08fr) minmax(17rem, .92fr);
+  gap: clamp(.8rem, 2vw, 1.4rem);
   align-items: stretch;
+}
+
+.pregame-rules-list {
+  display: grid;
+  gap: .5rem;
+}
+
+.pregame-rule-card {
+  display: flex;
+  min-height: clamp(3.45rem, 10.5vh, 4.1rem);
+  align-items: center;
+  gap: .8rem;
+  padding: .65rem .8rem;
+}
+
+.pregame-rule-title {
+  font-size: clamp(.92rem, 1.8vw, 1.05rem);
+  line-height: 1.15;
+}
+
+.pregame-rule-description {
+  margin-top: .12rem;
+  font-size: clamp(.68rem, 1.25vw, .78rem);
+  line-height: 1.25;
+}
+
+.pregame-bot-panel {
+  padding: .55rem .8rem;
+}
+
+.pregame-create-footer {
+  display: flex;
+  width: min(100%, 66rem);
+  margin: 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .8rem;
+}
+
+.pregame-create-cta {
+  min-width: 12rem;
+  height: 3.2rem;
+  padding-inline: 1.25rem!important;
 }
 
 .pregame-join-card {
@@ -340,8 +418,18 @@
   .home-choice-card { min-height: 7.2rem; padding: .85rem; }
   .home-secondary-actions a { padding: .4rem .7rem; }
 
-  .pregame-auth-card { gap: .75rem; }
-  .pregame-create-grid { gap: 1rem; }
+  .pregame-shell header { padding-top: max(.35rem, env(safe-area-inset-top)); }
+  .pregame-shell main { padding-top: .45rem; padding-bottom: .45rem; }
+  .pregame-auth-card { gap: .65rem; }
+  .pregame-auth-control { height: 3.55rem; min-height: 3.55rem; }
+  .pregame-create-grid { width: min(100%, 64rem); gap: .8rem; }
+  .pregame-rules-list { gap: .38rem; }
+  .pregame-rule-card { min-height: 3rem; padding: .48rem .68rem; gap: .65rem; }
+  .pregame-rule-title { font-size: .9rem; }
+  .pregame-rule-description { font-size: .67rem; line-height: 1.18; }
+  .pregame-bot-panel { padding: .42rem .65rem; }
+  .pregame-create-cta { height: 2.85rem; min-width: 11rem; }
+  .pregame-create-footer { width: min(100%, 64rem); }
   .pregame-join-card { gap: .65rem; }
   .pregame-lobby-grid { gap: 1rem; }
   .pregame-bot-option { min-height: 5.5rem; }
