@@ -90,10 +90,33 @@ function trustedPublicEvent(value: unknown): PublicDialogueEvent | null {
 function recentLines(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
-    .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>).text : null))
-    .filter((text): text is string => typeof text === "string")
-    .slice(-3)
-    .map((text) => text.slice(0, 100));
+    .flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const row = item as Record<string, unknown>;
+      if (typeof row.text !== "string") return [];
+      const speaker = typeof row.speakerBotId === "string" ? row.speakerBotId.slice(0, 64) : "bot";
+      return [`${speaker}: ${row.text.slice(0, 100)}`];
+    })
+    .slice(-10);
+}
+
+function logDialogueOutcome(input: {
+  event: PublicDialogueEvent;
+  source: "xai" | "preset" | "silence";
+  providerAttempted: boolean;
+  providerReason?: string;
+  elapsedMs: number;
+}) {
+  console.info(JSON.stringify({
+    kind: "dialogue_generation_outcome",
+    eventType: input.event.type,
+    speakerBotId: input.event.speakerBotId,
+    replyDepth: input.event.replyDepth,
+    source: input.source,
+    providerAttempted: input.providerAttempted,
+    providerReason: input.providerReason ?? null,
+    elapsedMs: input.elapsedMs,
+  }));
 }
 
 Deno.serve(async (req: Request) => {
@@ -189,12 +212,10 @@ Deno.serve(async (req: Request) => {
       p_session_token: body.sessionToken,
       p_game_id: body.gameId,
     });
-    const recentPromise = recentData
-      ? Promise.resolve({ data: recentData, error: null })
-      : admin.rpc("list_dialogue_messages_internal", {
-          p_session_token: body.sessionToken,
-          p_game_id: body.gameId,
-        });
+    const recentPromise = admin.rpc("get_dialogue_recent_context_internal", {
+      p_session_token: body.sessionToken,
+      p_game_id: body.gameId,
+    });
 
     const [{ data: policyData, error: policyError }, { data: latestRecentData, error: recentError }] = await Promise.all([
       policyPromise,
@@ -234,6 +255,7 @@ Deno.serve(async (req: Request) => {
     };
 
     try {
+      const generationStartedAt = Date.now();
       const generated = await generateDialogueLine({
         context,
         aiEnabled: providerCall,
@@ -241,6 +263,13 @@ Deno.serve(async (req: Request) => {
         model: Deno.env.get("XAI_DIALOGUE_MODEL") ?? undefined,
       });
       if (!generated.text) {
+        logDialogueOutcome({
+          event,
+          source: "silence",
+          providerAttempted: generated.providerAttempted,
+          providerReason: generated.providerReason,
+          elapsedMs: Date.now() - generationStartedAt,
+        });
         return json({
           ok: true,
           text: null,
@@ -264,6 +293,13 @@ Deno.serve(async (req: Request) => {
       if (published?.ok !== true) {
         const code = String(published?.code ?? "SERVICE_UNAVAILABLE");
         if (code === "STALE_DIALOGUE_RESULT" || code === "DUPLICATE_DIALOGUE_LINE") {
+          logDialogueOutcome({
+            event,
+            source: "silence",
+            providerAttempted: generated.providerAttempted,
+            providerReason: code,
+            elapsedMs: Date.now() - generationStartedAt,
+          });
           return json({
             ok: true,
             text: null,
@@ -275,6 +311,13 @@ Deno.serve(async (req: Request) => {
         return json({ ok: false, code }, 409);
       }
 
+      logDialogueOutcome({
+        event,
+        source: generated.source,
+        providerAttempted: generated.providerAttempted,
+        providerReason: generated.providerReason,
+        elapsedMs: Date.now() - generationStartedAt,
+      });
       return json({
         ok: true,
         message: published.message,
