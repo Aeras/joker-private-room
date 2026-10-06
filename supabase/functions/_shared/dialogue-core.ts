@@ -159,7 +159,7 @@ export function pickDialoguePreset(
 const URL_PATTERN = /(?:https?:\/\/|www\.)\S+/i;
 const MARKDOWN_PATTERN = /(?:```|`{1,3}|\*\*|__|^\s*[-#>]\s)/m;
 const CODE_PATTERN = /(?:function\s*\(|=>|console\.|<\/?[a-z][^>]*>)/i;
-const MODEL_SELF_REFERENCE = /\b(?:gemini|openai|anthropic|language model|μοντέλο ai|τεχνητή νοημοσύνη)\b/i;
+const MODEL_SELF_REFERENCE = /\b(?:gemini|grok|xai|openai|anthropic|language model|μοντέλο ai|τεχνητή νοημοσύνη)\b/i;
 const HIDDEN_KNOWLEDGE = /(?:κρυφ(?:ό|ά|ές)|στο χέρι σου|στο χέρι του|επόμεν(?:ο|η) φύλλο|τράπουλα.*σειρά)/i;
 const GAMEPLAY_ADVICE = /(?:παίξε|ρίξε|δήλωσε|διάλεξε ατού|κράτα τον joker)/i;
 const HATE_OR_THREAT = /(?:θα σε σκοτώσω|βιασ|γύφτ|αράπ|πουστ(?:ης|ηδες))/i;
