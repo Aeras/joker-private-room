@@ -29,7 +29,7 @@ type Pos = 0 | 1 | 2 | 3;
 type OrientationLock = ScreenOrientation & { lock?: (orientation: "landscape") => Promise<void> };
 const HAND_REVEAL_MS = 700;
 const TRUMP_ANNOUNCEMENT_MS = 3_000;
-const SUIT_LABEL: Record<Suit, string> = { spades: "♠ Πίκες", hearts: "♥ Κούπες", diamonds: "♦ Καρό", clubs: "♣ Σπαθιά" };
+const SUIT_LABEL: Record<Suit, string> = { spades: "♠ Μπαστούνια", hearts: "♥ Κούπες", diamonds: "♦ Καρό", clubs: "♣ Σπαθιά" };
 
 function authoritativeScoreSheet(projection: PlayerGameProjection): ScoreSheet {
   return {
@@ -95,7 +95,12 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const ownArtworkSettled = useCriticalCardArtwork(projection.cards.ownHandVisible
     ? [assets.cardBack, ...projection.cards.ownHand.map(card => assets.cardFace(card))]
     : []);
-  const startupPresentationActive = dealerIntroActive || dealPresentationActive;
+  const authoritativeDealPresentationActive =
+    projection.progression.phase === "DEAL_SETUP" ||
+    projection.progression.phase === "DEAL_PRESENTATION" ||
+    projection.progression.phase === "NINE_CARD_INITIAL_DEAL_ALL_SEATS" ||
+    projection.progression.phase === "NINE_CARD_REMAINING_DEAL";
+  const startupPresentationActive = dealerIntroActive || dealPresentationActive || authoritativeDealPresentationActive;
   const interactionPresentationActive = startupPresentationActive || handRevealActive || trickPresentationBusy || !ownArtworkSettled;
   const completeVisibleTurn = useCallback(async (token: number) => {
     if (startupPresentationActive || handRevealActive || !ownArtworkSettled || portrait || !tableGeometry.geometry || localPlayPresentation) return false;
@@ -145,9 +150,9 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   useEffect(() => { if (!declarationAction) setPendingDeclarationValue(null); }, [projection.stateVersion, declarationAction]);
   useEffect(() => { setDealerIntroActive(dealerSelectionNeedsPresentation(projection)); }, [projection.gameId, projection.initialDealerSelection?.status === "resolved" ? projection.initialDealerSelection.resolvedAtStateVersion : null]);
   useEffect(() => {
-    if (dealerIntroActive || dealPresentationActive) return;
+    if (startupPresentationActive) return;
     beginHandReveal();
-  }, [beginHandReveal, dealerIntroActive, dealPresentationActive, projection.stateVersion]);
+  }, [beginHandReveal, startupPresentationActive, projection.stateVersion]);
   useEffect(() => {
     if (projection.progression.phase !== "NINE_CARD_REMAINING_DEAL" || projection.trump.status !== "resolved") return;
     const label = trumpAnnouncementLabel(projection.trump);
@@ -212,7 +217,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     const seat = seatAt(pos); const roomSeat = room.seats[seat]; if (!roomSeat) return null;
     const publicDeadline = projection.timing?.currentHumanDeadline ?? projection.local.humanDeadline;
     const isActor = !interactionPresentationActive && projection.progression.currentActorSeat === seat;
-    return <TableSeat seat={roomSeat} orientation={orientation} showCards={pos !== 0 && !startupPresentationActive} local={pos === 0} stats={{ totalScore: projection.score.cumulativeTotals[seat], declaration: startupPresentationActive ? null : projection.declarations.values[seat], tricksTaken: projection.score.tricksTaken[seat], isDealer: !dealerIntroActive && projection.progression.dealerSeat === seat, isActive: isActor, cardCount: startupPresentationActive ? 0 : publicCardCount(projection, seat), humanDeadline: isActor && countdownPhase ? publicDeadline : null, isTemporarilyControlled: projection.seats[seat].owner.type === "human" && projection.seats[seat].controller === "temporary_bot" }} />;
+    return <TableSeat seat={roomSeat} orientation={orientation} showCards={false} local={pos === 0} stats={{ totalScore: projection.score.cumulativeTotals[seat], declaration: startupPresentationActive ? null : projection.declarations.values[seat], tricksTaken: projection.score.tricksTaken[seat], isDealer: !dealerIntroActive && projection.progression.dealerSeat === seat, isActive: isActor, cardCount: startupPresentationActive ? 0 : publicCardCount(projection, seat), humanDeadline: isActor && countdownPhase ? publicDeadline : null, isTemporarilyControlled: projection.seats[seat].owner.type === "human" && projection.seats[seat].controller === "temporary_bot" }} />;
   };
 
   const forcedEnd = projection.termination?.kind === "host_ended";
@@ -237,7 +242,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       {!interactionPresentationActive && declarationAction && pendingDeclarationValue == null && <div className="animate-in slide-in-from-bottom-2 fade-in duration-200"><DeclarationPicker values={declarationValues} legalValues={declarationAction.values} busy={busy} onSelect={(value) => void submitDeclaration(value)} /></div>}
       {!interactionPresentationActive && pendingDeclarationValue != null && <div className="mb-2 rounded-lg bg-black/70 px-3 py-1 text-xs text-white/60">Η δήλωση καταχωρείται…</div>}
       {!interactionPresentationActive && trumpAction && <div className="mb-2 flex max-w-[94vw] flex-wrap justify-center gap-1 rounded-xl bg-black/70 p-2 backdrop-blur">{trumpAction.suits.map((suit) => <JButton key={suit ?? "none"} size="sm" disabled={busy} onClick={() => onCommand({ type: "choose_trump", suit })}>{suit ? SUIT_LABEL[suit] : "Χωρίς ατού"}</JButton>)}</div>}
-      {!startupPresentationActive && !handRevealActive && ownArtworkSettled && jokerAction && <JokerChoicePicker options={jokerAction.options} busy={busy} onSelect={(semantic) => void onCommand({ type: "choose_joker_semantic", semantic })} />}
+      {!startupPresentationActive && !handRevealActive && ownArtworkSettled && jokerAction && <JokerChoicePicker options={jokerAction.options} busy={busy} trumpSuit={projection.trump.status === "resolved" ? projection.trump.suit : null} onSelect={(semantic) => void onCommand({ type: "choose_joker_semantic", semantic })} />}
       {!interactionPresentationActive && reclaimAction && <JButton className="mb-2" variant="outlineGold" size="sm" disabled={busy} onClick={onReclaim}>Πάρε ξανά τον έλεγχο</JButton>}
       <LocalHandRow cards={startupPresentationActive ? [] : projection.cards.ownHand} visible={!startupPresentationActive && projection.cards.ownHandVisible && ownArtworkSettled} legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []} blocked={interactionPresentationActive || busy || Boolean(submittingCardId)} pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null} authorityKey={handAuthorityKey} geometry={tableGeometry.geometry} revealing={handRevealActive} onCommit={commitCard} />
       <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
