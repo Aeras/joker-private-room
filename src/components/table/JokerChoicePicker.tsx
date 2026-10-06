@@ -7,7 +7,7 @@ const SUIT_META: Record<Suit, { symbol: string; label: string; tone: string }> =
   hearts: { symbol: "♥", label: "κούπες", tone: "text-red-400" },
   diamonds: { symbol: "♦", label: "καρό", tone: "text-red-400" },
   clubs: { symbol: "♣", label: "σπαθιά", tone: "text-white" },
-  spades: { symbol: "♠", label: "πίκες", tone: "text-white" },
+  spades: { symbol: "♠", label: "μπαστούνια", tone: "text-white" },
 };
 
 const SUIT_ORDER: Suit[] = ["hearts", "diamonds", "clubs", "spades"];
@@ -18,10 +18,12 @@ const CENTER_PANEL =
 export function JokerChoicePicker({
   options,
   busy,
+  trumpSuit,
   onSelect,
 }: {
   options: readonly JokerOption[];
   busy: boolean;
+  trumpSuit?: Suit | null;
   onSelect: (option: JokerOption) => void;
 }) {
   const leadOptions = options.filter((option) => option.context === "LEAD");
@@ -39,7 +41,7 @@ export function JokerChoicePicker({
         {SUIT_ORDER.map((suit) => {
           const option = findLead(mode, suit);
           const meta = SUIT_META[suit];
-          const actionLabel = mode === "HIGHER_SUIT" ? `Θέλω μεγαλύτερο ${meta.label}` : `Παίρνουν ${meta.label}`;
+          const actionLabel = mode === "HIGHER_SUIT" && trumpSuit === suit ? "Θέλω μεγαλύτερο ατού" : mode === "HIGHER_SUIT" ? `Θέλω μεγαλύτερο ${meta.label}` : `Παίρνουν ${meta.label}`;
           return (
             <button
               key={`${mode}-${suit}`}

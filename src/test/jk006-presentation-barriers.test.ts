@@ -24,10 +24,12 @@ describe("JK-006 presentation barriers", () => {
 
   it("retains Joker semantics as a three-second center presentation event", () => {
     const trick = read("src/components/table/TrickPresentation.tsx");
+    const picker = read("src/components/table/JokerChoicePicker.tsx");
     expect(trick).toContain("JOKER_ANNOUNCEMENT_MS = 3_000");
-    expect(trick).toContain("Τζόκερ από πάνω");
-    expect(trick).toContain("Τζόκερ από κάτω");
+    expect(picker).toContain("Τζόκερ από πάνω");
+    expect(picker).toContain("Τζόκερ από κάτω");
     expect(trick).toContain("Θέλω μεγαλύτερο —");
+    expect(trick).toContain("Θέλω μεγαλύτερο ατού");
     expect(trick).toContain("Παίρνουν —");
     expect(trick).toContain("data-joker-announcement");
   });

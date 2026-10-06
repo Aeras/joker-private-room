@@ -27,9 +27,12 @@ describe("hand artwork and acknowledgement integration", () => {
     const view = render(<GameTable {...props} />);
     act(() => vi.advanceTimersByTime(10000)); expect(ack).not.toHaveBeenCalled(); expect(view.container.querySelector('[data-hand-ready="false"]')).not.toBeNull();
     artwork.settled = true; view.rerender(<GameTable {...props} />);
+    expect(view.container.querySelector('[data-revealing="false"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-hand-ready="false"]')).not.toBeNull();
+    act(() => vi.advanceTimersByTime(700)); expect(ack).toHaveBeenCalledOnce(); expect(ack).toHaveBeenCalledWith("full", 2);
+    const interactiveProjection = { ...projection, progression: { ...projection.progression, phase: "DECLARATION" as const } };
+    view.rerender(<GameTable {...props} projection={interactiveProjection} />);
     expect(view.container.querySelector('[data-revealing="true"]')).not.toBeNull();
-    act(() => vi.advanceTimersByTime(500)); view.rerender(<GameTable {...props} projection={{ ...projection }} />);
-    act(() => vi.advanceTimersByTime(200)); expect(ack).toHaveBeenCalledOnce(); expect(ack).toHaveBeenCalledWith("full", 2);
     expect(view.container.querySelector('[data-hand-ready="true"]')).not.toBeNull();
   });
 });

@@ -6,7 +6,7 @@ const SUIT_META: Record<Suit, { symbol: string; label: string; tone: string }> =
   hearts: { symbol: "♥", label: "Κούπες", tone: "text-red-600" },
   diamonds: { symbol: "♦", label: "Καρό", tone: "text-red-600" },
   clubs: { symbol: "♣", label: "Σπαθιά", tone: "text-neutral-950" },
-  spades: { symbol: "♠", label: "Πίκες", tone: "text-neutral-950" },
+  spades: { symbol: "♠", label: "Μπαστούνια", tone: "text-neutral-950" },
 };
 
 export function trumpAnnouncementLabel(trump: PlayerGameProjection["trump"]): string | null {
