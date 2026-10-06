@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerE
 import { cardLabel, type Card } from "@/domain/cards";
 import { cn } from "@/lib/utils";
 import { PlayingCard } from "../joker/PlayingCard";
-import { shouldCommitCardGesture } from "./cardGesture";
+import { shouldCommitCardGesture, shouldCommitCardRelease } from "./cardGesture";
 import type { RectLike } from "./useTableGeometry";
 
 type DragState = {
@@ -12,6 +12,7 @@ type DragState = {
   currentX: number;
   currentY: number;
   startedAt: number;
+  pointerType: string;
 };
 
 function rectLike(rect: DOMRect): RectLike {
@@ -34,6 +35,7 @@ export function DraggableHandCard({
   zIndex,
   overlap,
   revealing = false,
+  dropRect,
   onCommit,
 }: {
   card: Card;
@@ -44,6 +46,7 @@ export function DraggableHandCard({
   zIndex: number;
   overlap: boolean;
   revealing?: boolean;
+  dropRect?: RectLike | null;
   onCommit: (cardId: string, releaseRect: RectLike) => Promise<void>;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -98,7 +101,15 @@ export function DraggableHandCard({
         : null,
     [drag],
   );
-  const commitReady = sample ? shouldCommitCardGesture(sample) : false;
+  const commitReady = drag
+    ? shouldCommitCardRelease({
+        pointerType: drag.pointerType,
+        clientX: drag.currentX,
+        clientY: drag.currentY,
+        dropRect: dropRect ?? null,
+        gesture: sample ?? { deltaX: 0, deltaY: 0, durationMs: 0 },
+      })
+    : false;
 
   const submitOnce = async (releaseRect: RectLike) => {
     if (!canInteract || committingRef.current) return;
@@ -121,6 +132,7 @@ export function DraggableHandCard({
       currentX: event.clientX,
       currentY: event.clientY,
       startedAt: performance.now(),
+      pointerType: event.pointerType,
     });
   };
 
@@ -148,10 +160,16 @@ export function DraggableHandCard({
       setDrag(null);
       return;
     }
-    const shouldCommit = shouldCommitCardGesture({
-      deltaX: event.clientX - current.startX,
-      deltaY: event.clientY - current.startY,
-      durationMs: performance.now() - current.startedAt,
+    const shouldCommit = shouldCommitCardRelease({
+      pointerType: current.pointerType,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      dropRect: dropRect ?? null,
+      gesture: {
+        deltaX: event.clientX - current.startX,
+        deltaY: event.clientY - current.startY,
+        durationMs: performance.now() - current.startedAt,
+      },
     });
     if (!shouldCommit) {
       setDrag(null);
@@ -182,7 +200,7 @@ export function DraggableHandCard({
       className={cn(
         "relative select-none outline-none transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary",
         overlap && "-ml-[calc(var(--card-w)*0.36)]",
-        legal && "touch-none",
+        legal && "touch-none cursor-grab",
         drag && "z-[100] cursor-grabbing transition-none",
         commitReady && "drop-shadow-[0_0_14px_var(--gold)]",
         pending && "pointer-events-none opacity-0",

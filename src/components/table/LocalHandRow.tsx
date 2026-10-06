@@ -55,6 +55,7 @@ export function LocalHandRow({
               authorityKey={authorityKey}
               zIndex={index}
               overlap={index > 0}
+              dropRect={geometry?.feltRect ?? null}
               onCommit={onCommit}
             />
           ))

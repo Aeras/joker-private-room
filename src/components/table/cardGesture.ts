@@ -10,9 +10,16 @@ export interface CardGestureSample {
   durationMs: number;
 }
 
+export interface CardDropRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
 /**
  * Presentation-only intent classifier. It never decides legality or mutates game state.
- * A commit requires a clearly upward motion and either enough displacement or a fast flick.
+ * Touch/pen keeps the compact upward drag/flick gesture.
  */
 export function shouldCommitCardGesture({ deltaX, deltaY, durationMs }: CardGestureSample): boolean {
   const upward = -deltaY;
@@ -26,4 +33,30 @@ export function shouldCommitCardGesture({ deltaX, deltaY, durationMs }: CardGest
 
   const velocity = upward / Math.max(1, durationMs);
   return upward >= CARD_FLICK_MIN_PX && velocity >= CARD_FLICK_MIN_VELOCITY_PX_PER_MS;
+}
+
+export function pointInsideCardDropRect(
+  x: number,
+  y: number,
+  rect: CardDropRect | null | undefined,
+): boolean {
+  if (!rect) return false;
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
+/**
+ * Desktop mouse interaction is a real drag/drop: releasing over the visible felt commits.
+ * Other pointer types preserve the established upward gesture so mobile behavior does not drift.
+ */
+export function shouldCommitCardRelease(input: {
+  pointerType: string;
+  clientX: number;
+  clientY: number;
+  dropRect?: CardDropRect | null;
+  gesture: CardGestureSample;
+}): boolean {
+  if (input.pointerType === "mouse" && pointInsideCardDropRect(input.clientX, input.clientY, input.dropRect)) {
+    return true;
+  }
+  return shouldCommitCardGesture(input.gesture);
 }
