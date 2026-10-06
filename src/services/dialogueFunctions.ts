@@ -15,7 +15,7 @@ export interface DialogueMessage {
   speakerBotId: string;
   targetSeat: number | null;
   text: string;
-  source: "preset" | "gemini";
+  source: "preset" | "xai";
   replyDepth: 0 | 1;
   createdAt: string;
   expiresAt: string;
@@ -27,7 +27,7 @@ export type DialogueEdgeResult =
       messages?: DialogueMessage[];
       message?: DialogueMessage;
       text?: string | null;
-      source?: "preset" | "gemini" | "silence";
+      source?: "preset" | "xai" | "silence";
       providerAttempted?: boolean;
       providerReason?: string;
     }
