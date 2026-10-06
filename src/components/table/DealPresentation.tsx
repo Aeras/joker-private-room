@@ -27,7 +27,6 @@ function stageFor(projection: PlayerGameProjection): DealPresentationStage | nul
   if (projection.progression.phase === "DECLARATION") return "full";
   return null;
 }
-function beatCount(projection: PlayerGameProjection, stage: DealPresentationStage): number { if (stage === "initial") return 12; if (stage === "remaining") return 24; return projection.progression.cardsPerPlayer * 4; }
 function recipientFor(dealerSeat: SeatIndex, beatIndex: number): SeatIndex { return nextSeat(nextSeat(dealerSeat), beatIndex % 4); }
 function visualPosition(viewerSeat: SeatIndex, seat: SeatIndex): VisualSeat { return ((seat - viewerSeat + 4) % 4) as VisualSeat; }
 function viewportPoint(geometry: TableGeometry, local: Point): Point { return { x: geometry.feltRect.left + local.x, y: geometry.feltRect.top + local.y }; }
@@ -41,6 +40,8 @@ function TravelingBack({ beat, pos, geometry }: { beat: DealBeat; pos: VisualSea
   return <div className="absolute [--card-w:clamp(2.3rem,4.8vw,3.65rem)] transition-[left,top,transform] ease-out" style={{ left: arrived ? target.x : source.x, top: arrived ? target.y : source.y, zIndex: 30 + beat.stackIndex, transitionDuration: `${NORMAL_DEAL_TRAVEL_MS}ms`, transform: `translate(-50%, -50%) scale(${arrived ? 1 : 0.58})` }}><PlayingCard faceDown /></div>;
 }
 export function DealPresentation({ projection, geometry = null, paused = false, onActiveChange, onSequenceComplete, onPresentationComplete }: { projection: PlayerGameProjection; geometry?: TableGeometry | null; paused?: boolean; onActiveChange?: (active: boolean) => void; onSequenceComplete?: () => void; onPresentationComplete?: (stage: DealPresentationStage) => void }) {
+  const [interrupted, setInterrupted] = useState(document.visibilityState === "hidden");
+  const [resumeGeneration, resume] = useState(0);
   const previousGameId = useRef(projection.gameId); const previousStageKey = useRef<string | null>(null); const acknowledgedStageKey = useRef<string | null>(null);
   const [beats, setBeats] = useState<DealBeat[]>([]); const [visibleIndex, setVisibleIndex] = useState(-1); const [runGeometry, setRunGeometry] = useState<TableGeometry | null>(null); const [runViewerSeat, setRunViewerSeat] = useState<SeatIndex>(projection.viewerSeat);
   const timers = useRef<number[]>([]); const onActiveChangeRef = useRef(onActiveChange); const onSequenceCompleteRef = useRef(onSequenceComplete); const onPresentationCompleteRef = useRef(onPresentationComplete);
@@ -49,7 +50,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   const stageKey = stage ? dealPresentationStageKey(projection.gameId, projection.progression.dealNumber, projection.progression.dealerSeat, stage) : null;
   const sequence = useMemo(() => {
     if (!stage || projection.progression.dealerSeat == null) return [];
-    const count = beatCount(projection, stage); const dealer = projection.progression.dealerSeat as SeatIndex;
+    const count = stage === "initial" ? 12 : stage === "remaining" ? 24 : projection.progression.cardsPerPlayer * 4; const dealer = projection.progression.dealerSeat as SeatIndex;
     return Array.from({ length: count }, (_, index) => ({ id: `${stageKey}:${index}`, seat: recipientFor(dealer, index), index, stackIndex: Math.floor(index / 4) }));
   }, [projection.progression.cardsPerPlayer, projection.progression.dealerSeat, stage, stageKey]);
   const clearTimers = useCallback(() => { for (const timer of timers.current) window.clearTimeout(timer); timers.current = []; }, []);
@@ -62,8 +63,8 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   }, []);
   useLayoutEffect(() => {
     if (previousGameId.current !== projection.gameId) { clearPresentation(); previousGameId.current = projection.gameId; previousStageKey.current = null; acknowledgedStageKey.current = null; }
-    if (paused) { clearPresentation(); if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null; return; }
-    if (!stage || !stageKey || sequence.length === 0) return;
+    if (paused || interrupted) { clearPresentation(); if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null; return; }
+    if (!stage || !stageKey || sequence.length === 0) { clearPresentation(); return; }
     const presentationStage: DealPresentationStage = stage;
     const startup = projection.progression.phase === "DEAL_SETUP";
     if (dealPresentationWasCompleted(stageKey)) {
@@ -85,12 +86,14 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     });
     const completeAt = leadInMs + frozenSequence.length * staggerMs + tailMs;
     timers.current.push(window.setTimeout(() => { recordTimingDiagnostic("deal_sequence_complete", { stage: presentationStage, scheduledOffsetMs: completeAt }); markPresented(stageKey); notifyCompletion(stageKey, presentationStage, startup); clearPresentation(); }, completeAt));
-  }, [clearPresentation, geometry, notifyCompletion, paused, projection.gameId, projection.progression.dealNumber, projection.progression.phase, projection.viewerSeat, sequence, stage, stageKey]);
+  }, [clearPresentation, geometry, notifyCompletion, paused, projection.gameId, projection.progression.dealNumber, projection.progression.dealerSeat, projection.progression.phase, projection.viewerSeat, sequence, stage, stageKey, interrupted, resumeGeneration]);
   useLayoutEffect(() => {
-    const visibility = () => { if (document.visibilityState !== "visible") { recordTimingDiagnostic("deal_sequence_interrupted", { visibilityState: document.visibilityState }); clearPresentation(); if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null; } };
-    const interrupt = () => { clearPresentation(); if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null; };
-    window.addEventListener("orientationchange", interrupt); window.addEventListener("blur", interrupt); document.addEventListener("visibilitychange", visibility);
-    return () => { window.removeEventListener("orientationchange", interrupt); window.removeEventListener("blur", interrupt); document.removeEventListener("visibilitychange", visibility); clearTimers(); };
+    const interrupt = () => { setInterrupted(true); clearPresentation(); if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null; };
+    const restore = () => { if (document.visibilityState !== "hidden") { setInterrupted(false); resume(n => n + 1); } };
+    const orientation = () => { interrupt(); restore(); };
+    const visibility = () => document.visibilityState === "hidden" ? interrupt() : restore();
+    window.addEventListener("orientationchange", orientation); window.addEventListener("focus", restore); window.addEventListener("blur", interrupt); document.addEventListener("visibilitychange", visibility);
+    return () => { window.removeEventListener("orientationchange", orientation); window.removeEventListener("focus", restore); window.removeEventListener("blur", interrupt); document.removeEventListener("visibilitychange", visibility); clearTimers(); };
   }, [clearPresentation, clearTimers, stageKey]);
   if (beats.length === 0 || visibleIndex < 0) return null;
   const visibleBeats = beats.slice(0, visibleIndex + 1);

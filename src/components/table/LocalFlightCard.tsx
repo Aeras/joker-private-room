@@ -46,7 +46,7 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const height = frozen.release.height;
   const rotation = [2, -7, -2, 7][pos] ?? 0;
   const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-  const targetWidth = Math.max(3 * rem, Math.min(window.innerWidth * 0.06, 5 * rem));
+  const targetWidth = useRef(Math.max(3 * rem, Math.min(window.innerWidth * 0.06, 5 * rem))).current;
   const x = atTarget ? frozen.geometry.feltRect.left + target.x : frozen.release.left + width / 2;
   const y = atTarget ? frozen.geometry.feltRect.top + target.y : frozen.release.top + height / 2;
   return <div className="fixed left-0 top-0 z-40 transition-transform ease-out" style={{

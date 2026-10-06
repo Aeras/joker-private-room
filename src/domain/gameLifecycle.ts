@@ -1,3 +1,4 @@
+import { retainedPresentationTail } from "./presentationTail";
 import { prepareGameplayDeck } from "./deckPolicy";
 import { getRuleset, type Ruleset } from "./rulesets";
 import { humanDeadlineFromServerTime } from "./controller";
@@ -137,6 +138,7 @@ function nextDealState(
         exposedTrumpCard: null,
         currentTrick: [],
         completedTricks: [],
+        presentationTail: retainedPresentationTail(state),
       },
       declarations: initialDeclarations(dealerSeat, firstDeclarerSeat, 9),
       trump: { status: "chooser_pending", chooserSeat: firstDeclarerSeat },
@@ -173,6 +175,7 @@ function nextDealState(
       exposedTrumpCard: dealt.revealedTrumpCard,
       currentTrick: [],
       completedTricks: [],
+      presentationTail: retainedPresentationTail(state),
     },
     declarations: initialDeclarations(dealerSeat, firstDeclarerSeat, nextInfo.cardsPerPlayer),
     trump: { status: "resolved", suit: dealt.trump },

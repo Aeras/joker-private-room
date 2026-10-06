@@ -70,7 +70,16 @@ export type InitialDealerSelectionState =
       resolvedAtStateVersion: number;
     };
 
+export interface PublicCompletedTrick {
+  dealNumber: number;
+  ordinal: number;
+  cards: PlayedCard[];
+  winnerSeat: SeatIndex;
+}
+
 export interface CanonicalCardsState {
+  /** Bounded public-only history retained across deal boundaries. */
+  presentationTail?: PublicCompletedTrick[];
   deck: Card[];
   drawCursor: number;
   hands: [Card[], Card[], Card[], Card[]];

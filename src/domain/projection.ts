@@ -60,6 +60,7 @@ export interface PlayerGameProjection {
     values: CanonicalGameState["declarations"]["declarations"];
   };
   cards: {
+    presentationTail?: CanonicalGameState["cards"]["presentationTail"];
     ownHand: Card[];
     ownHandVisible: boolean;
     exposedTrumpCard: Card | null;
@@ -241,6 +242,7 @@ export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex, r
       values: [...state.declarations.declarations] as CanonicalGameState["declarations"]["declarations"],
     },
     cards: {
+      presentationTail: (state.cards.presentationTail ?? []).map((trick) => ({ ...trick, cards: trick.cards.map((play) => ({ ...play, card: { ...play.card } })) })),
       ownHand: displayedOwnHand,
       ownHandVisible: own.visible,
       exposedTrumpCard: state.cards.exposedTrumpCard,

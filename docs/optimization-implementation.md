@@ -20,6 +20,16 @@ Verification:
 
 ## Reconciliation / remaining status
 
+### Phase 2 — ordered journal and interruption recovery
+
+Every unseen completed trick is queued in canonical order using game/deal/ordinal identities. Collection owns retirement of the active entry. A bounded 18-trick public tail survives canonical next-deal resets; it contains only played cards and authoritative winners. Fresh mounts hydrate the current snapshot without replaying all history. Live backlog is capped at 24 entries, with explicit settled-snapshot recovery for longer absence; the journal records catch-up counts.
+
+Geometry revisions preserve the journal, completion stages and local flight. Remote travel and collection freeze viewport coordinates; landed surfaces rebase. Blur pauses the cursor and focus/visibility resume a completion generation. Dealer/deal cancellation cannot acknowledge, and same-key focus resumes. A server fallback changing a nine-card stage clears the cancelled overlay. The table keeps trick presentation mounted through deal transitions and blocks local inputs while visible history is pending. Appended Joker announcements no longer restart the head announcement's three-second lifetime.
+
+Verification: 9 new ordered/recovery/domain tests and 6 motion tests passed. The related domain/projection run passed 103 tests; its 7 deployment-artifact tests initially could not launch Bun. Running those with the installed platform Bun executable passed all 7. Strict TypeScript and the production build passed. Affected presentation ESLint has no errors/warnings. Actual Edge browser with reduced motion showed three consecutive tricks, 12 landings, 12 flips and 12 collections, and no remaining overlay. Physical-mobile orientation/fullscreen and normal-motion multi-human acceptance remain required.
+
+Phase 3 remains open: ordinary later deals and aggregate/scoped presentation acknowledgement. The pass is not complete.
+
 | OPT | Current disposition | Remaining work |
 |---|---|---|
 | 001 | PARTIAL | Phase 1 fixes motion handoff; geometry/recovery integration still to verify in Phase 2 |
