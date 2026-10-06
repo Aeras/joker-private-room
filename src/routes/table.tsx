@@ -226,20 +226,32 @@ function TablePage() {
   }, []);
 
   useEffect(() => {
-    const update = () => {
+    let wasVisible = document.visibilityState === "visible";
+    setVisible(wasVisible);
+    const refreshForeground = () => {
+      void refreshAll();
+      void refreshDialogue();
+    };
+    const visibility = () => {
       const nextVisible = document.visibilityState === "visible";
+      const returningFromBackground = !wasVisible && nextVisible;
+      wasVisible = nextVisible;
       setVisible(nextVisible);
-      if (nextVisible) {
-        void refreshAll();
-        void refreshDialogue();
+      if (returningFromBackground) {
+        // Remount presentation-only state so a suspended tab adopts the current
+        // authoritative snapshot instead of replaying an obsolete visual backlog.
+        setTableEpoch((value) => value + 1);
+        refreshForeground();
       }
     };
-    update();
-    document.addEventListener("visibilitychange", update);
-    window.addEventListener("focus", update);
+    const focus = () => {
+      if (document.visibilityState === "visible") refreshForeground();
+    };
+    document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("focus", focus);
     return () => {
-      document.removeEventListener("visibilitychange", update);
-      window.removeEventListener("focus", update);
+      document.removeEventListener("visibilitychange", visibility);
+      window.removeEventListener("focus", focus);
     };
   }, [refreshAll, refreshDialogue]);
 
