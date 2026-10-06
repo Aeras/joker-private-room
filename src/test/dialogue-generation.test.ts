@@ -79,6 +79,22 @@ describe("AI banter provider boundary", () => {
     expect(prompt).toContain("Never infer hidden cards");
   });
 
+  it("has fallback banter for chaos trick-win events", () => {
+    const line = pickDialoguePreset({
+      ...context,
+      botId: "ka-monika",
+      botDisplayName: "κα. Μόνικα",
+      profanityEnabled: true,
+      intensity: "chaos",
+      event: {
+        ...context.event,
+        type: "TRICK_WON",
+        targetName: "Νίκος",
+      },
+    }, () => 0);
+    expect(line).toContain("Νίκος");
+  });
+
   it("uses clean presets when profanity is disabled", () => {
     const line = pickDialoguePreset(context, () => 0);
     expect(line).toContain("Μιχάλης");
