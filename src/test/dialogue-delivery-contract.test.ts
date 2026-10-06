@@ -13,6 +13,10 @@ const xaiMigration = readFileSync(
   "supabase/migrations/20261006154500_jk006_xai_banter_provider.sql",
   "utf8",
 );
+const diversityMigration = readFileSync(
+  "supabase/migrations/20261006183000_jk006_dialogue_recent_memory.sql",
+  "utf8",
+);
 const serverEvents = readFileSync(
   "supabase/migrations/20261004115502_jk001_ai_banter_phase_c_server_event_resolution.sql",
   "utf8",
@@ -70,10 +74,14 @@ describe("AI banter Phase C delivery contract", () => {
     expect(table).not.toContain('type: "BOT_MESSAGE_TO_BOT"');
   });
 
-  it("builds recent provider context from server-side ephemeral delivery, never client-supplied history", () => {
-    expect(edge).toContain('admin.rpc("list_dialogue_messages_internal"');
+  it("builds bounded recent provider context from server-owned public dialogue memory", () => {
+    expect(edge).toContain('admin.rpc("get_dialogue_recent_context_internal"');
     expect(edge).toContain("recentBanter: recentLines(latestRecentData?.messages)");
     expect(edge).not.toContain("body?.recentBanter");
+    expect(diversityMigration).toContain("recent_lines");
+    expect(diversityMigration).toContain("jsonb_array_length(recent_lines) <= 12");
+    expect(diversityMigration).toContain("get_dialogue_recent_context_internal");
+    expect(diversityMigration).not.toMatch(/canonical_state|hands|deck|session_token.*recent_lines/i);
   });
 
   it("makes dialogue fire-and-forget relative to reconnect-safe gameplay snapshot acceptance", () => {
@@ -101,4 +109,23 @@ describe("AI banter Phase C delivery contract", () => {
     expect(edge).toContain('code === "STALE_DIALOGUE_RESULT" || code === "DUPLICATE_DIALOGUE_LINE"');
     expect(edge).toContain('source: "silence"');
   });
+  it("surfaces human-to-bot send state and immediate provider result instead of swallowing it", () => {
+    expect(overlay).toContain("sentPreview");
+    expect(overlay).toContain("Εσύ →");
+    expect(overlay).toContain("feedback");
+    expect(table).toContain("const result = await sendHumanMessageToBot");
+    expect(table).toContain("setDialogueFeedback");
+    expect(table).toContain("result.message");
+    expect(table).toContain('result.source === "silence"');
+  });
+
+  it("logs only bounded generation outcome metadata for provider/fallback diagnosis", () => {
+    expect(edge).toContain("dialogue_generation_outcome");
+    expect(edge).toContain("providerAttempted");
+    expect(edge).toContain("providerReason");
+    expect(edge).toContain("elapsedMs");
+    expect(edge).not.toContain("console.info(body");
+    expect(edge).not.toContain("console.info(event");
+  });
+
 });
