@@ -13,6 +13,8 @@ import { authFailureMessage } from "@/lib/auth-feedback";
 import { roomFailureMessage } from "@/lib/room-feedback";
 import { cn } from "@/lib/utils";
 import { realIdentityService } from "@/services/realIdentity";
+
+const AI_BANTER_CREATOR_PLAYER_ID = "a1f36a77-1732-44d4-8c3b-4623a6e6ed0c";
 import { createProductionRoom, getAvailableRulesets } from "@/services/roomFunctions";
 
 export const Route = createFileRoute("/create")({
@@ -41,6 +43,7 @@ const intensityLabels: Record<DialogueIntensity, string> = {
 function CreateGame() {
   const navigate = useNavigate();
   const activeLookup = useCurrentActiveGame();
+  const [players, setPlayers] = useState<PublicPlayer[]>([]);
   const [host, setHost] = useState<PublicPlayer | null>(null);
   const [verifiedHost, setVerifiedHost] = useState<PublicPlayer | null>(null);
   const [pin, setPin] = useState("");
@@ -57,7 +60,12 @@ function CreateGame() {
   const createActionId = useRef<string | null>(null);
 
   useEffect(() => {
-    realIdentityService.listPlayers().then((list) => setHost(list.find((p) => p.role === "host") ?? null)).catch(() => setAuthError(t.authUnavailable));
+    realIdentityService.listPlayers()
+      .then((list) => {
+        setPlayers(list);
+        setHost((current) => current ?? list[0] ?? null);
+      })
+      .catch(() => setAuthError(t.authUnavailable));
   }, []);
 
   useEffect(() => {
@@ -75,8 +83,6 @@ function CreateGame() {
     try {
       const result = await realIdentityService.verifyPin(host.id, pin);
       if (!result.ok) { setAuthError(authFailureMessage(result)); return; }
-      if (result.player.role !== "host") { setAuthError(t.invalidPin); return; }
-
       const current = await activeLookup.refresh();
       if (current.ok && current.activeGame) {
         void navigate({ to: "/table", search: { code: current.activeGame.roomCode, gameId: current.activeGame.gameId } });
@@ -107,7 +113,7 @@ function CreateGame() {
           rulesetId,
           botsTalk,
           allowProfanity: botsTalk && allowProfanity,
-          aiEnabled: botsTalk && aiEnabled,
+          aiEnabled: botsTalk && verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && aiEnabled,
           intensity,
         },
       });
@@ -147,7 +153,26 @@ function CreateGame() {
         <div className="pregame-auth-card">
           <div className="pregame-auth-block">
             <SectionLabel>Host</SectionLabel>
-            <div className="panel pregame-auth-control pregame-host-control">{host?.displayName ?? "Φόρτωση…"}</div>
+            <select
+              value={host?.id ?? ""}
+              onChange={(event) => {
+                const next = players.find((player) => player.id === event.target.value) ?? null;
+                setHost(next);
+                setPin("");
+                setAuthError(null);
+              }}
+              className="pregame-auth-control pregame-host-control w-full border border-input bg-secondary px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Παίκτης"
+              disabled={players.length === 0 || authBusy}
+            >
+              {players.length === 0 ? (
+                <option value="">Φόρτωση…</option>
+              ) : (
+                players.map((player) => (
+                  <option key={player.id} value={player.id}>{player.displayName}</option>
+                ))
+              )}
+            </select>
           </div>
           <div className="pregame-auth-block">
             <SectionLabel>{t.pin}</SectionLabel>
@@ -203,7 +228,9 @@ function CreateGame() {
             {botsTalk ? (
               <div className="space-y-1 border-t border-border pt-1">
                 <Toggle checked={allowProfanity} onChange={setAllowProfanity} label={t.allowProfanity} />
-                <Toggle checked={aiEnabled} onChange={setAiEnabled} label={t.useAiBanter} />
+                {verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && (
+                  <Toggle checked={aiEnabled} onChange={setAiEnabled} label={t.useAiBanter} />
+                )}
                 <div className="pt-1">
                   <p className="mb-2 text-xs text-muted-foreground">{t.banterIntensity}</p>
                   <div role="radiogroup" className="grid grid-cols-3 gap-2">
