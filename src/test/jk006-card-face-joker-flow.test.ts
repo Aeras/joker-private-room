@@ -133,6 +133,14 @@ describe("JK-006 card artwork, Joker decision, and trick pacing", () => {
     expect(source).not.toContain("Joker ψηλά");
   });
 
+  it("does not show redundant over-under Joker announcements after the choice", () => {
+    const source = read("src/components/table/TrickPresentation.tsx");
+    expect(source).not.toContain('"Τζόκερ από πάνω"');
+    expect(source).not.toContain('"Τζόκερ από κάτω"');
+    expect(source).toContain("Θέλω μεγαλύτερο");
+    expect(source).toContain("Παίρνουν");
+  });
+
   it("paces live trick plays so the previous card can settle before the next one appears", () => {
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBeGreaterThanOrEqual(600);
     expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(850);
