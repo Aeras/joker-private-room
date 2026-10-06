@@ -206,7 +206,7 @@ function TablePage() {
       seenDialogueMessages.current.add(message.id);
       if (message.replyDepth !== 0) continue;
       const bucket = stableReplyBucket(`${message.id}:${currentRoom.botSettings.intensity}`) % 100;
-      const threshold = currentRoom.botSettings.intensity === "chaos" ? 55 : 20;
+      const threshold = currentRoom.botSettings.intensity === "chaos" ? 80 : 20;
       if (bucket >= threshold) continue;
       const responder = bots.find((bot) => bot.id !== message.speakerBotId);
       if (!responder) continue;
