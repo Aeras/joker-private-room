@@ -145,6 +145,14 @@ describe("JK-006 card artwork, Joker decision, and trick pacing", () => {
     expect(source).not.toContain("!interactionPresentationActive && jokerAction");
   });
 
+  it("opens local Joker choices optimistically and queues early selection until authority is ready", () => {
+    const source = read("src/components/table/GameTable.tsx");
+    expect(source).toContain("optimisticJokerOptions");
+    expect(source).toContain("queuedJokerSemantic");
+    expect(source).toContain("optimisticOptionsForJoker");
+    expect(source).toContain("displayedJokerOptions");
+  });
+
   it("paces live trick plays so the previous card can settle before the next one appears", () => {
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBeGreaterThanOrEqual(600);
     expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(850);
