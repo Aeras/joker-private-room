@@ -1,18 +1,24 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Share2 } from "lucide-react";
+import { Bot, Share2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CopyButton, copyText } from "@/components/joker/CopyButton";
 import { JButton, jButton } from "@/components/joker/JButton";
 import { LobbySeat } from "@/components/joker/LobbySeat";
 import { RoomCodeCard } from "@/components/joker/RoomCodeCard";
 import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
-import type { PublicPlayer, Room } from "@/domain/players";
+import type { PublicBotDefinition, PublicPlayer, Room } from "@/domain/players";
 import { publicRulesetName } from "@/domain/rulesetPresentation";
 import { t } from "@/i18n/el";
 import { enterGameDisplayMode, rollbackGameDisplayMode } from "@/lib/gameDisplayMode";
 import { roomFailureMessage } from "@/lib/room-feedback";
 import { getCurrentPlayer } from "@/services/authFunctions";
-import { getProductionRoom, startProductionRoom } from "@/services/roomFunctions";
+import {
+  assignProductionBot,
+  clearProductionBot,
+  getProductionRoom,
+  replaceProductionBot,
+  startProductionRoom,
+} from "@/services/roomFunctions";
 import { roomInviteUrl } from "@/services/rooms";
 
 export const Route = createFileRoute("/lobby")({
@@ -38,6 +44,8 @@ function Lobby() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const [botBusy, setBotBusy] = useState(false);
+  const [botSeatIndex, setBotSeatIndex] = useState<number | null>(null);
   const startActionId = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -74,7 +82,7 @@ function Lobby() {
   if (loading) return <div className="surface-room min-h-dvh" />;
   if (!code || !room || !localPlayer) {
     return (
-      <ScreenShell title={t.lobby} variant="pregame">
+      <ScreenShell title={t.lobby} variant="pregame" contentClassName="pregame-centered-content">
         <div className="panel p-4">
           <p className="text-muted-foreground">{error ?? t.noRoom}</p>
           <Link to="/" className={jButton({ className: "pregame-primary-button mt-4" })}>{t.home}</Link>
@@ -84,7 +92,62 @@ function Lobby() {
   }
 
   const isHost = room.hostId === localPlayer.id;
-  const hasEmpty = room.seats.some((s) => s.occupant.type === "empty");
+  const selectedSeat = botSeatIndex == null ? null : room.seats.find((seat) => seat.index === botSeatIndex) ?? null;
+  const availableBots = room.botCatalog?.bots ?? [];
+
+  const applyBot = async (bot: PublicBotDefinition) => {
+    if (!isHost || botSeatIndex == null || botBusy || room.status !== "lobby") return;
+    const seat = room.seats.find((candidate) => candidate.index === botSeatIndex);
+    if (!seat || seat.occupant.type === "human") return;
+    setBotBusy(true);
+    setError(null);
+    try {
+      const payload = {
+        actionId: crypto.randomUUID(),
+        code: room.code,
+        seatIndex: botSeatIndex,
+        botId: bot.id,
+        expectedRoomVersion: room.version ?? 0,
+      };
+      const result = seat.occupant.type === "bot"
+        ? await replaceProductionBot({ data: payload })
+        : await assignProductionBot({ data: payload });
+      if (!result.ok) {
+        setError(roomFailureMessage(result));
+        return;
+      }
+      setRoom(result.room);
+      setBotSeatIndex(null);
+    } finally {
+      setBotBusy(false);
+    }
+  };
+
+  const removeBot = async () => {
+    if (!isHost || botSeatIndex == null || botBusy || room.status !== "lobby") return;
+    const seat = room.seats.find((candidate) => candidate.index === botSeatIndex);
+    if (!seat || seat.occupant.type !== "bot") return;
+    setBotBusy(true);
+    setError(null);
+    try {
+      const result = await clearProductionBot({
+        data: {
+          actionId: crypto.randomUUID(),
+          code: room.code,
+          seatIndex: botSeatIndex,
+          expectedRoomVersion: room.version ?? 0,
+        },
+      });
+      if (!result.ok) {
+        setError(roomFailureMessage(result));
+        return;
+      }
+      setRoom(result.room);
+      setBotSeatIndex(null);
+    } finally {
+      setBotBusy(false);
+    }
+  };
 
   const start = async () => {
     if (!isHost || starting || room.status !== "lobby") return;
@@ -125,7 +188,7 @@ function Lobby() {
         await navigator.share({ title: "JOKER", text: `${t.roomCode}: ${room.code}`, url });
         return;
       } catch {
-        /* fall through */
+        // Fall through to copy.
       }
     }
     await copyText(url);
@@ -135,53 +198,99 @@ function Lobby() {
     <ScreenShell
       title={t.lobby}
       variant="pregame"
+      contentClassName="pregame-lobby-content"
       footer={
-        <div className="space-y-2">
-          {error && <p className="text-center text-sm text-negative">{error}</p>}
-          {room.status === "lobby" ? (
-            <>
-              <JButton size="lg" className="pregame-primary-button w-full text-lg" disabled={!isHost || starting} onClick={start}>
+        <div className="pregame-lobby-footer">
+          {error && <p className="text-sm text-negative">{error}</p>}
+          <div className="flex items-center gap-2">
+            <JButton variant="outlineGold" className="pregame-secondary-button" onClick={invite}>
+              <Share2 className="h-4 w-4" />
+              {t.inviteFriends}
+            </JButton>
+            <CopyButton text={roomInviteUrl(room.code)} label={t.copyLink} kind="link" />
+            {room.status === "lobby" ? (
+              <JButton size="lg" className="pregame-primary-button min-w-64 text-lg" disabled={!isHost || starting || botBusy} onClick={start}>
                 {t.startGame}
               </JButton>
-              <p className="text-center text-xs text-muted-foreground">
-                {isHost ? hasEmpty && t.emptySeatsBecomeBots : t.hostOnly}
-              </p>
-            </>
-          ) : room.gameId ? (
-            <Link
-              to="/table"
-              search={{ code: room.code, gameId: room.gameId }}
-              className={jButton({ size: "lg", className: "pregame-primary-button w-full text-lg" })}
-            >
-              Μετάβαση στο τραπέζι
-            </Link>
-          ) : (
-            <div className="panel p-4 text-center text-sm text-muted-foreground">{t.gameStarting}</div>
-          )}
+            ) : room.gameId ? (
+              <Link to="/table" search={{ code: room.code, gameId: room.gameId }} className={jButton({ size: "lg", className: "pregame-primary-button min-w-64 text-lg" })}>
+                Μετάβαση στο τραπέζι
+              </Link>
+            ) : (
+              <div className="panel px-4 py-3 text-sm text-muted-foreground">{t.gameStarting}</div>
+            )}
+          </div>
         </div>
       }
     >
-      <div className="panel p-4">
-        <RoomCodeCard code={room.code} />
-        <p className="mt-3 text-center text-sm text-muted-foreground">{room.rulesetName ?? publicRulesetName(room.rulesetId)}</p>
+      <div className="pregame-lobby-grid">
+        <section className="pregame-room-summary panel">
+          <RoomCodeCard code={room.code} />
+          <p className="mt-2 text-center text-sm text-muted-foreground">{room.rulesetName ?? publicRulesetName(room.rulesetId)}</p>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            {isHost ? "Πάτησε μια κενή θέση για να επιλέξεις bot." : "Περιμένουμε τον host να ξεκινήσει."}
+          </p>
+        </section>
+
+        <section>
+          <SectionLabel>Παίκτες</SectionLabel>
+          <div className="grid grid-cols-2 gap-3">
+            {room.seats.map((seat) => (
+              <LobbySeat
+                key={seat.index}
+                seat={seat}
+                hostId={room.hostId}
+                manageable={isHost && room.status === "lobby" && seat.occupant.type !== "human"}
+                onManage={() => setBotSeatIndex(seat.index)}
+              />
+            ))}
+          </div>
+        </section>
       </div>
 
-      <div className="mt-6">
-        <SectionLabel>Παίκτες</SectionLabel>
-        <div className="grid grid-cols-2 gap-3">
-          {room.seats.map((s) => (
-            <LobbySeat key={s.index} seat={s} hostId={room.hostId} />
-          ))}
+      {botSeatIndex != null && selectedSeat && (
+        <div className="pregame-modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.currentTarget === event.target) setBotSeatIndex(null);
+        }}>
+          <div className="pregame-bot-modal" role="dialog" aria-modal="true" aria-labelledby="bot-picker-title">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 text-primary"><Bot className="h-5 w-5" /><span className="text-xs uppercase tracking-[.18em]">Θέση {botSeatIndex + 1}</span></div>
+                <h2 id="bot-picker-title" className="mt-1 font-display text-2xl">Επιλογή bot</h2>
+              </div>
+              <button type="button" onClick={() => setBotSeatIndex(null)} className="rounded-xl border border-border p-2 text-muted-foreground hover:text-foreground" aria-label="Κλείσιμο">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {availableBots.map((bot) => {
+                const isCurrent = selectedSeat.occupant.type === "bot" && selectedSeat.occupant.bot.id === bot.id;
+                const disabled = botBusy || (!bot.available && !isCurrent);
+                return (
+                  <button
+                    key={bot.id}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => void applyBot(bot)}
+                    className="pregame-bot-option"
+                  >
+                    <img src={bot.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                    <span className="font-semibold">{bot.displayName}</span>
+                    <small>Tier {bot.tier}{isCurrent ? " · τώρα" : ""}</small>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedSeat.occupant.type === "bot" && (
+              <button type="button" disabled={botBusy} onClick={() => void removeBot()} className="mt-4 w-full rounded-xl border border-negative/35 px-4 py-3 text-sm text-negative transition active:scale-[0.99]">
+                Αφαίρεση bot
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-
-      <div className="mt-6 flex gap-2">
-        <JButton variant="outlineGold" className="pregame-secondary-button flex-1" onClick={invite}>
-          <Share2 className="h-4 w-4" />
-          {t.inviteFriends}
-        </JButton>
-        <CopyButton text={roomInviteUrl(room.code)} label={t.copyLink} kind="link" />
-      </div>
+      )}
     </ScreenShell>
   );
 }
