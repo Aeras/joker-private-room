@@ -106,7 +106,7 @@ export function DraggableHandCard({
         pointerType: drag.pointerType,
         clientX: drag.currentX,
         clientY: drag.currentY,
-        dropRect,
+        dropRect: dropRect ?? null,
         gesture: sample ?? { deltaX: 0, deltaY: 0, durationMs: 0 },
       })
     : false;
