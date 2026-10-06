@@ -5,6 +5,7 @@ import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
 import { cn } from "@/lib/utils";
 import { PlayingCard } from "../joker/PlayingCard";
+import { LocalFlightCard, MOTION_FALLBACK_SLACK_MS } from "./LocalFlightCard";
 import type { LocalPlayPresentation } from "./localPlayPresentation";
 import { completedTrickPresentationId, trickPresentationTiming } from "./trickPresentationModel";
 import type { Point, TableGeometry, VisualSeat } from "./useTableGeometry";
@@ -36,28 +37,41 @@ function landingPoint(pos: Pos, geometry: TableGeometry | null): Point { return 
 function geometryCenter(geometry: TableGeometry | null): Point { return geometry?.usableCenter ?? { x: 0, y: 0 }; }
 function isPresentationCard(presentation: LocalPlayPresentation | null, play: PlayedCard): boolean { return Boolean(presentation && play.seatIndex === presentation.actorSeat && play.card.id === presentation.cardId); }
 
-function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geometry }: {
-  play: PlayedCard; viewerSeat: SeatIndex; departingStage: DepartingStage | null; winnerSeat: SeatIndex | null; geometry: TableGeometry | null;
+function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geometry, settled = false, reducedMotion, onMotionComplete }: {
+  play: PlayedCard; viewerSeat: SeatIndex; departingStage: DepartingStage | null; winnerSeat: SeatIndex | null; geometry: TableGeometry | null; settled?: boolean; reducedMotion: boolean; onMotionComplete: (play: PlayedCard, stage: DepartingStage | "landing") => void;
 }) {
   const pos = posOf(viewerSeat, play.seatIndex);
   const winner = winnerSeat === play.seatIndex;
   const winnerPos = winnerSeat == null ? null : posOf(viewerSeat, winnerSeat);
-  const [arrived, setArrived] = useState(Boolean(departingStage) || !geometry);
+  const [arrived, setArrived] = useState(settled || Boolean(departingStage) || !geometry);
+  const hasGeometry = geometry != null;
   useEffect(() => {
-    if (departingStage || !geometry) { setArrived(true); return; }
+    if (settled || departingStage || !hasGeometry) { setArrived(true); return; }
     setArrived(false); const frame = window.requestAnimationFrame(() => setArrived(true)); return () => window.cancelAnimationFrame(frame);
-  }, [departingStage, geometry?.epoch, play.card.id]);
+  }, [departingStage, settled, hasGeometry, play.card.id]);
   const center = geometryCenter(geometry);
   const landing = landingPoint(pos, geometry);
   const origin = geometry?.seatOrigins[pos] ?? landing;
   const collectTarget = winnerPos == null ? landing : geometry?.seatOrigins[winnerPos] ?? landingPoint(winnerPos, geometry);
+  const timing = trickPresentationTiming(reducedMotion);
+  const duration = departingStage === "flipping" ? timing.flipMs : departingStage === "collecting" ? timing.collectMs : timing.settleMs;
+  const completionRef = useRef(onMotionComplete); completionRef.current = onMotionComplete;
+  const playRef = useRef(play); playRef.current = play;
+  useEffect(() => {
+    if (!arrived || departingStage === "holding") return;
+    const timer = window.setTimeout(() => completionRef.current(playRef.current, departingStage ?? "landing"), duration + MOTION_FALLBACK_SLACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [arrived, departingStage, duration, play.card.id]);
   const collecting = departingStage === "collecting";
   const faceDown = departingStage === "flipping" || collecting;
   const transform = collecting
     ? relativeTransform(collectTarget, center, ROTATION[pos], 0.58, 180)
     : departedTransform(arrived, faceDown, landing, origin, center, pos);
-  return <div className={cn("absolute left-0 top-0 transition-all duration-[340ms] ease-out motion-reduce:duration-75 [transform-style:preserve-3d]", winner && departingStage && "z-30 drop-shadow-[0_0_16px_var(--gold)]", collecting && !winner && "opacity-85")} style={{ transform }}>
-    {faceDown ? <PlayingCard faceDown /> : <PlayingCard card={play.card} />}
+  return <div className={cn("absolute left-0 top-0 transition-[transform,opacity] ease-out [transform-style:preserve-3d]", winner && departingStage && "z-30 drop-shadow-[0_0_16px_var(--gold)]", collecting && !winner && "opacity-85")} style={{ transform, transitionDuration: `${duration}ms` }} onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform") completionRef.current(play, departingStage ?? "landing"); }}>
+    <div className="relative [transform-style:preserve-3d]">
+      <div className="[backface-visibility:hidden]"><PlayingCard card={play.card} /></div>
+      <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]"><PlayingCard faceDown /></div>
+    </div>
   </div>;
 }
 function departedTransform(arrived: boolean, faceDown: boolean, landing: Point, origin: Point, center: Point, pos: Pos): string {
@@ -65,31 +79,17 @@ function departedTransform(arrived: boolean, faceDown: boolean, landing: Point, 
   return relativeTransform(origin, center, ROTATION[pos], 0.92, 0);
 }
 
-function LocalFlightCard({ presentation, projection, geometry, reducedMotion, onSettled }: { presentation: LocalPlayPresentation; projection: PlayerGameProjection; geometry: TableGeometry; reducedMotion: boolean; onSettled: () => void }) {
-  const [atTarget, setAtTarget] = useState(false); const settledRef = useRef(false);
-  const pos = posOf(projection.viewerSeat, presentation.actorSeat); const center = geometry.usableCenter;
-  const releasePoint: Point = { x: presentation.releaseRect.left - geometry.feltRect.left + presentation.releaseRect.width / 2, y: presentation.releaseRect.top - geometry.feltRect.top + presentation.releaseRect.height / 2 };
-  const target = geometry.trickSlots[pos];
-  useEffect(() => {
-    if (presentation.status === "rejected") { setAtTarget(false); const timer = window.setTimeout(onSettled, reducedMotion ? 90 : 320); return () => window.clearTimeout(timer); }
-    setAtTarget(false); const frame = window.requestAnimationFrame(() => setAtTarget(true)); return () => window.cancelAnimationFrame(frame);
-  }, [presentation.status, presentation.cardId, reducedMotion, onSettled]);
-  useEffect(() => {
-    if (presentation.status !== "accepted" || !atTarget || settledRef.current) return;
-    const timer = window.setTimeout(() => { if (settledRef.current) return; settledRef.current = true; playGameSound("play", `${presentation.gameId}:${presentation.dealNumber}:local-flight:${presentation.cardId}:${presentation.acceptedStateVersion ?? "accepted"}`); onSettled(); }, reducedMotion ? 75 : 300);
-    return () => window.clearTimeout(timer);
-  }, [atTarget, onSettled, presentation, reducedMotion]);
-  return <div className="absolute left-0 top-0 z-40 transition-transform duration-300 ease-out motion-reduce:duration-75" style={{ transform: relativeTransform(atTarget ? target : releasePoint, center, ROTATION[pos], atTarget ? 1 : 1.04) }} data-local-flight-card={presentation.cardId} data-local-flight-status={presentation.status}><PlayingCard card={presentation.card} /></div>;
-}
-
 export function TrickPresentation({ projection, geometry, localPlayPresentation, onLocalFlightSettled }: { projection: PlayerGameProjection; geometry: TableGeometry | null; localPlayPresentation: LocalPlayPresentation | null; onLocalFlightSettled: () => void }) {
   const firstRender = useRef(true); const previousCurrent = useRef(""); const previousCompletedCount = useRef(projection.cards.completedTricks.length); const previousDealNumber = useRef(projection.progression.dealNumber); const previousGeometryEpoch = useRef(geometry?.epoch ?? 0);
   const displayedRef = useRef<PlayedCard[]>([]); const queueRef = useRef<PlayedCard[]>([]); const queueTimer = useRef<number | null>(null); const completionTimer = useRef<number | null>(null); const holdTimer = useRef<number | null>(null); const collectTimer = useRef<number | null>(null); const clearTimer = useRef<number | null>(null);
   const pendingCompletion = useRef<PendingCompletion | null>(null); const deferredCurrent = useRef<PlayedCard[]>([]); const localPresentationRef = useRef(localPlayPresentation); const projectionRef = useRef(projection);
   const announcedJokers = useRef(new Set<string>());
+  const landedCards = useRef(new Set<string>());
+  const stageCards = useRef(new Set<string>());
+  const departingRef = useRef<Departing | null>(null);
   const [displayedCards, setDisplayedCards] = useState<PlayedCard[]>([]); const [departing, setDeparting] = useState<Departing | null>(null); const [announcementQueue, setAnnouncementQueue] = useState<JokerAnnouncement[]>([]);
   const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  localPresentationRef.current = localPlayPresentation; projectionRef.current = projection;
+  localPresentationRef.current = localPlayPresentation; projectionRef.current = projection; departingRef.current = departing;
 
   const clearTimers = useCallback(() => {
     for (const ref of [queueTimer, completionTimer, holdTimer, collectTimer, clearTimer]) { if (ref.current != null) window.clearTimeout(ref.current); ref.current = null; }
@@ -111,20 +111,35 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     return () => window.clearTimeout(timer);
   }, [announcementQueue]);
 
+  const finishCollection = useCallback(() => {
+    departingRef.current = null; setDeparting(null); replaceDisplayed([]); startDeferred();
+  }, [replaceDisplayed, startDeferred]);
+  const onMotionComplete = useCallback((play: PlayedCard, stage: DepartingStage | "landing") => {
+    if (stage === "landing") { if (landedCards.current.has(playKey(play))) return; landedCards.current.add(playKey(play)); setDisplayedCards([...displayedRef.current]); return; }
+    const active = departingRef.current;
+    if (!active || active.stage !== stage) return;
+    stageCards.current.add(playKey(play));
+    if (stageCards.current.size < active.cards.length) return;
+    stageCards.current.clear();
+    if (stage === "flipping") { const next = { ...active, stage: "collecting" as const }; departingRef.current = next; setDeparting(next); }
+    if (stage === "collecting") finishCollection();
+  }, [finishCollection]);
+  const settleLocalFlight = useCallback(() => {
+    const local = localPresentationRef.current;
+    if (local?.status === "accepted") landedCards.current.add(local.actorSeat + ":" + local.cardId);
+    onLocalFlightSettled(); setDisplayedCards([...displayedRef.current]);
+  }, [onLocalFlightSettled]);
   const beginCompletion = useCallback((completion: PendingCompletion) => {
-    if (departing || completionTimer.current != null) return;
-    pendingCompletion.current = null;
-    const { settleMs, holdMs, flipMs, collectStartMs, clearMs } = trickPresentationTiming(reducedMotion);
-    completionTimer.current = window.setTimeout(() => {
-      completionTimer.current = null;
-      const frozen = completion.cards.map((play) => ({ ...play, card: { ...play.card } }));
-      setDeparting({ id: completion.id, cards: frozen, winnerSeat: completion.winnerSeat, stage: "holding" });
-      holdTimer.current = window.setTimeout(() => setDeparting((current) => current?.id === completion.id ? { ...current, stage: "flipping" } : current), holdMs);
-      collectTimer.current = window.setTimeout(() => setDeparting((current) => current?.id === completion.id ? { ...current, stage: "collecting" } : current), holdMs + flipMs);
-      clearTimer.current = window.setTimeout(() => { setDeparting((current) => current?.id === completion.id ? null : current); replaceDisplayed([]); startDeferred(); }, clearMs - settleMs);
-    }, settleMs);
-    void collectStartMs;
-  }, [departing, reducedMotion, replaceDisplayed, startDeferred]);
+    if (departingRef.current || completionTimer.current != null || localPresentationRef.current) return;
+    if (!completion.cards.every((play) => landedCards.current.has(playKey(play)))) return;
+    pendingCompletion.current = null; stageCards.current.clear();
+    const active: Departing = { ...completion, stage: "holding" };
+    departingRef.current = active; setDeparting(active);
+    holdTimer.current = window.setTimeout(() => {
+      if (departingRef.current?.id !== completion.id) return;
+      const next: Departing = { ...active, stage: "flipping" }; departingRef.current = next; setDeparting(next);
+    }, trickPresentationTiming(reducedMotion).holdMs);
+  }, [reducedMotion]);
 
   const pump = useCallback(() => {
     if (queueTimer.current != null || completionTimer.current != null || departing) return;
@@ -168,8 +183,8 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   useEffect(() => {
     const signature = currentSignature(projection.cards.currentTrick); const completedCount = projection.cards.completedTricks.length;
     if (firstRender.current || previousDealNumber.current !== projection.progression.dealNumber) {
-      firstRender.current = false; previousDealNumber.current = projection.progression.dealNumber; previousCurrent.current = signature; previousCompletedCount.current = completedCount;
-      clearTimers(); queueRef.current = []; pendingCompletion.current = null; deferredCurrent.current = []; setDeparting(null); replaceDisplayed(projection.cards.currentTrick); return;
+      landedCards.current.clear(); departingRef.current = null; firstRender.current = false; previousDealNumber.current = projection.progression.dealNumber; previousCurrent.current = signature; previousCompletedCount.current = completedCount;
+      clearTimers(); queueRef.current = []; pendingCompletion.current = null; deferredCurrent.current = []; setDeparting(null); for (const play of projection.cards.currentTrick) landedCards.current.add(playKey(play)); replaceDisplayed(projection.cards.currentTrick); return;
     }
     if (completedCount > previousCompletedCount.current) {
       const trick = projection.cards.completedTricks[completedCount - 1];
@@ -191,7 +206,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     previousCurrent.current = signature; previousCompletedCount.current = completedCount;
   }, [projection, departing, clearTimers, enqueueCommitted, pump, replaceDisplayed]);
 
-  useEffect(() => { pump(); }, [displayedCards.length, departing, pump]);
+  useEffect(() => { pump(); }, [displayedCards, localPlayPresentation, departing, pump]);
   useEffect(() => {
     const interrupt = () => { clearTimers(); queueRef.current = []; pendingCompletion.current = null; deferredCurrent.current = []; setDeparting(null); replaceDisplayed(projectionRef.current.cards.currentTrick); onLocalFlightSettled(); };
     const visibility = () => { if (document.visibilityState !== "visible") interrupt(); };
@@ -208,7 +223,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   return <div className="pointer-events-none absolute z-20 h-0 w-0 [--card-w:clamp(3rem,6vw,5rem)]" style={rootStyle} data-geometry-epoch={geometry?.epoch ?? 0} data-trick-presentation-id={departing?.id ?? "current"} data-trick-departing-stage={departing?.stage ?? "none"} aria-label={departing ? "Ολοκληρωμένη μπάζα" : "Τρέχουσα μπάζα"}>
     <span className="sr-only" aria-live="polite">{departing ? `Η μπάζα κερδήθηκε από τη θέση ${departing.winnerSeat + 1}.` : announcement?.text ?? ""}</span>
     {announcement && <div className="absolute left-0 top-[-4.4rem] z-50 -translate-x-1/2 whitespace-nowrap rounded-xl border border-amber-300/60 bg-black/88 px-4 py-2 text-center text-sm font-semibold text-white shadow-2xl backdrop-blur" data-joker-announcement={announcement.id}>{announcement.text}</div>}
-    {visibleCards.map((play) => <AnimatedTrickCard key={`${departing?.id ?? "current"}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={geometry} />)}
-    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard presentation={localPlayPresentation} projection={projection} geometry={geometry} reducedMotion={reducedMotion} onSettled={onLocalFlightSettled} />}
+    {visibleCards.map((play) => <AnimatedTrickCard key={`${projection.gameId}:${projection.progression.dealNumber}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={geometry} settled={landedCards.current.has(playKey(play))} reducedMotion={reducedMotion} onMotionComplete={onMotionComplete} />)}
+    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} viewerSeat={projection.viewerSeat} geometry={geometry} reducedMotion={reducedMotion} onSettled={settleLocalFlight} />}
   </div>;
 }

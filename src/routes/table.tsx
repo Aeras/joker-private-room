@@ -1,5 +1,6 @@
+import { SnapshotAdmission } from "@/components/table/snapshotAdmission";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Play } from "lucide-react";
 import { jButton } from "@/components/joker/JButton";
 import { DialogueOverlay } from "@/components/table/DialogueOverlay";
@@ -119,6 +120,9 @@ function TablePage() {
   const [landscape, setLandscape] = useState(false);
   const [visible, setVisible] = useState(() => typeof document !== "undefined" && document.visibilityState === "visible");
   const [geometryReady, setGeometryReady] = useState(false);
+  const admission = useMemo(() => new SnapshotAdmission(`${code}:${gameId}`), [code, gameId]);
+  const activeAdmission = useRef(admission);
+  activeAdmission.current = admission;
   const mounted = useRef(true);
   const roomRef = useRef<Room | null>(null);
   const projectionRef = useRef<PlayerGameProjection | null>(null);
@@ -145,7 +149,9 @@ function TablePage() {
   }, []);
 
   const acceptSnapshot = useCallback((nextRoom: Room, nextProjection: PlayerGameProjection): boolean => {
+    if (!mounted.current || activeAdmission.current !== admission) return false;
     if (!gameId || !isCoherentTableSnapshot({ room: nextRoom, projection: nextProjection, expectedGameId: gameId })) return false;
+    if (!admission.admit(nextProjection.stateVersion)) return true; // Obsolete, coherent response: ignore without disconnecting.
     const restoring = connectionStatusRef.current !== "ready";
     roomRef.current = nextRoom;
     projectionRef.current = nextProjection;
@@ -156,7 +162,7 @@ function TablePage() {
     updateConnectionStatus("ready");
     if (restoring) setTableEpoch((value) => value + 1);
     return true;
-  }, [gameId, triggerPublicDialogue, updateConnectionStatus]);
+  }, [admission, gameId, triggerPublicDialogue, updateConnectionStatus]);
 
   const markRefreshFailure = useCallback((message: string) => {
     setError(message);
@@ -165,17 +171,19 @@ function TablePage() {
 
   const refreshAll = useCallback(async () => {
     if (!code || !gameId) return markRefreshFailure("Δεν βρέθηκε έγκυρη ενεργή παρτίδα.");
+    const request = admission.beginRequest();
     const [roomResult, gameResult] = await Promise.all([
       getProductionRoom({ data: { code } }),
       getProjectedGameState({ data: { gameId } }),
     ]);
-    if (!mounted.current) return;
+    if (!mounted.current || activeAdmission.current !== admission) return;
+    if ((!roomResult.ok || !gameResult.ok) && !admission.acceptsFailure(request)) return;
     if (!roomResult.ok) return markRefreshFailure(gameplayFailureMessage(roomResult.code));
     if (!gameResult.ok) return markRefreshFailure(gameplayFailureMessage(gameResult.code));
     if (!acceptSnapshot(roomResult.room, gameResult.projection)) {
       markRefreshFailure("Η κατάσταση του δωματίου και της παρτίδας δεν συμφωνεί ακόμη. Γίνεται επανασύνδεση.");
     }
-  }, [acceptSnapshot, code, gameId, markRefreshFailure]);
+  }, [acceptSnapshot, admission, code, gameId, markRefreshFailure]);
 
   const refreshReadiness = useCallback(async () => {
     if (!gameId) return;
@@ -374,7 +382,7 @@ function TablePage() {
       const result = await submitProjectedGameplayCommand({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion, command } });
       if (result.ok) {
         const currentRoom = roomRef.current;
-        if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return result.projection;
+        if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return projectionRef.current;
         await refreshAll(); return null;
       }
       if (mounted.current) setError(gameplayFailureMessage(result.code));

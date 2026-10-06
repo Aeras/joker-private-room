@@ -10,6 +10,10 @@ import {
   NORMAL_DEAL_TRAVEL_MS,
 } from "@/components/table/dealPresentationModel";
 import {
+  NORMAL_TRICK_SETTLE_MS,
+  REDUCED_TRICK_SETTLE_MS,
+  NORMAL_TRICK_FLIP_MS,
+  REDUCED_TRICK_FLIP_MS,
   NORMAL_TRICK_COLLECT_MS,
   NORMAL_TRICK_HOLD_MS,
   NORMAL_TRICK_PLAY_SPACING_MS,
@@ -104,7 +108,8 @@ function activeRuntimeTimings() {
       playSpacingMs: browserReducedMotion ? REDUCED_TRICK_PLAY_SPACING_MS : NORMAL_TRICK_PLAY_SPACING_MS,
       holdMs: browserReducedMotion ? REDUCED_TRICK_HOLD_MS : NORMAL_TRICK_HOLD_MS,
       collectMs: browserReducedMotion ? REDUCED_TRICK_COLLECT_MS : NORMAL_TRICK_COLLECT_MS,
-      cardTransitionMs: browserReducedMotion ? 75 : 300,
+      cardTransitionMs: browserReducedMotion ? REDUCED_TRICK_SETTLE_MS : NORMAL_TRICK_SETTLE_MS,
+      flipMs: browserReducedMotion ? REDUCED_TRICK_FLIP_MS : NORMAL_TRICK_FLIP_MS,
       localFlightMs: browserReducedMotion ? 75 : 300,
     },
     polling: {
