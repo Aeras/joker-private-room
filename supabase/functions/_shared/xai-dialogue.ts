@@ -1,5 +1,6 @@
 import {
   buildDialoguePrompt,
+  dialogueLineTooSimilar,
   pickDialoguePreset,
   validateDialogueOutput,
   type DialogueGenerationContext,
@@ -89,6 +90,14 @@ export async function generateDialogueLine(input: {
         ...fallback,
         providerAttempted: true,
         providerReason: validated.reason ?? "invalid-output",
+      };
+    }
+    if (dialogueLineTooSimilar(validated.text, input.context.recentBanter)) {
+      const fallback = preset();
+      return {
+        ...fallback,
+        providerAttempted: true,
+        providerReason: "near-duplicate",
       };
     }
 
