@@ -6,7 +6,7 @@ import {
   type DialogueEventType,
   type PublicDialogueEvent,
 } from "../_shared/dialogue-core.ts";
-import { generateDialogueLine } from "../_shared/gemini-dialogue.ts";
+import { generateDialogueLine } from "../_shared/xai-dialogue.ts";
 import { getCanonicalBot } from "../_shared/bot-catalog.ts";
 
 const DIALOGUE_EVENT_TYPES = new Set<DialogueEventType>([
@@ -237,8 +237,8 @@ Deno.serve(async (req: Request) => {
       const generated = await generateDialogueLine({
         context,
         aiEnabled: providerCall,
-        apiKey: Deno.env.get("GEMINI_API_KEY") ?? undefined,
-        model: Deno.env.get("GEMINI_DIALOGUE_MODEL") ?? undefined,
+        apiKey: Deno.env.get("XAI_API_KEY") ?? undefined,
+        model: Deno.env.get("XAI_DIALOGUE_MODEL") ?? undefined,
       });
       if (!generated.text) {
         return json({
@@ -257,7 +257,7 @@ Deno.serve(async (req: Request) => {
         p_speaker_bot_id: event.speakerBotId,
         p_target_seat: event.targetSeat ?? null,
         p_message_text: generated.text,
-        p_source: generated.source === "gemini" ? "gemini" : "preset",
+        p_source: generated.source === "xai" ? "xai" : "preset",
         p_reply_depth: event.replyDepth,
       });
       if (publishError) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
