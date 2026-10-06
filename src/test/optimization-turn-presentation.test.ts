@@ -54,7 +54,7 @@ describe("server turn presentation eligibility", () => {
     expect(projectGameForSeat(result.state, 1).local.legalActions.some((action) => action.type === "play_card")).toBe(true);
     expect(planAutomaticGameplayStep(result.state, now)).toEqual({
       ok: false,
-      stopReason: "HUMAN_ACTION_REQUIRED",
+      stopReason: "HUMAN_INPUT",
     });
   });
   it("retains first ack, excludes bots, and starts a full deadline only on the last actual ack", () => {
