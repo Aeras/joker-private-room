@@ -61,6 +61,37 @@ describe("derivePublicDialogueEvents", () => {
     expect(first?.id).toContain("state-11:PLAYER_DECLARED_ZERO:0");
   });
 
+  it("adds a public trick-steal trigger in Chaos without private hand data", () => {
+    const chaosRoom = {
+      ...room,
+      botSettings: { ...room.botSettings, intensity: "chaos" as const },
+    } as Room;
+    const previous = projection();
+    const next = projection({
+      stateVersion: 11,
+      cards: {
+        ownHand: [],
+        ownHandVisible: true,
+        exposedTrumpCard: null,
+        currentTrick: [],
+        completedTricks: [{
+          winnerSeat: 1,
+          cards: [
+            { seatIndex: 0, card: { kind: "standard", id: "A", suit: "hearts", rank: "7" } },
+            { seatIndex: 1, card: { kind: "standard", id: "B", suit: "hearts", rank: "A" } },
+            { seatIndex: 2, card: { kind: "standard", id: "C", suit: "hearts", rank: "8" } },
+            { seatIndex: 3, card: { kind: "standard", id: "D", suit: "hearts", rank: "9" } },
+          ],
+        }],
+      },
+    });
+    const events = derivePublicDialogueEvents(previous, next, chaosRoom);
+    expect(events.map((event) => event.type)).toContain("BOT_STOLE_CRITICAL_TRICK");
+    expect(events.find((event) => event.type === "BOT_STOLE_CRITICAL_TRICK")?.id)
+      .toContain("state-11:BOT_STOLE_CRITICAL_TRICK:1:61");
+    expect(JSON.stringify(events)).not.toContain("ownHand");
+  });
+
   it("derives provider-facing events without serializing local private hand data", () => {
     const previous = projection({ cards: { ownHand: [{ id: "SECRET-HAND", kind: "standard", rank: "A", suit: "spades" }], ownHandVisible: true, exposedTrumpCard: null, currentTrick: [], completedTricks: [] } });
     const next = projection({ stateVersion: 11, declarations: { currentDeclarerSeat: 1, values: [0, null, null, null] }, cards: previous.cards });
