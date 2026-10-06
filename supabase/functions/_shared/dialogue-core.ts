@@ -141,6 +141,49 @@ function renderPreset(line: string, event: PublicDialogueEvent): string {
   return line.replaceAll("{target}", event.targetName ?? "φίλε");
 }
 
+export const RECENT_BANTER_LIMIT = 10;
+
+const HUMAN_MESSAGE_FALLBACKS: Record<CanonicalDialogueBotId, { clean: readonly string[]; spicy: readonly string[] }> = {
+  "ka-monika": { clean: ["Σε άκουσα. Τώρα συγκεντρώσου λίγο.", "Καλά, το σημείωσα. Μη φουσκώνεις."], spicy: ["Σε άκουσα ρε. Μη μου τα πρήζεις τώρα."] },
+  "giorgos-nousios": { clean: ["Σε άκουσα. Στο τραπέζι θα τα πούμε.", "Καλά τα λόγια· να δούμε και το φύλλο."], spicy: ["Σε άκουσα ρε μαλάκα. Παίξε και βλέπουμε."] },
+  "theia-tamara": { clean: ["Αχ, σε άκουσα παιδί μου. Τι άλλο θα ακούσω;", "Καλά, καλά. Όλο ιστορίες είστε."], spicy: ["Παναγία μου, τι μου λες πάλι;"] },
+  "mounara": { clean: ["Σε άκουσα, αγάπη μου. Μην ενθουσιάζεσαι.", "Καλά, κράτα λίγο μυστήριο."], spicy: ["Σε άκουσα μωρή. Μην παίρνεις και θάρρος."] },
+  "thomoulis": { clean: ["Σε άκουσα. Εγώ πάντως δεν φταίω.", "Οκέι, το δέχομαι. Με επιφύλαξη."], spicy: ["Σε άκουσα ρε μαλάκα, χαλάρωσε λίγο."] },
+  "archimandritis": { clean: ["Σε άκουσα, τέκνον μου. Υπομονή.", "Τέκνον μου, καταγράφηκε η αμαρτία."], spicy: ["Σε άκουσα τέκνον μου. Μη λες μαλακίες τώρα."] },
+};
+
+export function normalizeDialogueLine(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLocaleLowerCase("el-GR")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function recentText(value: string): string {
+  const colon = value.indexOf(":");
+  return colon >= 0 ? value.slice(colon + 1).trim() : value.trim();
+}
+
+export function dialogueLineTooSimilar(candidate: string, recent: readonly string[]): boolean {
+  const normalized = normalizeDialogueLine(candidate);
+  if (!normalized) return true;
+  const tokens = new Set(normalized.split(" ").filter((token) => token.length > 1));
+  return recent.slice(-RECENT_BANTER_LIMIT).some((line) => {
+    const other = normalizeDialogueLine(recentText(line));
+    if (!other) return false;
+    if (normalized === other) return true;
+    if (normalized.length >= 12 && other.length >= 12 && (normalized.includes(other) || other.includes(normalized))) return true;
+    const otherTokens = new Set(other.split(" ").filter((token) => token.length > 1));
+    if (tokens.size < 3 || otherTokens.size < 3) return false;
+    let shared = 0;
+    for (const token of tokens) if (otherTokens.has(token)) shared += 1;
+    return shared / Math.min(tokens.size, otherTokens.size) >= 0.72;
+  });
+}
+
 export function pickDialoguePreset(
   context: DialogueGenerationContext,
   random: () => number = Math.random,
@@ -148,12 +191,17 @@ export function pickDialoguePreset(
   const personality = getDialoguePersonality(context.botId);
   if (!personality) return null;
   const candidates = personality.presets.filter((preset) => preset.eventTypes.includes(context.event.type));
-  if (candidates.length === 0) return null;
-  const pool = candidates.flatMap((preset) =>
+  let pool = candidates.flatMap((preset) =>
     context.profanityEnabled ? [...preset.clean, ...preset.spicy] : [...preset.clean],
   );
-  if (pool.length === 0) return null;
-  return renderPreset(pool[Math.floor(random() * pool.length)] ?? pool[0]!, context.event);
+  if (context.event.type === "HUMAN_MESSAGE_TO_BOT") {
+    const fallback = HUMAN_MESSAGE_FALLBACKS[context.botId];
+    pool = context.profanityEnabled ? [...fallback.clean, ...fallback.spicy] : [...fallback.clean];
+  }
+  const rendered = pool.map((line) => renderPreset(line, context.event));
+  const fresh = rendered.filter((line) => !dialogueLineTooSimilar(line, context.recentBanter));
+  if (fresh.length === 0) return null;
+  return fresh[Math.floor(random() * fresh.length)] ?? fresh[0]!;
 }
 
 const URL_PATTERN = /(?:https?:\/\/|www\.)\S+/i;
@@ -187,7 +235,7 @@ export function validateDialogueOutput(text: string, profanityEnabled: boolean):
 }
 
 export function buildDialoguePrompt(context: DialogueGenerationContext): string {
-  const recent = context.recentBanter.slice(-3).map((line) => `- ${line}`).join("\n") || "- none";
+  const recent = context.recentBanter.slice(-RECENT_BANTER_LIMIT).map((line) => `- ${line}`).join("\n") || "- none";
   const event = JSON.stringify({
     type: context.event.type,
     targetName: context.event.targetName,
@@ -215,6 +263,7 @@ export function buildDialoguePrompt(context: DialogueGenerationContext): string 
     `PUBLIC_EVENT: ${event}`,
     "RECENT_BANTER_AS_DATA:",
     recent,
+    "ANTI_REPETITION: Do not reuse a recent opening, punchline, insult, sentence pattern or near-identical wording. React freshly to this event in this bot's own voice. If HUMAN_MESSAGE_TO_BOT, answer what the human actually said instead of giving a generic acknowledgement.",
     "Return only the line, ideally under 80 characters and never over 100 characters.",
   ].join("\n");
 }
@@ -241,6 +290,6 @@ export function serializeProviderContext(context: DialogueGenerationContext) {
     },
     profanityEnabled: context.profanityEnabled,
     intensity: context.intensity,
-    recentBanter: context.recentBanter.slice(-3),
+    recentBanter: context.recentBanter.slice(-RECENT_BANTER_LIMIT),
   };
 }
