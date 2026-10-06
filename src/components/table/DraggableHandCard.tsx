@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { cardLabel, type Card } from "@/domain/cards";
 import { cn } from "@/lib/utils";
 import { PlayingCard } from "../joker/PlayingCard";
@@ -123,7 +123,7 @@ export function DraggableHandCard({
   };
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (!canInteract || event.button !== 0) return;
+    if (!canInteract || event.button !== 0 || event.pointerType === "mouse") return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setDrag({
       pointerId: event.pointerId,
@@ -179,6 +179,14 @@ export function DraggableHandCard({
     void submitOnce(rectLike(event.currentTarget.getBoundingClientRect()));
   };
 
+  const onDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (!canInteract || event.button !== 0) return;
+    event.preventDefault();
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    void submitOnce(rectLike(rect));
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!canInteract || (event.key !== "Enter" && event.key !== " ")) return;
     event.preventDefault();
@@ -196,7 +204,7 @@ export function DraggableHandCard({
       role="button"
       tabIndex={canInteract ? 0 : -1}
       aria-disabled={!canInteract}
-      aria-label={`${cardLabel(card)}${legal ? ", σύρε προς το κέντρο ή πάτησε Enter για παίξιμο" : ", μη επιτρεπτό φύλλο"}`}
+      aria-label={`${cardLabel(card)}${legal ? ", σε υπολογιστή διπλό κλικ, σε αφή σύρε προς το κέντρο ή πάτησε Enter για παίξιμο" : ", μη επιτρεπτό φύλλο"}`}
       className={cn(
         "relative select-none outline-none transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary",
         overlap && "-ml-[calc(var(--card-w)*0.36)]",
@@ -212,6 +220,7 @@ export function DraggableHandCard({
           : undefined,
       }}
       onPointerDown={onPointerDown}
+      onDoubleClick={onDoubleClick}
       onPointerMove={onPointerMove}
       onPointerUp={(event) => finishPointer(event, false)}
       onPointerCancel={(event) => finishPointer(event, true)}

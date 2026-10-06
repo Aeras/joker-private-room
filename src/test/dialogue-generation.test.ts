@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   DIALOGUE_PERSONALITIES,
   buildDialoguePrompt,
+  dialogueLineTooSimilar,
   pickDialoguePreset,
   serializeProviderContext,
   validateDialogueOutput,
@@ -164,4 +165,57 @@ describe("AI banter provider boundary", () => {
     expect(result.providerAttempted).toBe(true);
     expect(result.providerReason).toBe("gameplay-advice");
   });
+  it("rejects near-duplicate wording and avoids recently used fallback lines", async () => {
+    expect(dialogueLineTooSimilar(
+      "Αυτό πόνεσε! Και φαινόταν από πριν.",
+      ["ka-monika: Αυτό πόνεσε. Και φαινόταν από πριν."],
+    )).toBe(true);
+
+    const repeatedContext: DialogueGenerationContext = {
+      ...context,
+      recentBanter: ["ka-monika: Αυτό πόνεσε. Και φαινόταν από πριν."],
+    };
+    const fallback = pickDialoguePreset(repeatedContext, () => 0);
+    expect(fallback).not.toBe("Αυτό πόνεσε. Και φαινόταν από πριν.");
+
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({ output: [{ type: "message", content: [{ type: "output_text", text: "Αυτό πόνεσε! Και φαινόταν από πριν." }] }] }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const result = await generateDialogueLine({
+      context: repeatedContext,
+      aiEnabled: true,
+      apiKey: "test-key",
+      fetchImpl,
+      random: () => 0,
+    });
+    expect(result.source).not.toBe("xai");
+    expect(result.providerReason).toBe("near-duplicate");
+  });
+
+  it("keeps chaos profanity explicitly per-context and gives human messages a bounded fallback", () => {
+    const humanContext: DialogueGenerationContext = {
+      ...context,
+      profanityEnabled: true,
+      intensity: "chaos",
+      recentBanter: [],
+      event: {
+        ...context.event,
+        type: "HUMAN_MESSAGE_TO_BOT",
+        humanMessage: "Τι λες ρε Μόνικα;",
+      },
+    };
+    const prompt = buildDialoguePrompt(humanContext);
+    expect(prompt).toContain("private adult-friends card table");
+    expect(prompt).toContain("Do not sanitize ordinary Greek swearing");
+    expect(prompt).toContain("answer what the human actually said");
+    expect(pickDialoguePreset(humanContext, () => 0)).not.toBeNull();
+
+    const cleanPrompt = buildDialoguePrompt({ ...humanContext, profanityEnabled: false });
+    expect(cleanPrompt).toContain("without profanity");
+    expect(cleanPrompt).not.toContain("Do not sanitize ordinary Greek swearing");
+  });
+
 });

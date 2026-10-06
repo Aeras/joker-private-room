@@ -171,9 +171,18 @@ export async function advanceGameUntilBlockedWithDependencies(
 
     const serverNow = dependencies.now();
     if (state.timing.turnPresentation) {
+      // Legacy recovery only. Browser presentation acknowledgement is no longer a
+      // global gameplay dependency; any pre-upgrade boundary is released on the
+      // next authoritative reconciliation regardless of foreground client state.
       const boundary = state.timing.turnPresentation;
-      if (Date.parse(boundary.fallbackAt) > Date.parse(serverNow)) return { ok: true, stateVersion: loaded.stateVersion, steps: committedSteps, stopReason: "PRESENTATION_BARRIER" };
-      const persisted = await dependencies.persist({ gameId, actionId: await dependencies.actionId(gameId, `turn-presentation-fallback:${boundary.token}:${loaded.stateVersion}`), commandType: "system_turn_presentation_fallback", expectedStateVersion: loaded.stateVersion, commandPayload: { token: boundary.token, source: "bounded_absent_client_fallback" }, newState: releasePlayedEvent(state, serverNow) });
+      const persisted = await dependencies.persist({
+        gameId,
+        actionId: await dependencies.actionId(gameId, `turn-presentation-release:${boundary.token}:${loaded.stateVersion}`),
+        commandType: "system_turn_presentation_release",
+        expectedStateVersion: loaded.stateVersion,
+        commandPayload: { token: boundary.token, source: "legacy_nonblocking_release" },
+        newState: releasePlayedEvent(state, serverNow),
+      });
       if (!persisted.ok) {
         if (persisted.code === "STALE_STATE") { staleRaces += 1; continue; }
         return failureFromPersist(persisted);

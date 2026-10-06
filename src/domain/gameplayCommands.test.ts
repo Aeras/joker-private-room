@@ -274,8 +274,7 @@ describe("card/Joker command dispatcher", () => {
     expect(state.progression.phase).toBe("JOKER_DECISION");
     expect(state.cards.hands[1].map((card) => card.id)).toContain("joker-1");
 
-    const boundary = state.timing.turnPresentation!;
-    for (const viewer of boundary.requiredSeats) state = acknowledgePlayedEvent(state, viewer, boundary.token, "2026-10-04T06:00:00.000Z").state;
+    expect(state.timing.turnPresentation).toBeUndefined();
     expect(apply(state, 1, { type: "choose_joker_semantic", semantic: { context: "OPEN_TRICK", mode: "COMPETE" } })).toEqual({ ok: false, code: "INVALID_JOKER_CHOICE" });
 
     const chosen = apply(state, 1, {

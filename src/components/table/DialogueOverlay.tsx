@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Room } from "@/domain/players";
 import type { DialogueMessage } from "@/services/dialogueFunctions";
 import { t } from "@/i18n/el";
@@ -8,11 +8,13 @@ export function DialogueOverlay({
   room,
   messages,
   busy,
+  feedback,
   onSend,
 }: {
   room: Room;
   messages: DialogueMessage[];
   busy: boolean;
+  feedback?: string | null;
   onSend: (botId: string, text: string) => Promise<void>;
 }) {
   const bots = useMemo(
@@ -27,6 +29,13 @@ export function DialogueOverlay({
   const [botId, setBotId] = useState(() => bots[0]?.id ?? "");
   const [text, setText] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
+  const [sentPreview, setSentPreview] = useState<{ botId: string; text: string } | null>(null);
+
+  useEffect(() => {
+    if (!sentPreview) return;
+    const timer = window.setTimeout(() => setSentPreview(null), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [sentPreview]);
 
   if (!room.botSettings.botsTalk || bots.length === 0) return null;
 
@@ -34,12 +43,19 @@ export function DialogueOverlay({
     const trimmed = text.trim();
     if (!botId || !trimmed || busy) return;
     setText("");
+    setSentPreview({ botId, text: trimmed });
     await onSend(botId, trimmed);
   };
 
   return (
     <div className="pointer-events-none absolute inset-0 z-[70]">
       <div className="absolute left-1/2 top-12 flex w-[min(92vw,34rem)] -translate-x-1/2 flex-col gap-2">
+        {sentPreview && (
+          <div className="rounded-2xl border border-white/10 bg-black/70 px-3 py-2 text-sm text-white/80 shadow-lg backdrop-blur" role="status">
+            <span className="font-semibold text-white">Εσύ → {bots.find((bot) => bot.id === sentPreview.botId)?.name ?? "Bot"}:</span>{" "}
+            {sentPreview.text}
+          </div>
+        )}
         {messages.slice(-3).map((message) => {
           const speaker = bots.find((bot) => bot.id === message.speakerBotId)?.name ?? "Bot";
           return (
@@ -78,6 +94,11 @@ export function DialogueOverlay({
             <p className="mb-2 text-[11px] leading-snug text-white/65">
               AI ατάκες ενεργές. Μήνυμα που στέλνεις σε bot μπορεί να επεξεργαστεί από εξωτερικό
               πάροχο AI.
+            </p>
+          )}
+          {feedback && (
+            <p className="mb-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/75" role="status" aria-live="polite">
+              {feedback}
             </p>
           )}
           <div className="flex gap-2">

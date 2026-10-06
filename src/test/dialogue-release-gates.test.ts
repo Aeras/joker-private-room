@@ -24,6 +24,14 @@ const resolverSql = readFileSync(
   "supabase/migrations/20261004115502_jk001_ai_banter_phase_c_server_event_resolution.sql",
   "utf8",
 );
+const diversitySql = readFileSync(
+  "supabase/migrations/20261006183000_jk006_dialogue_recent_memory.sql",
+  "utf8",
+);
+const humanPrioritySql = readFileSync(
+  "supabase/migrations/20261006183500_jk006_human_bot_dialogue_priority.sql",
+  "utf8",
+);
 const edge = readFileSync("supabase/functions/ai-banter/index.ts", "utf8");
 const service = readFileSync("src/services/dialogueFunctions.ts", "utf8");
 const table = readFileSync("src/routes/table.tsx", "utf8");
@@ -169,7 +177,9 @@ describe("AI banter Phase D — privacy and authority release gates", () => {
     expect(edge).toContain('admin.rpc("resolve_dialogue_state_event_internal"');
     expect(edge).not.toMatch(/body\?\.event\b/);
     expect(edge).not.toContain("body?.recentBanter");
+    expect(edge).toContain('admin.rpc("get_dialogue_recent_context_internal"');
     expect(edge).toContain("recentBanter: recentLines(latestRecentData?.messages)");
+    expect(diversitySql).toContain("jsonb_array_length(recent_lines) <= 12");
     expect(resolverSql).toContain("g.canonical_state");
     expect(resolverSql).toContain("return jsonb_build_object(");
     expect(edge).not.toContain("canonical_state");
@@ -215,6 +225,15 @@ describe("AI banter Phase D — server-side cost and abuse release gates", () =>
     expect(deliverySql).toContain("active_generation_until");
   });
 
+  it("keeps direct human-to-bot messages outside automatic banter cooldown", () => {
+    expect(humanPrioritySql).toContain("if not p_is_human_message then");
+    expect(humanPrioritySql).toContain("DIALOGUE_COOLDOWN");
+    expect(humanPrioritySql).toContain("DIALOGUE_SPEAKER_COOLDOWN");
+    expect(humanPrioritySql).toContain("v_human_messages_in_window >= 4");
+    expect(humanPrioritySql).toContain("DIALOGUE_CONCURRENCY_LIMIT");
+    expect(humanPrioritySql).toContain("v_total_ai_calls >= 120");
+  });
+
   it("enforces speech/AI policy before provider calls and reply depth at the server boundary", () => {
     expect(deliverySql).toContain("DIALOGUE_DISABLED");
     expect(deliverySql).toContain("p_provider_call and not coalesce((v_policy->>'aiEnabled')::boolean, false)");
@@ -246,6 +265,19 @@ describe("AI banter Phase D — server-side cost and abuse release gates", () =>
     expect(resolverSql).toContain("to service_role");
   });
 });
+
+
+  it("keeps long-lived repetition memory bounded to public dialogue text only", () => {
+    expect(diversitySql).toContain("speakerBotId");
+    expect(diversitySql).toContain("message_text");
+    expect(diversitySql).toContain("limit 12");
+    expect(diversitySql).not.toContain("canonical_state");
+    expect(diversitySql).not.toContain("cards.hands");
+    expect(diversitySql).toContain(
+      "revoke all on function public.get_dialogue_recent_context_internal(text, uuid)",
+    );
+    expect(diversitySql).toContain("to service_role");
+  });
 
 describe("AI banter Phase D — provider failure and UX release gates", () => {
   it.each([
