@@ -3,6 +3,12 @@
 Baseline: GitHub main `67896a89152e27fb0cff27bd568c41834551e0f0` (PR #84).
 This is an implementation ledger, not a completion claim. Unresolved P0 work remains.
 
+## Final regression reconciliation
+
+The first GitHub run failed related/full-regression checks while new changed tests, JK-002/003 database workflows and the presentation workflow passed. Local reproduction identified obsolete source-string requirements for removed refs, last-trick-only selection and the old reveal component. Four former JK-006 presentation string tests were retired in favor of the stronger motion/journal/shared-hand behavioral suites already added. Remaining architecture-wiring checks now reference the current owners and explicitly do not establish behavioral correctness. Whitespace-only disclosure/asset assertions were made formatting-independent. One pre-existing Home check required copy absent from canonical main; it now checks the existing explicit retry without changing Home code.
+
+Additional behavioral tests cover hidden-to-visible/same-key recovery, orientation interruption, and all 12 initial / 24 remaining nine-card presentation backs without private face identities. Ordered/recovery tests now total 14; the seven new optimization test files contain 47 behavioral tests. After reconciliation, one justified full Vitest run passed all 369 tests with the platform worker bundle included; direct TypeScript and affected-test lint passed. This replaces the initial red local regression result; remote CI must still be evaluated at the final head SHA. SQL acceptance and physical multiplayer QA remain pending.
+
 ## Phase 1 — motion ownership and snapshot freshness
 
 - OPT-001: acceptance no longer restarts the detached flight. CSS transform completion (bounded fallback) and authority confirmation are both required. Rejection has a separate return. The canonical surface starts landed after handoff; local fourth-card hold waits for the flight.

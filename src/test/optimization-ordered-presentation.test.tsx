@@ -22,7 +22,7 @@ const snapshot = (count = 0, current: PlayedCard[] = [], dealNumber = 2) => ({ g
 const tick = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 function finish(el: Element) { const event = new Event("transitionend", { bubbles: true }); Object.defineProperty(event, "propertyName", { value: "transform" }); fireEvent(el, event); }
 beforeEach(() => { vi.useFakeTimers(); sessionStorage.clear(); vi.stubGlobal("requestAnimationFrame", (fn: FrameRequestCallback) => window.setTimeout(() => fn(0), 16)); vi.stubGlobal("cancelAnimationFrame", window.clearTimeout); });
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("ordered public trick journal", () => {
   it("canonical next-deal transition and projection retain the authoritative outgoing winner", () => {
@@ -57,6 +57,26 @@ describe("ordered public trick journal", () => {
 });
 
 describe("presentation interruption and geometry", () => {
+  it.each(["visibility", "orientation"])("deal recovers from %s interruption without early acknowledgement", interruption => {
+    const complete = vi.fn(); const projection = snapshot(); projection.gameId = `recovery-${interruption}`;
+    const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);
+    tick(500);
+    if (interruption === "visibility") {
+      const visible = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+      fireEvent(document, new Event("visibilitychange")); tick(10000); expect(complete).not.toHaveBeenCalled();
+      view.rerender(<DealPresentation projection={{ ...projection }} geometry={{ ...geometry, epoch: 3 }} onPresentationComplete={complete} />);
+      visible.mockReturnValue("visible"); fireEvent(document, new Event("visibilitychange"));
+    } else { fireEvent(window, new Event("orientationchange")); }
+    tick(2320); expect(complete).toHaveBeenCalledOnce();
+  });
+  it.each([["NINE_CARD_INITIAL_DEAL_ALL_SEATS", 12, 6000], ["NINE_CARD_REMAINING_DEAL", 24, 14000]] as const)("%s presents %i backs without private identities", (phase, count, elapsed) => {
+    const projection = snapshot(); projection.gameId = `private-stage-${phase}`; projection.progression.phase = phase; projection.progression.cardsPerPlayer = 9;
+    const complete = vi.fn(); const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);
+    tick(elapsed);
+    expect(view.container.querySelectorAll('[aria-label="Κλειστό φύλλο"]')).toHaveLength(count);
+    expect(view.container.querySelectorAll('img[alt]:not([alt=""])')).toHaveLength(0);
+    expect(complete).not.toHaveBeenCalled(); tick(320); expect(complete).toHaveBeenCalledOnce();
+  });
   it("already-dealt first hand acknowledges reveal scope without replaying the deal", () => {
     const complete = vi.fn(); const projection = snapshot(); projection.gameId = "firststage-reveal";
     const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);

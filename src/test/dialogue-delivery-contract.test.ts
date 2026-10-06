@@ -79,7 +79,7 @@ describe("AI banter Phase C delivery contract", () => {
   });
 
   it("shows required external-AI disclosure at the human-to-bot surface", () => {
-    expect(overlay).toContain("μπορεί να επεξεργαστεί από εξωτερικό πάροχο AI");
+    expect(overlay.replace(/\s+/g, " ")).toContain("μπορεί να επεξεργαστεί από εξωτερικό πάροχο AI");
     expect(overlay).toContain("room.botSettings.aiEnabled");
   });
 

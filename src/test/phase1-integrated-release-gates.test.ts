@@ -1,3 +1,5 @@
+// Architecture wiring checks only; behavioral motion/recovery/barriers are exercised
+// in optimization-motion-ownership, ordered-presentation and deal-barriers tests.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -46,16 +48,17 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
   });
 
   it("keeps nine-card dealing private and presentation-only", () => {
-    expect(deal).toContain('if (stage === "initial") return 12');
-    expect(deal).toContain('if (stage === "remaining") return 24');
+    expect(deal).toContain('stage === "initial" ? 12');
+    expect(deal).toContain('stage === "remaining" ? 24');
     expect(deal).toContain("<PlayingCard faceDown />");
     expect(deal).not.toContain("projection.cards.deck");
     expect(deal).not.toContain("card.id");
   });
 
   it("keeps trick winner authoritative and the departing snapshot bounded", () => {
-    expect(trick).toContain("projection.cards.completedTricks[completedCount - 1]");
-    expect(trick).toContain("winnerSeat: trick.winnerSeat");
+    expect(trick).toContain("new TrickPresentationJournal()");
+    expect(trick).not.toContain("completedCount - 1");
+    expect(trick).toContain("winnerSeat: active.winnerSeat");
     expect(trick).not.toMatch(/resolveTrick|calculateWinner/);
     expect(trick).toContain("trickPresentationTiming(reducedMotion)");
     expect(trickModel).toContain("NORMAL_TRICK_HOLD_MS = 850");
@@ -71,13 +74,13 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
 
   it("supports interruption while keeping dealing timing independent from browser reduced motion", () => {
     expect(gesture).toContain('window.addEventListener("orientationchange"');
-    expect(deal).toContain('window.addEventListener("orientationchange", interrupt)');
-    expect(trick).toContain('window.addEventListener("orientationchange", interrupt)');
+    expect(deal).toContain('window.addEventListener("orientationchange", orientation)');
+    expect(trick).toContain('window.addEventListener("orientationchange", orientation)');
     expect(deal).not.toContain("motion-reduce:duration-75");
     expect(deal).toContain("dealPresentationTiming(false)");
     expect(trick).toContain("prefers-reduced-motion: reduce");
     expect(deal).toContain("dealPresentationWasCompleted(stageKey)");
-    expect(trick).toContain("firstRender.current");
+    expect(trick).toContain("active?.hydrated");
   });
 
   it("keeps the declaration panel compact, touchable and server-projected", () => {
