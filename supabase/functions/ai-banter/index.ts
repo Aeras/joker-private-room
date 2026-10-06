@@ -144,7 +144,6 @@ Deno.serve(async (req: Request) => {
     }
 
     let event: PublicDialogueEvent | null = null;
-    let recentData: Record<string, unknown> | null = null;
 
     if (body?.action === "generate-state") {
       if (typeof body?.eventId !== "string" || body.eventId.length < 1 || body.eventId.length > 128) {
@@ -185,7 +184,6 @@ Deno.serve(async (req: Request) => {
       if (data?.ok !== true || !Array.isArray(data.messages)) {
         return json(data ?? { ok: false, code: "GAME_NOT_FOUND" }, 404);
       }
-      recentData = data as Record<string, unknown>;
       const source = data.messages.find((message: Record<string, unknown>) => message?.id === body.sourceMessageId);
       if (!source || source.replyDepth !== 0 || typeof source.text !== "string" || source.speakerBotId === responderBotId) {
         return json({ ok: false, code: "INVALID_DIALOGUE_EVENT" }, 409);
