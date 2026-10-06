@@ -26,8 +26,8 @@ const JOKER_ANNOUNCEMENT_MS = 3_000;
 const SUIT_ANNOUNCEMENT = { hearts: "κούπες", diamonds: "καρό", clubs: "σπαθιά", spades: "πίκες" } as const;
 function posOf(viewerSeat: SeatIndex, seat: number): Pos { return ((seat - viewerSeat + 4) % 4) as Pos; }
 function playKey(play: PlayedCard): string { return `${play.seatIndex}:${play.card.id}`; }
-function jokerAnnouncementText(semantic: JokerSemantic): string {
-  if (semantic.context === "OPEN_TRICK") return semantic.mode === "COMPETE" ? "Τζόκερ από πάνω" : "Τζόκερ από κάτω";
+function jokerAnnouncementText(semantic: JokerSemantic): string | null {
+  if (semantic.context === "OPEN_TRICK") return null;
   const suit = SUIT_ANNOUNCEMENT[semantic.requestedSuit];
   return semantic.mode === "HIGHER_SUIT" ? `Θέλω μεγαλύτερο — ${suit}` : `Παίρνουν — ${suit}`;
 }
@@ -109,7 +109,9 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     const id = journal.current.active?.id + ":" + playKey(play) + ":" + JSON.stringify(play.joker);
     if (announcedJokers.current.has(id)) return;
     announcedJokers.current.add(id);
-    setAnnouncementQueue(items => [...items, { id, text: jokerAnnouncementText(play.joker!) }]);
+    const text = jokerAnnouncementText(play.joker!);
+    if (!text) return;
+    setAnnouncementQueue(items => [...items, { id, text }]);
   }, []);
   const announcementId = announcementQueue[0]?.id;
   useEffect(() => {

@@ -133,6 +133,18 @@ describe("JK-006 card artwork, Joker decision, and trick pacing", () => {
     expect(source).not.toContain("Joker ψηλά");
   });
 
+  it("does not announce redundant open-trick Joker over/under text after the choice", () => {
+    const source = read("src/components/table/TrickPresentation.tsx");
+    expect(source).toContain('if (semantic.context === "OPEN_TRICK") return null');
+    expect(source).not.toContain('semantic.mode === "COMPETE" ? "Τζόκερ από πάνω" : "Τζόκερ από κάτω"');
+  });
+
+  it("shows authoritative Joker choices without waiting for trick presentation to finish", () => {
+    const source = read("src/components/table/GameTable.tsx");
+    expect(source).toContain("!startupPresentationActive && !handRevealActive && ownArtworkSettled && jokerAction");
+    expect(source).not.toContain("!interactionPresentationActive && jokerAction");
+  });
+
   it("paces live trick plays so the previous card can settle before the next one appears", () => {
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBeGreaterThanOrEqual(600);
     expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(850);

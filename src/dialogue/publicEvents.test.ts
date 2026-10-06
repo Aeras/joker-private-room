@@ -52,6 +52,53 @@ describe("derivePublicDialogueEvents", () => {
     expect(derivePublicDialogueEvents(previous, high, room).map((event) => event.type)).toEqual(["PLAYER_DECLARED_HIGH"]);
   });
 
+  it("adds a public trick-win event in chaos without needing hidden card data", () => {
+    const chaosRoom = {
+      ...room,
+      botSettings: { ...room.botSettings, intensity: "chaos" as const },
+    };
+    const previous = projection({
+      cards: { ownHand: [], ownHandVisible: true, exposedTrumpCard: null, currentTrick: [], completedTricks: [] },
+    });
+    const next = projection({
+      stateVersion: 11,
+      cards: {
+        ownHand: [],
+        ownHandVisible: true,
+        exposedTrumpCard: null,
+        currentTrick: [],
+        completedTricks: [{
+          cards: [
+            { seatIndex: 0, card: { kind: "standard", id: "A", suit: "hearts", rank: "A" } },
+            { seatIndex: 1, card: { kind: "standard", id: "B", suit: "hearts", rank: "K" } },
+          ],
+          winnerSeat: 0,
+        }],
+      },
+    });
+    const events = derivePublicDialogueEvents(previous, next, chaosRoom);
+    expect(events.map((event) => event.type)).toContain("TRICK_WON");
+    expect(events.find((event) => event.type === "TRICK_WON")?.targetName).toBe("Νίκος");
+  });
+
+  it("keeps ordinary non-Joker trick wins silent outside chaos", () => {
+    const previous = projection();
+    const next = projection({
+      stateVersion: 11,
+      cards: {
+        ownHand: [],
+        ownHandVisible: true,
+        exposedTrumpCard: null,
+        currentTrick: [],
+        completedTricks: [{
+          cards: [{ seatIndex: 1, card: { kind: "standard", id: "B", suit: "clubs", rank: "9" } }],
+          winnerSeat: 1,
+        }],
+      },
+    });
+    expect(derivePublicDialogueEvents(previous, next, room)).toEqual([]);
+  });
+
   it("uses stable dedup-friendly ids for the same committed state", () => {
     const previous = projection();
     const next = projection({ stateVersion: 11, declarations: { currentDeclarerSeat: 1, values: [0, null, null, null] } });
