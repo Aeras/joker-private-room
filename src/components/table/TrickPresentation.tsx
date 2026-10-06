@@ -73,7 +73,7 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
   const transform = collecting
     ? relativeTransform(collectTarget, center, ROTATION[pos], 0.58, 180)
     : departedTransform(arrived, faceDown, landing, origin, center, pos);
-  return <div className={cn("fixed transition-[transform,opacity] ease-out [transform-style:preserve-3d]", winner && departingStage && "z-30 drop-shadow-[0_0_16px_var(--gold)]", collecting && !winner && "opacity-85")} style={{ left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms` }} onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform") completionRef.current(play, departingStage ?? "landing"); }}>
+  return <div className={cn("fixed transition-[transform,opacity] ease-out [transform-style:preserve-3d]", winner && departingStage && "z-30 drop-shadow-[0_0_16px_var(--gold)]", collecting && !winner && "opacity-85")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms` } as React.CSSProperties} onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform") completionRef.current(play, departingStage ?? "landing"); }}>
     <div className="relative [transform-style:preserve-3d]">
       <div className="[backface-visibility:hidden]"><PlayingCard card={play.card} /></div>
       <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]"><PlayingCard faceDown /></div>

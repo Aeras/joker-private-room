@@ -33,6 +33,7 @@ export function DraggableHandCard({
   authorityKey,
   zIndex,
   overlap,
+  revealing = false,
   onCommit,
 }: {
   card: Card;
@@ -42,12 +43,29 @@ export function DraggableHandCard({
   authorityKey: string;
   zIndex: number;
   overlap: boolean;
+  revealing?: boolean;
   onCommit: (cardId: string, releaseRect: RectLike) => Promise<void>;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const committingRef = useRef(false);
-  const canInteract = legal && !blocked && !pending;
+  const canInteract = legal && !blocked && !pending && !revealing;
+  const [faceVisible, setFaceVisible] = useState(!revealing);
+  useEffect(() => {
+    if (!revealing) {
+      setFaceVisible(true);
+      return;
+    }
+    setFaceVisible(false);
+    let second: number | undefined;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => setFaceVisible(true));
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      if (second != null) cancelAnimationFrame(second);
+    };
+  }, [revealing, card.id]);
 
   useEffect(() => {
     setDrag(null);
@@ -69,11 +87,17 @@ export function DraggableHandCard({
     };
   }, []);
 
-  const sample = useMemo(() => drag ? {
-    deltaX: drag.currentX - drag.startX,
-    deltaY: drag.currentY - drag.startY,
-    durationMs: performance.now() - drag.startedAt,
-  } : null, [drag]);
+  const sample = useMemo(
+    () =>
+      drag
+        ? {
+            deltaX: drag.currentX - drag.startX,
+            deltaY: drag.currentY - drag.startY,
+            durationMs: performance.now() - drag.startedAt,
+          }
+        : null,
+    [drag],
+  );
   const commitReady = sample ? shouldCommitCardGesture(sample) : false;
 
   const submitOnce = async (releaseRect: RectLike) => {
@@ -101,11 +125,15 @@ export function DraggableHandCard({
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    setDrag((current) => current?.pointerId === event.pointerId ? {
-      ...current,
-      currentX: event.clientX,
-      currentY: event.clientY,
-    } : current);
+    setDrag((current) =>
+      current?.pointerId === event.pointerId
+        ? {
+            ...current,
+            currentX: event.clientX,
+            currentY: event.clientY,
+          }
+        : current,
+    );
   };
 
   const finishPointer = (event: PointerEvent<HTMLDivElement>, cancelled: boolean) => {
@@ -161,7 +189,9 @@ export function DraggableHandCard({
       )}
       style={{
         zIndex: drag ? 100 : zIndex,
-        transform: drag ? `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${Math.max(-8, Math.min(8, deltaX / 18))}deg)` : undefined,
+        transform: drag
+          ? `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${Math.max(-8, Math.min(8, deltaX / 18))}deg)`
+          : undefined,
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -169,7 +199,23 @@ export function DraggableHandCard({
       onPointerCancel={(event) => finishPointer(event, true)}
       onKeyDown={onKeyDown}
     >
-      <PlayingCard card={card} selected={commitReady} className={cn(drag && "scale-[1.04]")} />
+      <div className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing}>
+        <div
+          className="relative transition-transform duration-[620ms] motion-reduce:duration-75 [transform-style:preserve-3d]"
+          style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)` }}
+        >
+          <div className="[backface-visibility:hidden]">
+            <PlayingCard
+              card={card}
+              selected={commitReady}
+              className={cn(drag && "scale-[1.04]")}
+            />
+          </div>
+          <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+            <PlayingCard faceDown />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

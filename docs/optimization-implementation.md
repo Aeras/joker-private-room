@@ -28,7 +28,7 @@ Geometry revisions preserve the journal, completion stages and local flight. Rem
 
 Verification: 9 new ordered/recovery/domain tests and 6 motion tests passed. The related domain/projection run passed 103 tests; its 7 deployment-artifact tests initially could not launch Bun. Running those with the installed platform Bun executable passed all 7. Strict TypeScript and the production build passed. Affected presentation ESLint has no errors/warnings. Actual Edge browser with reduced motion showed three consecutive tricks, 12 landings, 12 flips and 12 collections, and no remaining overlay. Physical-mobile orientation/fullscreen and normal-motion multi-human acceptance remain required.
 
-Phase 3 remains open: ordinary later deals and aggregate/scoped presentation acknowledgement. The pass is not complete.
+Phase 3 below addresses ordinary later deals and aggregate/scoped acknowledgement. The overall pass remains incomplete for the architectural risk described below.
 
 ### Phase 3 — canonical presentation eligibility
 
@@ -54,29 +54,37 @@ Diagnostics capture at most 800 events in memory and persist in 500 ms batches/p
 
 Verification: 35 related runtime tests; 54 targeted assets/ruleset/identity/freshness tests; 23 motion/ordered/runtime tests after final scope correction passed. TypeScript, production client/SSR build and affected-file lint passed. Browser confirmed decoded `/cards/optimized/card_back.webp`, fixed left/top origin and transform-only normal dealing. The existing 500 ms deal cadence and 850 ms trick hold remain. Already-dealt first-hand reveal uses a separate completion scope and cannot suppress its server acknowledgement.
 
-| OPT | Current disposition | Remaining work |
+### Phase 5 — shared reveal geometry and responsive composition
+
+Reveal and play use the same keyed draggable nodes, widths and overlap; only the two-sided face wrapper flips. Both nested animation frames are cancelled on teardown. The measured local-seat rectangle reserves the hand lane, and hand/trick dimensions account for landscape height. Remote travel and collection freeze dimensions as well as coordinates. The permanent bot composer is collapsed by default with a deliberate drawer; passive messages do not capture pointer events. New labels use the locale dictionary. Existing seat/deal anchors and the coalesced geometry architecture remain.
+
+Verification: 27 focused hand/motion/ordered/geometry tests and 26 related tests passed. The final combined optimization behavioral suite passed 43 tests. The compiled worker, solo-human and barrier/hand run passed 26 tests. Direct installed TypeScript compiler passed; production client/SSR build passed. Five reformatted phase-5 files pass full ESLint; the two previously compact motion files pass ESLint with only the formatter rule disabled. An initial npx tsc attempt could not resolve its binary and tried a blocked registry request; the direct installed compiler completed successfully instead. Browser QA used real components/artwork at 568×320 and 800×400: nine cards fit the measured reserved lane, no textbox exists while collapsed, and opening/closing the composer works. Temporary viewport override was reset. Physical-mobile safe-area, fullscreen and multi-client acceptance are still required.
+
+Timing tuning is intentionally not chosen yet: the user requires correctness first, and the per-turn visible-cursor/deadline contract remains unresolved. Keep 1000ms after actual landing, include 650ms launch-to-launch as the comparison candidate, and retain the useful 850ms completed-trick hold.
+
+| OPT | Current disposition | Remaining work / qualification |
 |---|---|---|
-| 001 | PARTIAL | Phase 1 fixes motion handoff; geometry/recovery integration still to verify in Phase 2 |
-| 002 | PARTIAL | All-unseen queue, public outgoing tail, visible cursor and catch-up policy |
-| 003 | PARTIAL | Explicit interrupted/resume ownership for dealer/deal |
-| 004 | PARTIAL | Scope and aggregate nine acknowledgements, recover superseded presentation; ordinary later-deal eligibility |
-| 005 | PARTIAL | Geometry rebasing without destructive reset |
-| 006 | PARTIAL | Decoded critical readiness and retry |
-| 007 | PARTIAL | Reviewed avatar derivatives and identity-preserving URL resolution |
-| 008 | PARTIAL | Transform-only deal travel |
-| 009 | FIXED | Phase 1; multi-client/reconnect browser acceptance remains |
-| 010 | PARTIAL | Remove 50 ms producers; phase-aware readiness |
-| 011 | FIXED | Phase 1; normal-motion physical mobile acceptance remains |
-| 012 | PARTIAL | Memory capture / safe batching |
-| 013 | PARTIAL | Collapsed composer, hand lane and manual landscape fallback |
-| 014 | PARTIAL | Shared reveal/playable geometry and frame cleanup |
-| 015 | SKIPPED — measurement required | Compare 650 ms and current cadence after correctness |
-| 016 | PARTIAL | Local landing cue fixed; remote semantic milestone needs listening |
-| 017 | PARTIAL | Latest wake derivation must preserve blocked startup exclusions |
-| 018 | DO NOT CHANGE | Shared URLs/request coalescing retained |
-| 019 | DO NOT CHANGE | Coalesced geometry, bounded audio, one release rectangle read retained |
-| 020 | PARTIAL | Same-dimension compression and DPR comparison |
-| 021 | SKIPPED — measurement required | Baseline production build now available; no demonstrated restructuring need |
+| 001 | FIXED | Continuous flight, accepted/landed handoff and rejection; physical-device acceptance pending |
+| 002 | PARTIAL | Ordered journal/public tail fixed; per-turn canonical eligibility is not leased to visible cursor; bounded long-absence catch-up |
+| 003 | FIXED | Explicit interrupted/resume generation; completed stages idempotent |
+| 004 | PARTIAL | Ordinary and both nine stages scoped/aggregate; durable fallback remains an absent-client policy; DB/device acceptance pending |
+| 005 | FIXED | Journal survives geometry revisions; motion freezes coordinates AND size, then rebases |
+| 006 | FIXED | Coalesced decoded critical readiness, bounded retry and PNG/semantic fallback |
+| 007 | FIXED | Nine reviewed 256px table derivatives; originals and identity mappings preserved |
+| 008 | FIXED | Fixed-origin transform-only normal deal, original cadence retained |
+| 009 | FIXED | Monotonic canonical version, request order and route ownership |
+| 010 | FIXED | Chat next-expiry scheduling, completion events, phase-aware readiness |
+| 011 | FIXED | Two card faces, shared timings, all-four completion ownership |
+| 012 | FIXED | Bounded memory capture, batched persistence, actual timing milestones |
+| 013 | PARTIAL | Collapsed composer, measured hand lane and height-aware dimensions; physical landscape/fullscreen QA pending |
+| 014 | FIXED | Same mounted draggable cards, final overlap/width for reveal and play; both RAFs cancelled |
+| 015 | SKIPPED — measurement required | 650ms candidate versus current 1340ms normal launch interval after P0 contract resolution; 850ms hold retained |
+| 016 | FIXED | Local and remote play cues at landing; listening/device acceptance pending |
+| 017 | PARTIAL | Wake SQL prepared, owner application and SQL acceptance not executed |
+| 018 | DO NOT CHANGE | Shared canonical identities/cache retained; no atlas |
+| 019 | DO NOT CHANGE | Coalesced measured geometry, bounded audio, one gesture release read retained |
+| 020 | FIXED | 40 same-dimension exact-RGBA derivatives; DPR 1/2/3 artifact review, physical-device acceptance pending |
+| 021 | SKIPPED — measurement required | No demonstrated bundle restructuring requirement |
 | 022 | SKIPPED — measurement required | No measured drag-render bottleneck |
 
-CUR-001/002/003 from the refreshed review remain P0 until later phases: superseded deal active flag, unscoped acknowledgement, and first-client/fallback eligibility. No claim is made that the full optimization pass is complete. No schema/deployment changes have been applied.
+Refreshed-review CUR-001 (superseded overlay) and CUR-002 (unscoped acknowledgement) have behavioral fixes/tests. CUR-003 is reduced by aggregate readiness and bounded fallback, but fallback/absent-client policy and per-turn presentation eligibility still require production acceptance. This is a draft implementation, not a completed optimization pass. No database migration or deployment has been applied.

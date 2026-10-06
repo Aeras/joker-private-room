@@ -26,6 +26,7 @@ export interface TableGeometry {
   dealTargets: Record<VisualSeat, Point>;
   trickSlots: Record<VisualSeat, Point>;
   localHandCenter: Point;
+  localHandBounds?: RectLike;
   trickCardSize: { width: number; height: number };
 }
 
@@ -96,9 +97,12 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
     y: usableBounds.top + usableBounds.height / 2,
   };
 
-  // Mirrors PlayingCard's clamp(3rem, 6vw, 5rem) at the default 16px root size.
-  const cardWidth = clamp(input.viewportWidth * 0.06, 48, 80);
-  const cardHeight = cardWidth * 7 / 5;
+  // Keep the compact trick within short landscape heights as well as its width.
+  const cardWidth = Math.min(
+    clamp(input.viewportWidth * 0.06, 48, 80),
+    Math.max(36, usableHeight / 2.7),
+  );
+  const cardHeight = (cardWidth * 7) / 5;
   const horizontalOffset = cardWidth * 0.62;
   const verticalOffset = cardHeight * 0.42;
 
@@ -130,6 +134,19 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
     2: toFeltLocal({ x: viewportCenter.x, y: viewportCenter.y - dealRadiusY }),
     3: toFeltLocal({ x: viewportCenter.x + dealRadiusX, y: viewportCenter.y }),
   };
+  // The local seat occupies the lower left; reserve a measured lane beside it.
+  // Bounds use felt-local coordinates, just like the other presentation anchors.
+  const handLeft = input.localSeatRect
+    ? clamp(input.localSeatRect.right - feltRect.left + GAP, 0, width * 0.65)
+    : 0;
+  const localHandBounds: RectLike = {
+    left: handLeft,
+    right: width,
+    top: height,
+    bottom: height,
+    width: Math.max(1, width - handLeft),
+    height: 0,
+  };
 
   return {
     feltRect,
@@ -144,7 +161,8 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
       2: { x: usableCenter.x, y: usableCenter.y - verticalOffset },
       3: { x: usableCenter.x + horizontalOffset, y: usableCenter.y },
     },
-    localHandCenter: { x: usableCenter.x, y: height },
+    localHandCenter: { x: handLeft + localHandBounds.width / 2, y: height },
+    localHandBounds,
     trickCardSize: { width: cardWidth, height: cardHeight },
   };
 }
@@ -152,13 +170,22 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
 function geometrySignature(value: Omit<TableGeometry, "epoch">): string {
   const p = (number: number) => Math.round(number * 2) / 2;
   return [
-    p(value.feltRect.width), p(value.feltRect.height),
-    p(value.usableBounds.left), p(value.usableBounds.top),
-    p(value.usableBounds.right), p(value.usableBounds.bottom),
-    p(value.dealCenter.x), p(value.dealCenter.y),
+    p(value.feltRect.width),
+    p(value.feltRect.height),
+    p(value.usableBounds.left),
+    p(value.usableBounds.top),
+    p(value.usableBounds.right),
+    p(value.usableBounds.bottom),
+    p(value.dealCenter.x),
+    p(value.dealCenter.y),
+    p(value.localHandBounds?.left ?? 0),
+    p(value.localHandBounds?.right ?? 0),
+    p(value.trickCardSize.width),
     ...([0, 1, 2, 3] as VisualSeat[]).flatMap((seat) => [
-      p(value.seatOrigins[seat].x), p(value.seatOrigins[seat].y),
-      p(value.dealTargets[seat].x), p(value.dealTargets[seat].y),
+      p(value.seatOrigins[seat].x),
+      p(value.seatOrigins[seat].y),
+      p(value.dealTargets[seat].x),
+      p(value.dealTargets[seat].y),
     ]),
   ].join(":");
 }
@@ -209,9 +236,15 @@ export function useTableGeometry(): {
   }, [measure]);
 
   useEffect(() => {
-    const nodes = [feltRef.current, topSeatRef.current, leftSeatRef.current, rightSeatRef.current, localSeatRef.current]
-      .filter((node): node is HTMLDivElement => Boolean(node));
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleMeasure);
+    const nodes = [
+      feltRef.current,
+      topSeatRef.current,
+      leftSeatRef.current,
+      rightSeatRef.current,
+      localSeatRef.current,
+    ].filter((node): node is HTMLDivElement => Boolean(node));
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleMeasure);
     for (const node of nodes) observer?.observe(node);
 
     scheduleMeasure();
