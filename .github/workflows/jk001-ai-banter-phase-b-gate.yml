@@ -21,17 +21,17 @@ jobs:
         run: >-
           bunx eslint
           supabase/functions/_shared/dialogue-core.ts
-          supabase/functions/_shared/gemini-dialogue.ts
+          supabase/functions/_shared/xai-dialogue.ts
           supabase/functions/ai-banter/index.ts
           src/test/dialogue-generation.test.ts
           --rule 'prettier/prettier: off'
       - name: Public-only provider boundary guard
         run: |
-          ! grep -q 'CanonicalGameState' supabase/functions/_shared/dialogue-core.ts supabase/functions/_shared/gemini-dialogue.ts supabase/functions/ai-banter/index.ts
-          ! grep -q 'PlayerView' supabase/functions/_shared/dialogue-core.ts supabase/functions/_shared/gemini-dialogue.ts supabase/functions/ai-banter/index.ts
-          grep -q 'gemini-3.8-flash' supabase/functions/_shared/gemini-dialogue.ts
-          grep -q 'thinkingLevel: "low"' supabase/functions/_shared/gemini-dialogue.ts
-          grep -q 'GEMINI_API_KEY' supabase/functions/ai-banter/index.ts
-          ! grep -q 'VITE_.*GEMINI' supabase/functions/ai-banter/index.ts
+          ! grep -q 'CanonicalGameState' supabase/functions/_shared/dialogue-core.ts supabase/functions/_shared/xai-dialogue.ts supabase/functions/ai-banter/index.ts
+          ! grep -q 'PlayerView' supabase/functions/_shared/dialogue-core.ts supabase/functions/_shared/xai-dialogue.ts supabase/functions/ai-banter/index.ts
+          grep -q 'grok-4.7' supabase/functions/_shared/xai-dialogue.ts
+          grep -q 'reasoning: { effort: "low" }' supabase/functions/_shared/xai-dialogue.ts
+          grep -q 'XAI_API_KEY' supabase/functions/ai-banter/index.ts
+          ! grep -q 'VITE_.*XAI' supabase/functions/ai-banter/index.ts
       - name: TypeScript
         run: bunx tsc --noEmit
