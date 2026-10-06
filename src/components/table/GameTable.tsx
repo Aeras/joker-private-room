@@ -205,7 +205,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   };
   const submitJokerSemantic = useCallback(async (semantic: JokerSemantic) => {
     if (jokerSemanticBusy) return;
-    if (!jokerAction) {
+    if (!jokerAction || busy) {
       setQueuedJokerSemantic(semantic);
       return;
     }
@@ -219,12 +219,12 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     } finally {
       setJokerSemanticBusy(false);
     }
-  }, [jokerAction, jokerSemanticBusy, onCommand]);
+  }, [busy, jokerAction, jokerSemanticBusy, onCommand]);
 
   useEffect(() => {
-    if (!jokerAction || !queuedJokerSemantic || jokerSemanticBusy) return;
+    if (!jokerAction || !queuedJokerSemantic || jokerSemanticBusy || busy) return;
     void submitJokerSemantic(queuedJokerSemantic);
-  }, [jokerAction, jokerSemanticBusy, queuedJokerSemantic, submitJokerSemantic]);
+  }, [busy, jokerAction, jokerSemanticBusy, queuedJokerSemantic, submitJokerSemantic]);
 
   useEffect(() => {
     if (projection.progression.phase === "JOKER_DECISION") return;
