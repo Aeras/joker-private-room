@@ -62,7 +62,8 @@ jobs:
           grep -q 'expectedController: "human"' src/server/gameplayCommands.ts
           grep -q 'resolveOverdueTimeoutBeforeRead' src/server/gameplayCommands.ts
           ! grep -q 'seatIndex: z.number' src/services/gameProjectionFunctions.ts
-          ! grep -q 'viewerSeat:' src/services/gameProjectionFunctions.ts
+          # Response projection metadata is valid; browser seat input is not.
+          ! grep -Eq 'viewerSeat:[[:space:]]*z\.' src/services/gameProjectionFunctions.ts
       - name: Bot semantic command guard
         id: bot_command_guard
         continue-on-error: true

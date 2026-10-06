@@ -40,7 +40,7 @@ jobs:
           ! grep -q 'game_history' supabase/migrations/20261004110851_jk001_ai_banter_phase_c_ephemeral_delivery.sql
       - name: Server-owned event and privacy guard
         run: |
-          grep -q 'μπορεί να επεξεργαστεί από εξωτερικό πάροχο AI' src/components/table/DialogueOverlay.tsx
+          tr '\n' ' ' < src/components/table/DialogueOverlay.tsx | grep -Eq 'μπορεί[[:space:]]+να[[:space:]]+επεξεργαστεί[[:space:]]+από[[:space:]]+εξωτερικό[[:space:]]+πάροχο[[:space:]]+AI'
           grep -q 'getCookie(SESSION_COOKIE)' src/services/dialogueFunctions.ts
           grep -q 'eventId: dialogueEventId' src/services/dialogueFunctions.ts
           grep -q 'action: "human-message"' src/services/dialogueFunctions.ts

@@ -126,4 +126,10 @@ describe("non-obstructing dialogue composer", () => {
     fireEvent.keyDown(input, { key: "Escape" });
     expect(view.queryByRole("textbox")).toBeNull();
   });
+  it("keeps the external-AI disclosure visible in the opened AI composer", () => {
+    const view = render(<DialogueOverlay room={{ ...room, botSettings: { ...room.botSettings, aiEnabled: true } }} messages={[]} busy={false} onSend={vi.fn()} />);
+    expect(view.queryByText(/εξωτερικό πάροχο AI/)).toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "Μήνυμα σε bot" }));
+    expect(view.getByText(/μπορεί να επεξεργαστεί από εξωτερικό πάροχο AI/)).not.toBeNull();
+  });
 });
