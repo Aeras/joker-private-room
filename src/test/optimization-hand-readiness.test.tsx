@@ -1,0 +1,35 @@
+import { useEffect } from "react";
+import { act, cleanup, render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { GameTable } from "@/components/table/GameTable";
+import { projectGameForSeat } from "@/domain/projection";
+import { reconciliationFixture } from "./fixtures/reconciliationGame";
+import type { Room } from "@/domain/players";
+const artwork = vi.hoisted(() => ({ settled: false }));
+vi.mock("@/components/table/useCriticalCardArtwork", () => ({ useCriticalCardArtwork: () => artwork.settled }));
+vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a> }));
+vi.mock("@/components/table/DealerSelectionPresentation", () => ({ DealerSelectionPresentation: () => null }));
+vi.mock("@/components/table/DealPresentation", () => ({ DealPresentation: ({ onPresentationComplete }: { onPresentationComplete: (stage: string) => void }) => { useEffect(() => onPresentationComplete("full"), [onPresentationComplete]); return null; } }));
+vi.mock("@/components/table/TrickPresentation", () => ({ TrickPresentation: () => null }));
+vi.mock("@/components/table/TableSeat", () => ({ TableSeat: () => null }));
+vi.mock("@/components/table/Scoreboard", () => ({ Scoreboard: () => null }));
+vi.mock("@/components/table/SoundToggle", () => ({ SoundToggle: () => null }));
+vi.mock("@/components/table/TableUtilityMenu", () => ({ TableUtilityMenu: () => null }));
+vi.mock("@/components/table/LocalHandRow", () => ({ LocalHandRow: ({ visible, revealing }: { visible: boolean; revealing: boolean }) => <div data-hand-ready={visible} data-revealing={revealing} /> }));
+afterEach(() => { cleanup(); vi.useRealTimers(); });
+describe("hand artwork and acknowledgement integration", () => {
+  it("waits for immediate decoded/fallback readiness, then reveal; polling does not restart ack", () => {
+    vi.useFakeTimers(); artwork.settled = false;
+    const state = reconciliationFixture(); state.progression.dealNumber = 2; state.progression.phase = "DEAL_PRESENTATION"; state.progression.currentActorSeat = null;
+    const projection = projectGameForSeat(state, 0); projection.initialDealerSelection = { status: "pending" } as typeof projection.initialDealerSelection;
+    const room = { code: "TEST", hostId: "host", seats: state.seats.map((seat, index) => ({ index, occupant: { type: "bot", bot: { id: String(index), displayName: String(index) } } })) } as Room;
+    const ack = vi.fn().mockResolvedValue(projection); const props = { room, projection, busy: false, error: null, onCommand: vi.fn(), onReclaim: vi.fn(), onEndGame: vi.fn(), onNineCardPresentationComplete: ack };
+    const view = render(<GameTable {...props} />);
+    act(() => vi.advanceTimersByTime(10000)); expect(ack).not.toHaveBeenCalled(); expect(view.container.querySelector('[data-hand-ready="false"]')).not.toBeNull();
+    artwork.settled = true; view.rerender(<GameTable {...props} />);
+    expect(view.container.querySelector('[data-revealing="true"]')).not.toBeNull();
+    act(() => vi.advanceTimersByTime(500)); view.rerender(<GameTable {...props} projection={{ ...projection }} />);
+    act(() => vi.advanceTimersByTime(200)); expect(ack).toHaveBeenCalledOnce(); expect(ack).toHaveBeenCalledWith("full", 2);
+    expect(view.container.querySelector('[data-hand-ready="true"]')).not.toBeNull();
+  });
+});

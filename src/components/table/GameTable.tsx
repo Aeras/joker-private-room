@@ -23,6 +23,7 @@ import { TableUtilityMenu } from "./TableUtilityMenu";
 import { TrickPresentation } from "./TrickPresentation";
 import { TrumpIndicator, trumpAnnouncementLabel } from "./TrumpIndicator";
 import { useTableGeometry, type RectLike } from "./useTableGeometry";
+import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 
 type Pos = 0 | 1 | 2 | 3;
 type OrientationLock = ScreenOrientation & { lock?: (orientation: "landscape") => Promise<void> };
@@ -90,8 +91,11 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const [pendingPresentationAck, setPendingPresentationAck] = useState<{ stage: DealPresentationStage; dealNumber: number } | null>(null);
   const [handRevealActive, setHandRevealActive] = useState(false);
   const [trumpAnnouncement, setTrumpAnnouncement] = useState<string | null>(null);
+  const ownArtworkSettled = useCriticalCardArtwork(projection.cards.ownHandVisible
+    ? [assets.cardBack, ...projection.cards.ownHand.map(card => assets.cardFace(card))]
+    : []);
   const startupPresentationActive = dealerIntroActive || dealPresentationActive;
-  const interactionPresentationActive = startupPresentationActive || handRevealActive || trickPresentationBusy;
+  const interactionPresentationActive = startupPresentationActive || handRevealActive || trickPresentationBusy || !ownArtworkSettled;
   const clearLocalFlight = useCallback(() => setLocalPlayPresentation(null), []);
 
   const names = room.seats.map((seat) => seat.occupant.type === "human" ? seat.occupant.player.displayName : seat.occupant.type === "bot" ? seat.occupant.bot.displayName : `Θέση ${seat.index + 1}`);
@@ -110,7 +114,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const presentedPhaseMessage = dealerIntroActive ? "Επιλογή πρώτου dealer" : dealPresentationActive ? "Μοίρασμα φύλλων" : handRevealActive ? "Άνοιγμα φύλλων" : phaseMessage(projection);
 
   const beginHandReveal = useCallback(() => {
-    if (!projection.cards.ownHandVisible || projection.cards.ownHand.length === 0) return;
+    if (!ownArtworkSettled || !projection.cards.ownHandVisible || projection.cards.ownHand.length === 0) return;
     if (projection.progression.phase !== "DECLARATION" && projection.progression.phase !== "NINE_CARD_TRUMP_CHOICE" && projection.progression.phase !== "DEAL_PRESENTATION" && projection.progression.phase !== "NINE_CARD_INITIAL_DEAL_ALL_SEATS" && projection.progression.phase !== "NINE_CARD_REMAINING_DEAL") return;
     const key = `${projection.gameId}:${projection.progression.dealNumber}:${projection.cards.ownHand.length}`;
     if (revealedHands.current.has(key)) return;
@@ -121,7 +125,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       handRevealTimer.current = null;
       setHandRevealActive(false);
     }, HAND_REVEAL_MS);
-  }, [projection.cards.ownHand, projection.cards.ownHandVisible, projection.gameId, projection.progression.dealNumber, projection.progression.phase]);
+  }, [ownArtworkSettled, projection.cards.ownHand, projection.cards.ownHandVisible, projection.gameId, projection.progression.dealNumber, projection.progression.phase]);
 
   useEffect(() => () => {
     if (handRevealTimer.current != null) window.clearTimeout(handRevealTimer.current);
@@ -178,7 +182,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     setPendingPresentationAck({ stage, dealNumber: projection.progression.dealNumber });
   }, [projection.progression.dealNumber, projection.progression.phase]);
   useEffect(() => {
-    if (!pendingPresentationAck) return;
+    if (!pendingPresentationAck || !ownArtworkSettled) return;
     let timer: number | undefined;
     const schedule = () => {
       if (timer != null) window.clearTimeout(timer);
@@ -190,7 +194,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     };
     schedule(); document.addEventListener("visibilitychange", schedule); window.addEventListener("focus", schedule); window.addEventListener("orientationchange", schedule);
     return () => { if (timer != null) window.clearTimeout(timer); document.removeEventListener("visibilitychange", schedule); window.removeEventListener("focus", schedule); window.removeEventListener("orientationchange", schedule); };
-  }, [pendingPresentationAck, onNineCardPresentationComplete]);
+  }, [pendingPresentationAck, onNineCardPresentationComplete, ownArtworkSettled]);
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) { const root = document.getElementById("table-fullscreen-root") ?? tableRootRef.current; await root?.requestFullscreen(); const orientation = screen.orientation as OrientationLock; await orientation.lock?.("landscape").catch(() => undefined); }
@@ -230,7 +234,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       {!interactionPresentationActive && trumpAction && <div className="mb-2 flex max-w-[94vw] flex-wrap justify-center gap-1 rounded-xl bg-black/70 p-2 backdrop-blur">{trumpAction.suits.map((suit) => <JButton key={suit ?? "none"} size="sm" disabled={busy} onClick={() => onCommand({ type: "choose_trump", suit })}>{suit ? SUIT_LABEL[suit] : "Χωρίς ατού"}</JButton>)}</div>}
       {!interactionPresentationActive && jokerAction && <JokerChoicePicker options={jokerAction.options} busy={busy} onSelect={(semantic) => void onCommand({ type: "choose_joker_semantic", semantic })} />}
       {!interactionPresentationActive && reclaimAction && <JButton className="mb-2" variant="outlineGold" size="sm" disabled={busy} onClick={onReclaim}>Πάρε ξανά τον έλεγχο</JButton>}
-      <LocalHandRow cards={startupPresentationActive ? [] : projection.cards.ownHand} visible={!startupPresentationActive && projection.cards.ownHandVisible} legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []} blocked={interactionPresentationActive || busy || Boolean(submittingCardId)} pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null} authorityKey={handAuthorityKey} geometry={tableGeometry.geometry} revealing={handRevealActive} onCommit={commitCard} />
+      <LocalHandRow cards={startupPresentationActive ? [] : projection.cards.ownHand} visible={!startupPresentationActive && projection.cards.ownHandVisible && ownArtworkSettled} legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []} blocked={interactionPresentationActive || busy || Boolean(submittingCardId)} pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null} authorityKey={handAuthorityKey} geometry={tableGeometry.geometry} revealing={handRevealActive} onCommit={commitCard} />
       <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
     </footer>
     {projection.lifecycle === "complete" && (forcedEnd || !trickPresentationBusy) && <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl border border-primary/40 bg-card/95 p-6 text-center shadow-2xl"><h2 className="font-display text-2xl text-primary">{forcedEnd ? "Η παρτίδα τερματίστηκε" : "Τελικό αποτέλεσμα"}</h2>{forcedEnd ? <p className="mt-3 text-sm text-white/70">Ο host τερμάτισε την παρτίδα. Όλοι οι παίκτες έχουν αποδεσμευτεί.</p> : <div className="mt-4 space-y-2">{finalRows.map((row) => <div key={row.seat} className="flex items-center justify-between rounded-xl bg-secondary/70 px-4 py-2"><span>{row.placement}η θέση · {nameAt(row.seat)}</span><strong className="tabular-nums">{row.score}</strong></div>)}</div>}<div className="mt-5 flex justify-center gap-2">{!forcedEnd && <JButton variant="outlineGold" onClick={() => setScoreOpen(true)}>Αναλυτικό σκορ</JButton>}<Link to="/" className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground">Αρχική</Link></div></div></div>}
