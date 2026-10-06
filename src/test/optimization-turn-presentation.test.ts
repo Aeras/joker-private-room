@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   acknowledgePlayedEvent,
@@ -165,8 +166,8 @@ describe("server turn presentation eligibility", () => {
     expect(releasePlayedEvent(state, now).timing.currentHumanDeadline).toBeNull();
   });
   it("foreground recovery refreshes authority and remounts presentation-only state", () => {
-    const route = require("node:fs").readFileSync("src/routes/table.tsx", "utf8");
-    const wake = require("node:fs").readFileSync(
+    const route = readFileSync("src/routes/table.tsx", "utf8");
+    const wake = readFileSync(
       "supabase/migrations/20261006182000_jk006_nonblocking_turn_presentation.sql",
       "utf8",
     );
