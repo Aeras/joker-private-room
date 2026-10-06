@@ -116,6 +116,7 @@ function TablePage() {
   const [presentationTick, setPresentationTick] = useState(0);
   const [busy, setBusy] = useState(false);
   const [dialogueBusy, setDialogueBusy] = useState(false);
+  const [dialogueFeedback, setDialogueFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [landscape, setLandscape] = useState(false);
   const [visible, setVisible] = useState(() => typeof document !== "undefined" && document.visibilityState === "visible");
@@ -484,10 +485,37 @@ function TablePage() {
   const sendDialogue = async (speakerBotId: string, text: string) => {
     if (!projection || dialogueBusy) return;
     setDialogueBusy(true);
+    setDialogueFeedback(null);
     try {
-      await sendHumanMessageToBot({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), speakerBotId, text } });
+      const result = await sendHumanMessageToBot({
+        data: { gameId: projection.gameId, actionId: crypto.randomUUID(), speakerBotId, text },
+      });
+      if (!mounted.current) return;
+      if (!result.ok) {
+        const message =
+          result.code === "DIALOGUE_RATE_LIMITED" || result.code === "DIALOGUE_COOLDOWN" || result.code === "DIALOGUE_SPEAKER_COOLDOWN"
+            ? "Το bot θέλει μια μικρή παύση πριν απαντήσει ξανά."
+            : result.code === "HUMAN_MESSAGE_RATE_LIMITED"
+              ? "Έστειλες πολλά μηνύματα γρήγορα. Δοκίμασε ξανά σε λίγο."
+              : "Το μήνυμα έφτασε, αλλά το bot δεν μπόρεσε να απαντήσει τώρα.";
+        setDialogueFeedback(message);
+        return;
+      }
+      if (result.message) {
+        setMessages((current) => [
+          ...current.filter((message) => message.id !== result.message!.id),
+          result.message!,
+        ]);
+        setDialogueFeedback(result.message.source === "xai" ? "Απάντηση AI." : "Απάντηση εφεδρικής ατάκας.");
+      } else if (result.source === "silence") {
+        setDialogueFeedback("Το bot δεν απάντησε αυτή τη φορά.");
+      }
       await refreshDialogue();
-    } finally { if (mounted.current) setDialogueBusy(false); }
+    } catch {
+      if (mounted.current) setDialogueFeedback("Η απάντηση του bot δεν ήταν διαθέσιμη.");
+    } finally {
+      if (mounted.current) setDialogueBusy(false);
+    }
   };
 
   if (connectionStatus === "initial-loading" && (!room || !projection)) {
@@ -525,7 +553,7 @@ function TablePage() {
     <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
       <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onTurnPresentationComplete={completeTurn} onNineCardPresentationComplete={completeNineCardStage} />
       <TableMessaging key={projection.gameId} room={room} projection={projection} />
-      <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} onSend={sendDialogue} />
+      <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} feedback={dialogueFeedback} onSend={sendDialogue} />
 
       {waitingForPlay && landscape && (
         <div className="absolute inset-0 z-[95] flex items-center justify-center bg-black/15" role="status" aria-live="polite">
