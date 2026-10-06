@@ -6,7 +6,6 @@ import type { PublicPlayer } from "@/domain/players";
 import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
 import { t } from "@/i18n/el";
 import { authFailureMessage } from "@/lib/auth-feedback";
-import { enterGameDisplayMode, rollbackGameDisplayMode } from "@/lib/gameDisplayMode";
 import { roomFailureMessage } from "@/lib/room-feedback";
 import { cn } from "@/lib/utils";
 import { realIdentityService } from "@/services/realIdentity";
@@ -18,7 +17,7 @@ export const Route = createFileRoute("/join")({
   component: JoinGame,
 });
 
-const inputCls = "h-12 w-full rounded-xl border border-input bg-secondary px-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
+const inputCls = "h-14 w-full rounded-xl border border-input bg-secondary px-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
 
 function JoinGame() {
   const { code: initialCode } = Route.useSearch();
@@ -55,15 +54,12 @@ function JoinGame() {
     if (!playerId || code.trim().length !== 4 || pin.length !== 4 || authBusy) { setError(t.invalidJoin); return; }
 
     setAuthBusy(true);
-    const displayMode = await enterGameDisplayMode();
-    let keepDisplayMode = false;
     try {
       const auth = await realIdentityService.verifyPin(playerId, pin);
       if (!auth.ok) { setError(authFailureMessage(auth)); return; }
 
       const current = await activeLookup.refresh();
       if (current.ok && current.activeGame) {
-        keepDisplayMode = true;
         void navigate({ to: "/table", search: { code: current.activeGame.roomCode, gameId: current.activeGame.gameId } });
         return;
       }
@@ -76,7 +72,6 @@ function JoinGame() {
       const result = await joinProductionRoom({ data: { actionId: joinActionId.current, code: code.trim().toUpperCase() } });
       if (!result.ok) {
         if (result.code === "ACTIVE_GAME_EXISTS" && result.activeGame?.roomCode) {
-          keepDisplayMode = true;
           joinActionId.current = null;
           navigate({ to: "/lobby", search: { code: result.activeGame.roomCode } });
           return;
@@ -86,11 +81,9 @@ function JoinGame() {
         return;
       }
 
-      keepDisplayMode = true;
       joinActionId.current = null;
       navigate({ to: "/lobby", search: { code: result.room.code } });
     } finally {
-      if (!keepDisplayMode) await rollbackGameDisplayMode(displayMode);
       setAuthBusy(false);
     }
   };
@@ -101,8 +94,8 @@ function JoinGame() {
 
   if (activeLookup.status === "error") {
     return (
-      <ScreenShell title={t.joinGame} variant="pregame">
-        <div className="panel space-y-3 p-4">
+      <ScreenShell title={t.joinGame} variant="pregame" contentClassName="pregame-centered-content">
+        <div className="panel max-w-xl space-y-3 p-4">
           <p className="text-sm text-negative">Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού.</p>
           <JButton className="pregame-primary-button w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
         </div>
@@ -111,13 +104,34 @@ function JoinGame() {
   }
 
   return (
-    <ScreenShell title={t.joinGame} variant="pregame">
-      <form onSubmit={submit} className="space-y-6">
-        <div><SectionLabel>{t.roomCode}</SectionLabel><input value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))} placeholder="J7K4" autoCapitalize="characters" className={cn(inputCls, "text-center font-display text-2xl tracking-[0.4em]")} /></div>
-        <div><SectionLabel>{t.playerName}</SectionLabel><div className="grid grid-cols-2 gap-2">{players.map((p) => <button type="button" key={p.id} onClick={() => { setPlayerId(p.id); joinActionId.current = null; }} className={cn("h-12 rounded-xl border text-sm transition-all active:scale-[0.98]", playerId === p.id ? "border-primary bg-gold-soft text-primary" : "border-border bg-secondary text-foreground")}>{p.displayName}</button>)}</div></div>
-        <div><SectionLabel>{t.pin}</SectionLabel><input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className={cn(inputCls, "text-center text-2xl tracking-[0.5em]")} /></div>
-        {error && <p className="text-sm text-negative">{error}</p>}
-        <JButton type="submit" size="lg" className="pregame-primary-button w-full" disabled={loading || authBusy}>{t.enterGame}</JButton>
+    <ScreenShell title={t.joinGame} variant="pregame" contentClassName="pregame-centered-content">
+      <form onSubmit={submit} className="pregame-join-card">
+        <div>
+          <SectionLabel>{t.roomCode}</SectionLabel>
+          <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))} placeholder="J7K4" autoCapitalize="characters" className={cn(inputCls, "text-center font-display text-2xl tracking-[0.4em]")} />
+        </div>
+
+        <div className="pregame-player-picker">
+          <SectionLabel>{t.playerName}</SectionLabel>
+          <div className="grid grid-cols-2 gap-2">
+            {players.map((p) => (
+              <button type="button" key={p.id} onClick={() => { setPlayerId(p.id); joinActionId.current = null; }} className={cn("h-12 rounded-xl border px-3 text-sm transition-all active:scale-[0.98]", playerId === p.id ? "border-primary bg-gold-soft text-primary" : "border-border bg-secondary text-foreground")}>
+                {p.displayName}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <SectionLabel>{t.pin}</SectionLabel>
+          <input value={pin} onChange={(e) => setPin(e.target.value.replace(/D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className={cn(inputCls, "text-center text-2xl tracking-[0.5em]")} />
+        </div>
+
+        <div className="flex items-end">
+          <JButton type="submit" size="lg" className="pregame-primary-button h-14 w-full" disabled={loading || authBusy}>{t.enterGame}</JButton>
+        </div>
+
+        {error && <p className="col-span-full text-center text-sm text-negative">{error}</p>}
       </form>
     </ScreenShell>
   );

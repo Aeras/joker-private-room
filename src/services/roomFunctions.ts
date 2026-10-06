@@ -148,6 +148,7 @@ export const assignProductionBot = createServerFn({ method: "POST" })
       actionId: data.actionId,
       code: data.code,
       seatIndex: data.seatIndex,
+      botId: data.botId,
       expectedRoomVersion: data.expectedRoomVersion,
     }),
   );

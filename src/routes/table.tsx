@@ -1,7 +1,6 @@
 import { SnapshotAdmission } from "@/components/table/snapshotAdmission";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Play } from "lucide-react";
 import { jButton } from "@/components/joker/JButton";
 import { DialogueOverlay } from "@/components/table/DialogueOverlay";
 import { dealPresentationStageKey, dealPresentationWasCompleted } from "@/components/table/dealPresentationModel";
@@ -133,6 +132,7 @@ function TablePage() {
   const readySent = useRef<boolean | null>(null);
   const presentationAckInFlight = useRef<string | null>(null);
   const nineCardAckInFlight = useRef<string | null>(null);
+  const autoStartInFlight = useRef(false);
 
   const updateConnectionStatus = useCallback((status: TableConnectionStatus) => {
     connectionStatusRef.current = status;
@@ -417,8 +417,9 @@ function TablePage() {
     } finally { if (mounted.current) setBusy(false); }
   };
 
-  const startGame = async () => {
-    if (!projection || busy || !readiness?.isHost || !readiness.allReady) return;
+  const startGame = useCallback(async () => {
+    if (!projection || busy || !readiness?.isHost || !readiness.allReady || autoStartInFlight.current) return;
+    autoStartInFlight.current = true;
     setBusy(true); setError(null);
     try {
       const result = await startProjectedGame({ data: { gameId: projection.gameId } });
@@ -429,8 +430,18 @@ function TablePage() {
       }
       const currentRoom = roomRef.current;
       if (currentRoom) acceptSnapshot(currentRoom, result.projection);
-    } finally { if (mounted.current) setBusy(false); }
-  };
+    } finally {
+      autoStartInFlight.current = false;
+      if (mounted.current) setBusy(false);
+    }
+  }, [acceptSnapshot, busy, projection, readiness, refreshReadiness]);
+
+  useEffect(() => {
+    const waiting = projection?.lifecycle === "starting" && projection.progression.phase === "INITIAL_DEALER_SELECTION";
+    if (!waiting || !landscape || !visible || !geometryReady || connectionStatus !== "ready") return;
+    if (!readiness?.isHost || !readiness.allReady) return;
+    void startGame();
+  }, [connectionStatus, geometryReady, landscape, projection?.lifecycle, projection?.progression.phase, readiness?.allReady, readiness?.isHost, startGame, visible]);
 
   const endGame = async (): Promise<boolean> => {
     if (!projection || busy || connectionStatusRef.current !== "ready") return false;
@@ -501,12 +512,10 @@ function TablePage() {
             {!geometryReady && <div className="mt-1 text-xs text-white/50">Σταθεροποίηση τραπεζιού…</div>}
             {readiness == null ? (
               <div className="mt-3 text-sm text-white/65">Έλεγχος ετοιμότητας…</div>
-            ) : readiness.isHost ? (
-              <button type="button" disabled={!readiness.allReady || busy || !geometryReady} onClick={() => void startGame()} className="mt-3 inline-flex h-14 w-14 items-center justify-center rounded-full border border-primary/60 bg-primary text-primary-foreground shadow-xl transition enabled:hover:scale-105 disabled:cursor-not-allowed disabled:opacity-35" aria-label="Έναρξη παρτίδας">
-                <Play className="h-7 w-7 translate-x-[1px]" fill="currentColor" />
-              </button>
+            ) : readiness.allReady ? (
+              <div className="mt-3 text-sm text-white/75">Όλοι είναι έτοιμοι · ξεκινά η επιλογή dealer…</div>
             ) : (
-              <div className="mt-3 text-sm text-white/65">Περιμένουμε τον host να ξεκινήσει.</div>
+              <div className="mt-3 text-sm text-white/65">Περιμένουμε να ανοίξει το τραπέζι σε όλους τους πραγματικούς παίκτες.</div>
             )}
           </div>
         </div>

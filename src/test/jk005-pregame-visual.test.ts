@@ -5,50 +5,43 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
-describe("JK-005 pregame visual identity", () => {
-  it("uses only the user-confirmed background and image CTA assets on the normal Home state", () => {
+describe("landscape pregame application shell", () => {
+  it("draws the Home UI in HTML/CSS instead of loading the old home artwork", () => {
     const home = read("src/routes/index.tsx");
-
-    expect(home).toContain('HOME_BACKGROUND = "/home/file_00000000ff708210a91f5598803905f3.png"');
-    expect(home).toContain('CREATE_GAME_ART = "/home/file_0000000025f481f49e4f8c88502ea288.png"');
-    expect(home).toContain('JOIN_GAME_ART = "/home/file_000000000c548243815079f73a1f05cb.png"');
-    expect(home).toContain("function HomeArtButton");
-    expect(home).toContain("function HomeActions");
-    expect(home).toContain("aria-label={label}");
-    expect(home).not.toContain("Private card room");
-    expect(home).not.toContain("home-brand");
-    expect(home).not.toContain('to="/history"');
-    expect(home).not.toContain('to="/settings"');
+    expect(home).toContain("home-landscape");
+    expect(home).toContain("home-choice-card");
+    expect(home).toContain("<FullscreenButton");
+    expect(home).not.toContain("HOME_BACKGROUND");
+    expect(home).not.toContain("CREATE_GAME_ART");
+    expect(home).not.toContain("JOIN_GAME_ART");
     expect(home).toContain("Επιστροφή στο παιχνίδι");
   });
 
-  it("keeps the approved image CTAs unframed, close together and visibly pressable", () => {
-    const css = read("src/pregame.css");
-
-    expect(css).toContain(".home-actions");
-    expect(css).toContain("gap: 0.65rem");
-    expect(css).toContain("top: 63.5%");
-    expect(css).not.toContain(".home-art-button--primary");
-    expect(css).not.toContain(".home-art-button--secondary");
-    expect(css).toContain(".home-art-button:active");
-    expect(css).toContain("translateY(3px) scale(0.975)");
-    expect(css).toContain(".home-art-button:focus-visible");
-    expect(css).toContain("@media (prefers-reduced-motion: reduce)");
-  });
-
-  it("scopes the premium visual family to Create, Join and Lobby", () => {
+  it("keeps Create, Join and Lobby in one landscape-first shell with fullscreen access", () => {
     const shell = read("src/components/joker/ScreenShell.tsx");
     const create = read("src/routes/create.tsx");
     const join = read("src/routes/join.tsx");
     const lobby = read("src/routes/lobby.tsx");
+    const css = read("src/pregame.css");
 
     expect(shell).toContain('variant?: "default" | "pregame"');
-    expect(shell).toContain('pregame && "pregame-shell"');
-    expect(create).toContain('variant="pregame"');
-    expect(join).toContain('variant="pregame"');
-    expect(lobby).toContain('variant="pregame"');
-    expect(create).toContain("pregame-primary-button");
-    expect(join).toContain("pregame-primary-button");
-    expect(lobby).toContain("pregame-primary-button");
+    expect(shell).toContain("<FullscreenButton");
+    expect(shell).toContain("pregame-portrait-gate");
+    expect(create).toContain("pregame-create-grid");
+    expect(join).toContain("pregame-join-card");
+    expect(lobby).toContain("pregame-lobby-grid");
+    expect(css).toContain("height: 100dvh");
+    expect(css).toContain("overflow: hidden");
+    expect(css).toContain("@media (orientation: portrait)");
+  });
+
+  it("exposes host bot selection from lobby seats without replacing the table UI", () => {
+    const lobby = read("src/routes/lobby.tsx");
+    const roomFunctions = read("src/services/roomFunctions.ts");
+    expect(lobby).toContain("assignProductionBot");
+    expect(lobby).toContain("replaceProductionBot");
+    expect(lobby).toContain("clearProductionBot");
+    expect(lobby).toContain("Επιλογή bot");
+    expect(roomFunctions).toContain("botId: data.botId");
   });
 });

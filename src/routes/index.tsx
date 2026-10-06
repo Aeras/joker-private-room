@@ -1,11 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { History, RotateCw, Settings2 } from "lucide-react";
+import { FullscreenButton } from "@/components/joker/FullscreenButton";
 import { JButton, jButton } from "@/components/joker/JButton";
 import { t } from "@/i18n/el";
 import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
-
-const HOME_BACKGROUND = "/home/file_00000000ff708210a91f5598803905f3.png";
-const CREATE_GAME_ART = "/home/file_0000000025f481f49e4f8c88502ea288.png";
-const JOIN_GAME_ART = "/home/file_000000000c548243815079f73a1f05cb.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -19,74 +17,66 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-function HomeArtButton({
-  to,
-  image,
-  label,
-}: {
-  to: "/create" | "/join";
-  image: string;
-  label: string;
-}) {
-  const content = (
-    <>
-      <img src={image} alt="" aria-hidden="true" className="home-art-button__image" draggable={false} />
-      <span className="sr-only">{label}</span>
-    </>
-  );
-
-  if (to === "/join") {
-    return (
-      <Link to="/join" search={{ code: undefined }} aria-label={label} className="home-art-button">
-        {content}
-      </Link>
-    );
-  }
-
-  return (
-    <Link to="/create" aria-label={label} className="home-art-button">
-      {content}
-    </Link>
-  );
-}
-
-function HomeActions() {
-  return (
-    <div className="home-actions">
-      <HomeArtButton to="/create" image={CREATE_GAME_ART} label={t.createGame} />
-      <HomeArtButton to="/join" image={JOIN_GAME_ART} label={t.joinGame} />
-    </div>
-  );
-}
-
 function Home() {
   const activeLookup = useCurrentActiveGame();
 
   return (
-    <div className="home-premium">
-      <img src={HOME_BACKGROUND} alt="" aria-hidden="true" className="home-premium__background" draggable={false} />
+    <div className="home-landscape">
+      <div className="home-topbar">
+        <div className="home-wordmark">JOKER</div>
+        <FullscreenButton />
+      </div>
 
-      <main className="home-premium__content">
-        {activeLookup.status === "active" ? (
-          <div className="home-actions home-actions--single">
+      <main className="home-landscape__content">
+        <section className="home-hero" aria-label="JOKER">
+          <div className="home-card-mark home-card-mark--left" aria-hidden="true">J</div>
+          <div className="home-card-mark home-card-mark--right" aria-hidden="true">★</div>
+          <p className="home-kicker">Ιδιωτικό παιχνίδι καρτών</p>
+          <h1>JOKER</h1>
+          <p className="home-subtitle">4 παίκτες · φίλοι ή bots · ένα τραπέζι</p>
+        </section>
+
+        <section className="home-menu" aria-label="Κύριο μενού">
+          {activeLookup.status === "active" ? (
             <Link
               to="/table"
               search={{ code: activeLookup.activeGame.roomCode, gameId: activeLookup.activeGame.gameId }}
-              className={jButton({ size: "lg", className: "pregame-primary-button w-full text-base" })}
+              className={jButton({ size: "lg", className: "pregame-primary-button home-main-action" })}
             >
               Επιστροφή στο παιχνίδι
             </Link>
-          </div>
-        ) : activeLookup.status === "error" ? (
-          <div className="home-actions home-actions--single">
-            <JButton className="pregame-primary-button w-full" onClick={() => void activeLookup.refresh()}>
+          ) : activeLookup.status === "error" ? (
+            <JButton className="pregame-primary-button home-main-action" onClick={() => void activeLookup.refresh()}>
               Δοκιμή ξανά
             </JButton>
+          ) : (
+            <div className="home-main-actions">
+              <Link to="/create" className="home-choice-card">
+                <span className="home-choice-card__number">01</span>
+                <strong>{t.createGame}</strong>
+                <small>Φτιάξε ιδιωτικό δωμάτιο</small>
+              </Link>
+              <Link to="/join" search={{ code: undefined }} className="home-choice-card">
+                <span className="home-choice-card__number">02</span>
+                <strong>{t.joinGame}</strong>
+                <small>Μπες με κωδικό δωματίου</small>
+              </Link>
+            </div>
+          )}
+
+          <div className="home-secondary-actions">
+            <Link to="/history"><History className="h-4 w-4" />Ιστορικό</Link>
+            <Link to="/settings"><Settings2 className="h-4 w-4" />Ρυθμίσεις</Link>
           </div>
-        ) : (
-          <HomeActions />
-        )}
+        </section>
       </main>
+
+      <div className="pregame-portrait-gate" role="status" aria-live="polite">
+        <RotateCw className="h-10 w-10" />
+        <strong>Γύρισε τη συσκευή οριζόντια</strong>
+        <span>Πάτησε Full screen και συνέχισε σε landscape.</span>
+        <FullscreenButton className="mt-2" />
+      </div>
     </div>
   );
 }

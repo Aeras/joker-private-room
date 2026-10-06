@@ -22,12 +22,12 @@ export const Route = createFileRoute("/create")({
 
 function Toggle({ checked, disabled, onChange, label }: { checked: boolean; disabled?: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <label className={cn("flex min-h-12 cursor-pointer items-center gap-3", disabled && "cursor-not-allowed opacity-40")}>
+    <label className={cn("flex min-h-10 cursor-pointer items-center gap-3", disabled && "cursor-not-allowed opacity-40")}>
       <input type="checkbox" className="peer sr-only" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
-      <span className="flex h-6 w-6 items-center justify-center rounded-md border border-primary/50 bg-secondary peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
-        {checked && <Check className="h-4 w-4 text-primary-foreground" />}
+      <span className="flex h-5 w-5 items-center justify-center rounded-md border border-primary/50 bg-secondary peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+        {checked && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
       </span>
-      <span className="text-foreground">{label}</span>
+      <span className="text-sm text-foreground">{label}</span>
     </label>
   );
 }
@@ -95,7 +95,7 @@ function CreateGame() {
     } finally { setAuthBusy(false); }
   };
 
-  const create = async () => {
+  const createRoom = async () => {
     if (!verifiedHost || busy) return;
     setBusy(true);
     setRoomError(null);
@@ -132,8 +132,8 @@ function CreateGame() {
 
   if (activeLookup.status === "error") {
     return (
-      <ScreenShell title={t.createGame} variant="pregame">
-        <div className="panel space-y-3 p-4">
+      <ScreenShell title={t.createGame} variant="pregame" contentClassName="pregame-centered-content">
+        <div className="panel max-w-xl space-y-3 p-4">
           <p className="text-sm text-negative">Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού.</p>
           <JButton className="pregame-primary-button w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
         </div>
@@ -143,69 +143,83 @@ function CreateGame() {
 
   if (!verifiedHost) {
     return (
-      <ScreenShell title={t.createGame} variant="pregame">
-        <div className="space-y-6">
-          <div><SectionLabel>Host</SectionLabel><div className="panel p-4 text-center font-display text-xl">{host?.displayName ?? "Φόρτωση…"}</div></div>
-          <div><SectionLabel>{t.pin}</SectionLabel><input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className="h-12 w-full rounded-xl border border-input bg-secondary px-4 text-center text-2xl tracking-[0.5em] text-foreground focus:outline-none focus:ring-2 focus:ring-ring" /></div>
-          {authError && <p className="text-sm text-negative">{authError}</p>}
-          <JButton size="lg" className="pregame-primary-button w-full" onClick={unlock} disabled={!host || pin.length !== 4 || authBusy}>Συνέχεια</JButton>
+      <ScreenShell title={t.createGame} variant="pregame" contentClassName="pregame-centered-content">
+        <div className="pregame-auth-card">
+          <div>
+            <SectionLabel>Host</SectionLabel>
+            <div className="panel flex h-24 items-center justify-center px-6 text-center font-display text-2xl">{host?.displayName ?? "Φόρτωση…"}</div>
+          </div>
+          <div>
+            <SectionLabel>{t.pin}</SectionLabel>
+            <input value={pin} onChange={(e) => setPin(e.target.value.replace(/D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className="h-16 w-full rounded-xl border border-input bg-secondary px-4 text-center text-3xl tracking-[0.5em] text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+          <div className="flex items-end">
+            <JButton size="lg" className="pregame-primary-button h-16 w-full" onClick={unlock} disabled={!host || pin.length !== 4 || authBusy}>Συνέχεια</JButton>
+          </div>
+          {authError && <p className="col-span-full text-center text-sm text-negative">{authError}</p>}
         </div>
       </ScreenShell>
     );
   }
 
   return (
-    <ScreenShell title={t.createGame} variant="pregame" footer={<div className="space-y-2">{roomError && <p className="text-sm text-negative">{roomError}</p>}<JButton size="lg" className="pregame-primary-button w-full" onClick={create} disabled={busy}>{t.createRoom}</JButton></div>}>
-      <SectionLabel>{t.chooseGame}</SectionLabel>
-      <div role="radiogroup" className="space-y-3">
-        {options.map((r) => {
-          const active = r.id === rulesetId;
-          const available = true;
-          return <button key={r.id} role="radio" aria-checked={active} aria-disabled={!available} disabled={!available} onClick={() => available && setRulesetId(r.id)} className={cn("panel flex w-full items-center gap-4 p-4 text-left transition-all active:scale-[0.99]", active && "ring-gold", !available && "cursor-not-allowed opacity-45")}><span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", active ? "border-primary" : "border-muted-foreground")}>{active && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}</span><span><span className="block font-display text-lg text-foreground">{r.name}</span><span className="block text-sm text-muted-foreground">{available ? r.description : t.rulesetNotImplemented}</span></span></button>;
-        })}
-      </div>
-      <div className="mt-8">
-        <SectionLabel>{t.botBehavior}</SectionLabel>
-        <div className="panel px-4 py-2">
-          <Toggle
-            checked={botsTalk}
-            onChange={(v) => {
+    <ScreenShell
+      title={t.createGame}
+      variant="pregame"
+      contentClassName="pregame-form-content"
+      footer={
+        <div className="mx-auto flex max-w-3xl items-center gap-3">
+          {roomError && <p className="flex-1 text-sm text-negative">{roomError}</p>}
+          <JButton size="lg" className="pregame-primary-button ml-auto min-w-64" onClick={createRoom} disabled={busy}>{t.createRoom}</JButton>
+        </div>
+      }
+    >
+      <div className="pregame-create-grid">
+        <section>
+          <SectionLabel>{t.chooseGame}</SectionLabel>
+          <div role="radiogroup" className="grid gap-2">
+            {options.map((r) => {
+              const active = r.id === rulesetId;
+              return (
+                <button key={r.id} role="radio" aria-checked={active} onClick={() => setRulesetId(r.id)} className={cn("panel flex min-h-20 w-full items-center gap-4 p-3 text-left transition-all active:scale-[0.99]", active && "ring-gold")}>
+                  <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", active ? "border-primary" : "border-muted-foreground")}>{active && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}</span>
+                  <span><span className="block font-display text-lg text-foreground">{r.name}</span><span className="block text-xs text-muted-foreground">{r.description}</span></span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section>
+          <SectionLabel>{t.botBehavior}</SectionLabel>
+          <div className="panel h-full px-4 py-2">
+            <Toggle checked={botsTalk} onChange={(v) => {
               setBotsTalk(v);
               if (!v) {
                 setAllowProfanity(false);
                 setAiEnabled(false);
               }
-            }}
-            label={t.botsTalk}
-          />
-          {botsTalk && (
-            <div className="space-y-2 border-t border-border pl-4">
-              <Toggle checked={allowProfanity} onChange={setAllowProfanity} label={t.allowProfanity} />
-              <Toggle checked={aiEnabled} onChange={setAiEnabled} label={t.useAiBanter} />
-              <div className="pb-3 pt-1">
-                <p className="mb-2 text-sm text-muted-foreground">{t.banterIntensity}</p>
-                <div role="radiogroup" className="grid grid-cols-3 gap-2">
-                  {DIALOGUE_INTENSITIES.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      role="radio"
-                      aria-checked={intensity === value}
-                      onClick={() => setIntensity(value)}
-                      className={cn(
-                        "min-h-10 rounded-lg border px-2 text-sm transition-all active:scale-[0.98]",
-                        intensity === value ? "border-primary bg-gold-soft text-primary" : "border-border text-muted-foreground",
-                      )}
-                    >
-                      {intensityLabels[value]}
-                    </button>
-                  ))}
+            }} label={t.botsTalk} />
+            {botsTalk ? (
+              <div className="space-y-1 border-t border-border pt-1">
+                <Toggle checked={allowProfanity} onChange={setAllowProfanity} label={t.allowProfanity} />
+                <Toggle checked={aiEnabled} onChange={setAiEnabled} label={t.useAiBanter} />
+                <div className="pt-1">
+                  <p className="mb-2 text-xs text-muted-foreground">{t.banterIntensity}</p>
+                  <div role="radiogroup" className="grid grid-cols-3 gap-2">
+                    {DIALOGUE_INTENSITIES.map((value) => (
+                      <button key={value} type="button" role="radio" aria-checked={intensity === value} onClick={() => setIntensity(value)} className={cn("min-h-10 rounded-lg border px-2 text-xs transition-all active:scale-[0.98]", intensity === value ? "border-primary bg-gold-soft text-primary" : "border-border text-muted-foreground")}>
+                        {intensityLabels[value]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-        <p className="mt-2 px-1 text-xs text-muted-foreground">{t.botsNote}</p>
+            ) : (
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{t.botsNote}</p>
+            )}
+          </div>
+        </section>
       </div>
     </ScreenShell>
   );
