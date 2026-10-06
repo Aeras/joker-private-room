@@ -28,6 +28,10 @@ const diversitySql = readFileSync(
   "supabase/migrations/20261006183000_jk006_dialogue_recent_memory.sql",
   "utf8",
 );
+const humanPrioritySql = readFileSync(
+  "supabase/migrations/20261006183500_jk006_human_bot_dialogue_priority.sql",
+  "utf8",
+);
 const edge = readFileSync("supabase/functions/ai-banter/index.ts", "utf8");
 const service = readFileSync("src/services/dialogueFunctions.ts", "utf8");
 const table = readFileSync("src/routes/table.tsx", "utf8");
