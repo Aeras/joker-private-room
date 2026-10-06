@@ -1,0 +1,24 @@
+{
+  "name": "JOKER",
+  "short_name": "JOKER",
+  "description": "Ιδιωτικό παιχνίδι Joker.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#090b09",
+  "theme_color": "#1f1712",
+  "icons": [
+    {
+      "src": "/favicon.svg?v=2",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg?v=2",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
