@@ -145,16 +145,16 @@ function CreateGame() {
     return (
       <ScreenShell title={t.createGame} variant="pregame" contentClassName="pregame-centered-content">
         <div className="pregame-auth-card">
-          <div>
+          <div className="pregame-auth-block">
             <SectionLabel>Host</SectionLabel>
-            <div className="panel flex h-24 items-center justify-center px-6 text-center font-display text-2xl">{host?.displayName ?? "Φόρτωση…"}</div>
+            <div className="panel pregame-auth-control pregame-host-control">{host?.displayName ?? "Φόρτωση…"}</div>
           </div>
-          <div>
+          <div className="pregame-auth-block">
             <SectionLabel>{t.pin}</SectionLabel>
-            <input value={pin} onChange={(e) => setPin(e.target.value.replace(/D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className="h-16 w-full rounded-xl border border-input bg-secondary px-4 text-center text-3xl tracking-[0.5em] text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className="pregame-auth-control pregame-pin-input w-full border border-input bg-secondary text-center text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
           </div>
-          <div className="flex items-end">
-            <JButton size="lg" className="pregame-primary-button h-16 w-full" onClick={unlock} disabled={!host || pin.length !== 4 || authBusy}>Συνέχεια</JButton>
+          <div className="pregame-auth-action">
+            <JButton size="lg" className="pregame-primary-button pregame-auth-control w-full" onClick={unlock} disabled={!host || pin.length !== 4 || authBusy}>Συνέχεια</JButton>
           </div>
           {authError && <p className="col-span-full text-center text-sm text-negative">{authError}</p>}
         </div>
@@ -168,22 +168,22 @@ function CreateGame() {
       variant="pregame"
       contentClassName="pregame-form-content"
       footer={
-        <div className="mx-auto flex max-w-3xl items-center gap-3">
+        <div className="pregame-create-footer">
           {roomError && <p className="flex-1 text-sm text-negative">{roomError}</p>}
-          <JButton size="lg" className="pregame-primary-button ml-auto min-w-64" onClick={createRoom} disabled={busy}>{t.createRoom}</JButton>
+          <JButton size="lg" className="pregame-primary-button pregame-create-cta" onClick={createRoom} disabled={busy}>{t.createRoom}</JButton>
         </div>
       }
     >
       <div className="pregame-create-grid">
         <section>
           <SectionLabel>{t.chooseGame}</SectionLabel>
-          <div role="radiogroup" className="grid gap-2">
+          <div role="radiogroup" className="pregame-rules-list">
             {options.map((r) => {
               const active = r.id === rulesetId;
               return (
-                <button key={r.id} role="radio" aria-checked={active} onClick={() => setRulesetId(r.id)} className={cn("panel flex min-h-20 w-full items-center gap-4 p-3 text-left transition-all active:scale-[0.99]", active && "ring-gold")}>
+                <button key={r.id} role="radio" aria-checked={active} onClick={() => setRulesetId(r.id)} className={cn("panel pregame-rule-card w-full text-left transition-all active:scale-[0.99]", active && "ring-gold")}>
                   <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", active ? "border-primary" : "border-muted-foreground")}>{active && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}</span>
-                  <span><span className="block font-display text-lg text-foreground">{r.name}</span><span className="block text-xs text-muted-foreground">{r.description}</span></span>
+                  <span className="min-w-0"><span className="pregame-rule-title block font-display text-foreground">{r.name}</span><span className="pregame-rule-description block text-muted-foreground">{r.description}</span></span>
                 </button>
               );
             })}
@@ -192,7 +192,7 @@ function CreateGame() {
 
         <section>
           <SectionLabel>{t.botBehavior}</SectionLabel>
-          <div className="panel h-full px-4 py-2">
+          <div className="panel pregame-bot-panel h-full">
             <Toggle checked={botsTalk} onChange={(v) => {
               setBotsTalk(v);
               if (!v) {
