@@ -46,8 +46,8 @@ export function LocalHandRow({
   const laneWidth = geometry?.localHandBounds?.width;
   const fitWidth = laneWidth ? laneWidth / (1 + Math.max(0, cards.length - 1) * 0.64) : null;
   const cardWidth = fitWidth
-    ? `min(clamp(2.7rem, min(7.2vw, 17vh), 5rem), ${fitWidth}px)`
-    : "clamp(2.7rem, min(7.2vw, 17vh), 5rem)";
+    ? `min(clamp(3rem, min(8.4vw, 19vh), 6rem), ${fitWidth}px)`
+    : "clamp(3rem, min(8.4vw, 19vh), 6rem)";
 
   return (
     <div

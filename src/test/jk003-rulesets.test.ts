@@ -68,8 +68,8 @@ describe("JK-003 exact versioned policies", () => {
     for (const suit of ["spades", "clubs"] as const) {
       const card = createDeck("classic38").find((c) => c.id === "6-" + suit)!;
       expect(createDeck().some((c) => c.id === card.id)).toBe(false);
-      expect(assets.cardFace(card)).toBe("/cards/" + suit + "_6.png");
-      expect(existsSync("public/cards/" + suit + "_6.png")).toBe(true);
+      expect(assets.cardFace(card)).toBe("/cards/runtime-png/faces/" + suit + "_6.png");
+      expect(existsSync("public/cards/runtime-png/faces/" + suit + "_6.png")).toBe(true);
     }
   });
   it("inherits Popular premia for every policy", () => {

@@ -109,9 +109,9 @@ describe("JK-006 card artwork, Joker decision, and trick pacing", () => {
   it("preloads the complete canonical visual deck", () => {
     expect(CARD_ASSET_URLS).toHaveLength(39);
     expect(new Set(CARD_ASSET_URLS).size).toBe(39);
-    expect(CARD_ASSET_URLS).toContain("/cards/joker_red.png");
-    expect(CARD_ASSET_URLS).toContain("/cards/joker_black.png");
-    expect(CARD_ASSET_URLS).toContain("/cards/backdesign_1.png");
+    expect(CARD_ASSET_URLS).toContain("/cards/runtime-png/faces/joker_red.png");
+    expect(CARD_ASSET_URLS).toContain("/cards/runtime-png/faces/joker_black.png");
+    expect(CARD_ASSET_URLS).toContain("/cards/runtime-png/backs/blue_back.png");
   });
 
   it("does not flash the semantic face during normal PNG loading", () => {

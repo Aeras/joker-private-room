@@ -1,11 +1,12 @@
 import { assets } from "./registry";
 const SUITS = ["hearts", "diamonds", "clubs", "spades"] as const;
 const RANK_ASSET_NAMES = ["6", "7", "8", "9", "10", "jack", "queen", "king", "ace"] as const;
+const RUNTIME_FACE_ROOT = "/cards/runtime-png/faces";
 
 export const CARD_ASSET_URLS = [
-  ...SUITS.flatMap((suit) => RANK_ASSET_NAMES.map((rank) => `/cards/${suit}_${rank}.png`)),
-  "/cards/joker_red.png",
-  "/cards/joker_black.png",
+  ...SUITS.flatMap((suit) => RANK_ASSET_NAMES.map((rank) => `${RUNTIME_FACE_ROOT}/${suit}_${rank}.png`)),
+  `${RUNTIME_FACE_ROOT}/joker_red.png`,
+  `${RUNTIME_FACE_ROOT}/joker_black.png`,
   assets.cardBack,
 ] as const;
 
@@ -62,7 +63,7 @@ export function preloadCardAssets(): Promise<void> {
 }
 
 // PlayingCard imports this module as part of the gameplay bundle, so start warming
-// all 39 canonical assets before the first individual card actually needs them.
+// all 39 canonical gameplay assets before the first individual card actually needs them.
 if (typeof window !== "undefined") {
   void preloadCardAssets();
 }

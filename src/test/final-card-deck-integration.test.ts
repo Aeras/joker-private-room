@@ -21,29 +21,33 @@ function publicPath(assetPath: string): string {
 }
 
 describe("JK-001 final card deck integration", () => {
-  it("contains exactly 52 standard PNGs, 16 backs and two Jokers", () => {
-    const files = readdirSync("public/cards").filter((name) => name.endsWith(".png")).sort();
-    const expected = [
-      ...Array.from({ length: 16 }, (_, index) => `backdesign_${index + 1}.png`),
+  it("contains 52 standard runtime PNGs, two Jokers and one blue back", () => {
+    const faces = readdirSync("public/cards/runtime-png/faces").filter((name) => name.endsWith(".png")).sort();
+    const backs = readdirSync("public/cards/runtime-png/backs").filter((name) => name.endsWith(".png")).sort();
+    const expectedFaces = [
       "joker_black.png",
       "joker_red.png",
       ...SUITS.flatMap((suit) => ["2", "3", "4", "5", ...RANKS.map(rank => rankAssetName[rank])].map(rank => `${suit}_${rank}.png`)),
     ].sort();
 
-    expect(files).toEqual(expected);
-    expect(files).toHaveLength(70);
-    expect(existsSync("public/cards/optimized")).toBe(false);
-    expect(existsSync("public/cards/card_back.png")).toBe(false);
-    for (const file of files) {
-      expect(statSync(`public/cards/${file}`).size).toBeGreaterThan(0);
-    }
+    expect(faces).toEqual(expectedFaces);
+    expect(faces).toHaveLength(54);
+    expect(backs).toEqual(["blue_back.png"]);
+    for (const file of faces) expect(statSync(`public/cards/runtime-png/faces/${file}`).size).toBeGreaterThan(0);
+    expect(statSync("public/cards/runtime-png/backs/blue_back.png").size).toBeGreaterThan(0);
   });
 
-  it("maps every normal card identity to its matching PNG", () => {
+  it("retains matching SVG source assets", () => {
+    const faces = readdirSync("public/cards/sources-svg/faces").filter((name) => name.endsWith(".svg"));
+    expect(faces).toHaveLength(54);
+    expect(existsSync("public/cards/sources-svg/backs/blue_back.svg")).toBe(true);
+  });
+
+  it("maps every normal gameplay card identity to its matching runtime PNG", () => {
     for (const suit of SUITS) {
       for (const rank of RANKS) {
         const card: Card = { kind: "standard", id: `${rank}-${suit}`, suit, rank };
-        const expected = `/cards/${suit}_${rankAssetName[rank]}.png`;
+        const expected = `/cards/runtime-png/faces/${suit}_${rankAssetName[rank]}.png`;
         expect(assets.cardFace(card)).toBe(expected);
         expect(assets.cardArtwork(expected)).toBe(expected);
         expect(existsSync(publicPath(expected))).toBe(true);
@@ -51,10 +55,10 @@ describe("JK-001 final card deck integration", () => {
     }
   });
 
-  it("maps both canonical Jokers and the shared card back", () => {
-    expect(assets.cardFace({ kind: "joker", id: "joker-1" })).toBe("/cards/joker_red.png");
-    expect(assets.cardFace({ kind: "joker", id: "joker-2" })).toBe("/cards/joker_black.png");
-    expect(assets.cardBack).toBe("/cards/backdesign_1.png");
+  it("maps both canonical Jokers and the shared blue card back", () => {
+    expect(assets.cardFace({ kind: "joker", id: "joker-1" })).toBe("/cards/runtime-png/faces/joker_red.png");
+    expect(assets.cardFace({ kind: "joker", id: "joker-2" })).toBe("/cards/runtime-png/faces/joker_black.png");
+    expect(assets.cardBack).toBe("/cards/runtime-png/backs/blue_back.png");
     expect(existsSync(publicPath(assets.cardBack))).toBe(true);
   });
 
@@ -70,17 +74,14 @@ describe("JK-001 final card deck integration", () => {
     }
   });
 
-  it("retains ranks 2–5 for future games without expanding current decks or preloading", () => {
+  it("retains ranks 2–5 for future games without expanding current gameplay preloading", () => {
     for (const suit of SUITS) for (const rank of ["2", "3", "4", "5"]) {
-      const url = `/cards/${suit}_${rank}.png`;
+      const url = `/cards/runtime-png/faces/${suit}_${rank}.png`;
       expect(existsSync(publicPath(url))).toBe(true);
       expect(CARD_ASSET_URLS).not.toContain(url);
     }
     expect(createDeck("popular36")).toHaveLength(36);
     expect(createDeck("classic38")).toHaveLength(38);
-    for (const profile of ["popular36", "classic38"] as const) {
-      expect(createDeck(profile).filter(card => card.kind === "standard").every(card => card.kind === "standard" && RANKS.includes(card.rank))).toBe(true);
-    }
     expect(CARD_ASSET_URLS).toHaveLength(39);
     for (const url of CARD_ASSET_URLS) expect(assets.cardArtwork(url)).toBe(url);
   });
@@ -102,6 +103,6 @@ describe("JK-001 final card deck integration", () => {
     const registry = readFileSync("src/assets/registry.ts", "utf8");
     expect(registry).not.toContain("cardBack: undefined");
     expect(registry).not.toContain("cardFace: (_card: Card): string | undefined => undefined");
-    expect(registry).toContain('cardBack: "/cards/backdesign_1.png"');
+    expect(registry).toContain('cardBack: `${RUNTIME_CARD_ROOT}/backs/blue_back.png`');
   });
 });

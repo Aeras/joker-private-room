@@ -35,11 +35,11 @@ describe("decoded artwork readiness", () => {
     await vi.advanceTimersByTimeAsync(5250); expect(await request).toBe(false);
   });
   it("critical PNG artwork retries the same source without requesting old WebPs", async () => {
-    const cache = await import("@/assets/cardPreload"); const request = cache.preloadCardAsset("/cards/backdesign_1.png");
-    expect(cache.resolvedCardArtwork("/cards/backdesign_1.png")).toBe("/cards/backdesign_1.png");
+    const cache = await import("@/assets/cardPreload"); const request = cache.preloadCardAsset("/cards/runtime-png/backs/blue_back.png");
+    expect(cache.resolvedCardArtwork("/cards/runtime-png/backs/blue_back.png")).toBe("/cards/runtime-png/backs/blue_back.png");
     rejectDecode(new Error("PNG temporarily unavailable")); await Promise.resolve(); vi.advanceTimersByTime(250);
-    expect(images.at(-1)?.src).toBe("/cards/backdesign_1.png"); resolveDecode();
-    expect(await request).toBe(true); expect(cache.resolvedCardArtwork("/cards/backdesign_1.png")).toBe("/cards/backdesign_1.png");
+    expect(images.at(-1)?.src).toBe("/cards/runtime-png/backs/blue_back.png"); resolveDecode();
+    expect(await request).toBe(true); expect(cache.resolvedCardArtwork("/cards/runtime-png/backs/blue_back.png")).toBe("/cards/runtime-png/backs/blue_back.png");
     expect(images.some(image => image.src.includes("/cards/optimized/"))).toBe(false);
   });
   it("critical hook gates presentation until decode completes", async () => {
