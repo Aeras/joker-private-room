@@ -120,7 +120,7 @@ describe("AI banter Phase D — privacy and authority release gates", () => {
     const [, init] = fetchImpl.mock.calls[0]!;
     const request = JSON.parse(String((init as RequestInit).body));
     expect(Object.keys(request).sort()).toEqual(["input", "max_output_tokens", "model", "prompt_cache_key", "reasoning", "store"]);
-    expect(request.reasoning.effort).toBe("low");
+    expect(request.reasoning.effort).toBe("none");
     expect(request.max_output_tokens).toBe(XAI_DIALOGUE_MAX_OUTPUT_TOKENS);
     expect(request.store).toBe(false);
     expect(request.tools).toBeUndefined();
