@@ -35,6 +35,7 @@ export function DraggableHandCard({
   zIndex,
   overlap,
   revealing = false,
+  faceUpOnReveal = false,
   dropRect,
   onCommit,
 }: {
@@ -46,6 +47,7 @@ export function DraggableHandCard({
   zIndex: number;
   overlap: boolean;
   revealing?: boolean;
+  faceUpOnReveal?: boolean;
   dropRect?: RectLike | null;
   onCommit: (cardId: string, releaseRect: RectLike) => Promise<void>;
 }) {
@@ -53,9 +55,9 @@ export function DraggableHandCard({
   const [drag, setDrag] = useState<DragState | null>(null);
   const committingRef = useRef(false);
   const canInteract = legal && !blocked && !pending && !revealing;
-  const [faceVisible, setFaceVisible] = useState(!revealing);
+  const [faceVisible, setFaceVisible] = useState(!revealing || faceUpOnReveal);
   useLayoutEffect(() => {
-    if (!revealing) {
+    if (!revealing || faceUpOnReveal) {
       setFaceVisible(true);
       return;
     }
@@ -72,7 +74,7 @@ export function DraggableHandCard({
       window.removeEventListener("orientationchange", finish);
       document.removeEventListener("visibilitychange", finish);
     };
-  }, [revealing, card.id, zIndex]);
+  }, [revealing, faceUpOnReveal, card.id, zIndex]);
 
   useEffect(() => {
     setDrag(null);
@@ -230,7 +232,7 @@ export function DraggableHandCard({
       onPointerCancel={(event) => finishPointer(event, true)}
       onKeyDown={onKeyDown}
     >
-      <div className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing} data-hand-flip-delay={190 + zIndex * 22}>
+      <div className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing} data-hand-flip-delay={faceUpOnReveal ? 0 : 190 + zIndex * 22}>
         <div
           className="relative transition-transform duration-[340ms] motion-reduce:duration-75 [transform-style:preserve-3d]"
           style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)`, transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)" }}

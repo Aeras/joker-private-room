@@ -226,7 +226,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     setPendingPresentationAck({ stage, dealNumber: projection.progression.dealNumber });
   }, [projection.progression.dealNumber, projection.progression.phase]);
   useEffect(() => {
-    if (!pendingPresentationAck || !ownArtworkSettled) return;
+    if (!pendingPresentationAck || !ownArtworkSettled || handRevealActive || dealPresentationActive) return;
     let timer: number | undefined;
     const schedule = () => {
       if (timer != null) window.clearTimeout(timer);
@@ -238,7 +238,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     };
     schedule(); document.addEventListener("visibilitychange", schedule); window.addEventListener("focus", schedule); window.addEventListener("orientationchange", schedule);
     return () => { if (timer != null) window.clearTimeout(timer); document.removeEventListener("visibilitychange", schedule); window.removeEventListener("focus", schedule); window.removeEventListener("orientationchange", schedule); };
-  }, [pendingPresentationAck, onNineCardPresentationComplete, ownArtworkSettled]);
+  }, [pendingPresentationAck, onNineCardPresentationComplete, ownArtworkSettled, handRevealActive, dealPresentationActive]);
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) { const root = document.getElementById("table-fullscreen-root") ?? tableRootRef.current; await root?.requestFullscreen(); const orientation = screen.orientation as OrientationLock; await orientation.lock?.("landscape").catch(() => undefined); }
