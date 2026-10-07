@@ -71,6 +71,23 @@ describe("ordered public trick journal", () => {
 });
 
 describe("presentation interruption and geometry", () => {
+  it.each([
+    [0, "0deg"],
+    [1, "90deg"],
+    [2, "180deg"],
+    [3, "-90deg"],
+  ] as const)("anchors the dealer deck at visual seat %i and points its top toward table center", (dealerSeat, rotation) => {
+    const projection = snapshot();
+    projection.gameId = `dealer-origin-${dealerSeat}`;
+    projection.progression.dealerSeat = dealerSeat;
+    const view = render(<DealPresentation projection={projection} geometry={geometry} />);
+    const stack = view.container.querySelector<HTMLElement>("[data-dealer-deck-stack]");
+    expect(stack).not.toBeNull();
+    expect(stack?.getAttribute("data-dealer-pos")).toBe(String(dealerSeat));
+    expect(stack?.style.transform).toContain(`rotate(${rotation})`);
+    expect(view.container.querySelector("[data-deal-geometry-epoch]")?.getAttribute("data-dealer-visual-pos")).toBe(String(dealerSeat));
+  });
+
   it.each(["visibility", "orientation"])("deal recovers from %s interruption without early acknowledgement", interruption => {
     const complete = vi.fn(); const projection = snapshot(); projection.gameId = `recovery-${interruption}`;
     const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);
