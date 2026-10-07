@@ -216,7 +216,7 @@ describe("AI banter Phase D — server-side cost and abuse release gates", () =>
   it("enforces bounded provider concurrency, room budgets, human rate limits and cooldowns in shared DB state", () => {
     expect(deliverySql).toContain("DIALOGUE_CONCURRENCY_LIMIT");
     expect(deliverySql).toContain("v_total_ai_calls >= 120");
-    expect(deliverySql).toContain("when 'conservative' then 3 when 'chaos' then 10 else 6");
+    expect(deliverySql).toContain("when 'conservative' then 3 when 'chaos' then 15 else 6");
     expect(deliverySql).toContain("HUMAN_MESSAGE_RATE_LIMITED");
     expect(deliverySql).toContain("v_human_messages_in_window >= 4");
     expect(deliverySql).toContain("DIALOGUE_RATE_LIMITED");
