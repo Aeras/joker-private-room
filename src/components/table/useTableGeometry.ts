@@ -99,12 +99,12 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
 
   // Keep the compact trick within short landscape heights as well as its width.
   const cardWidth = Math.min(
-    clamp(input.viewportWidth * 0.085, 56, 108),
-    Math.max(36, usableHeight / 2.55),
+    clamp(input.viewportWidth * 0.102, 64, 124),
+    Math.max(40, usableHeight / 2.35),
   );
   const cardHeight = (cardWidth * 7) / 5;
-  const horizontalOffset = cardWidth * 0.62;
-  const verticalOffset = cardHeight * 0.42;
+  const horizontalOffset = cardWidth * 0.68;
+  const verticalOffset = cardHeight * 0.46;
 
   const seatOrigins: Record<VisualSeat, Point> = {
     0: input.localSeatRect ? centerOf(input.localSeatRect, feltRect) : fallback[0],
