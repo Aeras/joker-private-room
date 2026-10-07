@@ -27,7 +27,7 @@ import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 
 type Pos = 0 | 1 | 2 | 3;
 type OrientationLock = ScreenOrientation & { lock?: (orientation: "landscape") => Promise<void> };
-const HAND_REVEAL_MS = 700;
+const HAND_REVEAL_MS = 500;
 const TRUMP_ANNOUNCEMENT_MS = 3_000;
 const SUIT_LABEL: Record<Suit, string> = { spades: "♠ Μπαστούνια", hearts: "♥ Κούπες", diamonds: "♦ Καρό", clubs: "♣ Σπαθιά" };
 
