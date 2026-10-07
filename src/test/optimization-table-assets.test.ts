@@ -18,6 +18,18 @@ describe("reviewed table artwork resolution", () => {
     expect(assets.tableAvatar("//example.com/avatars/git.png")).toBe("//example.com/avatars/git.png");
     expect(assets.tableAvatar("/avatars/custom.png")).toBe("/avatars/custom.png");
   });
+  it("renders the live table from CSS/SVG instead of the raster room background", () => {
+    const gameTable = readFileSync("src/components/table/GameTable.tsx", "utf8");
+    const tableSurface = readFileSync("src/components/table/TableSurface.tsx", "utf8");
+    const styles = readFileSync("src/styles.css", "utf8");
+    expect(gameTable).toContain("<TableSurface />");
+    expect(gameTable).not.toContain("assets.tableArt && <img");
+    expect(tableSurface).toContain('viewBox="0 0 1600 720"');
+    expect(tableSurface).toContain("joker-table-shell");
+    expect(styles).toContain(".joker-table-surface");
+    expect(styles).toContain("@media (min-aspect-ratio: 19/9)");
+  });
+
   it("keeps canonical card registry identities and coalesced artwork URL resolution", () => {
     expect(assets.cardBack).toBe("/cards/card_back.png");
     expect(assets.cardArtwork(assets.cardBack)).toBe("/cards/optimized/card_back.webp");
