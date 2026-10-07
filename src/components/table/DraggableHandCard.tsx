@@ -35,6 +35,7 @@ export function DraggableHandCard({
   zIndex,
   overlap,
   revealing = false,
+  revealDelayMs = 0,
   dropRect,
   onCommit,
 }: {
@@ -46,6 +47,7 @@ export function DraggableHandCard({
   zIndex: number;
   overlap: boolean;
   revealing?: boolean;
+  revealDelayMs?: number;
   dropRect?: RectLike | null;
   onCommit: (cardId: string, releaseRect: RectLike) => Promise<void>;
 }) {
@@ -61,14 +63,18 @@ export function DraggableHandCard({
     }
     setFaceVisible(false);
     let second: number | undefined;
+    let timer: number | undefined;
     const first = requestAnimationFrame(() => {
-      second = requestAnimationFrame(() => setFaceVisible(true));
+      second = requestAnimationFrame(() => {
+        timer = window.setTimeout(() => setFaceVisible(true), 120 + revealDelayMs);
+      });
     });
     return () => {
       cancelAnimationFrame(first);
       if (second != null) cancelAnimationFrame(second);
+      if (timer != null) window.clearTimeout(timer);
     };
-  }, [revealing, card.id]);
+  }, [revealing, revealDelayMs, card.id]);
 
   useEffect(() => {
     setDrag(null);
@@ -228,7 +234,7 @@ export function DraggableHandCard({
     >
       <div className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing}>
         <div
-          className="relative transition-transform duration-[500ms] ease-out motion-reduce:duration-75 [transform-style:preserve-3d]"
+          className="relative transition-transform duration-[420ms] ease-out motion-reduce:duration-75 [transform-style:preserve-3d]"
           style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)` }}
         >
           <div className="[backface-visibility:hidden]">
