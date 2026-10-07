@@ -80,10 +80,10 @@ function TravelingBack({ beat, pos, geometry, dealerPos, settling }: { beat: Dea
   }
   const source = dealerSourcePoint(geometry, dealerPos);
   const baseTarget = viewportPoint(geometry, geometry.dealTargets[pos]);
-  // Keep the local pile at the hand edge until fading, rather than sending it
-  // below the clipped viewport before its travel has visibly completed.
+  // The felt ends well above the footer. Travel to the viewport exit, not
+  // localHandCenter.y (the felt edge), then fade while the open hand rises.
   const sideTarget = pos === 0
-    ? { x: geometry.localHandCenter.x, y: geometry.localHandCenter.y }
+    ? (geometry.localDealExit ?? { x: geometry.localHandCenter.x, y: geometry.feltRect.top + 2 * geometry.dealCenter.y })
     : pointTowardCenter(geometry.seatOrigins[pos], geometry.dealCenter, 24);
   const target = stackedTarget(settling ? viewportPoint(geometry, sideTarget) : baseTarget, pos, beat.stackIndex);
   const easing = settling ? "linear" : "cubic-bezier(0.2, 0.75, 0.25, 1)";

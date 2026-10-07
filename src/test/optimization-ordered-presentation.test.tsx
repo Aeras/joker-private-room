@@ -128,6 +128,9 @@ describe("presentation interruption and geometry", () => {
     expect(localCard).not.toBeNull();
     expect(localCard?.style.transitionDuration).toBe("1000ms, 250ms");
     expect(localCard?.style.transitionDelay).toBe("0ms, 1000ms");
+    // The target center must reach the 400px viewport bottom, not the
+    // measured felt bottom (290px). This catches the formerly 1vh path.
+    expect(localCard?.style.transform).toContain(`calc(-50% + ${400 - Number.parseFloat(localCard!.style.top)}px)`);
     expect(Array.from(cardsBeforeSettle, card => card.style.opacity)).toEqual(["0", "0", "0", "0"]);
     expect(new Set(Array.from(cardsBeforeSettle, card => card.dataset['dealVisualSeat']))).toEqual(new Set(["0", "1", "2", "3"]));
     expect(view.container.querySelector<HTMLElement>("[data-dealer-deck-stack]")?.style.opacity).toBe("0");
