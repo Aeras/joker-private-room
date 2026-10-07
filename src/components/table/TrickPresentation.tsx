@@ -2,7 +2,7 @@ import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 import { assets } from "@/assets/registry";
 import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 import { TrickPresentationJournal } from "./trickPresentationJournal";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Suit } from "@/domain/cards";
 import type { SeatIndex } from "@/domain/dealing";
 import type { JokerSemantic, PlayedCard } from "@/domain/engine";
@@ -98,7 +98,8 @@ function departedTransform(arrived: boolean, faceDown: boolean, landing: Point, 
   return relativeTransform(origin, center, ROTATION[pos], 0.92, 0);
 }
 
-export function TrickPresentation({ projection, geometry, localPlayPresentation, onLocalFlightSettled, onBusyChange, onPresentationReady }: { projection: PlayerGameProjection; geometry: TableGeometry | null; localPlayPresentation: LocalPlayPresentation | null; onLocalFlightSettled: () => void; onBusyChange?: (busy: boolean) => void; onPresentationReady?: (token: number) => Promise<boolean> }) {
+export function TrickPresentation({ projection, geometry, localPlayPresentation, onLocalFlightSettled, onBusyChange, onPresentationReady, onCollectionComplete, onScorePresentationActiveChange }: { projection: PlayerGameProjection; geometry: TableGeometry | null; localPlayPresentation: LocalPlayPresentation | null; onLocalFlightSettled: () => void; onBusyChange?: (busy: boolean) => void; onCollectionComplete?: () => void; onScorePresentationActiveChange?: (active: boolean) => void; onPresentationReady?: (token: number) => Promise<boolean> }) {
+  const collectionCallback = useRef(onCollectionComplete); collectionCallback.current = onCollectionComplete;
   const readyCallback = useRef(onPresentationReady); readyCallback.current = onPresentationReady;
   const acknowledgedTokens = useRef(new Set<number>());
   const [ackAttempt, retryAck] = useState(0);
@@ -134,7 +135,14 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     return () => window.clearTimeout(timer);
   }, [announcementId]);
 
-  useEffect(() => { if (journal.current.ingest(projection)) revise(n => n + 1); }, [projection]);
+  // Publish the latch before the parent's passive score reconciliation can run.
+  // Settled hydration skips historical replay; live partial tricks remain latched
+  // even between card flights when the input-busy flag is temporarily false.
+  useLayoutEffect(() => {
+    if (journal.current.ingest(projection)) revise(n => n + 1);
+    const current = journal.current.active;
+    onScorePresentationActiveChange?.(Boolean(current && (!current.hydrated || current.winnerSeat != null)));
+  }, [projection, revision, onScorePresentationActiveChange]);
   const active = journal.current.active;
   const artworkSettled = useCriticalCardArtwork([assets.cardBack, ...(active?.cards.map(play => assets.cardFace(play.card)) ?? [])]);
   useEffect(() => {
@@ -166,6 +174,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       const next = { ...current, stage: "collecting" as const }; departingRef.current = next; setDeparting(next);
     } else if (stage === "collecting") {
       recordTimingDiagnostic("trick_collection_complete", { trickId: current.id, winnerSeat: current.winnerSeat });
+      collectionCallback.current?.();
       journal.current.collect(current.id); departingRef.current = null; setDeparting(null); revise(n => n + 1);
     }
   }, [paused]);

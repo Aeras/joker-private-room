@@ -39,6 +39,20 @@ describe("JK-004 measured table geometry", () => {
     expect(geometry.trickSlots[3].x).toBeGreaterThan(geometry.usableCenter.x);
   });
 
+  it("enlarges trick cards and slot spacing by 25% while retaining the short-height cap", () => {
+    const large = computeTableGeometry({ feltRect: rect(0, 0, 1400, 650), viewportWidth: 1600, viewportHeight: 900 });
+    expect(large.trickCardSize.width).toBe(135);
+    expect(large.trickSlots[3].x - large.usableCenter.x).toBeCloseTo(135 * 0.62);
+    expect(large.trickSlots[0].y - large.usableCenter.y).toBeCloseTo(135 * 1.4 * 0.42);
+    const medium = computeTableGeometry({ feltRect: rect(0, 0, 1000, 500), viewportWidth: 1000, viewportHeight: 700 });
+    expect(medium.trickCardSize.width).toBeCloseTo(106.25);
+    const small = computeTableGeometry({ feltRect: rect(0, 0, 500, 500), viewportWidth: 500, viewportHeight: 700 });
+    expect(small.trickCardSize.width).toBe(70);
+    const short = computeTableGeometry({ feltRect: rect(0, 0, 720, 100), viewportWidth: 800, viewportHeight: 240 });
+    expect(short.trickCardSize.width).toBeLessThan(40);
+    expect(short.trickCardSize.height).toBeLessThan(100);
+  });
+
   it("derives real measured seat origins in felt-local coordinates", () => {
     const geometry = computeTableGeometry({
       feltRect: rect(100, 50, 800, 400),

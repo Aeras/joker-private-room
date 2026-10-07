@@ -63,7 +63,7 @@ describe("shared local hand geometry", () => {
       .style.getPropertyValue("--card-w");
     fireEvent.keyDown(nodes[0]!.parentElement!, { key: "Enter" });
     expect(commit).not.toHaveBeenCalled();
-    act(() => vi.advanceTimersByTime(32));
+    act(() => vi.advanceTimersByTime(152));
     expect((nodes[0]!.firstElementChild as HTMLElement).style.transform).toBe("rotateY(0deg)");
     view.rerender(<LocalHandRow {...props} revealing={false} />);
     expect(Array.from(view.container.querySelectorAll("[data-hand-card]"))).toEqual(nodes);
@@ -83,6 +83,33 @@ describe("shared local hand geometry", () => {
     expect(lane?.style.getPropertyValue("--card-overlap")).toBe(overlap);
     expect(view.container.querySelector<HTMLElement>("[data-hand-entrance]")?.style.transform).toContain("var(--card-w) * 0.52");
     if (Number(count) > 1) expect(view.container.querySelectorAll('[role="button"]')[1]?.className).toContain("var(--card-overlap)");
+  });
+  it("rises from below face-down, then flips with a 20ms stagger without polling restarts", () => {
+    const props = { cards, visible: true, legalCardIds: [], blocked: true, pendingCardId: null, authorityKey: "first", geometry, onCommit: vi.fn() };
+    const view = render(<LocalHandRow {...props} revealing />);
+    const hand = view.container.querySelector<HTMLElement>("[data-hand-entrance]");
+    const faces = Array.from(view.container.querySelectorAll<HTMLElement>("[data-hand-card] > div"));
+    expect(hand?.style.transform).toContain("var(--card-w) * 1.4 + 48px");
+    expect(faces.every(face => face.style.transform === "rotateY(180deg)")).toBe(true);
+    act(() => vi.advanceTimersByTime(32));
+    expect(hand?.style.transform).not.toContain("1.4 + 48px");
+    expect(faces.every(face => face.style.transform === "rotateY(180deg)")).toBe(true);
+    view.rerender(<LocalHandRow {...props} authorityKey="poll" revealing />);
+    expect(hand?.getAttribute("data-hand-entrance")).toBe("settled");
+    act(() => vi.advanceTimersByTime(120));
+    expect(faces[0]?.style.transform).toBe("rotateY(0deg)");
+    expect(faces[1]?.style.transform).toBe("rotateY(180deg)");
+    act(() => vi.advanceTimersByTime(20));
+    expect(faces[1]?.style.transform).toBe("rotateY(0deg)");
+    expect(faces[8]?.style.transform).toBe("rotateY(180deg)");
+    act(() => vi.advanceTimersByTime(140));
+    expect(faces.every(face => face.style.transform === "rotateY(0deg)")).toBe(true);
+    expect(view.container.querySelector<HTMLElement>("[data-hand-lane-width]")?.style.getPropertyValue("--card-overlap")).toBe("0.42");
+  });
+  it.each(["blur", "orientationchange", "visibilitychange"])("finishes face reveal safely on %s", event => {
+    const view = render(<LocalHandRow cards={cards} visible legalCardIds={[]} blocked pendingCardId={null} authorityKey="interrupt" geometry={geometry} revealing onCommit={vi.fn()} />);
+    fireEvent(event === "visibilitychange" ? document : window, new Event(event));
+    expect(Array.from(view.container.querySelectorAll<HTMLElement>("[data-hand-card] > div")).every(face => face.style.transform === "rotateY(0deg)")).toBe(true);
   });
   it("cancels both reveal frames when unmounted between frames", () => {
     const cancel = vi.spyOn(globalThis, "cancelAnimationFrame");

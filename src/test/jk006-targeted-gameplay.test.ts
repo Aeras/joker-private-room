@@ -31,7 +31,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(DEALER_SELECTION_WINNER_HOLD_MS).toBe(490);
     expect(NORMAL_DEAL_STAGGER_MS).toBe(350);
     expect(NORMAL_DEAL_TRAVEL_MS).toBe(308);
-    expect(NORMAL_DEAL_SETTLE_MS).toBe(420);
+    expect(NORMAL_DEAL_SETTLE_MS).toBe(520);
     expect(NORMAL_DEAL_TAIL_MS).toBe(72);
     expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(1_000);
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(NORMAL_TRICK_SETTLE_MS + NORMAL_TRICK_INTER_PLAY_BEAT_MS);

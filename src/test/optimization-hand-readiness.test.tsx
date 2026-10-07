@@ -59,7 +59,7 @@ describe("settle reveal and optimistic declaration feedback", () => {
     vi.useFakeTimers(); artwork.settled = true;
     const props = tableFixture(); let reject: ((error: Error) => void) | undefined; let resolve: ((value: null) => void) | undefined;
     props.onCommand.mockImplementation(() => new Promise<null>((yes, no) => { resolve = yes; reject = no; }));
-    const view = render(<GameTable {...props} />); act(() => vi.advanceTimersByTime(500));
+    const view = render(<GameTable {...props} />); act(() => vi.advanceTimersByTime(660));
     fireEvent.click(view.getByRole("button", { name: "Δήλωση 2" }));
     expect(props.onCommand).toHaveBeenCalledWith({ type: "declare", value: 2 });
     expect(view.container.querySelector('[data-local-declaration="2"]')).not.toBeNull();
@@ -72,7 +72,7 @@ describe("settle reveal and optimistic declaration feedback", () => {
   it.each(["matching", "action removed"])("reconciles optimism when authoritative %s arrives", async mode => {
     vi.useFakeTimers(); artwork.settled = true;
     const props = tableFixture(); props.onCommand.mockReturnValue(new Promise(() => {}));
-    const view = render(<GameTable {...props} />); act(() => vi.advanceTimersByTime(500));
+    const view = render(<GameTable {...props} />); act(() => vi.advanceTimersByTime(660));
     fireEvent.click(view.getByRole("button", { name: "Δήλωση 2" }));
     const next = { ...props.projection, stateVersion: props.projection.stateVersion + 1, declarations: { ...props.projection.declarations, values: [mode === "matching" ? 2 : 1, null, null, null] as typeof props.projection.declarations.values }, local: { ...props.projection.local, legalActions: mode === "matching" ? props.projection.local.legalActions : [] } };
     view.rerender(<GameTable {...props} projection={next} />);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import type { Card } from "@/domain/cards";
 import { DraggableHandCard } from "./DraggableHandCard";
 import { localHandCenterOffset } from "./tableControlModel";
@@ -27,7 +27,7 @@ export function LocalHandRow({
 }) {
   const legal = new Set(legalCardIds);
   const [entranceSettled, setEntranceSettled] = useState(!revealing);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!revealing || !visible) {
       setEntranceSettled(true);
       return;
@@ -41,7 +41,7 @@ export function LocalHandRow({
       cancelAnimationFrame(first);
       if (second != null) cancelAnimationFrame(second);
     };
-  }, [revealing, visible, authorityKey]);
+  }, [revealing, visible]);
   const offset = localHandCenterOffset(geometry);
   const laneWidth = geometry?.localHandBounds?.width;
   const cardWidth = "clamp(3.4rem, min(9.6vw, 22vh), 6.75rem)";
@@ -52,8 +52,8 @@ export function LocalHandRow({
       className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[500ms] ease-out motion-reduce:duration-75"
       style={{
         "--card-w": cardWidth,
-        transform: `translateX(${offset}px) translateY(calc(var(--card-w) * 0.52 + ${entranceSettled ? 0 : 32}px))`,
-        opacity: entranceSettled ? 1 : 0.05,
+        transform: `translateX(${offset}px) translateY(calc(var(--card-w) * 0.52 + ${entranceSettled ? "0px" : "var(--card-w) * 1.4 + 48px"}))`,
+        opacity: 1,
       } as React.CSSProperties}
       data-hand-center-offset={offset}
       data-hand-entrance={revealing && !entranceSettled ? "entering" : "settled"}
