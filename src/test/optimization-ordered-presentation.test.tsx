@@ -140,7 +140,7 @@ describe("presentation interruption and geometry", () => {
     expect(Array.from(view.container.querySelectorAll<HTMLElement>("[data-deal-traveling-card]")).some((card, index) => card.style.transform !== oldTransforms[index])).toBe(true);
     Array.from(cardsBeforeSettle).forEach((card,index) => {
       const offsets = (value: string) => Array.from(value.matchAll(/calc\(-50% \+ ([\d.-]+)px\)/g), match => Number(match[1]));
-      const before = offsets(oldTransforms[index]);
+      const before = offsets(oldTransforms[index]!);
       const after = offsets(card.style.transform);
       const pos = Number(card.dataset['dealVisualSeat']);
       const fixedAxis = pos === 0 || pos === 2 ? 0 : 1;
