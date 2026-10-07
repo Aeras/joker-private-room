@@ -41,7 +41,8 @@ describe("JK-004 completed trick presentation", () => {
     expect(NORMAL_TRICK_FLIP_MS).toBeGreaterThanOrEqual(150);
     expect(NORMAL_TRICK_FLIP_MS).toBeLessThanOrEqual(300);
     expect(NORMAL_TRICK_COLLECT_MS).toBeGreaterThanOrEqual(250);
-    expect(NORMAL_TRICK_COLLECT_MS).toBeLessThanOrEqual(450);
+    expect(NORMAL_TRICK_COLLECT_MS).toBeLessThanOrEqual(600);
+    expect(NORMAL_TRICK_COLLECT_MS).toBe(520);
     expect(timing.collectStartMs).toBeGreaterThan(timing.holdMs);
     expect(timing.clearMs).toBeGreaterThan(timing.collectStartMs);
   });

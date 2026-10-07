@@ -84,9 +84,10 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
   const faceDown = fromBelowJoker || departingStage === "flipping" || collecting;
   const settledPoint = fromBelowJoker && !departingStage ? underStackPoint(landing, center) : landing;
   const transform = collecting
-    ? relativeTransform(collectTarget, center, ROTATION[pos], 0.58, 180)
+    ? relativeTransform(collectTarget, center, ROTATION[pos], 0.78, 180)
     : departedTransform(arrived, faceDown, settledPoint, origin, center, pos);
-  return <div data-joker-from-below={fromBelowJoker ? "true" : undefined} className={cn("fixed transition-[transform,opacity] ease-out [transform-style:preserve-3d]", fromBelowJoker && !departingStage ? "z-0" : "z-10", winner && departingStage && "z-30 drop-shadow-[0_0_16px_var(--gold)]", collecting && !winner && "opacity-85")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms` } as React.CSSProperties} onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform") completionRef.current(play, departingStage ?? "landing"); }}>
+  const easing = collecting ? "cubic-bezier(0.22, 0.8, 0.24, 1)" : "cubic-bezier(0.22, 1, 0.36, 1)";
+  return <div data-joker-from-below={fromBelowJoker ? "true" : undefined} data-trick-collecting={collecting ? "true" : undefined} className={cn("fixed transition-[transform,opacity] [transform-style:preserve-3d]", fromBelowJoker && !departingStage ? "z-0" : "z-10", winner && departingStage && "z-30 drop-shadow-[0_0_16px_var(--gold)]", collecting && !winner && "opacity-85")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms`, transitionTimingFunction: easing } as React.CSSProperties} onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform") completionRef.current(play, departingStage ?? "landing"); }}>
     <div className="relative [transform-style:preserve-3d]">
       <div className="[backface-visibility:hidden]"><PlayingCard card={play.card} /></div>
       <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]"><PlayingCard faceDown /></div>
