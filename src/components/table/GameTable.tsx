@@ -231,7 +231,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
 
   const forcedEnd = projection.termination?.kind === "host_ended";
   const finalRows = projection.lifecycle === "complete" && !forcedEnd ? projection.score.finalPlacements.map((placement, seat) => ({ seat, placement, score: projection.score.cumulativeTotals[seat] ?? 0 })).sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99) || b.score - a.score) : [];
-  const handPresented = !startupPresentationActive || (!dealerIntroActive && (dealSettling || handRevealActive || revealedHands.current.has(`${projection.gameId}:${projection.progression.dealNumber}:${projection.cards.ownHand.length}`)));
+  const handPresented = !startupPresentationActive || (!dealerIntroActive && (dealSettling || (!dealPresentationActive && revealedHands.current.has(`${projection.gameId}:${projection.progression.dealNumber}:${projection.cards.ownHand.length}`))));
   const showTrumpIndicator = !startupPresentationActive && (projection.cards.exposedTrumpCard != null || projection.trump.status === "resolved");
 
   return <div ref={tableRootRef} className="joker-room relative h-dvh w-full overflow-hidden bg-[#090b09]">

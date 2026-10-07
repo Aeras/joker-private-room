@@ -112,7 +112,7 @@ describe("presentation interruption and geometry", () => {
     const complete = vi.fn(); const settling = vi.fn(); const projection = snapshot();
     projection.gameId = "settle-retention";
     const view = render(<DealPresentation projection={projection} geometry={geometry} onSettlingChange={settling} onPresentationComplete={complete} />);
-    tick(1357);
+    tick(1050); tick(16); tick(291);
     expect(settling).not.toHaveBeenCalledWith(true);
     expect(view.container.querySelectorAll("[data-deal-traveling-card]")).toHaveLength(4);
     const localCard = view.container.querySelectorAll<HTMLElement>("[data-deal-traveling-card]")[2];
