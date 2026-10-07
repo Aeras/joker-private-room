@@ -64,7 +64,13 @@ describe("shared local hand geometry", () => {
     fireEvent.keyDown(nodes[0]!.parentElement!, { key: "Enter" });
     expect(commit).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(32));
+    expect((nodes[0]!.firstElementChild as HTMLElement).style.transform).toBe("rotateY(180deg)");
+    expect((nodes[8]!.firstElementChild as HTMLElement).style.transform).toBe("rotateY(180deg)");
+    act(() => vi.advanceTimersByTime(120));
     expect((nodes[0]!.firstElementChild as HTMLElement).style.transform).toBe("rotateY(0deg)");
+    expect((nodes[8]!.firstElementChild as HTMLElement).style.transform).toBe("rotateY(180deg)");
+    act(() => vi.advanceTimersByTime(160));
+    expect((nodes[8]!.firstElementChild as HTMLElement).style.transform).toBe("rotateY(0deg)");
     view.rerender(<LocalHandRow {...props} revealing={false} />);
     expect(Array.from(view.container.querySelectorAll("[data-hand-card]"))).toEqual(nodes);
     expect(
@@ -82,6 +88,8 @@ describe("shared local hand geometry", () => {
     expect(lane?.style.getPropertyValue("--card-w")).toBe("clamp(3.4rem, min(9.6vw, 22vh), 6.75rem)");
     expect(lane?.style.getPropertyValue("--card-overlap")).toBe(overlap);
     expect(view.container.querySelector<HTMLElement>("[data-hand-entrance]")?.style.transform).toContain("var(--card-w) * 0.52");
+    const revealing = render(<LocalHandRow cards={cards.slice(0, Number(count))} visible legalCardIds={[]} blocked pendingCardId={null} authorityKey="rise-hand" geometry={geometry} revealing onCommit={vi.fn()} />);
+    expect(revealing.container.querySelector<HTMLElement>("[data-hand-entrance]")?.style.transform).toContain("var(--card-w) * 1.55");
     if (Number(count) > 1) expect(view.container.querySelectorAll('[role="button"]')[1]?.className).toContain("var(--card-overlap)");
   });
   it("cancels both reveal frames when unmounted between frames", () => {
