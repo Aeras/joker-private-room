@@ -28,6 +28,81 @@
 /* Approved reference: dark warm card room, polished oval walnut rail, deep green felt. */
 .joker-room{background:radial-gradient(circle at 10% 20%,oklch(.76 .13 68 / .20),transparent 18%),radial-gradient(circle at 90% 18%,oklch(.76 .13 68 / .18),transparent 18%),radial-gradient(ellipse at 50% 115%,oklch(.38 .07 48 / .30),transparent 48%),linear-gradient(180deg,oklch(.16 .032 43),oklch(.075 .018 35) 78%)}
 .joker-room::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.42;background:repeating-linear-gradient(90deg,transparent 0 10%,oklch(0 0 0 / .18) 10.1% 10.4%,transparent 10.5% 20%)}
+
+/* Full-screen lightweight table surface: CSS structure + SVG markings, no raster room background. */
+.joker-table-surface{
+  background:
+    radial-gradient(ellipse 88% 78% at 50% 48%,oklch(.16 .04 153 / .34),transparent 68%),
+    linear-gradient(180deg,oklch(.065 .018 158),oklch(.035 .012 158));
+}
+.joker-table-shell{
+  border-radius:50% / 48%;
+  filter:drop-shadow(0 18px 28px oklch(0 0 0 / .62));
+}
+.joker-table-rail{
+  border-radius:inherit;
+  background:
+    linear-gradient(180deg,oklch(.24 .018 50),oklch(.095 .012 40) 52%,oklch(.055 .008 35)),
+    radial-gradient(ellipse at 50% 0%,oklch(1 0 0 / .12),transparent 36%);
+  box-shadow:
+    inset 0 2px 0 oklch(1 0 0 / .09),
+    inset 0 -7px 12px oklch(0 0 0 / .55),
+    0 0 0 1px oklch(.72 .08 76 / .08);
+}
+.joker-table-wood{
+  border-radius:inherit;
+  background:
+    repeating-linear-gradient(94deg,
+      oklch(.31 .075 47) 0 10px,
+      oklch(.37 .085 49) 10px 18px,
+      oklch(.25 .06 43) 18px 25px,
+      oklch(.33 .072 46) 25px 34px),
+    linear-gradient(180deg,oklch(.41 .09 52),oklch(.20 .05 39));
+  box-shadow:
+    inset 0 0 0 2px oklch(.74 .11 76 / .44),
+    inset 0 5px 10px oklch(1 0 0 / .08),
+    inset 0 -10px 14px oklch(0 0 0 / .42);
+}
+.joker-table-felt{
+  overflow:hidden;
+  border-radius:inherit;
+  background:
+    radial-gradient(ellipse 80% 72% at 50% 43%,oklch(.405 .09 153),oklch(.30 .072 154) 58%,oklch(.205 .05 154) 100%),
+    repeating-linear-gradient(0deg,oklch(1 0 0 / .012) 0 1px,transparent 1px 3px);
+  box-shadow:
+    inset 0 0 0 2px oklch(.72 .1 75 / .26),
+    inset 0 0 76px oklch(0 0 0 / .48),
+    0 0 0 1px oklch(0 0 0 / .7);
+}
+.joker-table-felt::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:
+    radial-gradient(circle at 24% 18%,oklch(1 0 0 / .035),transparent 16%),
+    radial-gradient(circle at 76% 82%,oklch(0 0 0 / .08),transparent 22%);
+  mix-blend-mode:soft-light;
+}
+.joker-table-stud{
+  width:clamp(14px,1.8vw,24px);
+  aspect-ratio:1;
+  transform:translate(-50%,-50%);
+  border-radius:999px;
+  background:
+    radial-gradient(circle at 36% 30%,oklch(.98 .12 86) 0 10%,oklch(.82 .15 79) 24%,oklch(.55 .11 68) 56%,oklch(.26 .06 55) 74%,oklch(.75 .12 78) 100%);
+  box-shadow:
+    0 0 0 2px oklch(.18 .04 48),
+    inset 1px 1px 2px oklch(1 0 0 / .36),
+    0 2px 5px oklch(0 0 0 / .48);
+}
+@media (max-aspect-ratio: 17/9){
+  .joker-table-shell{inset:2.2vh 1.6vw}
+}
+@media (min-aspect-ratio: 19/9){
+  .joker-table-shell{inset:.7vh .7vw}
+}
+
 /* Auto fullscreen/landscape replaces the old portrait rotation blocker. */
 .joker-room>.absolute.inset-0.z-\[100\]{display:none!important}
 .joker-table{border-radius:50%;background:radial-gradient(ellipse at 50% 43%,oklch(.405 .088 153) 0%,oklch(.30 .07 154) 56%,oklch(.205 .052 154) 100%);border:clamp(10px,1.65vw,24px) solid oklch(.275 .064 43);box-shadow:0 0 0 3px oklch(.64 .095 69),0 0 0 8px oklch(.20 .045 40),0 9px 0 10px oklch(.115 .026 37),0 26px 55px oklch(0 0 0 / .78),inset 0 0 85px oklch(0 0 0 / .42),inset 0 0 0 2px oklch(.75 .11 74 / .18)}
