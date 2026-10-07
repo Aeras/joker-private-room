@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { cardLabel, type Card } from "@/domain/cards";
 import { cn } from "@/lib/utils";
 import { PlayingCard } from "../joker/PlayingCard";
@@ -54,21 +54,25 @@ export function DraggableHandCard({
   const committingRef = useRef(false);
   const canInteract = legal && !blocked && !pending && !revealing;
   const [faceVisible, setFaceVisible] = useState(!revealing);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!revealing) {
       setFaceVisible(true);
       return;
     }
     setFaceVisible(false);
-    let second: number | undefined;
-    const first = requestAnimationFrame(() => {
-      second = requestAnimationFrame(() => setFaceVisible(true));
-    });
+    // Rise begins after two paint frames; reveal follows it, not the mount.
+    const timer = window.setTimeout(() => setFaceVisible(true), 152 + zIndex * 20);
+    const finish = () => { window.clearTimeout(timer); setFaceVisible(true); };
+    window.addEventListener("blur", finish);
+    window.addEventListener("orientationchange", finish);
+    document.addEventListener("visibilitychange", finish);
     return () => {
-      cancelAnimationFrame(first);
-      if (second != null) cancelAnimationFrame(second);
+      window.clearTimeout(timer);
+      window.removeEventListener("blur", finish);
+      window.removeEventListener("orientationchange", finish);
+      document.removeEventListener("visibilitychange", finish);
     };
-  }, [revealing, card.id]);
+  }, [revealing, card.id, zIndex]);
 
   useEffect(() => {
     setDrag(null);
@@ -226,9 +230,9 @@ export function DraggableHandCard({
       onPointerCancel={(event) => finishPointer(event, true)}
       onKeyDown={onKeyDown}
     >
-      <div className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing}>
+      <div className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing} data-hand-flip-delay={152 + zIndex * 20}>
         <div
-          className="relative transition-transform duration-[500ms] ease-out motion-reduce:duration-75 [transform-style:preserve-3d]"
+          className="relative transition-transform duration-[300ms] ease-out motion-reduce:duration-75 [transform-style:preserve-3d]"
           style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)` }}
         >
           <div className="[backface-visibility:hidden]">
