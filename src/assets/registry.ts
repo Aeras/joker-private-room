@@ -34,14 +34,16 @@ const rankAssetName: Record<Rank, string> = {
   A: "ace",
 };
 
+const RUNTIME_CARD_ROOT = "/cards/runtime-png";
+
 function canonicalCardFace(card: Card): string | undefined {
   if (card.kind === "joker") {
-    if (card.id === "joker-1") return "/cards/joker_red.png";
-    if (card.id === "joker-2") return "/cards/joker_black.png";
+    if (card.id === "joker-1") return `${RUNTIME_CARD_ROOT}/faces/joker_red.png`;
+    if (card.id === "joker-2") return `${RUNTIME_CARD_ROOT}/faces/joker_black.png`;
     return undefined;
   }
 
-  return `/cards/${card.suit}_${rankAssetName[card.rank]}.png`;
+  return `${RUNTIME_CARD_ROOT}/faces/${card.suit}_${rankAssetName[card.rank]}.png`;
 }
 
 const tableAvatarNames = new Set(["archimandritis", "giobis", "giorgos_nousios", "git", "ka_monika", "mixalis", "mounara", "theia_tamara", "thomoulis"]);
@@ -60,7 +62,7 @@ function cardArtwork(url: string): string {
 }
 
 export const assets = {
-  cardBack: "/cards/backdesign_1.png",
+  cardBack: `${RUNTIME_CARD_ROOT}/backs/blue_back.png`,
   tableArt: "/table/optimized/table_background.webp",
   cardArtwork,
   tableAvatar,
