@@ -49,10 +49,10 @@ export function LocalHandRow({
 
   return (
     <div
-      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[500ms] ease-out motion-reduce:duration-75"
+      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[520ms] ease-out motion-reduce:duration-75"
       style={{
         "--card-w": cardWidth,
-        transform: `translateX(${offset}px) translateY(calc(var(--card-w) * 0.52 + ${entranceSettled ? 0 : 32}px))`,
+        transform: `translateX(${offset}px) translateY(calc(var(--card-w) * 0.52 + ${entranceSettled ? 0 : "calc(var(--card-w) * 1.55)"}))`,
         opacity: entranceSettled ? 1 : 0.05,
       } as React.CSSProperties}
       data-hand-center-offset={offset}
@@ -71,6 +71,7 @@ export function LocalHandRow({
               legal={legal.has(card.id)}
               blocked={blocked}
               revealing={revealing}
+              revealDelayMs={index * 20}
               pending={pendingCardId === card.id}
               authorityKey={authorityKey}
               zIndex={index}
