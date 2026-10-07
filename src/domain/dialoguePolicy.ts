@@ -12,9 +12,9 @@ export interface DialogueSettings {
   /** Optional provider path. When false, dialogue is preset-only. */
   aiEnabled: boolean;
   /** Google Cloud TTS output; only valid when AI is enabled. */
-  ttsEnabled: boolean;
+  ttsEnabled?: boolean;
   /** Whether dialogue text is shown alongside speech. */
-  showDialogueText: boolean;
+  showDialogueText?: boolean;
   intensity: DialogueIntensity;
 }
 
