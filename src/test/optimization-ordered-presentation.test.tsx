@@ -101,7 +101,7 @@ describe("presentation interruption and geometry", () => {
       view.rerender(<DealPresentation projection={{ ...projection }} geometry={{ ...geometry, epoch: 3 }} onPresentationComplete={complete} />);
       visible.mockReturnValue("visible"); fireEvent(document, new Event("visibilitychange"));
     } else { fireEvent(window, new Event("orientationchange")); }
-    tick(1950); expect(complete).toHaveBeenCalledOnce();
+    tick(2600); expect(complete).toHaveBeenCalledOnce();
   });
   it.each([["NINE_CARD_INITIAL_DEAL_ALL_SEATS", 12, 4200], ["NINE_CARD_REMAINING_DEAL", 24, 10200]] as const)("%s presents %i backs without private identities", (phase, count, elapsed) => {
     const projection = snapshot(); projection.gameId = `private-stage-${phase}`; projection.progression.phase = phase; projection.progression.cardsPerPlayer = 9;
@@ -109,7 +109,7 @@ describe("presentation interruption and geometry", () => {
     tick(elapsed);
     expect(view.container.querySelectorAll("[data-deal-traveling-card]")).toHaveLength(count);
     expect(view.container.querySelectorAll('img[alt]:not([alt=""])')).toHaveLength(0);
-    expect(complete).not.toHaveBeenCalled(); tick(550); expect(complete).toHaveBeenCalledOnce();
+    expect(complete).not.toHaveBeenCalled(); tick(1200); expect(complete).toHaveBeenCalledOnce();
   });
   it("retains every back throughout settling and clears only after settle and tail", () => {
     const complete = vi.fn(); const settling = vi.fn(); const projection = snapshot();
@@ -122,18 +122,21 @@ describe("presentation interruption and geometry", () => {
     const oldTransforms = Array.from(cardsBeforeSettle, card => card.style.transform);
     expect(Array.from(cardsBeforeSettle, card => card.style.opacity)).toEqual(["1", "1", "1", "1"]);
     tick(1);
-    expect(settling).toHaveBeenLastCalledWith(true);
+    expect(settling).not.toHaveBeenCalledWith(true);
     expect(view.container.querySelector('[data-deal-settling="true"]')).not.toBeNull();
     const localCard = view.container.querySelector<HTMLElement>("[data-deal-handoff='local']");
     expect(localCard).not.toBeNull();
-    expect(localCard?.style.transitionDuration).toBe("520ms");
+    expect(localCard?.style.transitionDuration).toBe("1000ms, 350ms");
+    expect(localCard?.style.transitionDelay).toBe("0ms, 650ms");
     expect(Array.from(cardsBeforeSettle, card => card.style.opacity)).toEqual(["0", "0", "0", "0"]);
     expect(new Set(Array.from(cardsBeforeSettle, card => card.dataset['dealVisualSeat']))).toEqual(new Set(["0", "1", "2", "3"]));
     expect(view.container.querySelector<HTMLElement>("[data-dealer-deck-stack]")?.style.opacity).toBe("0");
     view.rerender(<DealPresentation projection={{ ...projection }} geometry={{ ...geometry, epoch: 2 }} onSettlingChange={settling} onPresentationComplete={complete} />);
     expect(Array.from(view.container.querySelectorAll("[data-deal-traveling-card]"))).toEqual(Array.from(cardsBeforeSettle));
-    expect(localCard?.style.transitionTimingFunction).toBe("cubic-bezier(0.22, 1, 0.36, 1)");
+    expect(localCard?.style.transitionTimingFunction).toBe("cubic-bezier(0.4, 0, 0.2, 1)");
     expect(Array.from(view.container.querySelectorAll<HTMLElement>("[data-deal-traveling-card]")).some((card, index) => card.style.transform !== oldTransforms[index])).toBe(true);
+    tick(649); expect(settling).not.toHaveBeenCalledWith(true);
+    tick(1); expect(settling).toHaveBeenLastCalledWith(true);
     tick(519);
     expect(complete).not.toHaveBeenCalled();
     expect(view.container.querySelectorAll("[data-deal-traveling-card]")).toHaveLength(4);
@@ -155,10 +158,11 @@ describe("presentation interruption and geometry", () => {
     expect(backs.every(back => back.style.opacity === "1")).toBe(true);
     const next = {...projection, lifecycle: "active" as const, progression: {...projection.progression, phase: "DEAL_PRESENTATION" as const}, cards: {...projection.cards, ownHandVisible:true, ownHand:[{kind:"standard" as const,id:"own",suit:"hearts" as const,rank:"A" as const}]}};
     view.rerender(<DealPresentation {...props} projection={next} />);
-    expect(settling).toHaveBeenLastCalledWith(true);
+    expect(settling).not.toHaveBeenCalledWith(true);
     expect(Array.from(view.container.querySelectorAll("[data-deal-traveling-card]"))).toEqual(backs);
     expect(backs.every(back => back.style.opacity === "0")).toBe(true);
     view.rerender(<DealPresentation {...props} projection={{...next}} geometry={{...geometry,epoch:3}} />);
+    tick(650); expect(settling).toHaveBeenLastCalledWith(true);
     tick(591); expect(complete).toHaveBeenCalledTimes(1);
     tick(1); expect(complete).toHaveBeenCalledTimes(2); expect(sequenceComplete).toHaveBeenCalledOnce();
     expect(view.container.childElementCount).toBe(0);
@@ -166,15 +170,15 @@ describe("presentation interruption and geometry", () => {
   it("interrupting settle cancels completion and resets settling before replay", () => {
     const complete = vi.fn(); const settling = vi.fn(); const projection = snapshot(); projection.gameId = "settle-interrupt";
     render(<DealPresentation projection={projection} geometry={geometry} onSettlingChange={settling} onPresentationComplete={complete} />);
-    tick(1358); expect(settling).toHaveBeenLastCalledWith(true);
+    tick(2008); expect(settling).toHaveBeenLastCalledWith(true);
     fireEvent.blur(window); expect(settling).toHaveBeenLastCalledWith(false);
     tick(5000); expect(complete).not.toHaveBeenCalled();
-    fireEvent.focus(window); tick(1950); expect(complete).toHaveBeenCalledOnce();
+    fireEvent.focus(window); tick(2600); expect(complete).toHaveBeenCalledOnce();
   });
   it("already-dealt first hand acknowledges reveal scope without replaying the deal", () => {
     const complete = vi.fn(); const projection = snapshot(); projection.gameId = "firststage-reveal";
     const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);
-    tick(1950); expect(complete).toHaveBeenCalledTimes(1);
+    tick(2600); expect(complete).toHaveBeenCalledTimes(1);
     view.rerender(<DealPresentation projection={{ ...projection, lifecycle: "active", progression: { ...projection.progression, phase: "DEAL_PRESENTATION" } }} geometry={geometry} onPresentationComplete={complete} />);
     expect(complete).toHaveBeenCalledTimes(2); expect(view.container.childElementCount).toBe(0);
     tick(5000); expect(complete).toHaveBeenCalledTimes(2);
@@ -218,7 +222,7 @@ describe("presentation interruption and geometry", () => {
     const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} onActiveChange={active} />);
     tick(500); fireEvent.blur(window); tick(5000); expect(complete).not.toHaveBeenCalled();
     view.rerender(<DealPresentation projection={{ ...projection }} geometry={geometry} onPresentationComplete={complete} onActiveChange={active} />);
-    fireEvent.focus(window); tick(1950); expect(complete).toHaveBeenCalledTimes(1);
+    fireEvent.focus(window); tick(2600); expect(complete).toHaveBeenCalledTimes(1);
     fireEvent.blur(window); fireEvent.focus(window); tick(5000); expect(complete).toHaveBeenCalledTimes(1);
   });
   it("server fallback phase change clears an interrupted nine-card overlay", () => {
