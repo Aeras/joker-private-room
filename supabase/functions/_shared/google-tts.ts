@@ -3,15 +3,16 @@ import type { CanonicalBotId } from "./bot-catalog.ts";
 export interface BotTtsProfile {
   languageCode: "el-GR";
   voiceName: string;
+  speakingRate: number;
 }
 
 export const BOT_TTS_PROFILES: Record<CanonicalBotId, BotTtsProfile> = {
-  "giorgos-nousios": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Orus" },
-  "thomoulis": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Puck" },
-  "theia-tamara": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Gacrux" },
-  "mounara": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Aoede" },
-  "ka-monika": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Kore" },
-  "archimandritis": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Rasalgethi" },
+  "giorgos-nousios": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Orus", speakingRate: 0.96 },
+  "thomoulis": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Puck", speakingRate: 1.05 },
+  "theia-tamara": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Gacrux", speakingRate: 0.93 },
+  "mounara": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Aoede", speakingRate: 1.04 },
+  "ka-monika": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Kore", speakingRate: 0.98 },
+  "archimandritis": { languageCode: "el-GR", voiceName: "el-GR-Chirp3-HD-Rasalgethi", speakingRate: 0.90 },
 };
 
 interface GoogleServiceAccount {
@@ -117,7 +118,10 @@ export async function synthesizeBotSpeech(input: {
           languageCode: profile.languageCode,
           name: profile.voiceName,
         },
-        audioConfig: { audioEncoding: "MP3" },
+        audioConfig: {
+          audioEncoding: "MP3",
+          speakingRate: profile.speakingRate,
+        },
       }),
     });
     if (!response.ok) {
