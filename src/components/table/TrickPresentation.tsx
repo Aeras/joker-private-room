@@ -98,8 +98,9 @@ function departedTransform(arrived: boolean, faceDown: boolean, landing: Point, 
   return relativeTransform(origin, center, ROTATION[pos], 0.92, 0);
 }
 
-export function TrickPresentation({ projection, geometry, localPlayPresentation, onLocalFlightSettled, onBusyChange, onPresentationReady }: { projection: PlayerGameProjection; geometry: TableGeometry | null; localPlayPresentation: LocalPlayPresentation | null; onLocalFlightSettled: () => void; onBusyChange?: (busy: boolean) => void; onPresentationReady?: (token: number) => Promise<boolean> }) {
+export function TrickPresentation({ projection, geometry, localPlayPresentation, onLocalFlightSettled, onBusyChange, onCollectionComplete, onPresentationReady }: { projection: PlayerGameProjection; geometry: TableGeometry | null; localPlayPresentation: LocalPlayPresentation | null; onLocalFlightSettled: () => void; onBusyChange?: (busy: boolean) => void; onCollectionComplete?: () => void; onPresentationReady?: (token: number) => Promise<boolean> }) {
   const readyCallback = useRef(onPresentationReady); readyCallback.current = onPresentationReady;
+  const collectionCompleteCallback = useRef(onCollectionComplete); collectionCompleteCallback.current = onCollectionComplete;
   const acknowledgedTokens = useRef(new Set<number>());
   const [ackAttempt, retryAck] = useState(0);
   const journal = useRef(new TrickPresentationJournal());
@@ -166,7 +167,9 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       const next = { ...current, stage: "collecting" as const }; departingRef.current = next; setDeparting(next);
     } else if (stage === "collecting") {
       recordTimingDiagnostic("trick_collection_complete", { trickId: current.id, winnerSeat: current.winnerSeat });
-      journal.current.collect(current.id); departingRef.current = null; setDeparting(null); revise(n => n + 1);
+      journal.current.collect(current.id);
+      collectionCompleteCallback.current?.();
+      departingRef.current = null; setDeparting(null); revise(n => n + 1);
     }
   }, [paused]);
   const settleLocalFlight = useCallback(() => {
