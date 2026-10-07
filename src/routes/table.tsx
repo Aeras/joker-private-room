@@ -47,11 +47,7 @@ export const Route = createFileRoute("/table")({
   head: () => ({ meta: [
     { title: "Τραπέζι — JOKER" },
     { name: "description", content: "Το production τραπέζι τεσσάρων παικτών του JOKER." },
-    { property: "og:title", content: "Τραπέζι — JOKER" },
-      { property: "og:description", content: "Το production τραπέζι τεσσάρων παικτών του JOKER." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ] }),
+  ] }),
   component: TablePage,
 });
 

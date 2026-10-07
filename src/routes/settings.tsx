@@ -9,8 +9,6 @@ export const Route = createFileRoute("/settings")({
       { name: "description", content: "Ρυθμίσεις του ιδιωτικού παιχνιδιού JOKER." },
       { property: "og:title", content: "Ρυθμίσεις — JOKER" },
       { property: "og:description", content: "Ρυθμίσεις του ιδιωτικού παιχνιδιού JOKER." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: SettingsPage,
