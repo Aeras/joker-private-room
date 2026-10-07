@@ -18,5 +18,3 @@
 - Visual assets are resolved via `src/assets/registry.ts`; components fall back to placeholders — why: final artwork supplied later.
 - UI strings live in `src/i18n/el.ts` — why: easy future localization.
 - The only backend is the owner's external Supabase via `src/integrations/external-supabase/client.ts`; never import `src/integrations/supabase/*` (Lovable Cloud, auto-generated, unused) — why: owner's explicit choice. Schema changes are SQL files the owner runs himself.
-
-- Deal settling and local declaration optimism live only in table presentation state; reveal only already-projected hands and keep commands/acknowledgements authoritative — why: smooth transitions never disclose hidden cards or change server semantics.
