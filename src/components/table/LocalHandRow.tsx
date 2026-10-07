@@ -75,6 +75,7 @@ export function LocalHandRow({
               legal={legal.has(card.id)}
               blocked={blocked}
               revealing={revealing}
+              faceUpOnReveal
               pending={pendingCardId === card.id}
               authorityKey={authorityKey}
               zIndex={index}

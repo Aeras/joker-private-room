@@ -120,12 +120,18 @@ describe("presentation interruption and geometry", () => {
     expect(view.container.querySelectorAll("[data-deal-traveling-card]")).toHaveLength(4);
     const cardsBeforeSettle = view.container.querySelectorAll<HTMLElement>("[data-deal-traveling-card]");
     const oldTransforms = Array.from(cardsBeforeSettle, card => card.style.transform);
+    expect(Array.from(cardsBeforeSettle, card => card.style.opacity)).toEqual(["1", "1", "1", "1"]);
     tick(1);
     expect(settling).toHaveBeenLastCalledWith(true);
     expect(view.container.querySelector('[data-deal-settling="true"]')).not.toBeNull();
     const localCard = view.container.querySelector<HTMLElement>("[data-deal-handoff='local']");
     expect(localCard).not.toBeNull();
     expect(localCard?.style.transitionDuration).toBe("520ms");
+    expect(Array.from(cardsBeforeSettle, card => card.style.opacity)).toEqual(["0", "0", "0", "0"]);
+    expect(new Set(Array.from(cardsBeforeSettle, card => card.dataset['dealVisualSeat']))).toEqual(new Set(["0", "1", "2", "3"]));
+    expect(view.container.querySelector<HTMLElement>("[data-dealer-deck-stack]")?.style.opacity).toBe("0");
+    view.rerender(<DealPresentation projection={{ ...projection }} geometry={{ ...geometry, epoch: 2 }} onSettlingChange={settling} onPresentationComplete={complete} />);
+    expect(Array.from(view.container.querySelectorAll("[data-deal-traveling-card]"))).toEqual(Array.from(cardsBeforeSettle));
     expect(localCard?.style.transitionTimingFunction).toBe("cubic-bezier(0.22, 1, 0.36, 1)");
     expect(Array.from(view.container.querySelectorAll<HTMLElement>("[data-deal-traveling-card]")).some((card, index) => card.style.transform !== oldTransforms[index])).toBe(true);
     tick(519);

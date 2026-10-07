@@ -10,7 +10,7 @@ const deal = vi.hoisted(() => ({ settling: false }));
 vi.mock("@/components/table/useCriticalCardArtwork", () => ({ useCriticalCardArtwork: () => artwork.settled }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a> }));
 vi.mock("@/components/table/DealerSelectionPresentation", () => ({ DealerSelectionPresentation: () => null }));
-vi.mock("@/components/table/DealPresentation", () => ({ DealPresentation: ({ onPresentationComplete, onSettlingChange }: { onPresentationComplete: (stage: string) => void; onSettlingChange: (value: boolean) => void }) => { useEffect(() => { onSettlingChange(deal.settling); if (!deal.settling) onPresentationComplete("full"); }, [onPresentationComplete, onSettlingChange]); return null; } }));
+vi.mock("@/components/table/DealPresentation", () => ({ DealPresentation: ({ onPresentationComplete, onSettlingChange }: { onPresentationComplete: (stage: string) => void; onSettlingChange: (value: boolean) => void }) => { useEffect(() => { onSettlingChange(deal.settling); if (!deal.settling) onPresentationComplete("full"); }, [onPresentationComplete, onSettlingChange, deal.settling]); return null; } }));
 vi.mock("@/components/table/TrickPresentation", () => ({ TrickPresentation: () => null }));
 vi.mock("@/components/table/TableSeat", () => ({ TableSeat: ({ local, stats }: { local: boolean; stats: { declaration: number | null } }) => local ? <div data-local-declaration={stats.declaration ?? "none"} /> : null }));
 vi.mock("@/components/table/Scoreboard", () => ({ Scoreboard: () => null }));
@@ -55,6 +55,24 @@ describe("settle reveal and optimistic declaration feedback", () => {
     expect(view.container.querySelector('[data-hand-ready="true"][data-blocked="true"][data-revealing="true"]')).not.toBeNull();
     expect(props.onNineCardPresentationComplete).not.toHaveBeenCalled();
   });
+  it("does not release the deal barrier while the overlapping hand rise is still active", () => {
+    vi.useFakeTimers(); artwork.settled = true; deal.settling = true;
+    const props = tableFixture(); props.projection.progression.phase = "DEAL_PRESENTATION";
+    const view = render(<GameTable {...props} />);
+    act(() => vi.advanceTimersByTime(592));
+    deal.settling = false;
+    view.rerender(<GameTable {...props} projection={{...props.projection}} />);
+    act(() => vi.advanceTimersByTime(40));
+    expect(props.onNineCardPresentationComplete).not.toHaveBeenCalled();
+    expect(view.container.querySelector('[data-revealing="true"][data-blocked="true"]')).not.toBeNull();
+    act(() => vi.advanceTimersByTime(28));
+    expect(props.onNineCardPresentationComplete).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(40));
+    expect(props.onNineCardPresentationComplete).toHaveBeenCalledExactlyOnceWith("full", props.projection.progression.dealNumber);
+    view.rerender(<GameTable {...props} projection={{...props.projection, stateVersion: props.projection.stateVersion+1}} />);
+    act(() => vi.advanceTimersByTime(1000));
+    expect(props.onNineCardPresentationComplete).toHaveBeenCalledTimes(1);
+  });
   it.each(["null", "throw"])("immediately displays declaration and closes picker, then rolls back on %s", async failure => {
     vi.useFakeTimers(); artwork.settled = true;
     const props = tableFixture(); let reject: ((error: Error) => void) | undefined; let resolve: ((value: null) => void) | undefined;
@@ -81,3 +99,4 @@ describe("settle reveal and optimistic declaration feedback", () => {
     else expect(view.queryByRole("button", { name: "Δήλωση 2" })).toBeNull();
   });
 });
+
