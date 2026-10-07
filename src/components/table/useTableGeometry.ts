@@ -26,6 +26,8 @@ export interface TableGeometry {
   dealTargets: Record<VisualSeat, Point>;
   trickSlots: Record<VisualSeat, Point>;
   localHandCenter: Point;
+  // Center reaches the visible bottom edge; half the back remains visible until fade.
+  localDealExit?: Point;
   localHandBounds?: RectLike;
   trickCardSize: { width: number; height: number };
 }
@@ -163,6 +165,7 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
     },
     localHandCenter: { x: handLeft + localHandBounds.width / 2, y: height },
     localHandBounds,
+    localDealExit: { x: handLeft + localHandBounds.width / 2, y: input.viewportHeight - feltRect.top },
     trickCardSize: { width: cardWidth, height: cardHeight },
   };
 }
@@ -180,6 +183,7 @@ function geometrySignature(value: Omit<TableGeometry, "epoch">): string {
     p(value.dealCenter.y),
     p(value.localHandBounds?.left ?? 0),
     p(value.localHandBounds?.right ?? 0),
+    p(value.localDealExit?.y ?? 0),
     p(value.trickCardSize.width),
     ...([0, 1, 2, 3] as VisualSeat[]).flatMap((seat) => [
       p(value.seatOrigins[seat].x),
@@ -262,3 +266,4 @@ export function useTableGeometry(): {
 
   return { feltRef, topSeatRef, leftSeatRef, rightSeatRef, localSeatRef, geometry };
 }
+

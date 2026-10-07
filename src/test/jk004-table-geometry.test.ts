@@ -6,6 +6,15 @@ function rect(left: number, top: number, width: number, height: number): RectLik
 }
 
 describe("JK-004 measured table geometry", () => {
+  it.each([[780,360], [800,400], [568,320], [1000,600]])("places the deal exit at the visible screen edge for %i x %i", (width,height) => {
+    const felt = rect(width * .05, height * .1, width * .9, height * .63);
+    const geometry = computeTableGeometry({feltRect:felt, viewportWidth:width, viewportHeight:height});
+    expect(geometry.localDealExit).toBeDefined();
+    expect(geometry.localDealExit!.y + felt.top).toBe(height);
+    expect(geometry.localDealExit!.y - geometry.dealTargets[0].y).toBeCloseTo(height * .28);
+    expect(geometry.localHandCenter.y + felt.top).toBeCloseTo(height * .73);
+    expect(geometry.localDealExit!.x).toBe(geometry.localHandCenter.x);
+  });
   it("centers the usable felt between measured seats rather than raw viewport center", () => {
     const geometry = computeTableGeometry({
       feltRect: rect(50, 80, 900, 500),
@@ -91,3 +100,4 @@ describe("JK-004 measured table geometry", () => {
     expect(geometry.dealTargets[0]).toEqual({ x: 450, y: 434 });
   });
 });
+
