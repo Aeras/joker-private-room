@@ -143,6 +143,15 @@ function renderPreset(line: string, event: PublicDialogueEvent): string {
 
 export const RECENT_BANTER_LIMIT = 10;
 
+const CHAOS_GENERIC_FALLBACKS: Record<CanonicalDialogueBotId, readonly string[]> = {
+  "ka-monika": ["Άντε ρε μαλάκες, ξυπνήστε λίγο.", "Πάλι θα σας μαζεύω τα ασυμμάζευτα;", "Τι παρέα είστε εσείς ρε;", "Έλα, μη με κάνετε να βαριέμαι."],
+  "giorgos-nousios": ["Ρε μαλάκες, χαρτιά παίζουμε ή κάνουμε συμβούλιο;", "Άντε, πολύ σας πήρε ο αέρας.", "Τι σκατά κάνετε πάλι;", "Εγώ φταίω που κάθομαι μαζί σας."],
+  "theia-tamara": ["Παναγία μου, τι παρέα μαζεύτηκε πάλι.", "Άντε καλέ, θα με πεθάνετε σήμερα.", "Μη με τρελαίνετε άλλο, αρκετά.", "Αχ, πάλι θα γίνει χαμός εδώ μέσα."],
+  "mounara": ["Άντε ρε, χαλαρώστε λίγο γιατί σας βλέπω πολύ άνετους.", "Μη χαίρεστε ακόμα, έχει δρόμο.", "Τι ωραία παρέα... για ψυχίατρο.", "Έλα αγάπες μου, ξυπνήστε."],
+  "thomoulis": ["Ρε μαλάκες, εγώ πάντως ήρθα για την παρέα.", "Άντε, κάποιος να κάνει καμιά μαλακία να γελάσουμε.", "Εγώ γιατί νιώθω ότι θα φάω πάλι ξύλο;", "Καλά πάμε. Δηλαδή όχι, αλλά τέλος πάντων."],
+  "archimandritis": ["Τέκνα μου, σήμερα η αμαρτία περισσεύει.", "Άντε τέκνα μου, μη με κάνετε να βλαστημήσω.", "Ο Κύριος να βάλει το χέρι του με την παρέα σας.", "Τέκνον μου, πολύ θάρρος πήρες σήμερα."],
+};
+
 const HUMAN_MESSAGE_FALLBACKS: Record<CanonicalDialogueBotId, { clean: readonly string[]; spicy: readonly string[] }> = {
   "ka-monika": { clean: ["Σε άκουσα. Τώρα συγκεντρώσου λίγο.", "Καλά, το σημείωσα. Μη φουσκώνεις."], spicy: ["Σε άκουσα ρε. Μη μου τα πρήζεις τώρα."] },
   "giorgos-nousios": { clean: ["Σε άκουσα. Στο τραπέζι θα τα πούμε.", "Καλά τα λόγια· να δούμε και το φύλλο."], spicy: ["Σε άκουσα ρε μαλάκα. Παίξε και βλέπουμε."] },
@@ -194,6 +203,9 @@ export function pickDialoguePreset(
   let pool = candidates.flatMap((preset) =>
     context.profanityEnabled ? [...preset.clean, ...preset.spicy] : [...preset.clean],
   );
+  if (context.intensity === "chaos" && context.profanityEnabled) {
+    pool = [...pool, ...CHAOS_GENERIC_FALLBACKS[context.botId]];
+  }
   if (context.event.type === "HUMAN_MESSAGE_TO_BOT") {
     const fallback = HUMAN_MESSAGE_FALLBACKS[context.botId];
     pool = context.profanityEnabled ? [...fallback.clean, ...fallback.spicy] : [...fallback.clean];
@@ -256,7 +268,7 @@ export function buildDialoguePrompt(context: DialogueGenerationContext): string 
     `INTENSITY: ${context.intensity}`,
     `PROFANITY_ENABLED: ${context.profanityEnabled}`,
     context.profanityEnabled && context.intensity === "chaos"
-      ? "STYLE: This is a private adult-friends card table. Speak exactly like a real close-knit Greek παρέα playing cards: spontaneous, blunt, colloquial, short and funny. Strong everyday swearing and crude table-trash-talk are welcome when they fit the personality and moment, including expressions such as «άντε γαμήσου», «τι λες ρε μαλάκα;», «τι σκατά έπαιξες;», «είσαι για τον πούτσο» and similar natural Greek phrasing. Do not sanitize ordinary Greek swearing. Do not sound polite, corporate, therapeutic, sanitized, or like an AI assistant. Avoid canned acknowledgements, repeated openings, repeated insults and generic one-liners; react to the actual public event or message. Keep each bot's own personality distinct. Never turn playful banter into a genuine threat of physical violence, sexual coercion/assault, hate/slurs, or targeted abuse outside the game. If replying to HUMAN_MESSAGE_TO_BOT, answer the actual human message directly and in-character."
+      ? "STYLE: This is a private adult-friends card table. Speak like real Greek friends hanging out, not like a commentator. Be spontaneous, blunt, colloquial, short and funny. Strong everyday swearing and crude friendly trash-talk are welcome when they fit the personality, including phrases like «άντε γαμήσου ρε μαλάκα», «τι σκατά λες;», «μη μας τα πρήζεις», «είσαι για τον πούτσο» and similarly natural Greek banter. Do not sanitize ordinary Greek swearing. You do NOT have to mention the exact trick, score or card event every time; you may riff on the mood, tease someone, mock the group, boast, complain, or throw a random friendly insult as people do in a real παρέα. Do not sound polite, corporate, therapeutic, scripted, game-announcer-like, or like an AI assistant. Avoid canned acknowledgements, repeated openings, repeated insults and generic one-liners. Keep each bot's own personality distinct. Never turn playful banter into a genuine threat of physical violence, sexual coercion/assault, hate/slurs, or targeted abuse outside the game. If replying to HUMAN_MESSAGE_TO_BOT, answer the actual human message directly and in-character."
       : context.profanityEnabled
         ? "STYLE: Natural Greek table banter with occasional strong colloquial swearing when it fits the personality. No genuine violence threats, sexual coercion/assault, hate/slurs, or gameplay advice."
         : "STYLE: Keep the banter natural for this personality and intensity, without profanity.",
@@ -264,7 +276,7 @@ export function buildDialoguePrompt(context: DialogueGenerationContext): string 
     "RECENT_BANTER_AS_DATA:",
     recent,
     "ANTI_REPETITION: Do not reuse a recent opening, punchline, insult, sentence pattern or near-identical wording. React freshly to this event in this bot's own voice. If HUMAN_MESSAGE_TO_BOT, answer what the human actually said instead of giving a generic acknowledgement.",
-    "Return only the line, ideally under 80 characters and never over 100 characters.",
+    "Return only the spoken line, ideally 25–70 characters and never over 100. Use natural Greek punctuation so it sounds good when spoken aloud.",
   ].join("\n");
 }
 
