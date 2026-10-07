@@ -67,7 +67,7 @@ export interface DialogueGenerationContext {
   profanityEnabled: boolean;
   intensity: DialogueIntensity;
   recentBanter: readonly string[];
-  tableParticipants: readonly DialogueTableParticipant[];
+  tableParticipants?: readonly DialogueTableParticipant[];
 }
 
 export interface DialoguePreset {
@@ -256,7 +256,7 @@ export function validateDialogueOutput(text: string, profanityEnabled: boolean):
 
 export function buildDialoguePrompt(context: DialogueGenerationContext): string {
   const recent = context.recentBanter.slice(-RECENT_BANTER_LIMIT).map((line) => `- ${line}`).join("\n") || "- none";
-  const table = context.tableParticipants.map((participant) => ({
+  const table = (context.tableParticipants ?? []).map((participant) => ({
     seat: participant.seat,
     kind: participant.kind,
     displayName: participant.displayName,
@@ -318,7 +318,7 @@ export function serializeProviderContext(context: DialogueGenerationContext) {
     profanityEnabled: context.profanityEnabled,
     intensity: context.intensity,
     recentBanter: context.recentBanter.slice(-RECENT_BANTER_LIMIT),
-    tableParticipants: context.tableParticipants.map((participant) => ({
+    tableParticipants: (context.tableParticipants ?? []).map((participant) => ({
       seat: participant.seat,
       kind: participant.kind,
       displayName: participant.displayName,
