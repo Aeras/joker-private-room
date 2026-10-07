@@ -13,7 +13,15 @@ describe("JK-004 measured table geometry", () => {
     expect(geometry.localDealExit!.y + felt.top).toBe(height);
     expect(geometry.localDealExit!.y - geometry.dealTargets[0].y).toBeCloseTo(height * .28);
     expect(geometry.localHandCenter.y + felt.top).toBeCloseTo(height * .73);
-    expect(geometry.localDealExit!.x).toBe(geometry.localHandCenter.x);
+    expect(geometry.localDealExit!.x).toBe(geometry.dealTargets[0].x);
+    const exits=geometry.dealExitTargets!;
+    expect(exits[0].x).toBe(geometry.dealTargets[0].x);
+    expect(exits[2].x).toBe(geometry.dealTargets[2].x);
+    expect(exits[1].y).toBe(geometry.dealTargets[1].y);
+    expect(exits[3].y).toBe(geometry.dealTargets[3].y);
+    expect(exits[1].x+felt.left).toBe(0);
+    expect(exits[2].y+felt.top).toBe(0);
+    expect(exits[3].x+felt.left).toBe(width);
   });
   it("centers the usable felt between measured seats rather than raw viewport center", () => {
     const geometry = computeTableGeometry({

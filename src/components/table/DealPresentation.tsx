@@ -80,11 +80,11 @@ function TravelingBack({ beat, pos, geometry, dealerPos, settling }: { beat: Dea
   }
   const source = dealerSourcePoint(geometry, dealerPos);
   const baseTarget = viewportPoint(geometry, geometry.dealTargets[pos]);
-  // The felt ends well above the footer. Travel to the viewport exit, not
-  // localHandCenter.y (the felt edge), then fade while the open hand rises.
-  const sideTarget = pos === 0
-    ? (geometry.localDealExit ?? { x: geometry.localHandCenter.x, y: geometry.feltRect.top + 2 * geometry.dealCenter.y })
-    : pointTowardCenter(geometry.seatOrigins[pos], geometry.dealCenter, 24);
+  // Each pile exits along its own axis; the hand lane must not pull it sideways.
+  const sideTarget = geometry.dealExitTargets?.[pos] ?? {
+    x: pos === 1 ? -geometry.feltRect.left : pos === 3 ? geometry.feltRect.left + 2 * geometry.dealCenter.x : geometry.dealTargets[pos].x,
+    y: pos === 0 ? geometry.feltRect.top + 2 * geometry.dealCenter.y : pos === 2 ? -geometry.feltRect.top : geometry.dealTargets[pos].y,
+  };
   const target = stackedTarget(settling ? viewportPoint(geometry, sideTarget) : baseTarget, pos, beat.stackIndex);
   const easing = settling ? "linear" : "cubic-bezier(0.2, 0.75, 0.25, 1)";
   return <div data-deal-traveling-card data-deal-visual-seat={pos} data-deal-handoff={settling && pos === 0 ? "local" : undefined} className="absolute [--card-w:clamp(3.4rem,8vw,5.5rem)] transition-[transform,opacity]" style={{ opacity: settling ? 0 : 1, left: source.x, top: source.y, zIndex: 30 + beat.stackIndex, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_TRAVEL_MS}ms, ${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${NORMAL_DEAL_TRAVEL_MS}ms`, transitionDelay: settling ? `0ms, ${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transitionTimingFunction: easing, transform: `translate(calc(-50% + ${arrived ? target.x - source.x : 0}px), calc(-50% + ${arrived ? target.y - source.y : 0}px)) scale(${arrived ? 1 : 0.58}) rotate(${arrived ? targetRotation : sourceRotation}deg)` }}><PlayingCard faceDown /></div>;
