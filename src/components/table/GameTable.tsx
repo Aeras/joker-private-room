@@ -32,6 +32,25 @@ const HAND_REVEAL_MS = 500;
 const PRESENTATION_ACK_DELAY_MS = 40;
 const TRUMP_ANNOUNCEMENT_MS = 3_000;
 const SUIT_LABEL: Record<Suit, string> = { spades: "♠ Μπαστούνια", hearts: "♥ Κούπες", diamonds: "♦ Καρό", clubs: "♣ Σπαθιά" };
+type DisplayedScoreSnapshot = {
+  gameId: string;
+  dealNumber: number;
+  completedTrickCount: number;
+  cumulativeTotals: readonly number[];
+  tricksTaken: readonly number[];
+};
+function displayedScoreSnapshot(projection: PlayerGameProjection): DisplayedScoreSnapshot {
+  return {
+    gameId: projection.gameId,
+    dealNumber: projection.progression.dealNumber,
+    completedTrickCount: projection.cards.completedTricks.length,
+    cumulativeTotals: [...projection.score.cumulativeTotals],
+    tricksTaken: [...projection.score.tricksTaken],
+  };
+}
+function sameNumbers(left: readonly number[], right: readonly number[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
 
 function authoritativeScoreSheet(projection: PlayerGameProjection): ScoreSheet {
   return {
@@ -76,6 +95,8 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
 }) {
   const tableRootRef = useRef<HTMLDivElement>(null);
   const playSubmissionLock = useRef(false);
+  const latestProjectionRef = useRef(projection);
+  latestProjectionRef.current = projection;
   const handRevealTimer = useRef<number | null>(null);
   const trumpAnnouncementTimer = useRef<number | null>(null);
   const revealedHands = useRef(new Set<string>());
@@ -95,6 +116,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const [pendingPresentationAck, setPendingPresentationAck] = useState<{ stage: DealPresentationStage; dealNumber: number } | null>(null);
   const [handRevealActive, setHandRevealActive] = useState(false);
   const [trumpAnnouncement, setTrumpAnnouncement] = useState<string | null>(null);
+  const [displayedScore, setDisplayedScore] = useState<DisplayedScoreSnapshot>(() => displayedScoreSnapshot(projection));
   const ownArtworkSettled = useCriticalCardArtwork(projection.cards.ownHandVisible
     ? [assets.cardBack, ...projection.cards.ownHand.map(card => assets.cardFace(card))]
     : []);
@@ -151,6 +173,31 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   }, []);
   useEffect(() => { const change = () => setFullscreen(Boolean(document.fullscreenElement)); document.addEventListener("fullscreenchange", change); return () => document.removeEventListener("fullscreenchange", change); }, []);
   useEffect(() => { if (!declarationAction || projection.declarations.values[localSeat] === pendingDeclarationValue) setPendingDeclarationValue(null); }, [projection.stateVersion, projection.declarations.values, localSeat, pendingDeclarationValue, declarationAction]);
+  const releaseDisplayedScore = useCallback(() => {
+    setDisplayedScore(displayedScoreSnapshot(latestProjectionRef.current));
+  }, []);
+  useEffect(() => {
+    const next = displayedScoreSnapshot(projection);
+    if (displayedScore.gameId !== next.gameId) {
+      setDisplayedScore(next);
+      return;
+    }
+    const presentationTailActive = (projection.cards.presentationTail?.length ?? 0) > 0;
+    if (trickPresentationBusy || presentationTailActive) return;
+    const unresolvedCompletedTrick =
+      next.dealNumber === displayedScore.dealNumber &&
+      next.completedTrickCount > displayedScore.completedTrickCount;
+    const unresolvedDealAdvance =
+      next.dealNumber !== displayedScore.dealNumber &&
+      (projection.progression.phase === "CARD_PLAY" || projection.progression.phase === "DEAL_RESULT");
+    if (unresolvedCompletedTrick || unresolvedDealAdvance) return;
+    if (
+      next.dealNumber !== displayedScore.dealNumber ||
+      next.completedTrickCount !== displayedScore.completedTrickCount ||
+      !sameNumbers(next.cumulativeTotals, displayedScore.cumulativeTotals) ||
+      !sameNumbers(next.tricksTaken, displayedScore.tricksTaken)
+    ) setDisplayedScore(next);
+  }, [projection.stateVersion, projection.gameId, projection.progression.dealNumber, projection.progression.phase, projection.cards.completedTricks.length, projection.cards.presentationTail, projection.score.cumulativeTotals, projection.score.tricksTaken, trickPresentationBusy, displayedScore]);
   useEffect(() => { setDealerIntroActive(dealerSelectionNeedsPresentation(projection)); }, [projection.gameId, projection.initialDealerSelection?.status === "resolved" ? projection.initialDealerSelection.resolvedAtStateVersion : null]);
   useEffect(() => {
     if (startupPresentationActive && !dealSettling) return;
@@ -226,7 +273,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     const seat = seatAt(pos); const roomSeat = room.seats[seat]; if (!roomSeat) return null;
     const publicDeadline = projection.timing?.currentHumanDeadline ?? projection.local.humanDeadline;
     const isActor = !interactionPresentationActive && projection.progression.currentActorSeat === seat;
-    return <TableSeat seat={roomSeat} orientation={orientation} showCards={false} local={pos === 0} stats={{ totalScore: projection.score.cumulativeTotals[seat], declaration: startupPresentationActive ? null : pos === 0 ? pendingDeclarationValue ?? projection.declarations.values[seat] : projection.declarations.values[seat], tricksTaken: projection.score.tricksTaken[seat], isDealer: !dealerIntroActive && projection.progression.dealerSeat === seat, isActive: isActor, cardCount: startupPresentationActive ? 0 : publicCardCount(projection, seat), humanDeadline: isActor && countdownPhase ? publicDeadline : null, isTemporarilyControlled: projection.seats[seat].owner.type === "human" && projection.seats[seat].controller === "temporary_bot" }} />;
+    return <TableSeat seat={roomSeat} orientation={orientation} showCards={false} local={pos === 0} infoPlacement={pos === 2 ? "left" : "below"} stats={{ totalScore: displayedScore.cumulativeTotals[seat] ?? 0, declaration: startupPresentationActive ? null : pos === 0 ? pendingDeclarationValue ?? projection.declarations.values[seat] : projection.declarations.values[seat], tricksTaken: displayedScore.tricksTaken[seat] ?? 0, isDealer: !dealerIntroActive && projection.progression.dealerSeat === seat, isActive: isActor, cardCount: startupPresentationActive ? 0 : publicCardCount(projection, seat), humanDeadline: isActor && countdownPhase ? publicDeadline : null, isTemporarilyControlled: projection.seats[seat].owner.type === "human" && projection.seats[seat].controller === "temporary_bot" }} />;
   };
 
   const forcedEnd = projection.termination?.kind === "host_ended";
@@ -243,7 +290,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       <div className="ml-2 rounded-lg bg-black/60 px-2 py-1 text-xs text-white/75 backdrop-blur">Γύρος {projection.progression.round} · Μοιρασιά {projection.progression.dealNumber}/24 · {presentedPhaseMessage}</div>
       <div className="ml-auto flex items-center gap-1 pr-[max(0rem,env(safe-area-inset-right))]"><SoundToggle /><JButton variant="outlineGold" size="sm" className="h-8 px-2 bg-black/60" onClick={() => setScoreOpen(true)} aria-label="Σκορ"><Trophy className="h-4 w-4" /><span className="hidden lg:inline">Σκορ</span></JButton><TableUtilityMenu isHost={isHost} disabled={busy || projection.lifecycle === "complete"} onEndGame={onEndGame} /><JButton variant="outlineGold" size="sm" className="h-8 px-2 bg-black/60" onClick={toggleFullscreen} aria-label={fullscreen ? "Έξοδος από πλήρη οθόνη" : "Πλήρης οθόνη"}>{fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}</JButton></div>
     </header>
-    <main className="absolute inset-x-[5vw] top-[10vh] bottom-[27vh]"><div ref={tableGeometry.feltRef} className="relative h-full w-full"><div ref={tableGeometry.topSeatRef} className="absolute left-1/2 top-[-10%] z-20 -translate-x-1/2">{seatBlock(2, "horizontal")}</div><div ref={tableGeometry.leftSeatRef} className="absolute left-[-2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(1, "vertical")}</div><div ref={tableGeometry.rightSeatRef} className="absolute right-[-2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(3, "vertical")}</div><DealerSelectionPresentation projection={projection} geometry={tableGeometry.geometry} onActiveChange={setDealerIntroActive} />{<TrickPresentation projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} onLocalFlightSettled={clearLocalFlight} onBusyChange={setTrickPresentationBusy} onPresentationReady={completeVisibleTurn} />}</div></main>
+    <main className="absolute inset-x-[5vw] top-[10vh] bottom-[27vh]"><div ref={tableGeometry.feltRef} className="relative h-full w-full"><div ref={tableGeometry.topSeatRef} className="absolute left-1/2 top-[-10%] z-20 -translate-x-1/2">{seatBlock(2, "horizontal")}</div><div ref={tableGeometry.leftSeatRef} className="absolute left-[-2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(1, "vertical")}</div><div ref={tableGeometry.rightSeatRef} className="absolute right-[-2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(3, "vertical")}</div><DealerSelectionPresentation projection={projection} geometry={tableGeometry.geometry} onActiveChange={setDealerIntroActive} />{<TrickPresentation projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} onLocalFlightSettled={clearLocalFlight} onBusyChange={setTrickPresentationBusy} onCollectionComplete={releaseDisplayedScore} onPresentationReady={completeVisibleTurn} />}</div></main>
     {showTrumpIndicator && <div className="pointer-events-none absolute left-[72%] top-[10vh] z-30 -translate-x-1/2 [--card-w:clamp(3.2rem,6.4vw,5rem)]"><div className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Ατού</div><TrumpIndicator trump={projection.trump} exposedTrumpCard={projection.cards.exposedTrumpCard} /></div>}
     {trumpAnnouncement && <div className="pointer-events-none absolute left-1/2 top-1/2 z-[65] -translate-x-1/2 -translate-y-[4.8rem] rounded-xl border border-primary/55 bg-black/90 px-5 py-2.5 text-center text-base font-semibold text-white shadow-2xl backdrop-blur" role="status" aria-live="polite" data-trump-announcement>{trumpAnnouncement}</div>}
     <DealPresentation projection={projection} geometry={tableGeometry.geometry} paused={dealerIntroActive || trickPresentationBusy} onActiveChange={setDealPresentationActive} onSettlingChange={setDealSettling} onPresentationComplete={handleDealPresentationComplete} />
