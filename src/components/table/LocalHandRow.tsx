@@ -46,22 +46,26 @@ export function LocalHandRow({
   const laneWidth = geometry?.localHandBounds?.width;
   const cardWidth = "clamp(3.4rem, min(9.6vw, 22vh), 6.75rem)";
   const cardOverlap = cards.length <= 3 ? 0.18 : cards.length <= 5 ? 0.28 : cards.length <= 7 ? 0.36 : 0.42;
+  const revealOverlap = entranceSettled ? cardOverlap : 0.86;
 
   return (
     <div
-      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[500ms] ease-out motion-reduce:duration-75"
+      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[520ms] motion-reduce:duration-75"
       style={{
         "--card-w": cardWidth,
         transform: `translateX(${offset}px) translateY(calc(var(--card-w) * 0.52 + ${entranceSettled ? "0px" : "var(--card-w) * 1.4 + 48px"}))`,
         opacity: 1,
+        transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
       } as React.CSSProperties}
       data-hand-center-offset={offset}
       data-hand-entrance={revealing && !entranceSettled ? "entering" : "settled"}
     >
       <div
         className="flex justify-center overflow-visible pt-2"
-        style={{ "--card-w": cardWidth, "--card-overlap": cardOverlap } as React.CSSProperties}
+        style={{ "--card-w": cardWidth, "--card-overlap": revealOverlap } as React.CSSProperties}
         data-hand-lane-width={laneWidth}
+        data-hand-final-overlap={cardOverlap}
+        data-hand-current-overlap={revealOverlap}
       >
         {visible ? (
           cards.map((card, index) => (
