@@ -124,7 +124,14 @@ Deno.serve(async (req: Request) => {
         const botsTalk = Boolean(body?.botsTalk);
         const allowProfanity = Boolean(body?.allowProfanity);
         const aiEnabled = Boolean(body?.aiEnabled);
-        if (!intensity || ((!botsTalk) && (allowProfanity || aiEnabled))) {
+        const ttsEnabled = Boolean(body?.ttsEnabled);
+        const showDialogueText = body?.showDialogueText !== false;
+        if (
+          !intensity
+          || ((!botsTalk) && (allowProfanity || aiEnabled || ttsEnabled))
+          || (ttsEnabled && !aiEnabled)
+          || (!ttsEnabled && !showDialogueText)
+        ) {
           return json({ ok: false, code: "INVALID_ROOM_STATE" }, 400);
         }
 
@@ -136,6 +143,8 @@ Deno.serve(async (req: Request) => {
           p_bots_talk: botsTalk,
           p_allow_profanity: botsTalk && allowProfanity,
           p_ai_enabled: botsTalk && aiEnabled,
+          p_tts_enabled: botsTalk && aiEnabled && ttsEnabled,
+          p_show_dialogue_text: botsTalk && aiEnabled && ttsEnabled ? showDialogueText : true,
           p_dialogue_intensity: intensity,
         };
       } else if (action === "join") {

@@ -57,6 +57,10 @@ export interface BotSettings {
   allowProfanity: boolean;
   /** Optional external-AI dialogue path; false means preset-only dialogue. */
   aiEnabled: boolean;
+  /** Google Cloud Text-to-Speech output; owner-only and meaningful only with AI enabled. */
+  ttsEnabled?: boolean;
+  /** Whether bot text bubbles remain visible when TTS is enabled. Defaults to visible for legacy rooms. */
+  showDialogueText?: boolean;
   /** Presentation frequency only; never a bot strategy input. */
   intensity: DialogueIntensity;
 }

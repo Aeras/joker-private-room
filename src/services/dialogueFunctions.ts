@@ -19,6 +19,9 @@ export interface DialogueMessage {
   replyDepth: 0 | 1;
   createdAt: string;
   expiresAt: string;
+  audioContent?: string | null;
+  audioMimeType?: "audio/mpeg" | null;
+  ttsVoiceName?: string | null;
 }
 
 export type DialogueEdgeResult =

@@ -8,6 +8,7 @@ import {
 } from "../_shared/dialogue-core.ts";
 import { generateDialogueLine } from "../_shared/xai-dialogue.ts";
 import { getCanonicalBot } from "../_shared/bot-catalog.ts";
+import { synthesizeBotSpeech } from "../_shared/google-tts.ts";
 
 const DIALOGUE_EVENT_TYPES = new Set<DialogueEventType>([
   "PLAYER_DECLARED_ZERO",
@@ -309,6 +310,34 @@ Deno.serve(async (req: Request) => {
         return json({ ok: false, code }, 409);
       }
 
+      let publishedMessage = published.message;
+      if (policy.ttsEnabled === true) {
+        const speech = await synthesizeBotSpeech({
+          botId: bot.id,
+          text: generated.text,
+          serviceAccountJson: Deno.env.get("GOOGLE_TTS_SERVICE_ACCOUNT_JSON") ?? undefined,
+        });
+        if (speech) {
+          const { data: attached, error: attachError } = await admin.rpc("attach_dialogue_audio_internal", {
+            p_session_token: body.sessionToken,
+            p_game_id: body.gameId,
+            p_event_id: event.id,
+            p_speaker_bot_id: event.speakerBotId,
+            p_audio_content: speech.audioContent,
+            p_audio_mime_type: speech.mimeType,
+            p_tts_voice_name: speech.voiceName,
+          });
+          if (!attachError && attached?.ok === true && publishedMessage && typeof publishedMessage === "object") {
+            publishedMessage = {
+              ...publishedMessage,
+              audioContent: speech.audioContent,
+              audioMimeType: speech.mimeType,
+              ttsVoiceName: speech.voiceName,
+            };
+          }
+        }
+      }
+
       logDialogueOutcome({
         event,
         source: generated.source,
@@ -318,7 +347,7 @@ Deno.serve(async (req: Request) => {
       });
       return json({
         ok: true,
-        message: published.message,
+        message: publishedMessage,
         providerAttempted: generated.providerAttempted,
         providerReason: generated.providerReason,
       });

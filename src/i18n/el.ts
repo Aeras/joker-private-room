@@ -13,6 +13,8 @@ export const t = {
   botsTalk: "Τα bots μιλάνε",
   allowProfanity: "Επιτρέπεται ακατάλληλο λεξιλόγιο 🔞",
   useAiBanter: "Χρήση AI για ατάκες",
+  botVoice: "Φωνή bot",
+  showBotMessages: "Εμφάνιση μηνυμάτων",
   banterIntensity: "Ένταση ατάκας",
   banterConservative: "Συντηρητική",
   banterNormal: "Κανονική",

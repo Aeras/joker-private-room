@@ -54,6 +54,8 @@ function CreateGame() {
   const [botsTalk, setBotsTalk] = useState(false);
   const [allowProfanity, setAllowProfanity] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [showDialogueText, setShowDialogueText] = useState(true);
   const [intensity, setIntensity] = useState<DialogueIntensity>("normal");
   const [busy, setBusy] = useState(false);
   const [roomError, setRoomError] = useState<string | null>(null);
@@ -114,6 +116,8 @@ function CreateGame() {
           botsTalk,
           allowProfanity: botsTalk && allowProfanity,
           aiEnabled: botsTalk && verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && aiEnabled,
+          ttsEnabled: botsTalk && verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && aiEnabled && ttsEnabled,
+          showDialogueText: !(botsTalk && verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && aiEnabled && ttsEnabled) || showDialogueText,
           intensity,
         },
       });
@@ -223,13 +227,46 @@ function CreateGame() {
               if (!v) {
                 setAllowProfanity(false);
                 setAiEnabled(false);
+                setTtsEnabled(false);
+                setShowDialogueText(true);
               }
             }} label={t.botsTalk} />
             {botsTalk ? (
               <div className="space-y-1 border-t border-border pt-1">
                 <Toggle checked={allowProfanity} onChange={setAllowProfanity} label={t.allowProfanity} />
                 {verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && (
-                  <Toggle checked={aiEnabled} onChange={setAiEnabled} label={t.useAiBanter} />
+                  <div>
+                    <Toggle
+                      checked={aiEnabled}
+                      onChange={(value) => {
+                        setAiEnabled(value);
+                        if (!value) {
+                          setTtsEnabled(false);
+                          setShowDialogueText(true);
+                        }
+                      }}
+                      label={t.useAiBanter}
+                    />
+                    {aiEnabled && (
+                      <div className="ml-8 space-y-1">
+                        <Toggle
+                          checked={ttsEnabled}
+                          onChange={(value) => {
+                            setTtsEnabled(value);
+                            if (!value) setShowDialogueText(true);
+                          }}
+                          label={t.botVoice}
+                        />
+                        {ttsEnabled && (
+                          <Toggle
+                            checked={showDialogueText}
+                            onChange={setShowDialogueText}
+                            label={t.showBotMessages}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
                 <div className="pt-1">
                   <p className="mb-2 text-xs text-muted-foreground">{t.banterIntensity}</p>
