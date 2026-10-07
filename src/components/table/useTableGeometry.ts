@@ -28,6 +28,7 @@ export interface TableGeometry {
   localHandCenter: Point;
   // Center reaches the visible bottom edge; half the back remains visible until fade.
   localDealExit?: Point;
+  dealExitTargets?: Record<VisualSeat, Point>;
   localHandBounds?: RectLike;
   trickCardSize: { width: number; height: number };
 }
@@ -165,7 +166,13 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
     },
     localHandCenter: { x: handLeft + localHandBounds.width / 2, y: height },
     localHandBounds,
-    localDealExit: { x: handLeft + localHandBounds.width / 2, y: input.viewportHeight - feltRect.top },
+    localDealExit: { x: dealTargets[0].x, y: input.viewportHeight - feltRect.top },
+    dealExitTargets: {
+      0: { x: dealTargets[0].x, y: input.viewportHeight - feltRect.top },
+      1: { x: -feltRect.left, y: dealTargets[1].y },
+      2: { x: dealTargets[2].x, y: -feltRect.top },
+      3: { x: input.viewportWidth - feltRect.left, y: dealTargets[3].y },
+    },
     trickCardSize: { width: cardWidth, height: cardHeight },
   };
 }

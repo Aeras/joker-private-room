@@ -126,8 +126,8 @@ describe("presentation interruption and geometry", () => {
     expect(view.container.querySelector('[data-deal-settling="true"]')).not.toBeNull();
     const localCard = view.container.querySelector<HTMLElement>("[data-deal-handoff='local']");
     expect(localCard).not.toBeNull();
-    expect(localCard?.style.transitionDuration).toBe("1000ms, 250ms");
-    expect(localCard?.style.transitionDelay).toBe("0ms, 1000ms");
+    expect(localCard?.style.transitionDuration).toBe("750ms, 250ms");
+    expect(localCard?.style.transitionDelay).toBe("0ms, 750ms");
     // The target center must reach the 400px viewport bottom, not the
     // measured felt bottom (290px). This catches the formerly 1vh path.
     expect(localCard?.style.transform).toContain(`calc(-50% + ${400 - Number.parseFloat(localCard!.style.top)}px)`);
@@ -138,7 +138,15 @@ describe("presentation interruption and geometry", () => {
     expect(Array.from(view.container.querySelectorAll("[data-deal-traveling-card]"))).toEqual(Array.from(cardsBeforeSettle));
     expect(localCard?.style.transitionTimingFunction).toBe("linear");
     expect(Array.from(view.container.querySelectorAll<HTMLElement>("[data-deal-traveling-card]")).some((card, index) => card.style.transform !== oldTransforms[index])).toBe(true);
-    tick(999); expect(settling).not.toHaveBeenCalledWith(true);
+    Array.from(cardsBeforeSettle).forEach((card,index) => {
+      const offsets = (value: string) => Array.from(value.matchAll(/calc\(-50% \+ ([\d.-]+)px\)/g), match => Number(match[1]));
+      const before = offsets(oldTransforms[index]);
+      const after = offsets(card.style.transform);
+      const pos = Number(card.dataset['dealVisualSeat']);
+      const fixedAxis = pos === 0 || pos === 2 ? 0 : 1;
+      expect(after[fixedAxis]).toBe(before[fixedAxis]);
+    });
+    tick(749); expect(settling).not.toHaveBeenCalledWith(true);
     tick(1); expect(settling).toHaveBeenLastCalledWith(true);
     tick(249);
     expect(complete).not.toHaveBeenCalled();
@@ -165,7 +173,7 @@ describe("presentation interruption and geometry", () => {
     expect(Array.from(view.container.querySelectorAll("[data-deal-traveling-card]"))).toEqual(backs);
     expect(backs.every(back => back.style.opacity === "0")).toBe(true);
     view.rerender(<DealPresentation {...props} projection={{...next}} geometry={{...geometry,epoch:3}} />);
-    tick(1000); expect(settling).toHaveBeenLastCalledWith(true);
+    tick(750); expect(settling).toHaveBeenLastCalledWith(true);
     tick(321); expect(complete).toHaveBeenCalledTimes(1);
     tick(1); expect(complete).toHaveBeenCalledTimes(2); expect(sequenceComplete).toHaveBeenCalledOnce();
     expect(view.container.childElementCount).toBe(0);
@@ -173,7 +181,7 @@ describe("presentation interruption and geometry", () => {
   it("interrupting settle cancels completion and resets settling before replay", () => {
     const complete = vi.fn(); const settling = vi.fn(); const projection = snapshot(); projection.gameId = "settle-interrupt";
     render(<DealPresentation projection={projection} geometry={geometry} onSettlingChange={settling} onPresentationComplete={complete} />);
-    tick(2358); expect(settling).toHaveBeenLastCalledWith(true);
+    tick(2108); expect(settling).toHaveBeenLastCalledWith(true);
     fireEvent.blur(window); expect(settling).toHaveBeenLastCalledWith(false);
     tick(5000); expect(complete).not.toHaveBeenCalled();
     fireEvent.focus(window); tick(3000); expect(complete).toHaveBeenCalledOnce();
