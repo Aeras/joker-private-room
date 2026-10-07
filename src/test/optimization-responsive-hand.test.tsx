@@ -44,6 +44,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("shared local hand geometry", () => {
+  it("uses the requested 400ms entrance without changing final hand depth", () => {
+    const view = render(<LocalHandRow cards={cards} visible legalCardIds={[]} blocked pendingCardId={null} authorityKey="timing" geometry={geometry} revealing onCommit={vi.fn()} />);
+    const hand = view.container.querySelector<HTMLElement>("[data-hand-entrance]");
+    expect(hand?.style.transitionDuration).toBe("400ms");
+    act(() => vi.advanceTimersByTime(32));
+    expect(hand?.style.transform).toContain("var(--card-w) * 0.52 + 0px");
+  });
   it("retains the same cards, overlap and width through reveal to play, with no early input", () => {
     const commit = vi.fn().mockResolvedValue(undefined);
     const props = {

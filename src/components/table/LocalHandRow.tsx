@@ -1,5 +1,6 @@
 import { useLayoutEffect, useState } from "react";
 import type { Card } from "@/domain/cards";
+import { LOCAL_HAND_ENTRANCE_MS } from "./dealPresentationModel";
 import { DraggableHandCard } from "./DraggableHandCard";
 import { localHandCenterOffset } from "./tableControlModel";
 import type { RectLike, TableGeometry } from "./useTableGeometry";
@@ -50,11 +51,12 @@ export function LocalHandRow({
 
   return (
     <div
-      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[520ms] motion-reduce:duration-75"
+      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[400ms] motion-reduce:duration-75"
       style={{
         "--card-w": cardWidth,
         transform: `translateX(${offset}px) translateY(calc(var(--card-w) * 0.52 + ${entranceSettled ? "0px" : "var(--card-w) * 1.4 + 48px"}))`,
         opacity: 1,
+        transitionDuration: `${LOCAL_HAND_ENTRANCE_MS}ms`,
         transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
       } as React.CSSProperties}
       data-hand-center-offset={offset}
