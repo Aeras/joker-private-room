@@ -90,6 +90,9 @@ function TravelingBack({ beat, pos, geometry, dealerPos, settling }: { beat: Dea
 }
 export function DealPresentation({ projection, geometry = null, paused = false, onActiveChange, onSettlingChange, onSequenceComplete, onPresentationComplete }: { projection: PlayerGameProjection; geometry?: TableGeometry | null; paused?: boolean; onActiveChange?: (active: boolean) => void; onSettlingChange?: (settling: boolean) => void; onSequenceComplete?: () => void; onPresentationComplete?: (stage: DealPresentationStage) => void }) {
   const artworkSettled = useCriticalCardArtwork([assets.cardBack]);
+  const handArtworkSettled = useCriticalCardArtwork(projection.cards.ownHandVisible ? projection.cards.ownHand.map(card => assets.cardFace(card)) : []);
+  const waitingForFirstHand = useRef<string | null>(null);
+  const running = useRef(false);
   const [settling, setSettling] = useState(false);
   const onSettlingChangeRef = useRef(onSettlingChange);
   onSettlingChangeRef.current = onSettlingChange;
@@ -107,7 +110,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     return Array.from({ length: count }, (_, index) => ({ id: `${stageKey}:${index}`, seat: recipientFor(dealer, index), index, stackIndex: Math.floor(index / 4) }));
   }, [projection.progression.cardsPerPlayer, projection.progression.dealerSeat, stage, stageKey]);
   const clearTimers = useCallback(() => { for (const timer of timers.current) window.clearTimeout(timer); timers.current = []; }, []);
-  const clearPresentation = useCallback(() => { clearTimers(); setSettling(false); onSettlingChangeRef.current?.(false); setBeats([]); setVisibleIndex(-1); setRunGeometry(null); onActiveChangeRef.current?.(false); }, [clearTimers]);
+  const clearPresentation = useCallback(() => { clearTimers(); running.current = false; waitingForFirstHand.current = null; setSettling(false); onSettlingChangeRef.current?.(false); setBeats([]); setVisibleIndex(-1); setRunGeometry(null); onActiveChangeRef.current?.(false); }, [clearTimers]);
   const notifyCompletion = useCallback((key: string, presentationStage: DealPresentationStage, startup: boolean) => {
     const completionScope = `${key}:${startup ? "startup" : "gameplay"}`;
     if (acknowledgedStageKey.current === completionScope) return;
@@ -117,10 +120,22 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   }, []);
   useLayoutEffect(() => {
     if (previousGameId.current !== projection.gameId) { clearPresentation(); previousGameId.current = projection.gameId; previousStageKey.current = null; acknowledgedStageKey.current = null; }
-    if (paused || interrupted) { clearPresentation(); if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null; return; }
+    if (paused || interrupted) { clearPresentation(); if (stageKey) previousStageKey.current = null; return; }
     if (!stage || !stageKey || sequence.length === 0) { clearPresentation(); return; }
     const presentationStage: DealPresentationStage = stage;
     const startup = projection.progression.phase === "DEAL_SETUP";
+    if (running.current && stageKey === previousStageKey.current) {
+      if (waitingForFirstHand.current === stageKey && projection.cards.ownHandVisible && handArtworkSettled) {
+        waitingForFirstHand.current = null;
+        setSettling(true); onSettlingChangeRef.current?.(true);
+        recordTimingDiagnostic("deal_first_hand_handoff", { stage: presentationStage });
+        const { settleMs, tailMs } = dealPresentationTiming(false);
+        timers.current.push(window.setTimeout(() => {
+          notifyCompletion(stageKey, presentationStage, startup); clearPresentation();
+        }, settleMs + tailMs));
+      }
+      return;
+    }
     if (dealPresentationWasCompleted(stageKey)) {
       previousStageKey.current = stageKey;
       notifyCompletion(stageKey, presentationStage, startup);
@@ -128,7 +143,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     }
     if (stageKey === previousStageKey.current) return;
     if (!artworkSettled) { onActiveChangeRef.current?.(true); return; }
-    startTimingDiagnosticSession(projection.gameId); previousStageKey.current = stageKey; onActiveChangeRef.current?.(true);
+    startTimingDiagnosticSession(projection.gameId); running.current = true; previousStageKey.current = stageKey; onActiveChangeRef.current?.(true);
     const frozenSequence = sequence.map((beat) => ({ ...beat })); const frozenGeometry = geometry; const frozenViewerSeat = projection.viewerSeat; const frozenDealerPos = visualPosition(frozenViewerSeat, projection.progression.dealerSeat as SeatIndex);
     setRunGeometry(frozenGeometry); setRunViewerSeat(frozenViewerSeat); setRunDealerPos(frozenDealerPos); setBeats(frozenSequence); setVisibleIndex(-1);
     if (presentationStage !== "remaining") playGameSound("shuffle", `${projection.gameId}:${projection.progression.dealNumber}`);
@@ -141,12 +156,21 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     });
     const settleAt = leadInMs + (frozenSequence.length - 1) * staggerMs + NORMAL_DEAL_TRAVEL_MS;
     timers.current.push(window.setTimeout(() => {
+      if (startup && projection.lifecycle === "starting" && projection.cards.ownHandVisible === false) {
+        // The first startup barrier may now release the canonical hand. Keep
+        // the dealt piles mounted until that projection is available; the
+        // normal deal barrier still owns gameplay eligibility afterwards.
+        waitingForFirstHand.current = stageKey;
+        markPresented(stageKey); notifyCompletion(stageKey, presentationStage, true);
+        recordTimingDiagnostic("deal_waiting_for_first_hand", { stage: presentationStage });
+        return;
+      }
       setSettling(true); onSettlingChangeRef.current?.(true);
       recordTimingDiagnostic("deal_sequence_settling", { stage: presentationStage, scheduledOffsetMs: settleAt, settleMs });
+      const completeAt = settleAt + settleMs + tailMs;
+      timers.current.push(window.setTimeout(() => { recordTimingDiagnostic("deal_sequence_complete", { stage: presentationStage, scheduledOffsetMs: completeAt }); markPresented(stageKey); notifyCompletion(stageKey, presentationStage, startup); clearPresentation(); }, settleMs + tailMs));
     }, settleAt));
-    const completeAt = settleAt + settleMs + tailMs;
-    timers.current.push(window.setTimeout(() => { recordTimingDiagnostic("deal_sequence_complete", { stage: presentationStage, scheduledOffsetMs: completeAt }); markPresented(stageKey); notifyCompletion(stageKey, presentationStage, startup); clearPresentation(); }, completeAt));
-  }, [clearPresentation, geometry, notifyCompletion, paused, projection.gameId, projection.progression.dealNumber, projection.progression.dealerSeat, projection.progression.phase, projection.viewerSeat, sequence, stage, stageKey, interrupted, resumeGeneration, artworkSettled]);
+  }, [clearPresentation, geometry, notifyCompletion, paused, projection.gameId, projection.progression.dealNumber, projection.progression.dealerSeat, projection.progression.phase, projection.viewerSeat, sequence, stage, stageKey, interrupted, resumeGeneration, artworkSettled, handArtworkSettled, projection.cards.ownHandVisible, projection.lifecycle]);
   useLayoutEffect(() => {
     const interrupt = () => { setInterrupted(true); clearPresentation(); if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null; };
     const restore = () => { if (document.visibilityState !== "hidden") { setInterrupted(false); resume(n => n + 1); } };

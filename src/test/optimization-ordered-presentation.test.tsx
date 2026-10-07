@@ -142,6 +142,27 @@ describe("presentation interruption and geometry", () => {
     expect(settling).toHaveBeenLastCalledWith(false);
     expect(view.container.childElementCount).toBe(0);
   });
+  it("keeps the first dealt piles across startup release until the canonical hand arrives", () => {
+    const complete = vi.fn(); const settling = vi.fn(); const sequenceComplete = vi.fn();
+    const projection = snapshot(); projection.gameId = "first-hand-wait"; projection.lifecycle = "starting";
+    projection.cards.ownHandVisible = false; projection.cards.ownHand = [];
+    const props = {geometry, onPresentationComplete: complete, onSettlingChange: settling, onSequenceComplete: sequenceComplete};
+    const view = render(<DealPresentation {...props} projection={projection} />);
+    tick(1358); expect(sequenceComplete).toHaveBeenCalledOnce(); expect(complete).toHaveBeenCalledTimes(1);
+    expect(settling).not.toHaveBeenCalledWith(true);
+    const backs = Array.from(view.container.querySelectorAll<HTMLElement>("[data-deal-traveling-card]"));
+    expect(backs).toHaveLength(4); tick(2000);
+    expect(backs.every(back => back.style.opacity === "1")).toBe(true);
+    const next = {...projection, lifecycle: "active" as const, progression: {...projection.progression, phase: "DEAL_PRESENTATION" as const}, cards: {...projection.cards, ownHandVisible:true, ownHand:[{kind:"standard" as const,id:"own",suit:"hearts" as const,rank:"A" as const}]}};
+    view.rerender(<DealPresentation {...props} projection={next} />);
+    expect(settling).toHaveBeenLastCalledWith(true);
+    expect(Array.from(view.container.querySelectorAll("[data-deal-traveling-card]"))).toEqual(backs);
+    expect(backs.every(back => back.style.opacity === "0")).toBe(true);
+    view.rerender(<DealPresentation {...props} projection={{...next}} geometry={{...geometry,epoch:3}} />);
+    tick(591); expect(complete).toHaveBeenCalledTimes(1);
+    tick(1); expect(complete).toHaveBeenCalledTimes(2); expect(sequenceComplete).toHaveBeenCalledOnce();
+    expect(view.container.childElementCount).toBe(0);
+  });
   it("interrupting settle cancels completion and resets settling before replay", () => {
     const complete = vi.fn(); const settling = vi.fn(); const projection = snapshot(); projection.gameId = "settle-interrupt";
     render(<DealPresentation projection={projection} geometry={geometry} onSettlingChange={settling} onPresentationComplete={complete} />);
