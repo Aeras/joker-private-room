@@ -27,6 +27,8 @@ describe("dialogue policy", () => {
       speechEnabled: false,
       allowProfanity: false,
       aiEnabled: false,
+      ttsEnabled: false,
+      showDialogueText: true,
       intensity: "chaos",
     });
   });
@@ -43,7 +45,41 @@ describe("dialogue policy", () => {
       speechEnabled: true,
       allowProfanity: true,
       aiEnabled: false,
+      ttsEnabled: false,
+      showDialogueText: true,
       intensity: "normal",
+    });
+  });
+
+  test("TTS is only effective with AI and hidden text is only valid with TTS", () => {
+    expect(
+      toDialogueSettings({
+        botsTalk: true,
+        allowProfanity: true,
+        aiEnabled: true,
+        ttsEnabled: true,
+        showDialogueText: false,
+        intensity: "chaos",
+      }),
+    ).toMatchObject({
+      speechEnabled: true,
+      aiEnabled: true,
+      ttsEnabled: true,
+      showDialogueText: false,
+    });
+
+    expect(
+      toDialogueSettings({
+        botsTalk: true,
+        allowProfanity: false,
+        aiEnabled: false,
+        ttsEnabled: true,
+        showDialogueText: false,
+        intensity: "normal",
+      }),
+    ).toMatchObject({
+      ttsEnabled: false,
+      showDialogueText: true,
     });
   });
 });
