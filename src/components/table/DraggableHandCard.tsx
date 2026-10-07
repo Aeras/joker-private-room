@@ -61,7 +61,7 @@ export function DraggableHandCard({
     }
     setFaceVisible(false);
     // Rise begins after two paint frames; reveal follows it, not the mount.
-    const timer = window.setTimeout(() => setFaceVisible(true), 152 + zIndex * 20);
+    const timer = window.setTimeout(() => setFaceVisible(true), 190 + zIndex * 22);
     const finish = () => { window.clearTimeout(timer); setFaceVisible(true); };
     window.addEventListener("blur", finish);
     window.addEventListener("orientationchange", finish);
@@ -210,7 +210,7 @@ export function DraggableHandCard({
       aria-disabled={!canInteract}
       aria-label={`${cardLabel(card)}${legal ? ", σε υπολογιστή διπλό κλικ, σε αφή σύρε προς το κέντρο ή πάτησε Enter για παίξιμο" : ", μη επιτρεπτό φύλλο"}`}
       className={cn(
-        "relative select-none outline-none transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary",
+        "relative select-none outline-none transition-[transform,margin-left] duration-[520ms] focus-visible:ring-2 focus-visible:ring-primary",
         overlap && "-ml-[calc(var(--card-w)*var(--card-overlap))]",
         legal && "touch-none cursor-grab",
         drag && "z-[100] cursor-grabbing transition-none",
@@ -230,10 +230,10 @@ export function DraggableHandCard({
       onPointerCancel={(event) => finishPointer(event, true)}
       onKeyDown={onKeyDown}
     >
-      <div className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing} data-hand-flip-delay={152 + zIndex * 20}>
+      <div className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing} data-hand-flip-delay={190 + zIndex * 22}>
         <div
-          className="relative transition-transform duration-[300ms] ease-out motion-reduce:duration-75 [transform-style:preserve-3d]"
-          style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)` }}
+          className="relative transition-transform duration-[340ms] motion-reduce:duration-75 [transform-style:preserve-3d]"
+          style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)`, transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)" }}
         >
           <div className="[backface-visibility:hidden]">
             <PlayingCard
