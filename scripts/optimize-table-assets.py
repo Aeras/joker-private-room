@@ -1,4 +1,4 @@
-"""Reproducible table derivatives. Originals remain the source of truth.
+"""Reproducible table/avatar derivatives. Cards are served unchanged as PNGs.
 Requires Pillow with WebP support. Never rewrites source PNGs.
 """
 import hashlib
@@ -9,7 +9,7 @@ from PIL import Image, ImageChops
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "public"
 manifest = []
-for source in sorted((PUBLIC / "cards").glob("*.png")) + [PUBLIC / "table/table_background.png"] + sorted((PUBLIC / "avatars").glob("*.png")):
+for source in [PUBLIC / "table/table_background.png"] + sorted((PUBLIC / "avatars").glob("*.png")):
     original = Image.open(source)
     pixels = original.convert("RGBA")
     avatar = source.parent.name == "avatars"

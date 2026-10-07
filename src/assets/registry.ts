@@ -56,12 +56,11 @@ function tableAvatar(url: string | undefined): string | undefined {
   return match && tableAvatarNames.has(match[1]!) ? "/avatars/table/" + match[1] + ".webp" : url;
 }
 function cardArtwork(url: string): string {
-  const known = /^\/cards\/(?:card_back|joker_red|joker_black|(?:hearts|diamonds|clubs|spades)_(?:6|7|8|9|10|jack|queen|king|ace))\.png$/.test(url);
-  return known ? url.replace("/cards/", "/cards/optimized/").replace(/\.png$/, ".webp") : url;
+  return url;
 }
 
 export const assets = {
-  cardBack: "/cards/card_back.png",
+  cardBack: "/cards/backdesign_1.png",
   tableArt: "/table/optimized/table_background.webp",
   cardArtwork,
   tableAvatar,
