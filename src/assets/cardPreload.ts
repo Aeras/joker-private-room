@@ -6,7 +6,7 @@ export const CARD_ASSET_URLS = [
   ...SUITS.flatMap((suit) => RANK_ASSET_NAMES.map((rank) => `/cards/${suit}_${rank}.png`)),
   "/cards/joker_red.png",
   "/cards/joker_black.png",
-  "/cards/card_back.png",
+  assets.cardBack,
 ] as const;
 
 const readyAssets = new Set<string>();
