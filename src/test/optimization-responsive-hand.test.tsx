@@ -64,7 +64,7 @@ describe("shared local hand geometry", () => {
     fireEvent.keyDown(nodes[0]!.parentElement!, { key: "Enter" });
     expect(commit).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(32));
-    expect((nodes[0]!.firstElementChild as HTMLElement).style.transform).toBe("translateY(0px) rotateY(0deg)");
+    expect((nodes[0]!.firstElementChild as HTMLElement).style.transform).toBe("rotateY(0deg)");
     view.rerender(<LocalHandRow {...props} revealing={false} />);
     expect(Array.from(view.container.querySelectorAll("[data-hand-card]"))).toEqual(nodes);
     expect(
