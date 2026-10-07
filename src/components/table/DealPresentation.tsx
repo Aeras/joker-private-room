@@ -80,14 +80,13 @@ function TravelingBack({ beat, pos, geometry, dealerPos, settling }: { beat: Dea
   }
   const source = dealerSourcePoint(geometry, dealerPos);
   const baseTarget = viewportPoint(geometry, geometry.dealTargets[pos]);
-  // During the settle phase the local pile continues almost to the bottom hand lane.
-  // This keeps the same visible card-back mass on screen while the real hand begins rising.
-  const localHandoffDepth = Math.max(72, geometry.trickCardSize.height * 0.9);
+  // Keep the local pile at the hand edge until fading, rather than sending it
+  // below the clipped viewport before its travel has visibly completed.
   const sideTarget = pos === 0
-    ? { x: geometry.localHandCenter.x, y: geometry.localHandCenter.y + localHandoffDepth }
+    ? { x: geometry.localHandCenter.x, y: geometry.localHandCenter.y }
     : pointTowardCenter(geometry.seatOrigins[pos], geometry.dealCenter, 24);
   const target = stackedTarget(settling ? viewportPoint(geometry, sideTarget) : baseTarget, pos, beat.stackIndex);
-  const easing = settling ? "cubic-bezier(0.4, 0, 0.2, 1)" : "cubic-bezier(0.2, 0.75, 0.25, 1)";
+  const easing = settling ? "linear" : "cubic-bezier(0.2, 0.75, 0.25, 1)";
   return <div data-deal-traveling-card data-deal-visual-seat={pos} data-deal-handoff={settling && pos === 0 ? "local" : undefined} className="absolute [--card-w:clamp(3.4rem,8vw,5.5rem)] transition-[transform,opacity]" style={{ opacity: settling ? 0 : 1, left: source.x, top: source.y, zIndex: 30 + beat.stackIndex, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_TRAVEL_MS}ms, ${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${NORMAL_DEAL_TRAVEL_MS}ms`, transitionDelay: settling ? `0ms, ${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transitionTimingFunction: easing, transform: `translate(calc(-50% + ${arrived ? target.x - source.x : 0}px), calc(-50% + ${arrived ? target.y - source.y : 0}px)) scale(${arrived ? 1 : 0.58}) rotate(${arrived ? targetRotation : sourceRotation}deg)` }}><PlayingCard faceDown /></div>;
 }
 export function DealPresentation({ projection, geometry = null, paused = false, onActiveChange, onSettlingChange, onSequenceComplete, onPresentationComplete }: { projection: PlayerGameProjection; geometry?: TableGeometry | null; paused?: boolean; onActiveChange?: (active: boolean) => void; onSettlingChange?: (settling: boolean) => void; onSequenceComplete?: () => void; onPresentationComplete?: (stage: DealPresentationStage) => void }) {

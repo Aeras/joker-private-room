@@ -51,7 +51,7 @@ export function LocalHandRow({
 
   return (
     <div
-      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[400ms] motion-reduce:duration-75"
+      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[250ms] motion-reduce:duration-75"
       style={{
         "--card-w": cardWidth,
         transform: `translateX(${offset}px) translateY(calc(var(--card-w) * 0.52 + ${entranceSettled ? "0px" : "var(--card-w) * 1.4 + 48px"}))`,
