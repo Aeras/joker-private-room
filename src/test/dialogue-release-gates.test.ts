@@ -32,6 +32,7 @@ const humanPrioritySql = readFileSync(
   "supabase/migrations/20261006183500_jk006_human_bot_dialogue_priority.sql",
   "utf8",
 );
+const instantChaosSql = readFileSync("supabase/migrations/20261007125500_jk006_instant_chaos_banter.sql", "utf8");
 const edge = readFileSync("supabase/functions/ai-banter/index.ts", "utf8");
 const service = readFileSync("src/services/dialogueFunctions.ts", "utf8");
 const table = readFileSync("src/routes/table.tsx", "utf8");
@@ -120,7 +121,7 @@ describe("AI banter Phase D — privacy and authority release gates", () => {
     const [, init] = fetchImpl.mock.calls[0]!;
     const request = JSON.parse(String((init as RequestInit).body));
     expect(Object.keys(request).sort()).toEqual(["input", "max_output_tokens", "model", "prompt_cache_key", "reasoning", "store"]);
-    expect(request.reasoning.effort).toBe("low");
+    expect(request.reasoning.effort).toBe("none");
     expect(request.max_output_tokens).toBe(XAI_DIALOGUE_MAX_OUTPUT_TOKENS);
     expect(request.store).toBe(false);
     expect(request.tools).toBeUndefined();
@@ -216,7 +217,7 @@ describe("AI banter Phase D — server-side cost and abuse release gates", () =>
   it("enforces bounded provider concurrency, room budgets, human rate limits and cooldowns in shared DB state", () => {
     expect(deliverySql).toContain("DIALOGUE_CONCURRENCY_LIMIT");
     expect(deliverySql).toContain("v_total_ai_calls >= 120");
-    expect(deliverySql).toContain("when 'conservative' then 3 when 'chaos' then 10 else 6");
+    expect(instantChaosSql).toContain("when 'conservative' then 3 when 'chaos' then 15 else 6");
     expect(deliverySql).toContain("HUMAN_MESSAGE_RATE_LIMITED");
     expect(deliverySql).toContain("v_human_messages_in_window >= 4");
     expect(deliverySql).toContain("DIALOGUE_RATE_LIMITED");

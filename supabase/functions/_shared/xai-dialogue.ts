@@ -6,8 +6,8 @@ import {
   type DialogueGenerationContext,
 } from "./dialogue-core.ts";
 
-export const DEFAULT_XAI_DIALOGUE_MODEL = "grok-4.7";
-export const XAI_DIALOGUE_TIMEOUT_MS = 8_000;
+export const DEFAULT_XAI_DIALOGUE_MODEL = "grok-4.3";
+export const XAI_DIALOGUE_TIMEOUT_MS = 3_000;
 export const XAI_DIALOGUE_MAX_OUTPUT_TOKENS = 96;
 
 export interface DialogueGenerationResult {
@@ -69,9 +69,9 @@ export async function generateDialogueLine(input: {
       body: JSON.stringify({
         model,
         store: false,
-        reasoning: { effort: "low" },
+        reasoning: { effort: "none" },
         max_output_tokens: XAI_DIALOGUE_MAX_OUTPUT_TOKENS,
-        prompt_cache_key: `joker-banter-v1:${input.context.botId}`,
+        prompt_cache_key: `joker-banter-v2:${input.context.botId}`,
         input: [{ role: "user", content: buildDialoguePrompt(input.context) }],
       }),
     });

@@ -121,7 +121,7 @@ describe("AI banter provider boundary", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("sends low-reasoning short-output Grok 4.7 Responses API requests", async () => {
+  it("sends non-reasoning short-output Grok 4.3 Responses API requests", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({ output: [{ type: "message", content: [{ type: "output_text", text: "Αυτό πόνεσε." }] }] }),
@@ -139,7 +139,7 @@ describe("AI banter provider boundary", () => {
     expect(String(url)).toBe("https://api.x.ai/v1/responses");
     const request = JSON.parse(String((init as RequestInit).body));
     expect(request.model).toBe(DEFAULT_XAI_DIALOGUE_MODEL);
-    expect(request.reasoning.effort).toBe("low");
+    expect(request.reasoning.effort).toBe("none");
     expect(request.max_output_tokens).toBe(XAI_DIALOGUE_MAX_OUTPUT_TOKENS);
     expect(request.store).toBe(false);
     const serialized = JSON.stringify(request);
