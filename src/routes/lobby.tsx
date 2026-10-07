@@ -31,6 +31,8 @@ export const Route = createFileRoute("/lobby")({
       { name: "description", content: "Περίμενε τους φίλους σου στο ιδιωτικό δωμάτιο." },
       { property: "og:title", content: "Lobby — JOKER" },
       { property: "og:description", content: "Περίμενε τους φίλους σου στο ιδιωτικό δωμάτιο." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Lobby,

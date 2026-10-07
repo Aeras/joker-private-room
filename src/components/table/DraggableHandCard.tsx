@@ -207,7 +207,7 @@ export function DraggableHandCard({
       aria-label={`${cardLabel(card)}${legal ? ", σε υπολογιστή διπλό κλικ, σε αφή σύρε προς το κέντρο ή πάτησε Enter για παίξιμο" : ", μη επιτρεπτό φύλλο"}`}
       className={cn(
         "relative select-none outline-none transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-primary",
-        overlap && "-ml-[calc(var(--card-w)*0.36)]",
+        overlap && "-ml-[calc(var(--card-w)*var(--card-overlap))]",
         legal && "touch-none cursor-grab",
         drag && "z-[100] cursor-grabbing transition-none",
         commitReady && "drop-shadow-[0_0_14px_var(--gold)]",

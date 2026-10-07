@@ -44,24 +44,23 @@ export function LocalHandRow({
   }, [revealing, visible, authorityKey]);
   const offset = localHandCenterOffset(geometry);
   const laneWidth = geometry?.localHandBounds?.width;
-  const fitWidth = laneWidth ? laneWidth / (1 + Math.max(0, cards.length - 1) * 0.64) : null;
-  const cardWidth = fitWidth
-    ? `min(clamp(3rem, min(8.4vw, 19vh), 6rem), ${fitWidth}px)`
-    : "clamp(3rem, min(8.4vw, 19vh), 6rem)";
+  const cardWidth = "clamp(3.4rem, min(9.6vw, 22vh), 6.75rem)";
+  const cardOverlap = cards.length <= 3 ? 0.18 : cards.length <= 5 ? 0.28 : cards.length <= 7 ? 0.36 : 0.42;
 
   return (
     <div
       className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[500ms] ease-out motion-reduce:duration-75"
       style={{
-        transform: `translateX(${offset}px) translateY(${entranceSettled ? 0 : 72}px)`,
+        "--card-w": cardWidth,
+        transform: `translateX(${offset}px) translateY(calc(var(--card-w) * 0.52 + ${entranceSettled ? 0 : 32}px))`,
         opacity: entranceSettled ? 1 : 0.05,
-      }}
+      } as React.CSSProperties}
       data-hand-center-offset={offset}
       data-hand-entrance={revealing && !entranceSettled ? "entering" : "settled"}
     >
       <div
         className="flex justify-center overflow-visible pt-2"
-        style={{ "--card-w": cardWidth } as React.CSSProperties}
+        style={{ "--card-w": cardWidth, "--card-overlap": cardOverlap } as React.CSSProperties}
         data-hand-lane-width={laneWidth}
       >
         {visible ? (

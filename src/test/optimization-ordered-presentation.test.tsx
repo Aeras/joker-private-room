@@ -98,7 +98,7 @@ describe("presentation interruption and geometry", () => {
       view.rerender(<DealPresentation projection={{ ...projection }} geometry={{ ...geometry, epoch: 3 }} onPresentationComplete={complete} />);
       visible.mockReturnValue("visible"); fireEvent(document, new Event("visibilitychange"));
     } else { fireEvent(window, new Event("orientationchange")); }
-    tick(1624); expect(complete).toHaveBeenCalledOnce();
+    tick(1850); expect(complete).toHaveBeenCalledOnce();
   });
   it.each([["NINE_CARD_INITIAL_DEAL_ALL_SEATS", 12, 4200], ["NINE_CARD_REMAINING_DEAL", 24, 10200]] as const)("%s presents %i backs without private identities", (phase, count, elapsed) => {
     const projection = snapshot(); projection.gameId = `private-stage-${phase}`; projection.progression.phase = phase; projection.progression.cardsPerPlayer = 9;
@@ -106,12 +106,42 @@ describe("presentation interruption and geometry", () => {
     tick(elapsed);
     expect(view.container.querySelectorAll("[data-deal-traveling-card]")).toHaveLength(count);
     expect(view.container.querySelectorAll('img[alt]:not([alt=""])')).toHaveLength(0);
-    expect(complete).not.toHaveBeenCalled(); tick(224); expect(complete).toHaveBeenCalledOnce();
+    expect(complete).not.toHaveBeenCalled(); tick(450); expect(complete).toHaveBeenCalledOnce();
+  });
+  it("retains every back throughout settling and clears only after settle and tail", () => {
+    const complete = vi.fn(); const settling = vi.fn(); const projection = snapshot();
+    projection.gameId = "settle-retention";
+    const view = render(<DealPresentation projection={projection} geometry={geometry} onSettlingChange={settling} onPresentationComplete={complete} />);
+    tick(1050); tick(16); tick(291);
+    expect(settling).not.toHaveBeenCalledWith(true);
+    expect(view.container.querySelectorAll("[data-deal-traveling-card]")).toHaveLength(4);
+    const localCard = view.container.querySelectorAll<HTMLElement>("[data-deal-traveling-card]")[2];
+    const oldTransform = localCard?.style.transform;
+    tick(1);
+    expect(settling).toHaveBeenLastCalledWith(true);
+    expect(view.container.querySelector('[data-deal-settling="true"]')).not.toBeNull();
+    expect(localCard?.style.transitionDuration).toBe("420ms");
+    expect(localCard?.style.transform).not.toBe(oldTransform);
+    tick(419);
+    expect(complete).not.toHaveBeenCalled();
+    expect(view.container.querySelectorAll("[data-deal-traveling-card]")).toHaveLength(4);
+    tick(72); expect(complete).not.toHaveBeenCalled();
+    tick(1); expect(complete).toHaveBeenCalledOnce();
+    expect(settling).toHaveBeenLastCalledWith(false);
+    expect(view.container.childElementCount).toBe(0);
+  });
+  it("interrupting settle cancels completion and resets settling before replay", () => {
+    const complete = vi.fn(); const settling = vi.fn(); const projection = snapshot(); projection.gameId = "settle-interrupt";
+    render(<DealPresentation projection={projection} geometry={geometry} onSettlingChange={settling} onPresentationComplete={complete} />);
+    tick(1358); expect(settling).toHaveBeenLastCalledWith(true);
+    fireEvent.blur(window); expect(settling).toHaveBeenLastCalledWith(false);
+    tick(5000); expect(complete).not.toHaveBeenCalled();
+    fireEvent.focus(window); tick(1850); expect(complete).toHaveBeenCalledOnce();
   });
   it("already-dealt first hand acknowledges reveal scope without replaying the deal", () => {
     const complete = vi.fn(); const projection = snapshot(); projection.gameId = "firststage-reveal";
     const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);
-    tick(1624); expect(complete).toHaveBeenCalledTimes(1);
+    tick(1850); expect(complete).toHaveBeenCalledTimes(1);
     view.rerender(<DealPresentation projection={{ ...projection, lifecycle: "active", progression: { ...projection.progression, phase: "DEAL_PRESENTATION" } }} geometry={geometry} onPresentationComplete={complete} />);
     expect(complete).toHaveBeenCalledTimes(2); expect(view.container.childElementCount).toBe(0);
     tick(5000); expect(complete).toHaveBeenCalledTimes(2);
@@ -152,7 +182,7 @@ describe("presentation interruption and geometry", () => {
     const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} onActiveChange={active} />);
     tick(500); fireEvent.blur(window); tick(5000); expect(complete).not.toHaveBeenCalled();
     view.rerender(<DealPresentation projection={{ ...projection }} geometry={geometry} onPresentationComplete={complete} onActiveChange={active} />);
-    fireEvent.focus(window); tick(1624); expect(complete).toHaveBeenCalledTimes(1);
+    fireEvent.focus(window); tick(1850); expect(complete).toHaveBeenCalledTimes(1);
     fireEvent.blur(window); fireEvent.focus(window); tick(5000); expect(complete).toHaveBeenCalledTimes(1);
   });
   it("server fallback phase change clears an interrupted nine-card overlay", () => {

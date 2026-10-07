@@ -12,6 +12,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Ιδιωτικό παιχνίδι Joker για τέσσερις παίκτες." },
       { property: "og:title", content: "JOKER — Ιδιωτικό παιχνίδι" },
       { property: "og:description", content: "Ιδιωτικό παιχνίδι Joker για τέσσερις παίκτες." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Home,

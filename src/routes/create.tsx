@@ -18,7 +18,7 @@ const AI_BANTER_CREATOR_PLAYER_ID = "a1f36a77-1732-44d4-8c3b-4623a6e6ed0c";
 import { createProductionRoom, getAvailableRulesets } from "@/services/roomFunctions";
 
 export const Route = createFileRoute("/create")({
-  head: () => ({ meta: [{ title: "Δημιουργία παιχνιδιού — JOKER" }] }),
+  head: () => ({ meta: [{ title: "Δημιουργία παιχνιδιού — JOKER" }, { name: "description", content: "Δημιούργησε ιδιωτικό δωμάτιο JOKER και διάλεξε παραλλαγή παιχνιδιού." }, { property: "og:title", content: "Δημιουργία παιχνιδιού — JOKER" }, { property: "og:description", content: "Δημιούργησε ιδιωτικό δωμάτιο JOKER και διάλεξε παραλλαγή παιχνιδιού." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }, ] }),
   component: CreateGame,
 });
 

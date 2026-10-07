@@ -38,7 +38,7 @@ describe("JK-001 Phase 1 — seat, timer and declaration contract", () => {
 
   it("shows authoritative actual/declared progress after startup while keeping declarations hidden during dealing", () => {
     expect(gameTable).toContain("tricksTaken: projection.score.tricksTaken[seat]");
-    expect(gameTable).toContain("declaration: startupPresentationActive ? null : projection.declarations.values[seat]");
+    expect(gameTable).toContain("declaration: startupPresentationActive ? null : pos === 0 ? pendingDeclarationValue ?? projection.declarations.values[seat] : projection.declarations.values[seat]");
     expect(tableSeat).toContain("`${tricksTaken} / —`");
     expect(tableSeat).toContain('marker: "✓"');
     expect(tableSeat).toContain('marker: "!"');
