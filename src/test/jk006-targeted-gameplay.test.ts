@@ -8,7 +8,7 @@ import {
   DEALER_START_CUE_MS,
   dealerSelectionRecipient,
 } from "@/components/table/dealerSelectionPresentationModel";
-import { NORMAL_DEAL_STAGGER_MS, NORMAL_DEAL_TAIL_MS, NORMAL_DEAL_TRAVEL_MS } from "@/components/table/dealPresentationModel";
+import { NORMAL_DEAL_STAGGER_MS, NORMAL_DEAL_SETTLE_MS, NORMAL_DEAL_TAIL_MS, NORMAL_DEAL_TRAVEL_MS } from "@/components/table/dealPresentationModel";
 import {
   NORMAL_TRICK_FLIP_MS,
   NORMAL_TRICK_HOLD_MS,
@@ -31,7 +31,8 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(DEALER_SELECTION_WINNER_HOLD_MS).toBe(490);
     expect(NORMAL_DEAL_STAGGER_MS).toBe(350);
     expect(NORMAL_DEAL_TRAVEL_MS).toBe(308);
-    expect(NORMAL_DEAL_TAIL_MS).toBe(224);
+    expect(NORMAL_DEAL_SETTLE_MS).toBe(420);
+    expect(NORMAL_DEAL_TAIL_MS).toBe(72);
     expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(1_000);
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(NORMAL_TRICK_SETTLE_MS + NORMAL_TRICK_INTER_PLAY_BEAT_MS);
     expect(NORMAL_TRICK_SETTLE_MS).toBeGreaterThanOrEqual(300);
@@ -93,7 +94,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     const deal = read("src/components/table/DealPresentation.tsx");
     expect(dealer).toContain("stackIndex: Math.floor(index / 4)");
     expect(deal).toContain("stackIndex: Math.floor(index / 4)");
-    expect(deal).toContain("const visibleBeats = beats.slice(0, visibleIndex + 1)");
+    expect(deal).toContain("const visibleBeats = visibleIndex < 0 ? [] : beats.slice(0, visibleIndex + 1)");
     expect(deal).toContain("visibleBeats.map((beat)");
   });
 
