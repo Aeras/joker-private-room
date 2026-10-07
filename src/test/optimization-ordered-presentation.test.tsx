@@ -104,7 +104,7 @@ describe("presentation interruption and geometry", () => {
     const projection = snapshot(); projection.gameId = `private-stage-${phase}`; projection.progression.phase = phase; projection.progression.cardsPerPlayer = 9;
     const complete = vi.fn(); const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);
     tick(elapsed);
-    expect(view.container.querySelectorAll('[aria-label="Κλειστό φύλλο"]')).toHaveLength(count);
+    expect(view.container.querySelectorAll("[data-deal-traveling-card]")).toHaveLength(count);
     expect(view.container.querySelectorAll('img[alt]:not([alt=""])')).toHaveLength(0);
     expect(complete).not.toHaveBeenCalled(); tick(224); expect(complete).toHaveBeenCalledOnce();
   });
