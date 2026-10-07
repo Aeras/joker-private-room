@@ -78,7 +78,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   latestProjection.current = projection;
   const scorePresentationActive = useRef(false);
   const displayedGameId = useRef(projection.gameId);
-  const [displayedScore, setDisplayedScore] = useState(() => ({
+  const [displayedScore, setDisplayedScore] = useState<Pick<PlayerGameProjection["score"], "tricksTaken" | "cumulativeTotals">>(() => ({
     tricksTaken: [...projection.score.tricksTaken],
     cumulativeTotals: [...projection.score.cumulativeTotals],
   }));

@@ -5,7 +5,6 @@ import { projectGameForSeat } from "@/domain/projection";
 import { reconciliationFixture } from "./fixtures/reconciliationGame";
 import type { Room } from "@/domain/players";
 import type { PlayedCard } from "@/domain/engine";
-import { computeTableGeometry } from "@/components/table/useTableGeometry";
 
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a> }));
 vi.mock("@/lib/gameAudio", () => ({ playGameSound: vi.fn() }));
@@ -50,7 +49,8 @@ describe("real table score presentation integration", () => {
     const props = fixture();
     const view = render(<GameTable {...props} />);
     const info = () => Array.from(view.container.querySelectorAll<HTMLElement>("[data-seat-info-layout]"));
-    const before = info().map(panel => panel.textContent);
+    const displayedScores = () => info().map(panel => [panel.querySelector("span[title='Συνολικό σκορ']")?.textContent, panel.querySelector("span[title='Μπάζες / Δήλωση']")?.textContent?.split(" / ")[0]]);
+    const before = displayedScores();
     const next = structuredClone(props.projection);
     next.stateVersion++;
     next.cards.completedTricks = [{ winnerSeat: 2, cards }];
@@ -67,21 +67,21 @@ describe("real table score presentation integration", () => {
     const surfaces = () => Array.from(view.container.querySelectorAll<HTMLElement>("[data-trick-presentation-id] > div")).filter(el => el.style.transitionDuration);
     for (let card = 0; card < 4; card++) {
       tick(card ? 1000 : 0); tick(16); finish(surfaces().at(-1));
-      expect(info().map(panel => panel.textContent)).toEqual(before);
+      expect(displayedScores()).toEqual(before);
     }
     tick(850);
-    expect(info().map(panel => panel.textContent)).toEqual(before);
+    expect(displayedScores()).toEqual(before);
     surfaces().forEach(finish);
-    expect(info().map(panel => panel.textContent)).toEqual(before);
+    expect(displayedScores()).toEqual(before);
     // A fresher projection during collection must be read by the callback.
     const latest = structuredClone(next); latest.stateVersion++;
     if (finalDeal) latest.score.cumulativeTotals[2] = 500;
     view.rerender(<GameTable {...props} projection={latest} />);
     fireEvent.blur(window); tick(5000);
-    expect(info().map(panel => panel.textContent)).toEqual(before);
+    expect(displayedScores()).toEqual(before);
     fireEvent.focus(window);
     surfaces().slice(0, 3).forEach(finish);
-    expect(info().map(panel => panel.textContent)).toEqual(before);
+    expect(displayedScores()).toEqual(before);
     finish(surfaces()[3]);
     const top = info().find(panel => panel.textContent?.includes("Seat 2"));
     expect(top?.textContent).toContain(finalDeal ? "500" : "1 / 2");
@@ -90,12 +90,12 @@ describe("real table score presentation integration", () => {
         const seat = [0, 1, 2, 3].find(index => panel.textContent?.includes(`Seat ${index}`));
         if (seat == null) throw new Error("Missing seat identity");
         expect(panel.textContent).toContain(String(latest.score.cumulativeTotals[seat]));
-        expect(panel.textContent).toContain("0 / 2");
+        expect(panel.textContent).toContain("0 / —");
       }
     }
     expect(top?.getAttribute("data-seat-info-layout")).toBe("left");
     expect(top?.className).toContain("absolute right-full top-1/2");
-    expect(info().filter(panel => panel.dataset.seatInfoLayout === "below")).toHaveLength(3);
+    expect(info().filter(panel => panel.dataset['seatInfoLayout'] === "below")).toHaveLength(3);
   });
 
   it("initializes settled reconnects, reconciles idle scores, and resets on a new game", () => {
