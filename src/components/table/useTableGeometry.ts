@@ -99,7 +99,7 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
 
   // Keep the compact trick within short landscape heights as well as its width.
   const cardWidth = Math.min(
-    clamp(input.viewportWidth * 0.07, 52, 96),
+    clamp(input.viewportWidth * 0.085, 56, 108),
     Math.max(36, usableHeight / 2.55),
   );
   const cardHeight = (cardWidth * 7) / 5;

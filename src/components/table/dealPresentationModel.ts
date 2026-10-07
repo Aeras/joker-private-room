@@ -1,10 +1,11 @@
 import { presentationWasCompleted } from "./presentationCompletion";
 export const NORMAL_DEAL_STAGGER_MS = 350;
 export const NORMAL_DEAL_TRAVEL_MS = 308;
-export const NORMAL_DEAL_TAIL_MS = 224;
+export const NORMAL_DEAL_SETTLE_MS = 420;
+export const NORMAL_DEAL_TAIL_MS = 72;
 
 export function dealPresentationTiming(_reducedMotion: boolean) {
-  return { staggerMs: NORMAL_DEAL_STAGGER_MS, tailMs: NORMAL_DEAL_TAIL_MS };
+  return { staggerMs: NORMAL_DEAL_STAGGER_MS, settleMs: NORMAL_DEAL_SETTLE_MS, tailMs: NORMAL_DEAL_TAIL_MS };
 }
 
 export function dealPresentationStageKey(
