@@ -133,6 +133,15 @@ describe("JK-006 card artwork, Joker decision, and trick pacing", () => {
     expect(source).not.toContain("Joker ψηλά");
   });
 
+  it("keeps FROM_BELOW Joker face-down underneath the live trick until collection", () => {
+    const source = read("src/components/table/TrickPresentation.tsx");
+    expect(source).toContain('play.joker?.context === "OPEN_TRICK" && play.joker.mode === "FROM_BELOW"');
+    expect(source).toContain('data-joker-from-below={fromBelowJoker ? "true" : undefined}');
+    expect(source).toContain('const faceDown = fromBelowJoker || departingStage === "flipping" || collecting');
+    expect(source).toContain('fromBelowJoker && !departingStage ? "z-0" : "z-10"');
+    expect(source).toContain("underStackPoint(landing, center)");
+  });
+
   it("does not announce redundant open-trick Joker over/under text after the choice", () => {
     const source = read("src/components/table/TrickPresentation.tsx");
     expect(source).toContain('if (semantic.context === "OPEN_TRICK") return null');
