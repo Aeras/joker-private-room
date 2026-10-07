@@ -20,7 +20,7 @@ interface GoogleServiceAccount {
   token_uri?: string;
 }
 
-const TTS_TIMEOUT_MS = 4_000;
+const TTS_TIMEOUT_MS = 6_000;
 const OAUTH_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 
 function base64Url(bytes: Uint8Array): string {
