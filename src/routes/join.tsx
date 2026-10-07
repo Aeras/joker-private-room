@@ -13,7 +13,7 @@ import { joinProductionRoom } from "@/services/roomFunctions";
 
 export const Route = createFileRoute("/join")({
   validateSearch: (s: Record<string, unknown>) => ({ code: typeof s["code"] === "string" ? s["code"] : undefined }),
-  head: () => ({ meta: [{ title: "Συμμετοχή σε παιχνίδι — JOKER" }, { name: "description", content: "Μπες σε ιδιωτικό δωμάτιο JOKER με κωδικό." }, { property: "og:title", content: "Συμμετοχή σε παιχνίδι — JOKER" }, { property: "og:description", content: "Μπες σε ιδιωτικό δωμάτιο JOKER με κωδικό." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }, ] }),
+  head: () => ({ meta: [{ title: "Συμμετοχή σε παιχνίδι — JOKER" }, { name: "description", content: "Μπες σε ιδιωτικό δωμάτιο JOKER με κωδικό." }] }),
   component: JoinGame,
 });
 
