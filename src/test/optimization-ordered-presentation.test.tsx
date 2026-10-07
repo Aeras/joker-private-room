@@ -124,6 +124,8 @@ describe("presentation interruption and geometry", () => {
     expect(settling).toHaveBeenLastCalledWith(true);
     expect(view.container.querySelector('[data-deal-settling="true"]')).not.toBeNull();
     expect(localCard?.style.transitionDuration).toBe("520ms");
+    expect(localCard?.style.transitionTimingFunction).toBe("cubic-bezier(0.22, 1, 0.36, 1)");
+    expect(localCard?.dataset.dealHandoff).toBe("local");
     expect(localCard?.style.transform).not.toBe(oldTransform);
     tick(519);
     expect(complete).not.toHaveBeenCalled();
@@ -173,6 +175,9 @@ describe("presentation interruption and geometry", () => {
       tick(850); expect(root.getAttribute("data-trick-departing-stage")).toBe("flipping");
       const surfaces = Array.from(root.children).filter(el => (el as HTMLElement).style.transitionDuration);
       surfaces.forEach(finish); expect(root.getAttribute("data-trick-departing-stage")).toBe("collecting");
+      const collectingSurface = root.querySelector<HTMLElement>("[data-trick-collecting='true']");
+      expect(collectingSurface?.style.transitionDuration).toBe("520ms");
+      expect(collectingSurface?.style.transitionTimingFunction).toBe("cubic-bezier(0.22, 0.8, 0.24, 1)");
       view.rerender(<TrickPresentation {...props} geometry={{ ...geometry, epoch: ordinal + 2 }} projection={snapshot(3)} />);
       expect(view.container.querySelector("[data-trick-departing-stage='collecting']")).not.toBeNull();
       surfaces.forEach(finish);
