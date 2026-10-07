@@ -7,7 +7,7 @@ import { getCompletedGameHistory } from "@/services/gameHistoryFunctions";
 
 export const Route = createFileRoute("/history")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Ιστορικό — JOKER" }, { name: "description", content: "Ιδιωτικό ιστορικό ολοκληρωμένων παρτίδων JOKER." }, { property: "og:title", content: "Ιστορικό — JOKER" }, { property: "og:description", content: "Ιδιωτικό ιστορικό ολοκληρωμένων παρτίδων JOKER." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }, ] }),
+  head: () => ({ meta: [{ title: "Ιστορικό — JOKER" }, { name: "description", content: "Ιδιωτικό ιστορικό ολοκληρωμένων παρτίδων JOKER." }] }),
   component: HistoryPage,
 });
 
