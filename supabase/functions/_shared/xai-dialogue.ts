@@ -7,7 +7,7 @@ import {
 } from "./dialogue-core.ts";
 
 export const DEFAULT_XAI_DIALOGUE_MODEL = "grok-4.7";
-export const XAI_DIALOGUE_TIMEOUT_MS = 4_000;
+export const XAI_DIALOGUE_TIMEOUT_MS = 8_000;
 export const XAI_DIALOGUE_MAX_OUTPUT_TOKENS = 96;
 
 export interface DialogueGenerationResult {
