@@ -19,6 +19,7 @@ import { dealerSelectionNeedsPresentation } from "./dealerSelectionPresentationM
 import { SoundToggle } from "./SoundToggle";
 import { Scoreboard } from "./Scoreboard";
 import { TableSeat } from "./TableSeat";
+import { TableSurface } from "./TableSurface";
 import { TableUtilityMenu } from "./TableUtilityMenu";
 import { TrickPresentation } from "./TrickPresentation";
 import { TrumpIndicator, trumpAnnouncementLabel } from "./TrumpIndicator";
@@ -225,8 +226,8 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const showTrumpIndicator = !startupPresentationActive && (projection.cards.exposedTrumpCard != null || projection.trump.status === "resolved");
 
   return <div ref={tableRootRef} className="joker-room relative h-dvh w-full overflow-hidden bg-[#090b09]">
-    {assets.tableArt && <img src={assets.tableArt} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center select-none" />}
-    <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/25" />
+    <TableSurface />
+    <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/15" />
     {portrait && <div className="absolute inset-0 z-[100] flex items-center justify-center bg-background/95 px-8 text-center backdrop-blur-sm"><div className="max-w-sm rounded-3xl border border-primary/35 bg-card/95 p-6 shadow-2xl"><div className="mb-3 text-4xl">↻</div><div className="font-display text-xl text-primary">Γύρισε τη συσκευή οριζόντια</div><p className="mt-2 text-sm text-muted-foreground">Το τραπέζι είναι σχεδιασμένο για landscape προβολή.</p><JButton className="mt-5" variant="outlineGold" onClick={toggleFullscreen}><Maximize className="h-4 w-4" /> Πλήρης οθόνη</JButton></div></div>}
     <header className="absolute inset-x-0 top-0 z-50 flex items-center gap-1 px-[max(.35rem,env(safe-area-inset-left))] pt-[max(.25rem,env(safe-area-inset-top))]">
       <Link to="/lobby" search={{ code: room.code }} aria-label="Πίσω" className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white/75 backdrop-blur"><ArrowLeft className="h-4 w-4" /></Link>
