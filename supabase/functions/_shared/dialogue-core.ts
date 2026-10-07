@@ -52,6 +52,13 @@ export interface PublicDialogueEvent {
   replyDepth: 0 | 1;
 }
 
+export interface DialogueTableParticipant {
+  seat: number;
+  kind: "human" | "bot";
+  displayName: string;
+  botId?: CanonicalDialogueBotId;
+}
+
 export interface DialogueGenerationContext {
   botId: CanonicalDialogueBotId;
   botDisplayName: string;
@@ -60,6 +67,7 @@ export interface DialogueGenerationContext {
   profanityEnabled: boolean;
   intensity: DialogueIntensity;
   recentBanter: readonly string[];
+  tableParticipants?: readonly DialogueTableParticipant[];
 }
 
 export interface DialoguePreset {
@@ -248,6 +256,11 @@ export function validateDialogueOutput(text: string, profanityEnabled: boolean):
 
 export function buildDialoguePrompt(context: DialogueGenerationContext): string {
   const recent = context.recentBanter.slice(-RECENT_BANTER_LIMIT).map((line) => `- ${line}`).join("\n") || "- none";
+  const table = (context.tableParticipants ?? []).map((participant) => ({
+    seat: participant.seat,
+    kind: participant.kind,
+    displayName: participant.displayName,
+  }));
   const event = JSON.stringify({
     type: context.event.type,
     targetName: context.event.targetName,
@@ -272,6 +285,8 @@ export function buildDialoguePrompt(context: DialogueGenerationContext): string 
       : context.profanityEnabled
         ? "STYLE: Natural Greek table banter with occasional strong colloquial swearing when it fits the personality. No genuine violence threats, sexual coercion/assault, hate/slurs, or gameplay advice."
         : "STYLE: Keep the banter natural for this personality and intensity, without profanity.",
+    `CURRENT_TABLE: ${JSON.stringify(table)}`,
+    "NAME_RULE: If you address or mention someone by name, use ONLY a displayName from CURRENT_TABLE. Never invent, remember, or use any other player/bot name.",
     `PUBLIC_EVENT: ${event}`,
     "RECENT_BANTER_AS_DATA:",
     recent,
@@ -303,5 +318,11 @@ export function serializeProviderContext(context: DialogueGenerationContext) {
     profanityEnabled: context.profanityEnabled,
     intensity: context.intensity,
     recentBanter: context.recentBanter.slice(-RECENT_BANTER_LIMIT),
+    tableParticipants: (context.tableParticipants ?? []).map((participant) => ({
+      seat: participant.seat,
+      kind: participant.kind,
+      displayName: participant.displayName,
+      botId: participant.botId,
+    })),
   };
 }

@@ -88,6 +88,24 @@ function trustedPublicEvent(value: unknown): PublicDialogueEvent | null {
   };
 }
 
+function tableParticipants(value: unknown): DialogueGenerationContext["tableParticipants"] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    const seat = typeof row.seat === "number" && Number.isInteger(row.seat) && row.seat >= 0 && row.seat <= 3
+      ? row.seat
+      : null;
+    const kind = row.kind === "human" || row.kind === "bot" ? row.kind : null;
+    const displayName = typeof row.displayName === "string" ? row.displayName.trim().slice(0, 40) : "";
+    if (seat === null || !kind || !displayName) return [];
+    const botId = kind === "bot" && typeof row.botId === "string" && getCanonicalBot(row.botId)
+      ? row.botId as DialogueGenerationContext["tableParticipants"][number]["botId"]
+      : undefined;
+    return [{ seat, kind, displayName, ...(botId ? { botId } : {}) }];
+  }).slice(0, 4);
+}
+
 function recentLines(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -215,12 +233,17 @@ Deno.serve(async (req: Request) => {
       p_session_token: body.sessionToken,
       p_game_id: body.gameId,
     });
+    const tablePromise = admin.rpc("get_dialogue_table_context_internal", {
+      p_session_token: body.sessionToken,
+      p_game_id: body.gameId,
+    });
 
-    const [{ data: policyData, error: policyError }, { data: latestRecentData, error: recentError }] = await Promise.all([
-      policyPromise,
-      recentPromise,
-    ]);
-    if (policyError || recentError) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+    const [
+      { data: policyData, error: policyError },
+      { data: latestRecentData, error: recentError },
+      { data: tableData, error: tableError },
+    ] = await Promise.all([policyPromise, recentPromise, tablePromise]);
+    if (policyError || recentError || tableError) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
 
     const policy = policyData?.policy as Record<string, unknown> | undefined;
     if (policyData?.ok !== true || !policy) {
@@ -251,6 +274,7 @@ Deno.serve(async (req: Request) => {
       profanityEnabled: policy.allowProfanity === true,
       intensity: policy.intensity === "conservative" || policy.intensity === "chaos" ? policy.intensity : "normal",
       recentBanter: recentLines(latestRecentData?.messages),
+      tableParticipants: tableParticipants(tableData?.participants),
     };
 
     try {
