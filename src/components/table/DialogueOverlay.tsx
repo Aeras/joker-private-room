@@ -31,6 +31,8 @@ export function DialogueOverlay({
   const [composerOpen, setComposerOpen] = useState(false);
   const [sentPreview, setSentPreview] = useState<{ botId: string; text: string } | null>(null);
   const playedAudioIds = useRef(new Set<string>());
+  const audioQueue = useRef<DialogueMessage[]>([]);
+  const audioPlaying = useRef(false);
 
   useEffect(() => {
     if (!sentPreview) return;
@@ -40,15 +42,30 @@ export function DialogueOverlay({
 
   useEffect(() => {
     if (!room.botSettings.ttsEnabled) return;
+
     for (const message of messages) {
       if (!message.audioContent || playedAudioIds.current.has(message.id)) continue;
       playedAudioIds.current.add(message.id);
+      audioQueue.current.push(message);
+    }
+
+    const playNext = () => {
+      if (audioPlaying.current) return;
+      const message = audioQueue.current.shift();
+      if (!message?.audioContent) return;
+      audioPlaying.current = true;
       const audio = new Audio(`data:${message.audioMimeType ?? "audio/mpeg"};base64,${message.audioContent}`);
       audio.preload = "auto";
-      void audio.play().catch(() => {
-        playedAudioIds.current.delete(message.id);
-      });
-    }
+      const finish = () => {
+        audioPlaying.current = false;
+        playNext();
+      };
+      audio.addEventListener("ended", finish, { once: true });
+      audio.addEventListener("error", finish, { once: true });
+      void audio.play().catch(finish);
+    };
+
+    playNext();
   }, [messages, room.botSettings.ttsEnabled]);
 
   if (!room.botSettings.botsTalk || bots.length === 0) return null;
@@ -70,7 +87,7 @@ export function DialogueOverlay({
             {sentPreview.text}
           </div>
         )}
-        {room.botSettings.showDialogueText && messages.slice(-3).map((message) => {
+        {room.botSettings.showDialogueText !== false && messages.slice(-3).map((message) => {
           const speaker = bots.find((bot) => bot.id === message.speakerBotId)?.name ?? "Bot";
           return (
             <div
