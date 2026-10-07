@@ -60,12 +60,13 @@ function progressPresentation(tricksTaken: number, declaration: number | null) {
   };
 }
 
-export function TableSeat({ seat, stats, orientation, showCards = true, local = false }: {
+export function TableSeat({ seat, stats, orientation, showCards = true, local = false, infoPlacement = "below" }: {
   seat: Seat;
   stats: SeatStats;
   orientation: "horizontal" | "vertical";
   showCards?: boolean;
   local?: boolean;
+  infoPlacement?: "below" | "left";
 }) {
   const o = seat.occupant;
   const name = o.type === "human" ? o.player.displayName : o.type === "bot" ? o.bot.displayName : t.emptySeat;
@@ -135,10 +136,15 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
     </div>
   );
 
-  const identity = (
-    <div className={cn("relative flex flex-col items-center", stats.isActive && "drop-shadow-[0_0_10px_var(--gold)]")}>
-      {avatar}
-      <div className={cn("-mt-1 min-w-24 max-w-36 rounded-md border border-primary/40 bg-black/85 px-2 py-1 text-center shadow-lg backdrop-blur-sm", local && "min-w-28")}>
+  const infoPanel = (
+      <div
+        data-seat-info-placement={infoPlacement}
+        className={cn(
+          "min-w-24 max-w-36 rounded-md border border-primary/40 bg-black/85 px-2 py-1 text-center shadow-lg backdrop-blur-sm",
+          infoPlacement === "below" ? "-mt-1" : "mr-1.5",
+          local && "min-w-28",
+        )}
+      >
         <div className="truncate text-[10px] font-semibold leading-tight text-foreground sm:text-xs">
           {name}{local && <span className="text-primary"> · ΕΣΥ</span>}
         </div>
@@ -152,6 +158,17 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
           </span>
         </div>
       </div>
+  );
+
+  const identity = (
+    <div className={cn(
+      "relative flex items-center",
+      infoPlacement === "left" ? "flex-row" : "flex-col",
+      stats.isActive && "drop-shadow-[0_0_10px_var(--gold)]",
+    )}>
+      {infoPlacement === "left" && infoPanel}
+      {avatar}
+      {infoPlacement === "below" && infoPanel}
     </div>
   );
 
