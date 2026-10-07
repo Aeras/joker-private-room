@@ -228,8 +228,8 @@ export function DraggableHandCard({
     >
       <div className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing}>
         <div
-          className="relative transition-transform duration-[620ms] motion-reduce:duration-75 [transform-style:preserve-3d]"
-          style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)` }}
+          className="relative transition-[transform,opacity] duration-[500ms] ease-out motion-reduce:duration-75 [transform-style:preserve-3d]"
+          style={{ transform: `translateY(${faceVisible ? 0 : 28}px) rotateY(${faceVisible ? 0 : 180}deg)`, opacity: faceVisible ? 1 : 0.12 }}
         >
           <div className="[backface-visibility:hidden]">
             <PlayingCard
