@@ -103,7 +103,7 @@
   .joker-table-shell{inset:.7vh .7vw}
 }
 
-/* Auto fullscreen/landscape replaces the old portrait rotation blocker. */
+/* The table route owns the portrait guard, above messaging and fullscreen utilities. */
 .joker-room>.absolute.inset-0.z-\[100\]{display:none!important}
 .joker-table{border-radius:50%;background:radial-gradient(ellipse at 50% 43%,oklch(.405 .088 153) 0%,oklch(.30 .07 154) 56%,oklch(.205 .052 154) 100%);border:clamp(10px,1.65vw,24px) solid oklch(.275 .064 43);box-shadow:0 0 0 3px oklch(.64 .095 69),0 0 0 8px oklch(.20 .045 40),0 9px 0 10px oklch(.115 .026 37),0 26px 55px oklch(0 0 0 / .78),inset 0 0 85px oklch(0 0 0 / .42),inset 0 0 0 2px oklch(.75 .11 74 / .18)}
 .joker-table::before{content:"";position:absolute;inset:calc(clamp(10px,1.65vw,24px) * -1);z-index:-1;border-radius:50%;background:repeating-linear-gradient(96deg,oklch(.35 .075 46) 0 8px,oklch(.265 .058 42) 8px 17px,oklch(.19 .04 39) 17px 21px);box-shadow:inset 0 0 22px oklch(0 0 0 / .72)}
@@ -111,3 +111,9 @@
 
 @keyframes bubble-in{from{opacity:0;transform:translateY(6px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}} @utility animate-bubble{animation:bubble-in .25s ease-out}
 @keyframes card-drop{from{opacity:0;transform:translateY(40px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}} @utility animate-card-drop{animation:card-drop .3s ease-out}
+
+.table-landscape-guard { position:absolute; inset:0; z-index:200; display:none; align-items:center; justify-content:center; background:#090b09; padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left)); }
+@media (orientation: portrait) {
+  .table-landscape-content { visibility:hidden; pointer-events:none; }
+  .table-landscape-guard { display:flex; }
+}
