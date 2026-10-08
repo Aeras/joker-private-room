@@ -104,6 +104,11 @@ describe("JK-002 classic score sheet", () => {
     expect(screen.getByText("Νίκος")).toBeInTheDocument();
     expect(container.querySelector("[data-score-points='1:0']")?.textContent).toBe("");
     expect(container.querySelector("[data-score-declaration='1:0']")?.textContent).toBe("");
+    expect(container.querySelectorAll("[data-score-summary]")).toHaveLength(7);
+    expect(container.querySelector("[data-score-summary='1:round']")).not.toBeNull();
+    expect(container.querySelector("[data-score-summary='1:cumulative']")).toBeNull();
+    expect(container.querySelector("[data-score-summary='2:cumulative']")).not.toBeNull();
+    expect(container.querySelector("[data-score-summary='1:round']")?.textContent?.replace(/\s/g, "")).toBe("Γ");
     expect(container.querySelector("[aria-label='Τελική κατάταξη']")).toBeNull();
     expect(JSON.stringify(projection)).not.toContain("serverEntropySeed");
   });
@@ -190,7 +195,8 @@ describe("JK-002 classic score sheet", () => {
     expect(container.querySelector("[data-score-points='10:1']")?.textContent).toContain("500");
     expect(container.querySelector("[data-score-points='10:1']")?.textContent).toContain("✓");
     expect(container.querySelector("[data-score-points='11:2'] span")?.className).toContain("line-through");
-    expect(container.querySelector("[data-score-round-total='2']")?.textContent).toContain("1650");
+    expect(container.querySelector("[data-score-summary='2:round']")?.textContent).toContain("1650");
+    expect(container.querySelector("[data-score-summary='2:cumulative']")?.textContent).toContain("1650");
     expect(container.querySelector("[data-final-placement='1']")?.textContent).toContain("Μιχάλης");
     expect(container.querySelector("[data-final-placement='2']")?.textContent).toContain("Νίκος");
   });
