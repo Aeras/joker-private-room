@@ -2,7 +2,7 @@ import { presentationWasCompleted } from "./presentationCompletion";
 export const NORMAL_DEAL_STAGGER_MS = 350;
 export const NORMAL_DEAL_TRAVEL_MS = 308;
 // Piles travel visibly before fading; the hand rises during the fade.
-export const NORMAL_DEAL_HANDOFF_TRAVEL_MS = 650;
+export const NORMAL_DEAL_HANDOFF_TRAVEL_MS = 600;
 export const NORMAL_DEAL_HANDOFF_FADE_DELAY_MS = NORMAL_DEAL_HANDOFF_TRAVEL_MS;
 export const NORMAL_DEAL_HANDOFF_FADE_MS = 350;
 export const LOCAL_HAND_ENTRANCE_MS = 350;

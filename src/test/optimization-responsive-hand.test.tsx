@@ -50,7 +50,7 @@ describe("shared local hand geometry", () => {
     const view = render(<LocalHandRow {...props} visible={false} />, {wrapper:StrictMode});
     view.rerender(<LocalHandRow {...props} visible />);
     const hand=view.container.querySelector<HTMLElement>("[data-hand-entrance]")!;
-    expect(hand.style.transform).toContain("var(--card-w) * 1.4 + 48px");
+    expect(hand.style.transform).toContain("100% + max(.15rem, env(safe-area-inset-bottom)) + 2px");
     expect(hand.dataset['handEntrance']).toBe("entering");
     act(() => vi.advanceTimersByTime(16));
     view.rerender(<LocalHandRow {...props} visible revealing />);
@@ -63,6 +63,7 @@ describe("shared local hand geometry", () => {
     const view = render(<LocalHandRow cards={cards} visible legalCardIds={[]} blocked pendingCardId={null} authorityKey="timing" geometry={geometry} revealing onCommit={vi.fn()} />);
     const hand = view.container.querySelector<HTMLElement>("[data-hand-entrance]");
     expect(hand?.style.transitionDuration).toBe("350ms");
+    expect(hand?.style.transitionTimingFunction).toBe("linear");
     act(() => vi.advanceTimersByTime(32));
     expect(hand?.style.transform).toContain("var(--card-w) * 0.52 + 0px");
   });
@@ -112,12 +113,12 @@ describe("shared local hand geometry", () => {
     const view = render(<LocalHandRow {...props} revealing />);
     const hand = view.container.querySelector<HTMLElement>("[data-hand-entrance]");
     const faces = Array.from(view.container.querySelectorAll<HTMLElement>("[data-hand-card] > div"));
-    expect(hand?.style.transform).toContain("var(--card-w) * 1.4 + 48px");
+    expect(hand?.style.transform).toContain("100% + max(.15rem, env(safe-area-inset-bottom)) + 2px");
     expect(faces.every(face => face.style.transform === "rotateY(0deg)")).toBe(true);
     const lane = view.container.querySelector<HTMLElement>("[data-hand-lane-width]");
     expect(lane?.dataset['handCurrentOverlap']).toBe("0.86");
     act(() => vi.advanceTimersByTime(32));
-    expect(hand?.style.transform).not.toContain("1.4 + 48px");
+    expect(hand?.style.transform).not.toContain("100% + max");
     expect(lane?.dataset['handCurrentOverlap']).toBe("0.42");
     view.rerender(<LocalHandRow {...props} authorityKey="poll" geometry={{...geometry, epoch: 2}} revealing />);
     expect(Array.from(view.container.querySelectorAll<HTMLElement>("[data-hand-card] > div"))).toEqual(faces);
