@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { History, RotateCw, Settings2 } from "lucide-react";
+import { RefreshButton } from "@/components/joker/RefreshButton";
 import { FullscreenButton } from "@/components/joker/FullscreenButton";
 import { JButton, jButton } from "@/components/joker/JButton";
 import { t } from "@/i18n/el";
@@ -24,7 +25,7 @@ function Home() {
     <div className="home-landscape">
       <div className="home-topbar">
         <div className="home-wordmark">JOKER</div>
-        <FullscreenButton />
+        <div className="flex items-center gap-2"><FullscreenButton /><RefreshButton /></div>
       </div>
 
       <main className="home-landscape__content">
@@ -72,6 +73,7 @@ function Home() {
       </main>
 
       <div className="pregame-portrait-gate" role="status" aria-live="polite">
+        <RefreshButton className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(.55rem,env(safe-area-inset-top))]" />
         <RotateCw className="h-10 w-10" />
         <strong>Γύρισε τη συσκευή οριζόντια</strong>
         <span>Πάτησε Full screen και συνέχισε σε landscape.</span>

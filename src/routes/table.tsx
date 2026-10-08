@@ -1,3 +1,5 @@
+import { TableReturnSync, hydrateReturnedPresentation } from "@/components/table/tableReturnSync";
+import { reclaimWithFreshSnapshot } from "@/components/table/reclaimWithFreshSnapshot";
 import { retryCommandDelivery } from "@/components/table/retryCommandDelivery";
 import { LandscapeTableGuard } from "@/components/table/LandscapeTableGuard";
 import { SnapshotAdmission } from "@/components/table/snapshotAdmission";
@@ -124,6 +126,7 @@ function TablePage() {
   const [visible, setVisible] = useState(() => typeof document !== "undefined" && document.visibilityState === "visible");
   const [geometryReady, setGeometryReady] = useState(false);
   const admission = useMemo(() => new SnapshotAdmission(`${code}:${gameId}`), [code, gameId]);
+  const returnSync = useMemo(() => new TableReturnSync(admission.routeKey), [admission]);
   const activeAdmission = useRef(admission);
   activeAdmission.current = admission;
   const mounted = useRef(true);
@@ -136,6 +139,7 @@ function TablePage() {
   const presentationAckInFlight = useRef<string | null>(null);
   const nineCardAckInFlight = useRef<string | null>(null);
   const autoStartInFlight = useRef(false);
+  const reclaimInFlight = useRef<number | null>(null);
 
   const updateConnectionStatus = useCallback((status: TableConnectionStatus) => {
     connectionStatusRef.current = status;
@@ -152,11 +156,14 @@ function TablePage() {
     }
   }, []);
 
-  const acceptSnapshot = useCallback((nextRoom: Room, nextProjection: PlayerGameProjection): boolean => {
+  const acceptSnapshot = useCallback((nextRoom: Room, nextProjection: PlayerGameProjection, freshRead = false): boolean => {
     if (!mounted.current || activeAdmission.current !== admission) return false;
+    if (returnSync.pending && !freshRead) return false;
     if (!gameId || !isCoherentTableSnapshot({ room: nextRoom, projection: nextProjection, expectedGameId: gameId })) return false;
     if (!admission.admit(nextProjection.stateVersion)) return true; // Obsolete, coherent response: ignore without disconnecting.
-    const restoring = connectionStatusRef.current !== "ready";
+    const restoring = returnSync.pending || connectionStatusRef.current !== "ready";
+    if (restoring) { hydrateReturnedPresentation(nextProjection); setBusy(false); }
+    returnSync.complete();
     roomRef.current = nextRoom;
     projectionRef.current = nextProjection;
     setRoom(nextRoom);
@@ -166,7 +173,7 @@ function TablePage() {
     updateConnectionStatus("ready");
     if (restoring) setTableEpoch((value) => value + 1);
     return true;
-  }, [admission, gameId, triggerPublicDialogue, updateConnectionStatus]);
+  }, [admission, gameId, returnSync, triggerPublicDialogue, updateConnectionStatus]);
 
   const markRefreshFailure = useCallback((message: string) => {
     setError(message);
@@ -175,19 +182,35 @@ function TablePage() {
 
   const refreshAll = useCallback(async () => {
     if (!code || !gameId) return markRefreshFailure("Δεν βρέθηκε έγκυρη ενεργή παρτίδα.");
+    const generation = returnSync.generation;
     const request = admission.beginRequest();
-    const [roomResult, gameResult] = await Promise.all([
-      getProductionRoom({ data: { code } }),
-      getProjectedGameState({ data: { gameId } }),
-    ]);
-    if (!mounted.current || activeAdmission.current !== admission) return;
-    if ((!roomResult.ok || !gameResult.ok) && !admission.acceptsFailure(request)) return;
-    if (!roomResult.ok) return markRefreshFailure(gameplayFailureMessage(roomResult.code));
-    if (!gameResult.ok) return markRefreshFailure(gameplayFailureMessage(gameResult.code));
-    if (!acceptSnapshot(roomResult.room, gameResult.projection)) {
-      markRefreshFailure("Η κατάσταση του δωματίου και της παρτίδας δεν συμφωνεί ακόμη. Γίνεται επανασύνδεση.");
+    try {
+      const [roomResult, initialGameResult] = await Promise.all([
+        getProductionRoom({ data: { code } }), getProjectedGameState({ data: { gameId } }),
+      ]);
+      let gameResult = initialGameResult;
+      const current = () => mounted.current && activeAdmission.current === admission && returnSync.accepts(generation);
+      if (!current()) return;
+      // A reconciler CAS collision on a read is synchronization, not a rejected player move.
+      if (!gameResult.ok && gameResult.code === "STALE_STATE") {
+        gameResult = await getProjectedGameState({ data: { gameId } });
+        if (!current()) return;
+      }
+      if ((!roomResult.ok || !gameResult.ok) && !admission.acceptsFailure(request)) return;
+      if (!roomResult.ok) return markRefreshFailure(gameplayFailureMessage(roomResult.code));
+      if (!gameResult.ok) {
+        if (gameResult.code === "STALE_STATE") { setError(null); updateConnectionStatus("reconnecting"); return; }
+        return markRefreshFailure(gameplayFailureMessage(gameResult.code));
+      }
+      if (!acceptSnapshot(roomResult.room, gameResult.projection, true)) {
+        markRefreshFailure("Η κατάσταση του δωματίου και της παρτίδας δεν συμφωνεί ακόμη. Γίνεται επανασύνδεση.");
+      }
+    } catch {
+      if (mounted.current && activeAdmission.current === admission && returnSync.accepts(generation) && admission.acceptsFailure(request)) {
+        markRefreshFailure("Δεν ήταν δυνατός ο συγχρονισμός. Γίνεται νέα προσπάθεια.");
+      }
     }
-  }, [acceptSnapshot, admission, code, gameId, markRefreshFailure]);
+  }, [acceptSnapshot, admission, code, gameId, markRefreshFailure, returnSync, updateConnectionStatus]);
 
   const refreshReadiness = useCallback(async () => {
     if (!gameId) return;
@@ -230,6 +253,8 @@ function TablePage() {
 
   useEffect(() => {
     let wasVisible = document.visibilityState === "visible";
+    let lostFocus = false;
+    const beginReturn = () => { returnSync.begin(); setBusy(false); setError(null); updateConnectionStatus("reconnecting"); };
     setVisible(wasVisible);
     const refreshForeground = () => {
       void refreshAll();
@@ -243,20 +268,27 @@ function TablePage() {
       if (returningFromBackground) {
         // Remount presentation-only state so a suspended tab adopts the current
         // authoritative snapshot instead of replaying an obsolete visual backlog.
-        setTableEpoch((value) => value + 1);
+        beginReturn();
+        lostFocus = false;
         refreshForeground();
       }
     };
     const focus = () => {
-      if (document.visibilityState === "visible") refreshForeground();
+      if (document.visibilityState === "visible") {
+        if (lostFocus) beginReturn();
+        lostFocus = false; refreshForeground();
+      }
     };
+    const blur = () => { lostFocus = true; };
     document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("blur", blur);
     window.addEventListener("focus", focus);
     return () => {
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("focus", focus);
+      window.removeEventListener("blur", blur);
     };
-  }, [refreshAll, refreshDialogue]);
+  }, [refreshAll, refreshDialogue, returnSync, updateConnectionStatus]);
 
   useEffect(() => {
     const waiting = projection?.lifecycle === "starting" && projection.progression.phase === "INITIAL_DEALER_SELECTION";
@@ -307,7 +339,7 @@ function TablePage() {
       window.clearInterval(gameTimer);
       window.clearInterval(dialogueTimer);
     };
-  }, [refreshAll, refreshDialogue]);
+  }, [refreshAll, refreshDialogue, returnSync, updateConnectionStatus]);
 
   useEffect(() => {
     if (projection?.lifecycle !== "starting") return;
@@ -417,10 +449,14 @@ function TablePage() {
 
   const submit = async (command: GameplayCommand): Promise<PlayerGameProjection | null> => {
     if (!projection || busy || connectionStatusRef.current !== "ready") return null;
+    const generation = returnSync.generation;
+    const commandAdmission = activeAdmission.current;
+    const stillCurrent = () => mounted.current && activeAdmission.current === commandAdmission && returnSync.accepts(generation);
     setBusy(true); setError(null);
     try {
       const data = { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion, command };
       const result = await retryCommandDelivery(submitProjectedGameplayCommand, { data });
+      if (!stillCurrent()) return null;
       if (result.ok) {
         const currentRoom = roomRef.current;
         if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return projectionRef.current;
@@ -431,23 +467,42 @@ function TablePage() {
       // A retry may be stale because the original play committed before its response was lost.
       return command.type === "play_card" ? projectionRef.current : null;
     } catch (cause) {
+      if (!stillCurrent()) return null;
       if (mounted.current) setError("Δεν επιβεβαιώθηκε η κίνηση. Γίνεται επανασύνδεση.");
       try { await refreshAll(); } catch { /* Periodic reconnect will recover canonical ownership. */ }
       throw cause;
-    } finally { if (mounted.current) setBusy(false); }
+    } finally { if (stillCurrent()) setBusy(false); }
   };
 
   const reclaim = async () => {
-    if (!projection || busy || connectionStatusRef.current !== "ready") return;
+    if (!projection || busy || reclaimInFlight.current === returnSync.generation || connectionStatusRef.current !== "ready") return;
+    const reclaimAdmission = activeAdmission.current;
+    const generation = returnSync.generation;
+    reclaimInFlight.current = generation;
     setBusy(true); setError(null);
+    const stillCurrent = () => mounted.current && activeAdmission.current === reclaimAdmission && returnSync.accepts(generation);
     try {
-      const result = await reclaimProjectedGameControl({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion } });
+      const result = await reclaimWithFreshSnapshot({
+        gameId: projection.gameId,
+        current: () => stillCurrent() && connectionStatusRef.current === "ready" ? projectionRef.current : null,
+        refresh: refreshAll,
+        send: reclaimProjectedGameControl,
+      });
+      if (!stillCurrent() || !result) return;
       if (result.ok) {
         const currentRoom = roomRef.current;
         if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return;
-      } else if (mounted.current) setError(gameplayFailureMessage(result.code));
+      } else setError(gameplayFailureMessage(result.code));
       await refreshAll();
-    } finally { if (mounted.current) setBusy(false); }
+    } catch {
+      if (stillCurrent()) {
+        setError("Δεν επιβεβαιώθηκε η ανάκτηση ελέγχου. Γίνεται επανασύνδεση.");
+        try { await refreshAll(); } catch { /* Polling will recover the current controller. */ }
+      }
+    } finally {
+      if (reclaimInFlight.current === generation) reclaimInFlight.current = null;
+      if (stillCurrent()) setBusy(false);
+    }
   };
 
   const startGame = useCallback(async () => {
@@ -527,12 +582,13 @@ function TablePage() {
     }
   };
 
-  if (connectionStatus === "initial-loading" && (!room || !projection)) {
+  if (returnSync.pending || connectionStatus !== "ready" || projection?.gameId !== gameId) {
     return (
       <div className="surface-wood flex h-dvh items-center justify-center p-6" role="status" aria-live="polite">
         <div className="rounded-2xl border border-primary/30 bg-black/70 px-6 py-5 text-center shadow-2xl backdrop-blur">
           <div className="font-display text-lg text-primary">Προετοιμασία τραπεζιού</div>
-          <p className="mt-2 text-sm text-white/70">Φορτώνεται το τραπέζι χωρίς να ξεκινά η παρτίδα…</p>
+          <p className="mt-2 text-sm text-white/70">Συγχρονισμός με την τωρινή κατάσταση της παρτίδας…</p>
+          {error && <p className="mt-2 text-sm text-white/70">{error}</p>}
         </div>
       </div>
     );
@@ -593,4 +649,3 @@ function TablePage() {
     </div>
   );
 }
-
