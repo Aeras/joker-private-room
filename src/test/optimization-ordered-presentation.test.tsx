@@ -251,3 +251,21 @@ describe("presentation interruption and geometry", () => {
     fireEvent.focus(window); tick(32); tick(1700); expect(active).toHaveBeenLastCalledWith(false);
   });
 });
+
+
+describe("played cards face their owner", () => {
+  it.each([0, 1, 2, 3] as const)("rotates each relative seat consistently for viewer %i through resize and collection", viewerSeat => {
+    const projection = snapshot(0, trick(1).cards); projection.viewerSeat = viewerSeat;
+    const props = { geometry, localPlayPresentation: null, onLocalFlightSettled: vi.fn() };
+    const view = render(<TrickPresentation {...props} projection={projection} />);
+    const surfaces = () => Array.from(view.container.querySelector("[data-trick-presentation-id]")!.children).filter(el => (el as HTMLElement).style.transitionDuration) as HTMLElement[];
+    const expected = [2, 83, 178, -83];
+    const check = () => { expect(surfaces()).toHaveLength(4); surfaces().forEach((el, seat) => expect(el.style.transform).toContain(`rotate(${expected[(seat - viewerSeat + 4) % 4]}deg)`)); };
+    check();
+    view.rerender(<TrickPresentation {...props} geometry={{ ...geometry, epoch: 2 }} projection={projection} />); check();
+    const completed = snapshot(1); completed.viewerSeat = viewerSeat;
+    view.rerender(<TrickPresentation {...props} projection={completed} />); check();
+    tick(850); check(); surfaces().forEach(finish); check();
+    expect(surfaces().every(el => el.dataset['trickCollecting'] === "true")).toBe(true);
+  });
+});

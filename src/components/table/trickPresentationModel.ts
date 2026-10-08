@@ -1,5 +1,9 @@
 import type { PlayedCard } from "@/domain/engine";
 
+// Bottom, left, top, right: upright to the player who played the card.
+// Keep the existing small natural tilts, shared by local flight and table ownership.
+export const TRICK_CARD_ROTATION = [2, 83, 178, -83] as const;
+
 // Human-readable trick pacing is defined from the previous card's settled frame,
 // not merely from when its animation started. This keeps bot/remote presentation
 // independent from raw computation or reconciliation speed.
