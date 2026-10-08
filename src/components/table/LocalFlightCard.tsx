@@ -46,18 +46,18 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const pos = (presentation.actorSeat - frozen.viewerSeat + 4) % 4;
   const target = frozen.geometry.trickSlots[pos as 0 | 1 | 2 | 3];
   const atTarget = launched && !rejected;
-  const width = frozen.release.width;
-  const height = frozen.release.height;
+  const width = frozen.release.cardWidth ?? frozen.release.width;
+  // The DOM surface keeps 5:7 aspect; AABB height includes drag rotation.
+  const height = width * 7 / 5;
   const rotation = TRICK_CARD_ROTATION[pos as 0 | 1 | 2 | 3];
   const targetWidth = frozen.geometry.trickCardSize.width;
-  const x = atTarget ? frozen.geometry.feltRect.left + target.x : frozen.release.left + width / 2;
-  const y = atTarget ? frozen.geometry.feltRect.top + target.y : frozen.release.top + height / 2;
+  const x = atTarget ? frozen.geometry.feltRect.left + target.x : frozen.release.left + frozen.release.width / 2;
+  const y = atTarget ? frozen.geometry.feltRect.top + target.y : frozen.release.top + frozen.release.height / 2;
   return <div className="fixed left-0 top-0 z-40 transition-transform ease-out" style={{
     "--card-w": `${width}px`, transitionDuration: `${duration}ms`,
-    transform: `translate(${x - width / 2}px, ${y - height / 2}px) rotate(${atTarget ? rotation : 0}deg) scale(${atTarget ? targetWidth / width : 1})`,
+    transform: `translate(${x - width / 2}px, ${y - height / 2}px) rotate(${atTarget ? rotation : frozen.release.rotation ?? 0}deg) scale(${atTarget ? targetWidth / width : 1})`,
   } as React.CSSProperties} data-local-flight-card={presentation.cardId} data-local-flight-status={presentation.status}
     onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform") completeMotion(); }}>
     <PlayingCard card={presentation.card} />
   </div>;
 }
-
