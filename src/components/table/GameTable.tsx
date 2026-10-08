@@ -211,7 +211,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   }, [projection, uncertainPlay]);
 
   const commitCard = async (cardId: string, releaseRect: RectLike) => {
-    if (!playAction?.cardIds.includes(cardId) || busy || interactionPresentationActive || playSubmissionLock.current) return;
+    if (!playAction?.cardIds.includes(cardId) || busy || interactionPresentationActive || localPlayPresentation || playSubmissionLock.current) return;
     const card = projection.cards.ownHand.find((candidate) => candidate.id === cardId); if (!card) return;
     playSubmissionLock.current = true; setSubmittingCardId(cardId);
     const geometryEpoch = tableGeometry.geometry?.epoch ?? 0;
