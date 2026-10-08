@@ -28,6 +28,7 @@ export interface PublicSeatProjection {
   owner: SeatOwner;
   controller: ControllerType;
   connected: boolean;
+  temporaryBotStrategyProfileId?: CanonicalSeatState["temporaryBotStrategyProfileId"];
 }
 
 export type PublicInitialDealerSelection =
@@ -85,6 +86,9 @@ function publicSeat(seat: CanonicalSeatState): PublicSeatProjection {
     owner: seat.owner,
     controller: seat.controller,
     connected: seat.connected,
+    ...(seat.controller === "temporary_bot" && seat.temporaryBotStrategyProfileId
+      ? { temporaryBotStrategyProfileId: seat.temporaryBotStrategyProfileId }
+      : {}),
   };
 }
 
