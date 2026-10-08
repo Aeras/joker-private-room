@@ -24,7 +24,7 @@ import { TableSurface } from "./TableSurface";
 import { TableUtilityMenu } from "./TableUtilityMenu";
 import { TrickPresentation } from "./TrickPresentation";
 import { TrumpIndicator, trumpAnnouncementLabel } from "./TrumpIndicator";
-import { useTableGeometry, type RectLike } from "./useTableGeometry";
+import { useTableGeometry, type CardReleaseRect } from "./useTableGeometry";
 import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 
 type Pos = 0 | 1 | 2 | 3;
@@ -210,7 +210,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     });
   }, [projection, uncertainPlay]);
 
-  const commitCard = async (cardId: string, releaseRect: RectLike) => {
+  const commitCard = async (cardId: string, releaseRect: CardReleaseRect) => {
     if (!playAction?.cardIds.includes(cardId) || busy || interactionPresentationActive || localPlayPresentation || playSubmissionLock.current) return;
     const card = projection.cards.ownHand.find((candidate) => candidate.id === cardId); if (!card) return;
     playSubmissionLock.current = true; setSubmittingCardId(cardId);
@@ -316,4 +316,3 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     <div className="relative z-[120]"><Scoreboard open={scoreOpen} onClose={() => setScoreOpen(false)} playerNames={names} sheet={sheet} projection={projection} /></div>
   </div>;
 }
-

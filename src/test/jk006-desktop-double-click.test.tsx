@@ -45,7 +45,15 @@ describe("desktop double-click card play", () => {
     expect(onCommit).not.toHaveBeenCalled();
     fireEvent.doubleClick(root, { button: 0 });
     await waitFor(() => expect(onCommit).toHaveBeenCalledTimes(1));
-    expect(onCommit).toHaveBeenCalledWith(card.id, rect);
+    expect(onCommit).toHaveBeenCalledWith(card.id, { ...rect, cardWidth: 60, cardHeight: 90, rotation: 0 });
+  });
+
+  it("passes physical card dimensions separately from screen-space bounds", async () => {
+    const { root, onCommit } = view();
+    root.style.width = "50px"; root.style.height = "70px";
+    fireEvent.keyDown(root, { key: "Enter" });
+    await waitFor(() => expect(onCommit).toHaveBeenCalledOnce());
+    expect(onCommit).toHaveBeenCalledWith(card.id, { ...rect, cardWidth: 50, cardHeight: 70, rotation: 0 });
   });
 
   it("does not commit an illegal, blocked or pending card", () => {

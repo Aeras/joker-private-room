@@ -3,7 +3,7 @@ import { cardLabel, type Card } from "@/domain/cards";
 import { cn } from "@/lib/utils";
 import { PlayingCard } from "../joker/PlayingCard";
 import { shouldCommitCardGesture, shouldCommitCardRelease } from "./cardGesture";
-import type { RectLike } from "./useTableGeometry";
+import type { CardReleaseRect, RectLike } from "./useTableGeometry";
 
 type DragState = {
   pointerId: number;
@@ -15,14 +15,15 @@ type DragState = {
   pointerType: string;
 };
 
-function rectLike(rect: DOMRect): RectLike {
+function releasePose(element: HTMLDivElement, rotation = 0): CardReleaseRect {
+  const rect = element.getBoundingClientRect();
+  const style = getComputedStyle(element);
   return {
-    left: rect.left,
-    top: rect.top,
-    right: rect.right,
-    bottom: rect.bottom,
-    width: rect.width,
-    height: rect.height,
+    left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+    width: rect.width, height: rect.height,
+    cardWidth: Number.parseFloat(style.width) || element.offsetWidth || rect.width,
+    cardHeight: Number.parseFloat(style.height) || element.offsetHeight || rect.height,
+    rotation,
   };
 }
 
@@ -49,7 +50,7 @@ export function DraggableHandCard({
   revealing?: boolean;
   faceUpOnReveal?: boolean;
   dropRect?: RectLike | null;
-  onCommit: (cardId: string, releaseRect: RectLike) => Promise<void>;
+  onCommit: (cardId: string, releaseRect: CardReleaseRect) => Promise<void>;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -117,7 +118,7 @@ export function DraggableHandCard({
       })
     : false;
 
-  const submitOnce = async (releaseRect: RectLike) => {
+  const submitOnce = async (releaseRect: CardReleaseRect) => {
     if (!canInteract || committingRef.current) return;
     committingRef.current = true;
     try {
@@ -182,7 +183,7 @@ export function DraggableHandCard({
       return;
     }
     // Preserve the final dragged pose until the parent creates the presentation token.
-    void submitOnce(rectLike(event.currentTarget.getBoundingClientRect()));
+    void submitOnce(releasePose(event.currentTarget, Math.max(-8, Math.min(8, (current.currentX - current.startX) / 18))));
   };
 
   const onDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -190,7 +191,7 @@ export function DraggableHandCard({
     event.preventDefault();
     const rect = rootRef.current?.getBoundingClientRect();
     if (!rect) return;
-    void submitOnce(rectLike(rect));
+    void submitOnce(releasePose(rootRef.current!));
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -198,7 +199,7 @@ export function DraggableHandCard({
     event.preventDefault();
     const rect = rootRef.current?.getBoundingClientRect();
     if (!rect) return;
-    void submitOnce(rectLike(rect));
+    void submitOnce(releasePose(rootRef.current!));
   };
 
   const deltaX = drag ? drag.currentX - drag.startX : 0;

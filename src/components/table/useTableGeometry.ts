@@ -16,6 +16,13 @@ export interface RectLike {
   height: number;
 }
 
+/** Release bounds plus the untransformed surface dimensions and drag angle. */
+export interface CardReleaseRect extends RectLike {
+  cardWidth?: number;
+  cardHeight?: number;
+  rotation?: number;
+}
+
 export interface TableGeometry {
   epoch: number;
   feltRect: RectLike;
@@ -273,4 +280,3 @@ export function useTableGeometry(): {
 
   return { feltRef, topSeatRef, leftSeatRef, rightSeatRef, localSeatRef, geometry };
 }
-
