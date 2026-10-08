@@ -57,10 +57,10 @@ export function LocalHandRow({
       className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[350ms] motion-reduce:duration-75"
       style={{
         "--card-w": cardWidth,
-        transform: `translateX(${offset}px) translateY(calc(var(--card-w) * 0.52 + ${entranceSettled ? "0px" : "var(--card-w) * 1.4 + 48px"}))`,
+        transform: `translateX(${offset}px) translateY(${entranceSettled ? "calc(var(--card-w) * 0.52 + 0px)" : "calc(100% + max(.15rem, env(safe-area-inset-bottom)) + 2px)"})`,
         opacity: 1,
         transitionDuration: `${LOCAL_HAND_ENTRANCE_MS}ms`,
-        transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
+        transitionTimingFunction: "linear",
       } as React.CSSProperties}
       data-hand-center-offset={offset}
       data-hand-entrance={!entranceSettled ? "entering" : "settled"}
