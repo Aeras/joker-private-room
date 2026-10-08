@@ -1,3 +1,4 @@
+import { LandscapeTableGuard } from "@/components/table/LandscapeTableGuard";
 import { SnapshotAdmission } from "@/components/table/snapshotAdmission";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -551,6 +552,7 @@ function TablePage() {
 
   return (
     <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
+      <LandscapeTableGuard>
       <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onTurnPresentationComplete={completeTurn} onNineCardPresentationComplete={completeNineCardStage} />
       <TableMessaging key={projection.gameId} room={room} projection={projection} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} feedback={dialogueFeedback} onSend={sendDialogue} />
@@ -579,6 +581,7 @@ function TablePage() {
           </div>
         </div>
       )}
+      </LandscapeTableGuard>
     </div>
   );
 }
