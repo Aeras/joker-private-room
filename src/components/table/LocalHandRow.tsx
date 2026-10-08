@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Card } from "@/domain/cards";
 import { LOCAL_HAND_ENTRANCE_MS } from "./dealPresentationModel";
+import { useHandReflow } from "./useHandReflow";
 import { DraggableHandCard } from "./DraggableHandCard";
 import { localHandCenterOffset } from "./tableControlModel";
 import type { RectLike, TableGeometry } from "./useTableGeometry";
@@ -52,8 +53,11 @@ export function LocalHandRow({
   const cardOverlap = cards.length <= 3 ? 0.18 : cards.length <= 5 ? 0.28 : cards.length <= 7 ? 0.36 : 0.42;
   const revealOverlap = entranceSettled ? cardOverlap : 0.86;
 
+  const handLayoutRef = useHandReflow(JSON.stringify(cards.map(card => card.id)), visible && entranceSettled && !revealing);
+
   return (
     <div
+      ref={handLayoutRef}
       className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[600ms] motion-reduce:duration-75"
       style={{
         "--card-w": cardWidth,
@@ -74,8 +78,8 @@ export function LocalHandRow({
       >
         {visible ? (
           cards.map((card, index) => (
+            <div key={card.id} data-hand-layout-card={card.id} className={`relative shrink-0 ${index > 0 ? "-ml-[calc(var(--card-w)*var(--card-overlap))]" : ""} ${revealing || !entranceSettled ? "transition-[margin-left] duration-[520ms]" : ""}`}>
             <DraggableHandCard
-              key={card.id}
               card={card}
               legal={legal.has(card.id)}
               blocked={blocked}
@@ -84,10 +88,11 @@ export function LocalHandRow({
               pending={pendingCardId === card.id}
               authorityKey={authorityKey}
               zIndex={index}
-              overlap={index > 0}
+              overlap={false}
               dropRect={geometry?.feltRect ?? null}
               onCommit={onCommit}
             />
+            </div>
           ))
         ) : (
           <div className="rounded-lg bg-black/65 px-4 py-2 text-xs text-white/65">

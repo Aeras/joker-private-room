@@ -96,7 +96,7 @@ describe("shared local hand geometry", () => {
         .querySelector<HTMLElement>("[data-hand-lane-width]")!
         .style.getPropertyValue("--card-w"),
     ).toBe(width);
-    expect(nodes[1]!.parentElement!.className).toContain("-ml-");
+    expect(nodes[1]!.closest<HTMLElement>("[data-hand-layout-card]")!.className).toContain("var(--card-overlap)");
     fireEvent.keyDown(nodes[0]!.parentElement!, { key: "Enter" });
     expect(commit).toHaveBeenCalledOnce();
   });
@@ -106,7 +106,7 @@ describe("shared local hand geometry", () => {
     expect(lane?.style.getPropertyValue("--card-w")).toBe("clamp(3.4rem, min(9.6vw, 22vh), 6.75rem)");
     expect(lane?.style.getPropertyValue("--card-overlap")).toBe(overlap);
     expect(view.container.querySelector<HTMLElement>("[data-hand-entrance]")?.style.transform).toContain("var(--card-w) * 0.52");
-    if (Number(count) > 1) expect(view.container.querySelectorAll('[role="button"]')[1]?.className).toContain("var(--card-overlap)");
+    if (Number(count) > 1) expect(view.container.querySelectorAll<HTMLElement>('[data-hand-layout-card]')[1]?.className).toContain("var(--card-overlap)");
   });
   it("rises face-up while retaining the same mounted cards across polling and resize", () => {
     const props = { cards, visible: true, legalCardIds: [], blocked: true, pendingCardId: null, authorityKey: "first", geometry, onCommit: vi.fn() };
