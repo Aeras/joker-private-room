@@ -4,6 +4,8 @@ export const t = {
   landscapeRequiredHelp: "Το παιχνίδι λειτουργεί μόνο σε οριζόντια προβολή.",
   landscapeFullscreen: "Πλήρης οθόνη / Landscape",
   appName: "JOKER",
+  refreshApp: "Refresh",
+  refreshAppHelp: "Επαναφόρτωση της εφαρμογής από τον διακομιστή",
   botComposerOpen: "Μήνυμα σε bot",
   botComposerClose: "Κλείσιμο bots",
   subtitle: "Ιδιωτικό παιχνίδι",
