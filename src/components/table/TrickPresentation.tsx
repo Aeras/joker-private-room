@@ -124,6 +124,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const [ackAttempt, retryAck] = useState(0);
   const journal = useRef(new TrickPresentationJournal());
   const [revision, revise] = useState(0);
+  const [beatPending, setBeatPending] = useState(false);
   const [displayedCards, setDisplayedCards] = useState<PlayedCard[]>([]);
   const [departing, setDeparting] = useState<Departing | null>(null);
   const [announcementQueue, setAnnouncementQueue] = useState<JokerAnnouncement[]>([]);
@@ -270,8 +271,19 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   useEffect(() => {
     for (const play of active?.cards ?? []) if (displayedCards.some(card => playKey(card) === playKey(play))) enqueueJokerAnnouncement(play);
   }, [active, displayedCards, enqueueJokerAnnouncement, revision]);
+  const hasActiveTrick = Boolean(active);
+  useEffect(() => {
+    // This is presentation/input eligibility, never a second gameplay engine.
+    // Both buffered remote launches and local interaction share the landing clock.
+    const remaining = hasActiveTrick && lastLandingAt.current != null ? Math.max(0,
+      lastLandingAt.current + trickPresentationTiming(reducedMotion).interPlayBeatMs - performance.now()) : 0;
+    setBeatPending(remaining > 0);
+    if (remaining <= 0 || paused) return;
+    const timer = window.setTimeout(() => setBeatPending(false), remaining);
+    return () => window.clearTimeout(timer);
+  }, [active?.id, hasActiveTrick, revision, paused, reducedMotion, resumeGeneration]);
   const currentId = projection.gameId + ":" + projection.progression.dealNumber + ":" + (projection.cards.completedTricks.length + 1);
-  const busy = Boolean(active && (active.id !== currentId || departing || displayedCards.length < active.cards.length || displayedCards.some(play => !landedCards.current.has(playKey(play)))));
+  const busy = beatPending || Boolean(active && (active.id !== currentId || departing || displayedCards.length < active.cards.length || displayedCards.some(play => !landedCards.current.has(playKey(play)))));
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
   const hasPresentationGeometry = Boolean(geometry);

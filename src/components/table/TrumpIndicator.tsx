@@ -19,7 +19,10 @@ export function TrumpIndicator({ trump, exposedTrumpCard }: {
   trump: PlayerGameProjection["trump"];
   exposedTrumpCard: Card | null;
 }) {
-  if (exposedTrumpCard) return <PlayingCard card={exposedTrumpCard} />;
+  if (exposedTrumpCard) return <div className="relative w-[var(--card-w)]" data-trump-deck>
+    {[2, 1].map(layer => <div key={layer} className="absolute left-0 top-0" style={{ transform: `translate(${layer * 3}px, ${layer * -2}px)` }}><PlayingCard faceDown /></div>)}
+    <PlayingCard card={exposedTrumpCard} />
+  </div>;
   if (trump.status !== "resolved") return null;
 
   if (trump.suit == null) {

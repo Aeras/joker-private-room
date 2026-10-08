@@ -48,15 +48,17 @@ afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe("real table score presentation integration", () => {
   it.each([false, true])("latches all four seats until collection lands (final deal: %s)", finalDeal => {
     const props = fixture();
+    if (finalDeal) props.projection.score.tricksTaken = [1, 2, 3, 2];
     const view = render(<GameTable {...props} />);
     const info = () => Array.from(view.container.querySelectorAll<HTMLElement>("[data-seat-info-layout]"));
-    const displayedScores = () => info().map(panel => [panel.querySelector("span[title='Συνολικό σκορ']")?.textContent, panel.querySelector("span[title='Μπάζες / Δήλωση']")?.textContent?.split(" / ")[0]]);
+    const displayedScores = () => info().map(panel => [panel.querySelector("span[title='Συνολικό σκορ']")?.textContent, panel.querySelector("span[title='Μπάζες / Δήλωση']")?.textContent]);
     const before = displayedScores();
     const next = structuredClone(props.projection);
     next.stateVersion++;
     next.cards.completedTricks = [{ winnerSeat: 2, cards }];
     next.score.tricksTaken = [0, 0, 1, 0];
     if (finalDeal) {
+      next.declarations.values = [null, null, null, null];
       next.progression.dealNumber++;
       next.progression.phase = "DEAL_PRESENTATION";
       next.cards.completedTricks = [];

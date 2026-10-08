@@ -8,7 +8,7 @@ export const TRICK_CARD_ROTATION = [2, 83, 178, -83] as const;
 // not merely from when its animation started. This keeps bot/remote presentation
 // independent from raw computation or reconciliation speed.
 export const NORMAL_TRICK_SETTLE_MS = 340;
-export const NORMAL_TRICK_INTER_PLAY_BEAT_MS = 1_000;
+export const NORMAL_TRICK_INTER_PLAY_BEAT_MS = 500;
 export const NORMAL_TRICK_PLAY_SPACING_MS = NORMAL_TRICK_SETTLE_MS + NORMAL_TRICK_INTER_PLAY_BEAT_MS;
 export const REDUCED_TRICK_SETTLE_MS = 80;
 export const REDUCED_TRICK_INTER_PLAY_BEAT_MS = 120;

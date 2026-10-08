@@ -29,9 +29,9 @@ describe("JK-006 bot pacing", () => {
     expect(edge).not.toContain("claim.gameId,\n          MAX_SYNCHRONOUS_BOT_STEPS");
   });
 
-  it("waits a full second after settle before the next visible normal-speed play", () => {
-    expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(1_000);
-    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(NORMAL_TRICK_SETTLE_MS + 1_000);
+  it("waits half a second after settle before the next visible normal-speed play", () => {
+    expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(500);
+    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(NORMAL_TRICK_SETTLE_MS + 500);
     expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(850);
     expect(NORMAL_TRICK_HOLD_MS).toBeLessThanOrEqual(1000);
   });

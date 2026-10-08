@@ -37,7 +37,7 @@ describe("rendered dealing privacy contract", () => {
       expect(traveling.length).toBeGreaterThan(0);
       expect(view.container.querySelector("[data-card-face='front']")).toBeNull();
       traveling.forEach(card => expect(card.querySelector("[data-card-face='back']")).not.toBeNull());
-      expect(mocks.artwork).toHaveBeenCalledWith([assets.cardBack]);
+      expect(mocks.artwork).toHaveBeenCalledWith([assets.cardBack, ...(projection.cards.exposedTrumpCard ? [assets.cardFace(projection.cards.exposedTrumpCard)] : [])]);
       expect(mocks.artwork).toHaveBeenCalledWith(projection.cards.ownHandVisible ? ownFaces : []);
     },
   );
