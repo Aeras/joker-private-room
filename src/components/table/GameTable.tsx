@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Maximize, Minimize, Trophy } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { assets } from "@/assets/registry";
 
 import type { GameplayCommand } from "@/domain/gameplayCommands";
