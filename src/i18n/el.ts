@@ -1,5 +1,8 @@
 /** Greek UI strings. Flat object — easy to swap for a locale map later. */
 export const t = {
+  landscapeRequired: "Γύρισε τη συσκευή οριζόντια",
+  landscapeRequiredHelp: "Το παιχνίδι λειτουργεί μόνο σε οριζόντια προβολή.",
+  landscapeFullscreen: "Πλήρης οθόνη / Landscape",
   appName: "JOKER",
   botComposerOpen: "Μήνυμα σε bot",
   botComposerClose: "Κλείσιμο bots",
