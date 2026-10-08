@@ -117,7 +117,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     }
     expect(picker).toContain('"Θέλω μεγαλύτερο ατού"');
     expect(trick).toContain('trumpSuit === semantic.requestedSuit');
-    expect(trick).toContain('"Θέλω μεγαλύτερο ατού"');
+    expect(trick).toContain('"Θέλω μεγαλύτερο Ατού"');
   });
 
   it("shows the 30-second ring only after declarations enter card play", () => {
