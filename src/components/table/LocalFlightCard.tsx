@@ -11,9 +11,9 @@ export const REDUCED_LOCAL_FLIGHT_MS = 75;
 export const MOTION_FALLBACK_SLACK_MS = 120;
 
 /** Authority confirmation never restarts this mounted flight. */
-export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMotion, onSettled }: {
+export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMotion, onSettled, onLanded }: {
   presentation: LocalPlayPresentation; geometry: TableGeometry; viewerSeat: number;
-  reducedMotion: boolean; onSettled: () => void;
+  reducedMotion: boolean; onSettled: () => void; onLanded?: () => void;
 }) {
   const frozen = useRef({ geometry, release: presentation.releaseRect, viewerSeat }).current;
   const [launched, setLaunched] = useState(false);
@@ -21,10 +21,11 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const [returned, setReturned] = useState(false);
   const finished = useRef(false);
   const callback = useRef(onSettled); callback.current = onSettled;
+  const landingCallback = useRef(onLanded); landingCallback.current = onLanded;
   const duration = reducedMotion ? REDUCED_LOCAL_FLIGHT_MS : LOCAL_FLIGHT_MS;
   const rejected = presentation.status === "rejected";
   const motionCompleted = useRef(new Set<string>());
-  const completeMotion = useCallback(() => { const stage = rejected ? "returned" : "landed"; if (motionCompleted.current.has(stage)) return; motionCompleted.current.add(stage); recordTimingDiagnostic("local_flight_" + stage, { cardId: presentation.cardId, durationMs: duration }); if (rejected) setReturned(true); else setLanded(true); }, [rejected, duration, presentation.cardId]);
+  const completeMotion = useCallback(() => { const stage = rejected ? "returned" : "landed"; if (motionCompleted.current.has(stage)) return; motionCompleted.current.add(stage); recordTimingDiagnostic("local_flight_" + stage, { cardId: presentation.cardId, durationMs: duration }); if (rejected) setReturned(true); else { landingCallback.current?.(); setLanded(true); } }, [rejected, duration, presentation.cardId]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => { recordTimingDiagnostic("local_flight_launch", { cardId: presentation.cardId, durationMs: duration }); setLaunched(true); });
@@ -59,3 +60,4 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
     <PlayingCard card={presentation.card} />
   </div>;
 }
+
