@@ -1,13 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Maximize, Minimize, Trophy } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { assets } from "@/assets/registry";
 
 import type { GameplayCommand } from "@/domain/gameplayCommands";
 import { SEAT_COUNT } from "@/domain/gameConfig";
 import type { Room } from "@/domain/players";
 import type { LocalLegalAction, PlayerGameProjection } from "@/domain/projection";
-import type { ScoreSheet } from "@/domain/scoreSheet";
 import { JButton } from "../joker/JButton";
 import { DealerSelectionPresentation } from "./DealerSelectionPresentation";
 import { DealPresentation, type DealPresentationStage } from "./DealPresentation";
@@ -33,13 +32,6 @@ const HAND_REVEAL_MS = 660;
 const PRESENTATION_ACK_DELAY_MS = 40;
 const TRUMP_ANNOUNCEMENT_MS = 3_000;
 
-
-function authoritativeScoreSheet(projection: PlayerGameProjection): ScoreSheet {
-  return {
-    deals: projection.score.completedDeals.map((deal) => ({ dealNumber: deal.dealNumber, scores: [...deal.dealScores] })),
-    special: projection.score.roundPremia.map((record) => ({ phase: record.round, kind: "premia" as const, label: "Πρέμια", values: [...record.adjustments] })),
-  };
-}
 function legalAction<T extends LocalLegalAction["type"]>(projection: PlayerGameProjection, type: T): Extract<LocalLegalAction, { type: T }> | undefined {
   return projection.local.legalActions.find((action) => action.type === type) as Extract<LocalLegalAction, { type: T }> | undefined;
 }
@@ -145,7 +137,6 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const clearLocalFlight = useCallback(() => setLocalPlayPresentation(null), []);
 
   const names = room.seats.map((seat) => seat.occupant.type === "human" ? seat.occupant.player.displayName : seat.occupant.type === "bot" ? seat.occupant.bot.displayName : `Θέση ${seat.index + 1}`);
-  const sheet = useMemo(() => authoritativeScoreSheet(projection), [projection]);
   const playAction = legalAction(projection, "play_card");
   const declarationAction = legalAction(projection, "declare");
   const trumpAction = legalAction(projection, "choose_trump");
@@ -320,6 +311,6 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
     </footer>
     {projection.lifecycle === "complete" && (forcedEnd || !trickPresentationBusy) && <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl border border-primary/40 bg-card/95 p-6 text-center shadow-2xl"><h2 className="font-display text-2xl text-primary">{forcedEnd ? "Η παρτίδα τερματίστηκε" : "Τελικό αποτέλεσμα"}</h2>{forcedEnd ? <p className="mt-3 text-sm text-white/70">Ο host τερμάτισε την παρτίδα. Όλοι οι παίκτες έχουν αποδεσμευτεί.</p> : <div className="mt-4 space-y-2">{finalRows.map((row) => <div key={row.seat} className="flex items-center justify-between rounded-xl bg-secondary/70 px-4 py-2"><span>{row.placement}η θέση · {nameAt(row.seat)}</span><strong className="tabular-nums">{row.score}</strong></div>)}</div>}<div className="mt-5 flex justify-center gap-2">{!forcedEnd && <JButton variant="outlineGold" onClick={() => setScoreOpen(true)}>Αναλυτικό σκορ</JButton>}<Link to="/" className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground">Αρχική</Link></div></div></div>}
-    <div className="relative z-[120]"><Scoreboard open={scoreOpen} onClose={() => setScoreOpen(false)} playerNames={names} sheet={sheet} projection={projection} /></div>
+    <div className="relative z-[120]"><Scoreboard open={scoreOpen} onClose={() => setScoreOpen(false)} playerNames={names} projection={projection} /></div>
   </div>;
 }
