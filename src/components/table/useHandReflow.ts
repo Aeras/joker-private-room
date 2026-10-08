@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 
-export const HAND_REFLOW_MS = 280;
+export const HAND_REFLOW_MS = 250;
 
 function translationX(node: HTMLElement): number {
   const transform = getComputedStyle(node).transform;

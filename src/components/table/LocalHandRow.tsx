@@ -50,10 +50,12 @@ export function LocalHandRow({
   const offset = localHandCenterOffset(geometry);
   const laneWidth = geometry?.localHandBounds?.width;
   const cardWidth = "clamp(3.4rem, min(9.6vw, 22vh), 6.75rem)";
-  const cardOverlap = cards.length <= 3 ? 0.18 : cards.length <= 5 ? 0.28 : cards.length <= 7 ? 0.36 : 0.42;
+  // Detach only from presentation immediately; the canonical hand stays server-owned.
+  const presentedCards = cards.filter(card => card.id !== pendingCardId);
+  const cardOverlap = presentedCards.length <= 3 ? 0.18 : presentedCards.length <= 5 ? 0.28 : presentedCards.length <= 7 ? 0.36 : 0.42;
   const revealOverlap = entranceSettled ? cardOverlap : 0.86;
 
-  const handLayoutRef = useHandReflow(JSON.stringify(cards.map(card => card.id)), visible && entranceSettled && !revealing);
+  const handLayoutRef = useHandReflow(JSON.stringify(presentedCards.map(card => card.id)), visible && entranceSettled && !revealing);
 
   return (
     <div
@@ -77,7 +79,7 @@ export function LocalHandRow({
         data-hand-current-overlap={revealOverlap}
       >
         {visible ? (
-          cards.map((card, index) => (
+          presentedCards.map((card, index) => (
             <div key={card.id} data-hand-layout-card={card.id} className={`relative shrink-0 ${index > 0 ? "-ml-[calc(var(--card-w)*var(--card-overlap))]" : ""} ${revealing || !entranceSettled ? "transition-[margin-left] duration-[520ms]" : ""}`}>
             <DraggableHandCard
               card={card}

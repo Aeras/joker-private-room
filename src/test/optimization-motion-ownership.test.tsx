@@ -24,7 +24,7 @@ beforeEach(() => { vi.useFakeTimers(); vi.stubGlobal("requestAnimationFrame", (f
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe("local motion ownership", () => {
-  it.each([0, 50, 250, 600])("acceptance at %i ms does not relaunch or clear before landing", (delay) => {
+  it.each([0, 50, 250, 600, 1500])("acceptance at %i ms does not relaunch or clear before landing", (delay) => {
     const done = vi.fn();
     const props = { geometry, viewerSeat: 0, reducedMotion: false, onSettled: done };
     const view = render(<LocalFlightCard {...props} presentation={token} />);
@@ -75,3 +75,4 @@ describe("local motion ownership", () => {
     finish(surfaces[3]!); expect(view.container.querySelector("[data-trick-presentation-id]")).toBeNull();
   });
 });
+

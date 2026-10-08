@@ -63,7 +63,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   delete (HTMLElement.prototype as Partial<HTMLElement>).animate;
 });
-describe("280ms hand reflow", () => {
+describe("250ms hand reflow", () => {
   it.each([0, 2, 4])(
     "slides every surviving card from its prior position when card %i is removed",
     (removed) => {
@@ -83,7 +83,7 @@ describe("280ms hand reflow", () => {
           `translateX(${oldIndex * 60 - (30 + newIndex * 60)}px)`,
         );
         expect(motion.frames[1]?.["transform"]).toBe("translateX(0px)");
-        expect(motion.options.duration).toBe(280);
+        expect(motion.options.duration).toBe(250);
         expect(motion.node).toBe(oldNodes.get(motion.node.dataset["handLayoutCard"]));
       }
       view.rerender(<LocalHandRow {...props} cards={[...cards.filter((_, i) => i !== removed)]} />);
@@ -107,12 +107,30 @@ describe("280ms hand reflow", () => {
     expect(motions).toHaveLength(4);
     expect(motions.some((m) => m.node.dataset["handLayoutCard"] === "c4")).toBe(false);
   });
-  it("keeps pending cards in their existing slots and does not replay layout for unrelated updates", () => {
+  it("closes the slot immediately while canonical hand and response remain unchanged", () => {
     const view = render(<LocalHandRow {...props} cards={cards} />);
+    view.rerender(<LocalHandRow {...props} cards={cards} pendingCardId="c2" />);
+    expect(motions).toHaveLength(4);
+    expect(view.container.querySelector('[data-hand-layout-card="c2"]')).toBeNull();
+    expect(cards).toHaveLength(5);
     view.rerender(
-      <LocalHandRow {...props} cards={cards} pendingCardId="c2" authorityKey="new-version" />,
+      <LocalHandRow {...props} cards={[...cards]} pendingCardId="c2" authorityKey="slow-poll" />,
     );
-    expect(motions).toHaveLength(0);
+    expect(motions).toHaveLength(4);
+    view.rerender(
+      <LocalHandRow {...props} cards={cards.filter((c) => c.id !== "c2")} pendingCardId="c2" />,
+    );
+    view.rerender(<LocalHandRow {...props} cards={cards.filter((c) => c.id !== "c2")} />);
+    expect(motions).toHaveLength(4);
+  });
+  it("restores a rejected card only when the flight releases its presentation token", () => {
+    const view = render(<LocalHandRow {...props} cards={cards} />);
+    view.rerender(<LocalHandRow {...props} cards={cards} pendingCardId="c2" />);
+    view.rerender(<LocalHandRow {...props} cards={[...cards]} pendingCardId="c2" />);
+    expect(view.container.querySelector('[data-hand-layout-card="c2"]')).toBeNull();
+    view.rerender(<LocalHandRow {...props} cards={cards} />);
+    expect(view.container.querySelector('[data-hand-layout-card="c2"]')).not.toBeNull();
+    expect(motions).toHaveLength(8);
   });
   it("does not reflow during the deal entrance and cancels animation on unmount", async () => {
     const view = render(<LocalHandRow {...props} cards={cards} revealing />);
