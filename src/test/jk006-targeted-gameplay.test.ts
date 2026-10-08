@@ -95,7 +95,9 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(dealer).toContain("stackIndex: Math.floor(index / 4)");
     expect(deal).toContain("stackIndex: Math.floor(index / 4)");
     expect(deal).toContain("const visibleBeats = visibleIndex < 0 ? [] : beats.slice(0, visibleIndex + 1)");
-    expect(deal).toContain("visibleBeats.map((beat)");
+    expect(deal).toContain("new Set(visibleBeats.map(beat => beat.id))");
+    expect(deal).toContain("...retainedBeats.filter(beat => !visibleIds.has(beat.id)), ...visibleBeats");
+    expect(deal).toContain("cards.map((beat)");
   });
 
 
