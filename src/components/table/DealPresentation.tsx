@@ -77,9 +77,9 @@ function DealerDeckStack({ geometry, dealerPos, settling }: { geometry: TableGeo
     {[2, 1, 0].map((layer) => <div key={layer} className="absolute left-0 top-0" style={{ transform: `translate(${layer * 3}px, ${layer * -2}px)` }}><PlayingCard faceDown /></div>)}
   </div>;
 }
-function TravelingBack({ beat, pos, geometry, dealerPos, settling }: { beat: DealBeat; pos: VisualSeat; geometry: TableGeometry | null; dealerPos: VisualSeat; settling: boolean }) {
-  const [arrived, setArrived] = useState(false);
-  useLayoutEffect(() => { setArrived(false); const frame = window.requestAnimationFrame(() => setArrived(true)); return () => window.cancelAnimationFrame(frame); }, [beat.id]);
+function TravelingBack({ beat, pos, geometry, dealerPos, settling, landed = false }: { beat: DealBeat; pos: VisualSeat; geometry: TableGeometry | null; dealerPos: VisualSeat; settling: boolean; landed?: boolean }) {
+  const [arrived, setArrived] = useState(landed);
+  useLayoutEffect(() => { if (landed) { setArrived(true); return; } setArrived(false); const frame = window.requestAnimationFrame(() => setArrived(true)); return () => window.cancelAnimationFrame(frame); }, [beat.id, landed]);
   const sourceRotation = SEAT_ROTATION[dealerPos];
   const targetRotation = SEAT_ROTATION[pos];
   if (!geometry) {
@@ -116,7 +116,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   const sequence = useMemo(() => {
     if (!stage || projection.progression.dealerSeat == null) return [];
     const count = stage === "initial" ? 12 : stage === "remaining" ? 24 : projection.progression.cardsPerPlayer * 4; const dealer = projection.progression.dealerSeat as SeatIndex;
-    return Array.from({ length: count }, (_, index) => ({ id: `${stageKey}:${index}`, seat: recipientFor(dealer, index), index, stackIndex: Math.floor(index / 4) }));
+    return Array.from({ length: count }, (_, index) => ({ id: `${stageKey}:${index}`, seat: recipientFor(dealer, index), index, stackIndex: Math.floor(index / 4) + (stage === "remaining" ? 3 : 0) }));
   }, [projection.progression.cardsPerPlayer, projection.progression.dealerSeat, stage, stageKey]);
   const clearTimers = useCallback(() => { for (const timer of timers.current) window.clearTimeout(timer); timers.current = []; }, []);
   const clearPresentation = useCallback(() => { clearTimers(); running.current = false; waitingForFirstHand.current = null; setSettling(false); onSettlingChangeRef.current?.(false); setBeats([]); setVisibleIndex(-1); setRunGeometry(null); onActiveChangeRef.current?.(false); }, [clearTimers]);
@@ -190,10 +190,28 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     window.addEventListener("orientationchange", orientation); window.addEventListener("focus", restore); window.addEventListener("blur", interrupt); document.addEventListener("visibilitychange", visibility);
     return () => { window.removeEventListener("orientationchange", orientation); window.removeEventListener("focus", restore); window.removeEventListener("blur", interrupt); document.removeEventListener("visibilitychange", visibility); clearTimers(); };
   }, [clearPresentation, clearTimers, stageKey]);
-  if (beats.length === 0) return null;
+  // Public face-down counts survive the choice boundary and reconnect; no
+  // hidden hand is needed. Resolved trump no longer contains chooserSeat.
+  const chooserSeat = projection.trump?.status === "chooser_pending" ? projection.trump.chooserSeat : projection.progression.firstDeclarerSeat;
+  const initialKey = dealPresentationStageKey(projection.gameId, projection.progression.dealNumber, projection.progression.dealerSeat, "initial");
+  const remainingKey = dealPresentationStageKey(projection.gameId, projection.progression.dealNumber, projection.progression.dealerSeat, "remaining");
+  const retainInitial = chooserSeat != null && projection.rulesetId !== "classic" && projection.progression.cardsPerPlayer === 9 && (
+    projection.progression.phase === "NINE_CARD_TRUMP_CHOICE" ||
+    (stage === "initial" && dealPresentationWasCompleted(initialKey)) ||
+    (stage === "remaining" && !dealPresentationWasCompleted(remainingKey))
+  );
+  const retainedBeats: DealBeat[] = retainInitial && projection.progression.dealerSeat != null
+    ? Array.from({ length: 12 }, (_, index) => ({ id: `${initialKey}:${index}`, seat: recipientFor(projection.progression.dealerSeat as SeatIndex, index), index, stackIndex: Math.floor(index / 4) })).filter(beat => beat.seat !== chooserSeat)
+    : [];
+  if (beats.length === 0 && retainedBeats.length === 0) return null;
   const visibleBeats = visibleIndex < 0 ? [] : beats.slice(0, visibleIndex + 1);
+  const visibleIds = new Set(visibleBeats.map(beat => beat.id));
+  const cards = [...retainedBeats.filter(beat => !visibleIds.has(beat.id)), ...visibleBeats];
+  const displayGeometry = runGeometry ?? geometry;
+  const displayViewerSeat = beats.length ? runViewerSeat : projection.viewerSeat;
+  const displayDealerPos = beats.length ? runDealerPos : visualPosition(projection.viewerSeat, projection.progression.dealerSeat as SeatIndex);
   return <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true" data-deal-settling={settling} data-deal-geometry-epoch={runGeometry?.epoch ?? 0} data-dealer-visual-pos={runDealerPos}>
-    <DealerDeckStack geometry={runGeometry} dealerPos={runDealerPos} settling={settling} />
-    {visibleBeats.map((beat) => { const pos = visualPosition(runViewerSeat, beat.seat); return <TravelingBack key={beat.id} settling={settling} beat={beat} pos={pos} geometry={runGeometry} dealerPos={runDealerPos} />; })}
+    {beats.length > 0 && <DealerDeckStack geometry={displayGeometry} dealerPos={displayDealerPos} settling={settling} />}
+    {cards.map((beat) => { const pos = visualPosition(displayViewerSeat, beat.seat); const retained = !visibleIds.has(beat.id); const exits = settling && (stage !== "initial" || beat.seat === chooserSeat); return <TravelingBack key={beat.id} settling={exits} landed={retained} beat={beat} pos={pos} geometry={displayGeometry} dealerPos={displayDealerPos} />; })}
   </div>;
 }
