@@ -15,13 +15,13 @@ describe("JK-006 end-game release and human avatars", () => {
     expect(migration).toContain("'sessionsReleased', true");
   });
 
-  it("keeps renamed human players on their existing PNG avatar assets", () => {
+  it("uses the uploaded replacement PNGs for the three human players", () => {
     const registry = read("src/assets/registry.ts");
-    expect(registry).toContain('giobis: "/avatars/giobis.png"');
-    expect(registry).toContain('"ζωάλο πουτς": "/avatars/giobis.png"');
-    expect(registry).toContain('mixalis: "/avatars/mixalis.png"');
-    expect(registry).toContain('"τζαμανάς δικώνετε": "/avatars/mixalis.png"');
-    expect(registry).toContain('git: "/avatars/git.png"');
+    expect(registry).toContain('giobis: "/avatars/giobis2.png"');
+    expect(registry).toContain('"ζωάλο πουτς": "/avatars/giobis2.png"');
+    expect(registry).toContain('mixalis: "/avatars/mixalis2.png"');
+    expect(registry).toContain('"τζαμανάς δικώνετε": "/avatars/mixalis2.png"');
+    expect(registry).toContain('git: "/avatars/git2.png"');
     expect(registry).not.toContain('/avatars/giobis.webp');
     expect(registry).not.toContain('/avatars/mixalis.webp');
     expect(registry).not.toContain('/avatars/git.webp');
