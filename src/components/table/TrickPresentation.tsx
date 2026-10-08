@@ -195,11 +195,12 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       journal.current.collect(current.id); departingRef.current = null; setDeparting(null); revise(n => n + 1);
     }
   }, [paused]);
+  const markLocalLanding = useCallback(() => { lastLandingAt.current = performance.now(); }, []);
   const settleLocalFlight = useCallback(() => {
     const local = localPresentationRef.current;
     if (local?.status === "accepted") {
       const key = local.actorSeat + ":" + local.cardId;
-      if (!landedCards.current.has(key)) lastLandingAt.current = performance.now();
+      if (lastLandingAt.current == null) lastLandingAt.current = performance.now();
       landedCards.current.add(key);
     }
     onLocalFlightSettled(); revise(n => n + 1);
@@ -296,7 +297,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     <span className="sr-only" aria-live="polite">{departing ? `Η μπάζα κερδήθηκε από τη θέση ${departing.winnerSeat + 1}.` : announcement?.text ?? ""}</span>
     {announcement && <div className="absolute left-0 top-[-4.4rem] z-50 -translate-x-1/2 whitespace-nowrap rounded-xl border border-amber-300/60 bg-black/88 px-4 py-2 text-center text-sm font-semibold text-white shadow-2xl backdrop-blur" data-joker-announcement={announcement.id}>{announcement.text}</div>}
     {visibleCards.map((play) => <AnimatedTrickCard key={`${active?.id}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={geometry} settled={landedCards.current.has(playKey(play))} reducedMotion={reducedMotion} onMotionComplete={onMotionComplete} completionGeneration={resumeGeneration} paused={paused} />)}
-    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} viewerSeat={projection.viewerSeat} geometry={geometry} reducedMotion={reducedMotion} onSettled={settleLocalFlight} />}
+    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} viewerSeat={projection.viewerSeat} geometry={geometry} reducedMotion={reducedMotion} onSettled={settleLocalFlight} onLanded={markLocalLanding} />}
   </div>;
 }
 
