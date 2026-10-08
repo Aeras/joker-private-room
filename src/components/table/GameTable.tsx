@@ -150,7 +150,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const declarationAction = legalAction(projection, "declare");
   const trumpAction = legalAction(projection, "choose_trump");
   const jokerAction = legalAction(projection, "choose_joker_semantic");
-  const reclaimAction = legalAction(projection, "reclaim_control");
+  const reclaimAvailable = projection.lifecycle === "active" && projection.local.reclaimAvailable;
   const declarationValues = declarationAction ? Array.from({ length: 10 }, (_, value) => value) : [];
   const viewerOccupant = room.seats[localSeat]?.occupant;
   const isHost = viewerOccupant?.type === "human" && viewerOccupant.player.id === room.hostId;
@@ -315,7 +315,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       {error && <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>}
       {!interactionPresentationActive && declarationAction && pendingDeclarationValue == null && <div className="relative top-5 animate-in slide-in-from-bottom-2 fade-in duration-200"><DeclarationPicker values={declarationValues} legalValues={declarationAction.values} busy={busy} onSelect={(value) => void submitDeclaration(value)} /></div>}
       {!startupPresentationActive && !handRevealActive && ownArtworkSettled && jokerAction && !pendingJokerChoice && <JokerChoicePicker options={jokerAction.options} busy={busy} trumpSuit={projection.trump.status === "resolved" ? projection.trump.suit : null} onSelect={(semantic) => void submitJokerChoice(semantic)} />}
-      {!interactionPresentationActive && reclaimAction && <JButton className="mb-2" variant="outlineGold" size="sm" disabled={busy} onClick={onReclaim}>Πάρε ξανά τον έλεγχο</JButton>}
+      {reclaimAvailable && <JButton className="mb-2" variant="outlineGold" size="sm" disabled={busy} onClick={onReclaim}>Πάρε ξανά τον έλεγχο</JButton>}
       <LocalHandRow cards={handPresented ? projection.cards.ownHand : []} visible={handPresented && projection.cards.ownHandVisible && ownArtworkSettled} legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []} blocked={interactionPresentationActive || busy || Boolean(submittingCardId)} pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null} authorityKey={handAuthorityKey} geometry={tableGeometry.geometry} revealing={handRevealActive} onCommit={commitCard} />
       <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
     </footer>

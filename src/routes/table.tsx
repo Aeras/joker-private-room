@@ -1,3 +1,4 @@
+import { reclaimWithFreshSnapshot } from "@/components/table/reclaimWithFreshSnapshot";
 import { retryCommandDelivery } from "@/components/table/retryCommandDelivery";
 import { LandscapeTableGuard } from "@/components/table/LandscapeTableGuard";
 import { SnapshotAdmission } from "@/components/table/snapshotAdmission";
@@ -136,6 +137,7 @@ function TablePage() {
   const presentationAckInFlight = useRef<string | null>(null);
   const nineCardAckInFlight = useRef<string | null>(null);
   const autoStartInFlight = useRef(false);
+  const reclaimInFlight = useRef(false);
 
   const updateConnectionStatus = useCallback((status: TableConnectionStatus) => {
     connectionStatusRef.current = status;
@@ -438,16 +440,33 @@ function TablePage() {
   };
 
   const reclaim = async () => {
-    if (!projection || busy || connectionStatusRef.current !== "ready") return;
+    if (!projection || busy || reclaimInFlight.current || connectionStatusRef.current !== "ready") return;
+    const reclaimAdmission = activeAdmission.current;
+    reclaimInFlight.current = true;
     setBusy(true); setError(null);
+    const stillCurrent = () => mounted.current && activeAdmission.current === reclaimAdmission;
     try {
-      const result = await reclaimProjectedGameControl({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion } });
+      const result = await reclaimWithFreshSnapshot({
+        gameId: projection.gameId,
+        current: () => stillCurrent() && connectionStatusRef.current === "ready" ? projectionRef.current : null,
+        refresh: refreshAll,
+        send: reclaimProjectedGameControl,
+      });
+      if (!stillCurrent() || !result) return;
       if (result.ok) {
         const currentRoom = roomRef.current;
         if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return;
-      } else if (mounted.current) setError(gameplayFailureMessage(result.code));
+      } else setError(gameplayFailureMessage(result.code));
       await refreshAll();
-    } finally { if (mounted.current) setBusy(false); }
+    } catch {
+      if (stillCurrent()) {
+        setError("Δεν επιβεβαιώθηκε η ανάκτηση ελέγχου. Γίνεται επανασύνδεση.");
+        try { await refreshAll(); } catch { /* Polling will recover the current controller. */ }
+      }
+    } finally {
+      reclaimInFlight.current = false;
+      if (mounted.current) setBusy(false);
+    }
   };
 
   const startGame = useCallback(async () => {
@@ -593,4 +612,3 @@ function TablePage() {
     </div>
   );
 }
-
