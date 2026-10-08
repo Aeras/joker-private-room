@@ -28,9 +28,9 @@ describe("JK-006 presentation barriers", () => {
     expect(trick).toContain("JOKER_ANNOUNCEMENT_MS = 3_000");
     expect(picker).toContain("Τζόκερ από πάνω");
     expect(picker).toContain("Τζόκερ από κάτω");
-    expect(trick).toContain("Θέλω μεγαλύτερο —");
-    expect(trick).toContain("Θέλω μεγαλύτερο ατού");
-    expect(trick).toContain("Παίρνουν —");
+    expect(trick).toContain("Θέλω μεγαλύτερο Μπαστούνι");
+    expect(trick).toContain("Θέλω μεγαλύτερο Ατού");
+    expect(trick).toContain("Παίρνουν Μπαστούνια");
     expect(trick).toContain("data-joker-announcement");
   });
 
