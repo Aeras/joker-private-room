@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { PlayingCard } from "../joker/PlayingCard";
 import { LocalFlightCard, MOTION_FALLBACK_SLACK_MS } from "./LocalFlightCard";
 import type { LocalPlayPresentation } from "./localPlayPresentation";
-import { trickPresentationTiming } from "./trickPresentationModel";
+import { TRICK_CARD_ROTATION, trickPresentationTiming } from "./trickPresentationModel";
 import type { Point, TableGeometry, VisualSeat } from "./useTableGeometry";
 
 type Pos = VisualSeat;
@@ -22,7 +22,6 @@ type Departing = { id: string; cards: PlayedCard[]; winnerSeat: SeatIndex; stage
 type JokerAnnouncement = { id: string; text: string };
 
 const FALLBACK_LANDING: Record<Pos, Point> = { 0: { x: 0, y: 38 }, 1: { x: -40, y: 0 }, 2: { x: 0, y: -38 }, 3: { x: 40, y: 0 } };
-const ROTATION: Record<Pos, number> = { 0: 2, 1: -7, 2: -2, 3: 7 };
 const JOKER_ANNOUNCEMENT_MS = 3_000;
 const SUIT_ANNOUNCEMENT = { hearts: "κούπες", diamonds: "καρό", clubs: "σπαθιά", spades: "μπαστούνια" } as const;
 function posOf(viewerSeat: SeatIndex, seat: number): Pos { return ((seat - viewerSeat + 4) % 4) as Pos; }
@@ -84,7 +83,7 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
   const faceDown = fromBelowJoker || departingStage === "flipping" || collecting;
   const settledPoint = fromBelowJoker && !departingStage ? underStackPoint(landing, center) : landing;
   const transform = collecting
-    ? relativeTransform(collectTarget, center, ROTATION[pos], 0.78, 180)
+    ? relativeTransform(collectTarget, center, TRICK_CARD_ROTATION[pos], 0.78, 180)
     : departedTransform(arrived, faceDown, settledPoint, origin, center, pos);
   const easing = collecting ? "cubic-bezier(0.22, 0.8, 0.24, 1)" : "cubic-bezier(0.22, 1, 0.36, 1)";
   return <div data-joker-from-below={fromBelowJoker ? "true" : undefined} data-trick-collecting={collecting ? "true" : undefined} className={cn("fixed transition-[transform,opacity] [transform-style:preserve-3d]", fromBelowJoker && !departingStage ? "z-0" : "z-10", winner && departingStage && "z-30 drop-shadow-[0_0_16px_var(--gold)]", collecting && !winner && "opacity-85")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms`, transitionTimingFunction: easing } as React.CSSProperties} onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform") completionRef.current(play, departingStage ?? "landing"); }}>
@@ -95,8 +94,8 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
   </div>;
 }
 function departedTransform(arrived: boolean, faceDown: boolean, landing: Point, origin: Point, center: Point, pos: Pos): string {
-  if (arrived) return relativeTransform(landing, center, ROTATION[pos], faceDown ? 0.96 : 1, faceDown ? 180 : 0);
-  return relativeTransform(origin, center, ROTATION[pos], 0.92, 0);
+  if (arrived) return relativeTransform(landing, center, TRICK_CARD_ROTATION[pos], faceDown ? 0.96 : 1, faceDown ? 180 : 0);
+  return relativeTransform(origin, center, TRICK_CARD_ROTATION[pos], 0.92, 0);
 }
 
 export function TrickPresentation({ projection, geometry, localPlayPresentation, pendingJokerChoice = null, onLocalFlightSettled, onBusyChange, onPresentationReady, onCollectionComplete, onScorePresentationActiveChange }: { projection: PlayerGameProjection; geometry: TableGeometry | null; localPlayPresentation: LocalPlayPresentation | null; pendingJokerChoice?: { cardId: string; semantic: NonNullable<PlayedCard["joker"]> } | null; onLocalFlightSettled: () => void; onBusyChange?: (busy: boolean) => void; onCollectionComplete?: () => void; onScorePresentationActiveChange?: (active: boolean) => void; onPresentationReady?: (token: number) => Promise<boolean> }) {
