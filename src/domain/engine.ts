@@ -194,6 +194,20 @@ export function resolveTrick(args: {
       };
     }
 
+    // A SUIT_WINS lead still wins when every follower must discard:
+    // no requested-suit card, no trump, and no competing Joker above.
+    const hasStandardWinner = highestStandard(plays, requestedSuit) ||
+      (trump && highestStandard(plays, trump));
+    if (!hasStandardWinner) {
+      return {
+        winnerSeat: lead.seatIndex,
+        winningPlay: lead,
+        nextLeader: lead.seatIndex,
+        requestedSuit,
+        reason: "JOKER_SUIT_WINS",
+      };
+    }
+
     const standard = standardWinner({ plays, requestedSuit, trump });
     return {
       winnerSeat: standard.play.seatIndex,

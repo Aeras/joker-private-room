@@ -1,3 +1,4 @@
+import { planAutomaticGameplayStep } from "../bots/progression";
 import { acknowledgePlayedEvent } from "./turnPresentation";
 import { describe, expect, it } from "vitest";
 
@@ -291,5 +292,35 @@ describe("card/Joker command dispatcher", () => {
     const state = baseState();
     state.seats[1] = { ...state.seats[1], controller: "temporary_bot", reclaimable: true, takeoverAt: "2026-10-04T06:00:31.000Z" };
     expect(apply(state, 1, { type: "play_card", cardId: "7-clubs-test" })).toEqual({ ok: false, code: "CONTROLLER_CHANGED" });
+  });
+});
+describe("SUIT_WINS discard-only bot completion regression", () => {
+  it.each([false, true])("commits the fourth bot card and credits the leading Joker (last trick %s)", (lastTrick) => {
+    const state = baseState();
+    state.progression.currentActorSeat = 3;
+    state.trump = { status: "resolved", suit: "spades" };
+    state.cards.currentTrick = [
+      { seatIndex: 0, card: { kind: "joker", id: "joker-1" }, joker: { context: "LEAD", mode: "SUIT_WINS", requestedSuit: "spades" } },
+      { seatIndex: 1, card: standard("10-diamonds", "diamonds", "10") },
+      { seatIndex: 2, card: standard("A-diamonds", "diamonds", "A") },
+    ];
+    state.cards.hands = lastTrick ? [[], [], [], [standard("K-hearts", "hearts", "K")]] :
+      [[standard("7-clubs", "clubs", "7")], [standard("8-clubs", "clubs", "8")],
+       [standard("9-clubs", "clubs", "9")], [standard("K-hearts", "hearts", "K"), standard("7-hearts", "hearts", "7")]];
+    state.seats[3] = { ...state.seats[3], controller: "permanent_bot",
+      owner: { type: "bot", botId: "mounara", displayName: "Bot", personalityId: "mounara",
+        strategyProfileId: "memory-inference-v1", catalogVersion: "popular-bots-v1" } };
+    const result = planAutomaticGameplayStep(state, "2026-10-08T02:00:00.000Z");
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.stopReason);
+    expect(result.command.type).toBe("play_card");
+    expect(result.nextState.stateVersion).toBe(state.stateVersion + 1);
+    expect(result.nextState.cards.currentTrick).toEqual([]);
+    expect(result.nextState.cards.completedTricks).toHaveLength(1);
+    expect(result.nextState.cards.completedTricks[0]).toMatchObject({ winnerSeat: 0 });
+    expect(result.nextState.cards.completedTricks[0]!.cards).toHaveLength(4);
+    expect(result.nextState.score.tricksTaken).toEqual([1, 0, 0, 0]);
+    expect(result.nextState.progression.phase).toBe(lastTrick ? "DEAL_RESULT" : "CARD_PLAY");
+    expect(result.nextState.progression.currentActorSeat).toBe(lastTrick ? null : 0);
   });
 });
