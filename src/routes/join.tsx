@@ -34,7 +34,7 @@ function JoinGame() {
 
   useEffect(() => {
     realIdentityService.listPlayers().then((list) => {
-      const joinable = list.filter((p) => p.role !== "host");
+      const joinable = list;
       setPlayers(joinable);
       setPlayerId(joinable[0]?.id ?? "");
     }).catch(() => setError(t.authUnavailable)).finally(() => setLoading(false));
@@ -51,7 +51,7 @@ function JoinGame() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!playerId || code.trim().length !== 4 || pin.length !== 4 || authBusy) { setError(t.invalidJoin); return; }
+    if (!playerId || !/^\d{4}$/.test(pin) || authBusy) { setError(t.invalidJoin); return; }
 
     setAuthBusy(true);
     try {
@@ -63,8 +63,15 @@ function JoinGame() {
         void navigate({ to: "/table", search: { code: current.activeGame.roomCode, gameId: current.activeGame.gameId } });
         return;
       }
-      if (!current.ok && current.code === "SERVICE_UNAVAILABLE") {
-        setError("Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού. Δοκίμασε ξανά.");
+      if (!current.ok) {
+        setError(current.code === "SERVICE_UNAVAILABLE"
+          ? "Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού. Δοκίμασε ξανά."
+          : t.invalidPin);
+        return;
+      }
+
+      if (code.trim().length !== 4) {
+        setError("Δεν έχεις ενεργό παιχνίδι. Συμπλήρωσε τον κωδικό του δωματίου στο οποίο θέλεις να μπεις.");
         return;
       }
 
@@ -83,6 +90,8 @@ function JoinGame() {
 
       joinActionId.current = null;
       navigate({ to: "/lobby", search: { code: result.room.code } });
+    } catch {
+      setError(t.authUnavailable);
     } finally {
       setAuthBusy(false);
     }
@@ -106,16 +115,17 @@ function JoinGame() {
   return (
     <ScreenShell title={t.joinGame} variant="pregame" contentClassName="pregame-centered-content">
       <form onSubmit={submit} className="pregame-join-card">
+        <p className="col-span-full text-sm text-muted-foreground">Για επιστροφή στο ενεργό παιχνίδι σου, επίλεξε όνομα και βάλε το PIN σου. Κωδικός χρειάζεται μόνο για συμμετοχή σε νέο δωμάτιο.</p>
         <div>
-          <SectionLabel>{t.roomCode}</SectionLabel>
-          <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))} placeholder="J7K4" autoCapitalize="characters" className={cn(inputCls, "text-center font-display text-2xl tracking-[0.4em]")} />
+          <SectionLabel>{t.roomCode} (προαιρετικό)</SectionLabel>
+          <input disabled={authBusy} aria-label={t.roomCode} value={code} onChange={(e) => { setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4)); joinActionId.current = null; }} placeholder="J7K4" autoCapitalize="characters" className={cn(inputCls, "text-center font-display text-2xl tracking-[0.4em]")} />
         </div>
 
         <div className="pregame-player-picker">
           <SectionLabel>{t.playerName}</SectionLabel>
           <div className="grid grid-cols-2 gap-2">
             {players.map((p) => (
-              <button type="button" key={p.id} onClick={() => { setPlayerId(p.id); joinActionId.current = null; }} className={cn("h-12 rounded-xl border px-3 text-sm transition-all active:scale-[0.98]", playerId === p.id ? "border-primary bg-gold-soft text-primary" : "border-border bg-secondary text-foreground")}>
+              <button type="button" disabled={authBusy} key={p.id} onClick={() => { setPlayerId(p.id); joinActionId.current = null; }} className={cn("h-12 rounded-xl border px-3 text-sm transition-all active:scale-[0.98]", playerId === p.id ? "border-primary bg-gold-soft text-primary" : "border-border bg-secondary text-foreground")}>
                 {p.displayName}
               </button>
             ))}
@@ -124,7 +134,7 @@ function JoinGame() {
 
         <div>
           <SectionLabel>{t.pin}</SectionLabel>
-          <input value={pin} onChange={(e) => setPin(e.target.value.replace(/D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className={cn(inputCls, "text-center text-2xl tracking-[0.5em]")} />
+          <input disabled={authBusy} aria-label={t.pin} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className={cn(inputCls, "text-center text-2xl tracking-[0.5em]")} />
         </div>
 
         <div className="flex items-end">
@@ -136,3 +146,4 @@ function JoinGame() {
     </ScreenShell>
   );
 }
+
