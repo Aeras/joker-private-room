@@ -47,7 +47,7 @@ function phaseScoreTotals(
   const phaseDeals = projection.score.completedDeals.filter((record) => record.round === round);
   const dealTotals = [0, 0, 0, 0] as [number, number, number, number];
   for (const record of phaseDeals) {
-    for (let seat = 0; seat < 4; seat += 1) dealTotals[seat] += record.dealScores[seat] ?? 0;
+    for (let seat = 0; seat < 4; seat += 1) dealTotals[seat] = (dealTotals[seat] ?? 0) + (record.dealScores[seat] ?? 0);
   }
   return dealTotals.map(
     (value, seat) => value + (premia.adjustments[seat] ?? 0),
