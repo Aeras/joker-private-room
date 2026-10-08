@@ -12,8 +12,8 @@ import {
 import {
   NORMAL_TRICK_SETTLE_MS,
   REDUCED_TRICK_SETTLE_MS,
-  NORMAL_TRICK_FLIP_MS,
-  REDUCED_TRICK_FLIP_MS,
+  NORMAL_TRICK_STACK_MS,
+  REDUCED_TRICK_STACK_MS,
   NORMAL_TRICK_COLLECT_MS,
   NORMAL_TRICK_HOLD_MS,
   NORMAL_TRICK_PLAY_SPACING_MS,
@@ -102,7 +102,7 @@ function activeRuntimeTimings() {
       holdMs: browserReducedMotion ? REDUCED_TRICK_HOLD_MS : NORMAL_TRICK_HOLD_MS,
       collectMs: browserReducedMotion ? REDUCED_TRICK_COLLECT_MS : NORMAL_TRICK_COLLECT_MS,
       cardTransitionMs: browserReducedMotion ? REDUCED_TRICK_SETTLE_MS : NORMAL_TRICK_SETTLE_MS,
-      flipMs: browserReducedMotion ? REDUCED_TRICK_FLIP_MS : NORMAL_TRICK_FLIP_MS,
+      stackMs: browserReducedMotion ? REDUCED_TRICK_STACK_MS : NORMAL_TRICK_STACK_MS,
       localFlightMs: browserReducedMotion ? 75 : 300,
     },
     polling: {
