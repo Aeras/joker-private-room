@@ -56,6 +56,14 @@ function dealerSourcePoint(geometry: TableGeometry, dealerPos: VisualSeat): Poin
   return viewportPoint(geometry, inward);
 }
 function markPresented(stageKey: string): void { markPresentationCompleted(dealPresentationStorageKey(stageKey)); }
+// Exit anchors are screen edges. Move the whole rotated card and stack beyond
+// them before revealing the hand; the margin also covers the final paint frame.
+function pileExitOffset(pos: VisualSeat, stackIndex: number, fallback?: { left: string; top: string }): string {
+  // Without measurements the fallback origin is a percentage of the full-screen overlay.
+  const remaining = !fallback ? "0px" : pos === 0 ? `${100 - Number.parseFloat(fallback.top) - 22}vh` : pos === 2 ? `${Number.parseFloat(fallback.top) - 22}vh` : pos === 1 ? `${Number.parseFloat(fallback.left) - 26}vw` : `${100 - Number.parseFloat(fallback.left) - 26}vw`;
+  const distance = `calc(${remaining} + var(--card-w) * 0.7 + ${stackIndex * 6 + 24}px)`;
+  return pos === 0 ? `translateY(${distance})` : pos === 2 ? `translateY(calc(-1 * ${distance}))` : pos === 1 ? `translateX(calc(-1 * ${distance}))` : `translateX(${distance})`;
+}
 function DealerDeckStack({ geometry, dealerPos, settling }: { geometry: TableGeometry | null; dealerPos: VisualSeat; settling: boolean }) {
   const rotation = SEAT_ROTATION[dealerPos];
   if (!geometry) {
@@ -76,7 +84,7 @@ function TravelingBack({ beat, pos, geometry, dealerPos, settling }: { beat: Dea
   const targetRotation = SEAT_ROTATION[pos];
   if (!geometry) {
     const fallback = FALLBACK_DEALER_SOURCE[dealerPos];
-    return <div data-deal-traveling-card data-deal-visual-seat={pos} className="absolute [--card-w:clamp(3.4rem,8vw,5.5rem)] transition-[transform,opacity] ease-out" style={{ opacity: settling ? 0 : 1, left: fallback.left, top: fallback.top, zIndex: 30 + beat.stackIndex, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_TRAVEL_MS}ms, ${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${NORMAL_DEAL_TRAVEL_MS}ms`, transitionDelay: settling ? `0ms, ${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transform: arrived ? `${FALLBACK_TARGET[pos]} ${settling ? ["translateY(12vh)", "translateX(-15vw)", "translateY(-15vh)", "translateX(15vw)"][pos] : ""} rotate(${targetRotation}deg)` : `translate(-50%, -50%) scale(.58) rotate(${sourceRotation}deg)` }}><PlayingCard faceDown /></div>;
+    return <div data-deal-traveling-card data-deal-visual-seat={pos} className="absolute [--card-w:clamp(3.4rem,8vw,5.5rem)] transition-[transform,opacity] ease-out" style={{ opacity: settling ? 0 : 1, left: fallback.left, top: fallback.top, zIndex: 30 + beat.stackIndex, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_TRAVEL_MS}ms, ${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${NORMAL_DEAL_TRAVEL_MS}ms`, transitionDelay: settling ? `0ms, ${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transform: arrived ? `${FALLBACK_TARGET[pos]} ${settling ? pileExitOffset(pos, beat.stackIndex, fallback) : ""} rotate(${targetRotation}deg)` : `translate(-50%, -50%) scale(.58) rotate(${sourceRotation}deg)` }}><PlayingCard faceDown /></div>;
   }
   const source = dealerSourcePoint(geometry, dealerPos);
   const baseTarget = viewportPoint(geometry, geometry.dealTargets[pos]);
@@ -87,7 +95,7 @@ function TravelingBack({ beat, pos, geometry, dealerPos, settling }: { beat: Dea
   };
   const target = stackedTarget(settling ? viewportPoint(geometry, sideTarget) : baseTarget, pos, beat.stackIndex);
   const easing = settling ? "linear" : "cubic-bezier(0.2, 0.75, 0.25, 1)";
-  return <div data-deal-traveling-card data-deal-visual-seat={pos} data-deal-handoff={settling && pos === 0 ? "local" : undefined} className="absolute [--card-w:clamp(3.4rem,8vw,5.5rem)] transition-[transform,opacity]" style={{ opacity: settling ? 0 : 1, left: source.x, top: source.y, zIndex: 30 + beat.stackIndex, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_TRAVEL_MS}ms, ${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${NORMAL_DEAL_TRAVEL_MS}ms`, transitionDelay: settling ? `0ms, ${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transitionTimingFunction: easing, transform: `translate(calc(-50% + ${arrived ? target.x - source.x : 0}px), calc(-50% + ${arrived ? target.y - source.y : 0}px)) scale(${arrived ? 1 : 0.58}) rotate(${arrived ? targetRotation : sourceRotation}deg)` }}><PlayingCard faceDown /></div>;
+  return <div data-deal-traveling-card data-deal-visual-seat={pos} data-deal-handoff={settling && pos === 0 ? "local" : undefined} className="absolute [--card-w:clamp(3.4rem,8vw,5.5rem)] transition-[transform,opacity]" style={{ opacity: settling ? 0 : 1, left: source.x, top: source.y, zIndex: 30 + beat.stackIndex, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_TRAVEL_MS}ms, ${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${NORMAL_DEAL_TRAVEL_MS}ms`, transitionDelay: settling ? `0ms, ${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transitionTimingFunction: easing, transform: `translate(calc(-50% + ${arrived ? target.x - source.x : 0}px), calc(-50% + ${arrived ? target.y - source.y : 0}px)) ${settling ? pileExitOffset(pos, beat.stackIndex) : ""} scale(${arrived ? 1 : 0.58}) rotate(${arrived ? targetRotation : sourceRotation}deg)` }}><PlayingCard faceDown /></div>;
 }
 export function DealPresentation({ projection, geometry = null, paused = false, onActiveChange, onSettlingChange, onSequenceComplete, onPresentationComplete }: { projection: PlayerGameProjection; geometry?: TableGeometry | null; paused?: boolean; onActiveChange?: (active: boolean) => void; onSettlingChange?: (settling: boolean) => void; onSequenceComplete?: () => void; onPresentationComplete?: (stage: DealPresentationStage) => void }) {
   const artworkSettled = useCriticalCardArtwork([assets.cardBack]);
@@ -189,4 +197,3 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     {visibleBeats.map((beat) => { const pos = visualPosition(runViewerSeat, beat.seat); return <TravelingBack key={beat.id} settling={settling} beat={beat} pos={pos} geometry={runGeometry} dealerPos={runDealerPos} />; })}
   </div>;
 }
-
