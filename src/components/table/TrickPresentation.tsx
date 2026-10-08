@@ -24,14 +24,16 @@ type JokerAnnouncement = { id: string; text: string };
 
 const FALLBACK_LANDING: Record<Pos, Point> = { 0: { x: 0, y: 38 }, 1: { x: -40, y: 0 }, 2: { x: 0, y: -38 }, 3: { x: 40, y: 0 } };
 const JOKER_ANNOUNCEMENT_MS = 3_000;
-const SUIT_ANNOUNCEMENT = { hearts: "κούπες", diamonds: "καρό", clubs: "σπαθιά", spades: "μπαστούνια" } as const;
+const HIGHER_SUIT_LABEL: Record<Suit, string> = { hearts: "Θέλω μεγαλύτερη Κούπα", diamonds: "Θέλω μεγαλύτερο Καρό", clubs: "Θέλω μεγαλύτερο Σπαθι", spades: "Θέλω μεγαλύτερο Μπαστούνι" };
+const SUIT_WINS_LABEL: Record<Suit, string> = { hearts: "Παίρνουν Κούπες", diamonds: "Παίρνουν Καρό", clubs: "Παίρνουν Σπαθιά", spades: "Παίρνουν Μπαστούνια" };
 function posOf(viewerSeat: SeatIndex, seat: number): Pos { return ((seat - viewerSeat + 4) % 4) as Pos; }
 function playKey(play: PlayedCard): string { return `${play.seatIndex}:${play.card.id}`; }
 function jokerAnnouncementText(semantic: JokerSemantic, trumpSuit: Suit | null): string | null {
   if (semantic.context === "OPEN_TRICK") return null;
-  if (semantic.mode === "HIGHER_SUIT" && trumpSuit === semantic.requestedSuit) return "Θέλω μεγαλύτερο ατού";
-  const suit = SUIT_ANNOUNCEMENT[semantic.requestedSuit];
-  return semantic.mode === "HIGHER_SUIT" ? `Θέλω μεγαλύτερο — ${suit}` : `Παίρνουν — ${suit}`;
+  if (semantic.mode === "HIGHER_SUIT") {
+    return trumpSuit === semantic.requestedSuit ? "Θέλω μεγαλύτερο Ατού" : HIGHER_SUIT_LABEL[semantic.requestedSuit];
+  }
+  return SUIT_WINS_LABEL[semantic.requestedSuit];
 }
 function relativeTransform(point: Point, center: Point, rotation: number, scale = 1, flip = 0): string {
   const x = point.x - center.x; const y = point.y - center.y;
