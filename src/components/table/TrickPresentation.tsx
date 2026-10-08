@@ -263,7 +263,8 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   });
   const visibleCards = cards.filter((play) => !isPresentationCard(localPlayPresentation, play));
   const showLocalFlight = Boolean(localPlayPresentation && geometry && !departing);
-  const announcement = announcementQueue[0] ?? null;
+  const pendingAnnouncementText = pendingJokerChoice ? jokerAnnouncementText(pendingJokerChoice.semantic, resolvedTrumpSuit) : null;
+  const announcement = pendingAnnouncementText ? { id: `pending:${pendingJokerChoice!.cardId}`, text: pendingAnnouncementText } : announcementQueue[0] ?? null;
   if (visibleCards.length === 0 && !showLocalFlight && !announcement) return null;
   const rootStyle = geometry ? { left: geometry.usableCenter.x, top: geometry.usableCenter.y } : { left: "50%", top: "50%" };
   return <div className="pointer-events-none absolute z-20 h-0 w-0 [--card-w:clamp(3rem,6vw,5rem)]" style={rootStyle} data-geometry-epoch={geometry?.epoch ?? 0} data-trick-presentation-id={active?.id ?? "current"} data-trick-departing-stage={departing?.stage ?? "none"} aria-label={departing ? "Ολοκληρωμένη μπάζα" : "Τρέχουσα μπάζα"}>
