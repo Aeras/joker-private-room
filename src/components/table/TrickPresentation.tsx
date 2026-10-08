@@ -99,7 +99,7 @@ function departedTransform(arrived: boolean, faceDown: boolean, landing: Point, 
   return relativeTransform(origin, center, ROTATION[pos], 0.92, 0);
 }
 
-export function TrickPresentation({ projection, geometry, localPlayPresentation, onLocalFlightSettled, onBusyChange, onPresentationReady, onCollectionComplete, onScorePresentationActiveChange }: { projection: PlayerGameProjection; geometry: TableGeometry | null; localPlayPresentation: LocalPlayPresentation | null; onLocalFlightSettled: () => void; onBusyChange?: (busy: boolean) => void; onCollectionComplete?: () => void; onScorePresentationActiveChange?: (active: boolean) => void; onPresentationReady?: (token: number) => Promise<boolean> }) {
+export function TrickPresentation({ projection, geometry, localPlayPresentation, pendingJokerChoice = null, onLocalFlightSettled, onBusyChange, onPresentationReady, onCollectionComplete, onScorePresentationActiveChange }: { projection: PlayerGameProjection; geometry: TableGeometry | null; localPlayPresentation: LocalPlayPresentation | null; pendingJokerChoice?: { cardId: string; semantic: NonNullable<PlayedCard["joker"]> } | null; onLocalFlightSettled: () => void; onBusyChange?: (busy: boolean) => void; onCollectionComplete?: () => void; onScorePresentationActiveChange?: (active: boolean) => void; onPresentationReady?: (token: number) => Promise<boolean> }) {
   const collectionCallback = useRef(onCollectionComplete); collectionCallback.current = onCollectionComplete;
   const readyCallback = useRef(onPresentationReady); readyCallback.current = onPresentationReady;
   const acknowledgedTokens = useRef(new Set<number>());
@@ -191,7 +191,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     const next = active.cards[displayedCards.length];
     if (next) {
       if (displayedCards.some(play => !landedCards.current.has(playKey(play)))) return;
-      const local = isPresentationCard(localPlayPresentation, next);
+      const local = isPresentationCard(localPlayPresentation, next) || (next.seatIndex === projection.viewerSeat && next.card.id === pendingJokerChoice?.cardId);
       const delay = local || !displayedCards.length ? 0 : trickPresentationTiming(reducedMotion).interPlayBeatMs;
       const show = () => {
         setDisplayedCards(cards => [...cards, next]); enqueueJokerAnnouncement(next);
@@ -207,7 +207,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     recordTimingDiagnostic("trick_hold_start", { trickId: completion.id, holdMs: trickPresentationTiming(reducedMotion).holdMs });
     departingRef.current = completion; setDeparting(completion);
     return undefined;
-  }, [active, active?.cards.length, active?.winnerSeat, displayedCards, departing, paused, reducedMotion, localPlayPresentation, enqueueJokerAnnouncement, revision, artworkSettled]);
+  }, [active, active?.cards.length, active?.winnerSeat, displayedCards, departing, paused, reducedMotion, localPlayPresentation, enqueueJokerAnnouncement, revision, artworkSettled, pendingJokerChoice, projection.viewerSeat]);
 
   useEffect(() => {
     if (paused || departing?.stage !== "holding") return;
@@ -254,10 +254,17 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     void settle();
     return () => { cancelled = true; if (timer != null) window.clearTimeout(timer); };
   }, [token, alreadyAcknowledged, paused, artworkSettled, hasPresentationGeometry, localMotionPending, revision, departing?.stage, resumeGeneration, ackAttempt]);
-  const cards = departing?.cards ?? displayedCards;
+  // A pending Joker is already public on the table. Update its visual semantic
+  // in place; authoritative acceptance uses the same card identity and motion.
+  const cards = departing?.cards ?? displayedCards.map(play => {
+    const canonical = active?.cards.find(card => playKey(card) === playKey(play)) ?? play;
+    return canonical.seatIndex === projection.viewerSeat && canonical.card.id === pendingJokerChoice?.cardId
+      ? { ...canonical, joker: pendingJokerChoice.semantic } : canonical;
+  });
   const visibleCards = cards.filter((play) => !isPresentationCard(localPlayPresentation, play));
   const showLocalFlight = Boolean(localPlayPresentation && geometry && !departing);
-  const announcement = announcementQueue[0] ?? null;
+  const pendingAnnouncementText = pendingJokerChoice ? jokerAnnouncementText(pendingJokerChoice.semantic, resolvedTrumpSuit) : null;
+  const announcement = pendingAnnouncementText ? { id: `pending:${pendingJokerChoice!.cardId}`, text: pendingAnnouncementText } : announcementQueue[0] ?? null;
   if (visibleCards.length === 0 && !showLocalFlight && !announcement) return null;
   const rootStyle = geometry ? { left: geometry.usableCenter.x, top: geometry.usableCenter.y } : { left: "50%", top: "50%" };
   return <div className="pointer-events-none absolute z-20 h-0 w-0 [--card-w:clamp(3rem,6vw,5rem)]" style={rootStyle} data-geometry-epoch={geometry?.epoch ?? 0} data-trick-presentation-id={active?.id ?? "current"} data-trick-departing-stage={departing?.stage ?? "none"} aria-label={departing ? "Ολοκληρωμένη μπάζα" : "Τρέχουσα μπάζα"}>

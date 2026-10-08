@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Maximize, Minimize, Trophy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { assets } from "@/assets/registry";
-import type { Suit } from "@/domain/cards";
+
 import type { GameplayCommand } from "@/domain/gameplayCommands";
 import { SEAT_COUNT } from "@/domain/gameConfig";
 import type { Room } from "@/domain/players";
@@ -12,6 +12,7 @@ import { JButton } from "../joker/JButton";
 import { DealerSelectionPresentation } from "./DealerSelectionPresentation";
 import { DealPresentation, type DealPresentationStage } from "./DealPresentation";
 import { DeclarationPicker } from "./DeclarationPicker";
+import { TrumpChoicePicker } from "./TrumpChoicePicker";
 import { JokerChoicePicker } from "./JokerChoicePicker";
 import { LocalHandRow } from "./LocalHandRow";
 import { projectionContainsPendingCard, type LocalPlayPresentation } from "./localPlayPresentation";
@@ -31,7 +32,7 @@ type OrientationLock = ScreenOrientation & { lock?: (orientation: "landscape") =
 const HAND_REVEAL_MS = 660;
 const PRESENTATION_ACK_DELAY_MS = 40;
 const TRUMP_ANNOUNCEMENT_MS = 3_000;
-const SUIT_LABEL: Record<Suit, string> = { spades: "♠ Μπαστούνια", hearts: "♥ Κούπες", diamonds: "♦ Καρό", clubs: "♣ Σπαθιά" };
+
 
 function authoritativeScoreSheet(projection: PlayerGameProjection): ScoreSheet {
   return {
@@ -211,6 +212,18 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       setLocalPlayPresentation((current) => current && current.cardId === cardId && current.sourceStateVersion === presentation.sourceStateVersion ? { ...current, status: "accepted", acceptedStateVersion: authoritative.stateVersion } : current);
     } finally { playSubmissionLock.current = false; setSubmittingCardId(null); }
   };
+  const [pendingJokerChoice, setPendingJokerChoice] = useState<{ cardId: string; semantic: Extract<GameplayCommand, { type: "choose_joker_semantic" }>["semantic"] } | null>(null);
+  const jokerChoiceLock = useRef(false);
+  const submitJokerChoice = async (semantic: Extract<GameplayCommand, { type: "choose_joker_semantic" }>["semantic"]) => {
+    if (busy || jokerChoiceLock.current || !jokerAction) return;
+    const play = projection.cards.currentTrick.find(play => play.seatIndex === localSeat && play.card.kind === "joker");
+    if (!play) return;
+    jokerChoiceLock.current = true;
+    setPendingJokerChoice({ cardId: play.card.id, semantic });
+    try { await onCommand({ type: "choose_joker_semantic", semantic }); }
+    catch { /* Reopen the choices after a failed request. */ }
+    finally { jokerChoiceLock.current = false; setPendingJokerChoice(null); }
+  };
   const submitDeclaration = async (value: number) => {
     if (!declarationAction?.values.includes(value) || pendingDeclarationValue != null || busy) return;
     setPendingDeclarationValue(value);
@@ -268,15 +281,15 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       <div className="ml-2 rounded-lg bg-black/60 px-2 py-1 text-xs text-white/75 backdrop-blur">Γύρος {projection.progression.round} · Μοιρασιά {projection.progression.dealNumber}/24 · {presentedPhaseMessage}</div>
       <div className="ml-auto flex items-center gap-1 pr-[max(0rem,env(safe-area-inset-right))]"><SoundToggle /><JButton variant="outlineGold" size="sm" className="h-8 px-2 bg-black/60" onClick={() => setScoreOpen(true)} aria-label="Σκορ"><Trophy className="h-4 w-4" /><span className="hidden lg:inline">Σκορ</span></JButton><TableUtilityMenu isHost={isHost} disabled={busy || projection.lifecycle === "complete"} onEndGame={onEndGame} /><JButton variant="outlineGold" size="sm" className="h-8 px-2 bg-black/60" onClick={toggleFullscreen} aria-label={fullscreen ? "Έξοδος από πλήρη οθόνη" : "Πλήρης οθόνη"}>{fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}</JButton></div>
     </header>
-    <main className="absolute inset-x-[5vw] top-[10vh] bottom-[27vh]"><div ref={tableGeometry.feltRef} className="relative h-full w-full"><div ref={tableGeometry.topSeatRef} className="absolute left-1/2 top-[-10%] z-20 -translate-x-1/2">{seatBlock(2, "horizontal")}</div><div ref={tableGeometry.leftSeatRef} className="absolute left-[-2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(1, "vertical")}</div><div ref={tableGeometry.rightSeatRef} className="absolute right-[-2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(3, "vertical")}</div><DealerSelectionPresentation projection={projection} geometry={tableGeometry.geometry} onActiveChange={setDealerIntroActive} />{<TrickPresentation key={projection.gameId} projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} onLocalFlightSettled={clearLocalFlight} onBusyChange={setTrickPresentationBusy} onScorePresentationActiveChange={trackScorePresentation} onCollectionComplete={refreshDisplayedScore} onPresentationReady={completeVisibleTurn} />}</div></main>
+    <main className="absolute inset-x-[5vw] top-[10vh] bottom-[27vh]"><div ref={tableGeometry.feltRef} className="relative h-full w-full"><div ref={tableGeometry.topSeatRef} className="absolute left-1/2 top-[-10%] z-20 -translate-x-1/2">{seatBlock(2, "horizontal")}</div><div ref={tableGeometry.leftSeatRef} className="absolute left-[-2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(1, "vertical")}</div><div ref={tableGeometry.rightSeatRef} className="absolute right-[-2%] top-[50%] z-20 -translate-y-1/2">{seatBlock(3, "vertical")}</div><DealerSelectionPresentation projection={projection} geometry={tableGeometry.geometry} onActiveChange={setDealerIntroActive} />{<TrickPresentation key={projection.gameId} projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} pendingJokerChoice={pendingJokerChoice} onLocalFlightSettled={clearLocalFlight} onBusyChange={setTrickPresentationBusy} onScorePresentationActiveChange={trackScorePresentation} onCollectionComplete={refreshDisplayedScore} onPresentationReady={completeVisibleTurn} />}</div></main>
+    {!interactionPresentationActive && trumpAction && <TrumpChoicePicker suits={trumpAction.suits} busy={busy} onSelect={(suit) => void onCommand({ type: "choose_trump", suit })} />}
     {showTrumpIndicator && <div className="pointer-events-none absolute left-[72%] top-[10vh] z-30 -translate-x-1/2 [--card-w:clamp(3.2rem,6.4vw,5rem)]"><div className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Ατού</div><TrumpIndicator trump={projection.trump} exposedTrumpCard={projection.cards.exposedTrumpCard} /></div>}
     {trumpAnnouncement && <div className="pointer-events-none absolute left-1/2 top-1/2 z-[65] -translate-x-1/2 -translate-y-[4.8rem] rounded-xl border border-primary/55 bg-black/90 px-5 py-2.5 text-center text-base font-semibold text-white shadow-2xl backdrop-blur" role="status" aria-live="polite" data-trump-announcement>{trumpAnnouncement}</div>}
     <DealPresentation projection={projection} geometry={tableGeometry.geometry} paused={dealerIntroActive || trickPresentationBusy} onActiveChange={setDealPresentationActive} onSettlingChange={setDealSettling} onPresentationComplete={handleDealPresentationComplete} />
     <footer className="absolute inset-x-0 bottom-[max(.15rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center">
       {error && <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>}
       {!interactionPresentationActive && declarationAction && pendingDeclarationValue == null && <div className="animate-in slide-in-from-bottom-2 fade-in duration-200"><DeclarationPicker values={declarationValues} legalValues={declarationAction.values} busy={busy} onSelect={(value) => void submitDeclaration(value)} /></div>}
-      {!interactionPresentationActive && trumpAction && <div className="mb-2 flex max-w-[94vw] flex-wrap justify-center gap-1 rounded-xl bg-black/70 p-2 backdrop-blur">{trumpAction.suits.map((suit) => <JButton key={suit ?? "none"} size="sm" disabled={busy} onClick={() => onCommand({ type: "choose_trump", suit })}>{suit ? SUIT_LABEL[suit] : "Χωρίς ατού"}</JButton>)}</div>}
-      {!startupPresentationActive && !handRevealActive && ownArtworkSettled && jokerAction && <JokerChoicePicker options={jokerAction.options} busy={busy} trumpSuit={projection.trump.status === "resolved" ? projection.trump.suit : null} onSelect={(semantic) => void onCommand({ type: "choose_joker_semantic", semantic })} />}
+      {!startupPresentationActive && !handRevealActive && ownArtworkSettled && jokerAction && !pendingJokerChoice && <JokerChoicePicker options={jokerAction.options} busy={busy} trumpSuit={projection.trump.status === "resolved" ? projection.trump.suit : null} onSelect={(semantic) => void submitJokerChoice(semantic)} />}
       {!interactionPresentationActive && reclaimAction && <JButton className="mb-2" variant="outlineGold" size="sm" disabled={busy} onClick={onReclaim}>Πάρε ξανά τον έλεγχο</JButton>}
       <LocalHandRow cards={handPresented ? projection.cards.ownHand : []} visible={handPresented && projection.cards.ownHandVisible && ownArtworkSettled} legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []} blocked={interactionPresentationActive || busy || Boolean(submittingCardId)} pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null} authorityKey={handAuthorityKey} geometry={tableGeometry.geometry} revealing={handRevealActive} onCommit={commitCard} />
       <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
