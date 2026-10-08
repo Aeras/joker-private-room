@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { createElement } from "react";
+import { render } from "@testing-library/react";
+import { DraggableHandCard } from "@/components/table/DraggableHandCard";
 import type { Card } from "@/domain/cards";
 import { sortHandForDisplay } from "@/domain/projection";
-
-const root = process.cwd();
-const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 const hand: Card[] = [
   { kind: "standard", id: "J-hearts", suit: "hearts", rank: "J" },
@@ -47,11 +45,26 @@ describe("JK-006 local hand presentation", () => {
     expect(source.map((card) => card.id)).toEqual(before);
   });
 
-  it("does not fade cards merely because they are not currently legal", () => {
-    const draggable = read("src/components/table/DraggableHandCard.tsx");
-    expect(draggable).not.toContain('legal ? "touch-none" : "opacity-70"');
-    expect(draggable).not.toContain('!legal && "opacity-70"');
-    expect(draggable).toContain('legal && "touch-none"');
-    expect(draggable).toContain('pending && "pointer-events-none opacity-0"');
+  it("keeps illegal cards visible and locks only pending cards", () => {
+    const props = {
+      card: hand[0]!,
+      legal: false,
+      blocked: false,
+      pending: false,
+      authorityKey: "v1",
+      zIndex: 0,
+      overlap: false,
+      onCommit: async () => {},
+    };
+    const { getByRole, rerender } = render(createElement(DraggableHandCard, props));
+    const card = getByRole("button");
+    expect(card).not.toHaveClass("opacity-70", "opacity-0");
+    expect(card).toHaveAttribute("aria-disabled", "true");
+    rerender(createElement(DraggableHandCard, { ...props, legal: true }));
+    expect(card).toHaveClass("touch-none");
+    expect(card).toHaveAttribute("aria-disabled", "false");
+    rerender(createElement(DraggableHandCard, { ...props, legal: true, pending: true }));
+    expect(card).toHaveClass("opacity-0", "pointer-events-none");
+    expect(card).toHaveAttribute("aria-disabled", "true");
   });
 });
