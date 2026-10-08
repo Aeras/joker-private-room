@@ -163,6 +163,27 @@ describe("automatic bot strategy selection", () => {
     expect(state.seats[0].owner.type).toBe("human");
   });
 
+  it("uses the pinned temporary bot tier without exposing other players' hands", () => {
+    for (const tier of ["strong-basic-v1", "memory-inference-v1", "probability-simulation-v1"] as const) {
+      const state = baseState();
+      state.seats[0] = {
+        seatIndex: 0,
+        owner: { type: "human", playerId: "55555555-5555-4555-8555-555555555555" },
+        controller: "temporary_bot",
+        connected: false,
+        takeoverAt: "2026-10-04T00:00:00.000Z",
+        temporaryBotStrategyProfileId: tier,
+        reclaimable: true,
+      };
+      const projection = projectGameForSeat(state, 0);
+      const selected = selectAutomaticGameplayCommand(projection);
+      expect(selected?.strategyId).toBe(tier);
+      expect(selected?.command).toEqual({ type: "play_card", cardId: "7-hearts" });
+      expect(JSON.stringify(projection)).not.toContain("8-hearts");
+      expect(state.seats[0].owner.type).toBe("human");
+    }
+  });
+
   it("applies the selected command through the canonical dispatcher", () => {
     const result = planAutomaticGameplayStep(baseState(), "2026-10-04T00:00:00.000Z");
     expect(result.ok).toBe(true);
