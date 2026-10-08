@@ -78,15 +78,22 @@ export function legalCards(args: {
   hand: readonly Card[];
   requestedSuit: Suit | null;
   trump: Suit | null;
+  requireHighestRequested?: boolean;
 }): Card[] {
-  const { hand, requestedSuit, trump } = args;
+  const { hand, requestedSuit, trump, requireHighestRequested = false } = args;
   if (!requestedSuit) return hand.slice();
 
   const jokers = hand.filter((card) => card.kind === "joker");
   const requested = hand.filter(
     (card) => card.kind === "standard" && card.suit === requestedSuit,
   );
-  if (requested.length > 0) return [...requested, ...jokers];
+  if (requested.length > 0) {
+    if (!requireHighestRequested) return [...requested, ...jokers];
+    const highest = requested.reduce((best, card) =>
+      card.kind === "standard" && best.kind === "standard" && compareRanks(card.rank, best.rank) > 0 ? card : best,
+    );
+    return [highest, ...jokers];
+  }
 
   if (trump) {
     const trumps = hand.filter((card) => card.kind === "standard" && card.suit === trump);
@@ -100,6 +107,10 @@ export function legalMoves(view: PlayerView): Card[] {
     hand: view.hand,
     requestedSuit: requestedSuitForTrick(view.currentTrick),
     trump: view.trump,
+    requireHighestRequested:
+      view.currentTrick[0]?.card.kind === "joker" &&
+      view.currentTrick[0]?.joker?.context === "LEAD" &&
+      view.currentTrick[0]?.joker?.mode === "HIGHER_SUIT",
   });
 }
 
