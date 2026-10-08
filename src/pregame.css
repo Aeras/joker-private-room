@@ -329,7 +329,7 @@
   display: grid;
   width: min(100%, 68rem);
   margin: 0 auto;
-  grid-template-columns: minmax(13rem,.7fr) minmax(28rem,1.3fr);
+  grid-template-columns: minmax(16rem,.7fr) minmax(0,1.3fr);
   align-items: center;
   gap: clamp(1rem, 3vw, 2.2rem);
 }
@@ -449,4 +449,20 @@
   .pregame-secondary-button,
   .pregame-bot-option,
   .pregame-fullscreen-button { transition-duration: 1ms!important; }
+}
+
+/* A short landscape viewport must scroll from the top, never clip a
+   vertically centered players heading behind the shell header. */
+.pregame-lobby-content {
+  align-items: safe center;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.pregame-lobby-grid > section { min-width: 0; }
+.pregame-shell:has(.pregame-lobby-content) > header,
+.pregame-shell:has(.pregame-lobby-content) > main + div { flex-shrink: 0; }
+.pregame-lobby-footer > div {
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
