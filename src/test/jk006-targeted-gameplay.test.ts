@@ -10,7 +10,7 @@ import {
 } from "@/components/table/dealerSelectionPresentationModel";
 import { NORMAL_DEAL_STAGGER_MS, NORMAL_DEAL_SETTLE_MS, NORMAL_DEAL_TAIL_MS, NORMAL_DEAL_TRAVEL_MS } from "@/components/table/dealPresentationModel";
 import {
-  NORMAL_TRICK_FLIP_MS,
+  NORMAL_TRICK_STACK_MS,
   NORMAL_TRICK_HOLD_MS,
   NORMAL_TRICK_INTER_PLAY_BEAT_MS,
   NORMAL_TRICK_PLAY_SPACING_MS,
@@ -37,7 +37,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(NORMAL_TRICK_SETTLE_MS + NORMAL_TRICK_INTER_PLAY_BEAT_MS);
     expect(NORMAL_TRICK_SETTLE_MS).toBeGreaterThanOrEqual(300);
     expect(NORMAL_TRICK_HOLD_MS).toBe(850);
-    expect(NORMAL_TRICK_FLIP_MS).toBeGreaterThanOrEqual(180);
+    expect(NORMAL_TRICK_STACK_MS).toBeGreaterThanOrEqual(180);
   });
 
   it("preserves cyclic dealer-selection recipients from the canonical random start seat", () => {
