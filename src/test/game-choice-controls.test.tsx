@@ -47,6 +47,7 @@ describe("Joker semantic updates keep one visual identity", () => {
     view.rerender(<TrickPresentation {...props} projection={projection} pendingJokerChoice={{ cardId: "joker-test", semantic }} />);
     expect(view.container.querySelector(".fixed")).toBe(surface);
     expect(surface?.getAttribute("data-joker-from-below")).toBe(mode === "FROM_BELOW" ? "true" : null);
+    expect(Boolean(view.container.querySelector("[data-joker-announcement]"))).toBe(semantic.context === "LEAD");
     view.rerender(<TrickPresentation {...props} projection={projection} />);
     expect(surface?.getAttribute("data-joker-from-below")).toBeNull();
     const accepted = { ...projection, stateVersion: projection.stateVersion + 1, cards: { ...projection.cards, currentTrick: [{ ...projection.cards.currentTrick[0]!, joker: semantic }] } };
