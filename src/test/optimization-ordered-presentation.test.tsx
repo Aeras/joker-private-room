@@ -20,7 +20,7 @@ const geometry = { ...computeTableGeometry({ feltRect: rect, viewportWidth: 800,
 const trick = (n: number) => ({ winnerSeat: 2 as const, cards: [0, 1, 2, 3].map(seat => ({ seatIndex: seat, card: { kind: "standard", id: `${n}-${seat}`, suit: "hearts", rank: "A" } })) as PlayedCard[] });
 const snapshot = (count = 0, current: PlayedCard[] = [], dealNumber = 2) => ({ gameId: "ordered", viewerSeat: 0, rulesetId: "popular", progression: { dealNumber, dealerSeat: 0, cardsPerPlayer: 1, phase: "DEAL_SETUP" }, cards: { currentTrick: current, completedTricks: Array.from({ length: count }, (_, index) => trick(index + 1)) } }) as unknown as PlayerGameProjection;
 const tick = (ms: number) => act(() => vi.advanceTimersByTime(ms));
-function finish(el: Element | undefined) { if (!el) throw new Error("Missing motion surface"); const event = new Event("transitionend", { bubbles: true }); Object.defineProperty(event, "propertyName", { value: "transform" }); fireEvent(el, event); }
+function finish(el: Element | undefined) { if (!el) throw new Error("Missing motion surface"); if (el.closest('[data-trick-departing-stage="stacking"]') && (el as HTMLElement).style.animationName !== "none") { const animation = new Event("animationend", { bubbles: true }); Object.defineProperty(animation, "animationName", { value: (el as HTMLElement).style.animationName }); fireEvent(el, animation); return; } const event = new Event("transitionend", { bubbles: true }); Object.defineProperty(event, "propertyName", { value: "transform" }); fireEvent(el, event); }
 beforeEach(() => { vi.useFakeTimers(); sessionStorage.clear(); vi.stubGlobal("requestAnimationFrame", (fn: FrameRequestCallback) => window.setTimeout(() => fn(0), 16)); vi.stubGlobal("cancelAnimationFrame", window.clearTimeout); });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -216,12 +216,12 @@ describe("presentation interruption and geometry", () => {
       const root = view.container.querySelector("[data-trick-presentation-id]")!;
       visited.push(root.getAttribute("data-trick-presentation-id")!);
       if (ordinal === 1) { fireEvent.blur(window); tick(3000); expect(root.getAttribute("data-trick-departing-stage")).toBe("holding"); fireEvent.focus(window); }
-      tick(850); expect(root.getAttribute("data-trick-departing-stage")).toBe("flipping");
+      tick(850); expect(root.getAttribute("data-trick-departing-stage")).toBe("stacking");
       const surfaces = Array.from(root.children).filter(el => (el as HTMLElement).style.transitionDuration);
       surfaces.forEach(finish); expect(root.getAttribute("data-trick-departing-stage")).toBe("collecting");
       const collectingSurface = root.querySelector<HTMLElement>("[data-trick-collecting='true']");
-      expect(collectingSurface?.style.transitionDuration).toBe("520ms");
-      expect(collectingSurface?.style.transitionTimingFunction).toBe("cubic-bezier(0.22, 0.8, 0.24, 1)");
+      expect(collectingSurface?.style.transitionDuration).toBe("600ms, 120ms");
+      expect(collectingSurface?.style.transitionTimingFunction).toBe("linear");
       view.rerender(<TrickPresentation {...props} geometry={{ ...geometry, epoch: ordinal + 2 }} projection={snapshot(3)} />);
       expect(view.container.querySelector("[data-trick-departing-stage='collecting']")).not.toBeNull();
       surfaces.forEach(finish);
@@ -265,7 +265,7 @@ describe("played cards face their owner", () => {
     view.rerender(<TrickPresentation {...props} geometry={{ ...geometry, epoch: 2 }} projection={projection} />); check();
     const completed = snapshot(1); completed.viewerSeat = viewerSeat;
     view.rerender(<TrickPresentation {...props} projection={completed} />); check();
-    tick(850); check(); surfaces().forEach(finish); check();
+    tick(850); expect(surfaces().every(el => { const angle = Number(el.style.transform.match(/rotate\(([-\d.]+)deg\)/)?.[1]); return (angle + 360) % 360 === (expected[(2 - viewerSeat + 4) % 4]! + 360) % 360; })).toBe(true); surfaces().forEach(finish);
     expect(surfaces().every(el => el.dataset['trickCollecting'] === "true")).toBe(true);
   });
 });

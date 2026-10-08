@@ -15,7 +15,7 @@ const geometry = { ...computeTableGeometry({ feltRect: rect, viewportWidth: 800,
 const cards: PlayedCard[] = [0, 1, 2, 3].map((seatIndex) => ({ seatIndex: seatIndex as 0 | 1 | 2 | 3, card: { kind: "standard", id: "card" + seatIndex, suit: "hearts", rank: "A" } }));
 const token: LocalPlayPresentation = { gameId: "g", dealNumber: 2, actorSeat: 3, card: cards[3]!.card, cardId: "card3", sourceStateVersion: 1, acceptedStateVersion: null, geometryEpoch: 1, releaseRect: { ...rect, width: 60, height: 88 }, status: "submitted" };
 function finish(element: Element) {
-  const event = new Event("transitionend", { bubbles: true });
+  if (element.closest('[data-trick-departing-stage="stacking"]') && (element as HTMLElement).style.animationName !== "none") { const animation = new Event("animationend", { bubbles: true }); Object.defineProperty(animation, "animationName", { value: (element as HTMLElement).style.animationName }); fireEvent(element, animation); return; } const event = new Event("transitionend", { bubbles: true });
   Object.defineProperty(event, "propertyName", { value: "transform" });
   fireEvent(element, event);
 }
@@ -63,14 +63,14 @@ describe("local motion ownership", () => {
     const localCanonical = root.lastElementChild as HTMLElement;
     expect(localCanonical.style.transform).toContain("scale(1)"); // No second seat-origin entry.
     tick(850);
-    expect(root.getAttribute("data-trick-departing-stage")).toBe("flipping");
+    expect(root.getAttribute("data-trick-departing-stage")).toBe("stacking");
     const surfaces = Array.from(root.children).filter(el => (el as HTMLElement).style.transitionDuration);
     expect(surfaces).toHaveLength(4);
-    expect(surfaces.every(el => (el as HTMLElement).style.transitionDuration === "220ms")).toBe(true);
-    surfaces.slice(0, 3).forEach(finish); expect(root.getAttribute("data-trick-departing-stage")).toBe("flipping");
+    expect(surfaces.every(el => (el as HTMLElement).style.transitionDuration === "400ms")).toBe(true);
+    surfaces.slice(0, 3).forEach(finish); expect(root.getAttribute("data-trick-departing-stage")).toBe("stacking");
     finish(surfaces[3]!); expect(root.getAttribute("data-trick-departing-stage")).toBe("collecting");
-    expect(surfaces.every(el => (el as HTMLElement).style.transitionDuration === "520ms")).toBe(true);
-    expect(surfaces.every(el => (el as HTMLElement).style.transitionTimingFunction === "cubic-bezier(0.22, 0.8, 0.24, 1)")).toBe(true);
+    expect(surfaces.every(el => (el as HTMLElement).style.transitionDuration === "600ms, 120ms")).toBe(true);
+    expect(surfaces.every(el => (el as HTMLElement).style.transitionTimingFunction === "linear")).toBe(true);
     surfaces.slice(0, 3).forEach(finish); expect(root.isConnected).toBe(true);
     finish(surfaces[3]!); expect(view.container.querySelector("[data-trick-presentation-id]")).toBeNull();
   });

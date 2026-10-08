@@ -3,7 +3,7 @@ import type { Card } from "@/domain/cards";
 import {
   COLLISION_FAST_FORWARD_MS,
   NORMAL_TRICK_COLLECT_MS,
-  NORMAL_TRICK_FLIP_MS,
+  NORMAL_TRICK_STACK_MS,
   NORMAL_TRICK_HOLD_MS,
   NORMAL_TRICK_SETTLE_MS,
   completedTrickPresentationId,
@@ -32,17 +32,17 @@ describe("JK-004 completed trick presentation", () => {
     expect(completedTrickPresentationId({ ...base, winnerSeat: 3 })).not.toBe(id);
   });
 
-  it("keeps the fourth card readable, then flips and collects in bounded stages", () => {
+  it("keeps the fourth card readable, then stacks and collects in bounded stages", () => {
     const timing = trickPresentationTiming(false);
     expect(NORMAL_TRICK_SETTLE_MS).toBeGreaterThanOrEqual(250);
     expect(NORMAL_TRICK_SETTLE_MS).toBeLessThanOrEqual(450);
     expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(700);
     expect(NORMAL_TRICK_HOLD_MS).toBeLessThanOrEqual(1100);
-    expect(NORMAL_TRICK_FLIP_MS).toBeGreaterThanOrEqual(150);
-    expect(NORMAL_TRICK_FLIP_MS).toBeLessThanOrEqual(300);
+    expect(NORMAL_TRICK_STACK_MS).toBeGreaterThanOrEqual(150);
+    expect(NORMAL_TRICK_STACK_MS).toBeLessThanOrEqual(500);
     expect(NORMAL_TRICK_COLLECT_MS).toBeGreaterThanOrEqual(250);
     expect(NORMAL_TRICK_COLLECT_MS).toBeLessThanOrEqual(600);
-    expect(NORMAL_TRICK_COLLECT_MS).toBe(520);
+    expect(NORMAL_TRICK_COLLECT_MS).toBe(600);
     expect(timing.collectStartMs).toBeGreaterThan(timing.holdMs);
     expect(timing.clearMs).toBeGreaterThan(timing.collectStartMs);
   });

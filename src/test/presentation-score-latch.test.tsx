@@ -36,6 +36,7 @@ function fixture() {
 }
 function finish(element: Element | undefined) {
   if (!element) throw new Error("Missing trick motion surface");
+  if (element.closest('[data-trick-departing-stage="stacking"]') && (element as HTMLElement).style.animationName !== "none") { const animation = new Event("animationend", { bubbles: true }); Object.defineProperty(animation, "animationName", { value: (element as HTMLElement).style.animationName }); fireEvent(element, animation); return; }
   const event = new Event("transitionend", { bubbles: true });
   Object.defineProperty(event, "propertyName", { value: "transform" });
   fireEvent(element, event);
