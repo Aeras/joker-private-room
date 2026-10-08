@@ -8,7 +8,7 @@ export type GameDisplayModeAttempt = {
   lockedLandscape: boolean;
 };
 
-export async function enterGameDisplayMode(): Promise<GameDisplayModeAttempt> {
+export async function enterGameDisplayMode(target?: HTMLElement): Promise<GameDisplayModeAttempt> {
   if (typeof document === "undefined" || typeof screen === "undefined") {
     return { enteredFullscreen: false, lockedLandscape: false };
   }
@@ -17,9 +17,10 @@ export async function enterGameDisplayMode(): Promise<GameDisplayModeAttempt> {
   let enteredFullscreen = false;
   let lockedLandscape = false;
 
-  if (!wasFullscreen && document.documentElement.requestFullscreen) {
+  if (!wasFullscreen && (target?.requestFullscreen || document.documentElement.requestFullscreen)) {
     try {
-      await document.documentElement.requestFullscreen();
+      if (target?.requestFullscreen) await target.requestFullscreen();
+      else await document.documentElement.requestFullscreen();
       enteredFullscreen = Boolean(document.fullscreenElement);
     } catch {
       enteredFullscreen = false;
@@ -27,7 +28,7 @@ export async function enterGameDisplayMode(): Promise<GameDisplayModeAttempt> {
   }
 
   const orientation = screen.orientation as LockableOrientation;
-  if (orientation.lock) {
+  if (orientation?.lock) {
     try {
       await orientation.lock("landscape");
       lockedLandscape = true;
@@ -45,7 +46,7 @@ export async function rollbackGameDisplayMode(attempt: GameDisplayModeAttempt): 
   if (attempt.lockedLandscape) {
     const orientation = screen.orientation as LockableOrientation;
     try {
-      orientation.unlock?.();
+      orientation?.unlock?.();
     } catch {
       // Best effort only.
     }
@@ -58,4 +59,12 @@ export async function rollbackGameDisplayMode(attempt: GameDisplayModeAttempt): 
       // Best effort only.
     }
   }
+}
+
+
+/** Reapply the lock after fullscreen entry or app resume; unsupported browsers use the guard. */
+export async function maintainGameLandscape(): Promise<boolean> {
+  const orientation = typeof screen === "undefined" ? undefined : screen.orientation as LockableOrientation | undefined;
+  if (!orientation?.lock) return false;
+  try { await orientation.lock("landscape"); return true; } catch { return false; }
 }

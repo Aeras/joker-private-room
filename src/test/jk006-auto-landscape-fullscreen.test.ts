@@ -10,7 +10,7 @@ describe("JK-006 automatic fullscreen landscape entry", () => {
     const display = read("src/lib/gameDisplayMode.ts");
     expect(display).toContain("document.documentElement.requestFullscreen()");
     expect(display).toContain('orientation.lock("landscape")');
-    expect(display).toContain("orientation.unlock?.()");
+    expect(display).toContain("orientation?.unlock?.()");
     expect(display).toContain("document.exitFullscreen()");
   });
 
@@ -29,9 +29,10 @@ describe("JK-006 automatic fullscreen landscape entry", () => {
     expect(join).not.toContain("enterGameDisplayMode");
   });
 
-  it("suppresses the old portrait rotation blocker", () => {
+  it("uses a route-owned portrait guard above the old table blocker", () => {
     const styles = read("src/styles.css");
-    expect(styles).toContain("Auto fullscreen/landscape replaces the old portrait rotation blocker");
+    expect(styles).toContain(".table-landscape-guard");
+    expect(read("src/routes/table.tsx")).toContain("<LandscapeTableGuard>");
     expect(styles).toContain(".joker-room>.absolute.inset-0.z-\\[100\\]{display:none!important}");
   });
 });
