@@ -4,7 +4,7 @@ import { LOCAL_HAND_ENTRANCE_MS } from "./dealPresentationModel";
 import { useHandReflow } from "./useHandReflow";
 import { DraggableHandCard } from "./DraggableHandCard";
 import { localHandCenterOffset } from "./tableControlModel";
-import type { RectLike, TableGeometry } from "./useTableGeometry";
+import type { CardReleaseRect, TableGeometry } from "./useTableGeometry";
 
 export function LocalHandRow({
   cards,
@@ -25,7 +25,7 @@ export function LocalHandRow({
   authorityKey: string;
   geometry: TableGeometry | null;
   revealing?: boolean;
-  onCommit: (cardId: string, releaseRect: RectLike) => Promise<void>;
+  onCommit: (cardId: string, releaseRect: CardReleaseRect) => Promise<void>;
 }) {
   const legal = new Set(legalCardIds);
   const [entranceSettled, setEntranceSettled] = useState(visible && !revealing);
