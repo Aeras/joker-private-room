@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { GAME_PHASES, dealsOfPhase } from "@/domain/gameConfig";
-import type { CanonicalPremiaTransferRecord, CanonicalRoundPremiaRecord } from "@/domain/gameState";
+import type { CanonicalRoundPremiaRecord } from "@/domain/gameState";
 import type { PlayerGameProjection } from "@/domain/projection";
 import { t } from "@/i18n/el";
 import { cn } from "@/lib/utils";
@@ -29,18 +29,13 @@ function transferForCell(
   seat: number,
   indexInPhase: number,
 ): { bonus: boolean; removed: boolean } {
-  if (!premia) return { bonus: false, removed: false };
-  return premia.transfers.reduce(
-    (flags, transfer: CanonicalPremiaTransferRecord) => ({
-      bonus:
-        flags.bonus ||
-        (transfer.bonusSeat === seat && transfer.bonusDealIndex === indexInPhase),
-      removed:
-        flags.removed ||
-        (transfer.targetSeat === seat && transfer.removedDealIndex === indexInPhase),
-    }),
-    { bonus: false, removed: false },
-  );
+  let bonus = false;
+  let removed = false;
+  for (const transfer of premia?.transfers ?? []) {
+    if (transfer.bonusSeat === seat && transfer.bonusDealIndex === indexInPhase) bonus = true;
+    if (transfer.targetSeat === seat && transfer.removedDealIndex === indexInPhase) removed = true;
+  }
+  return { bonus, removed };
 }
 
 function ScoreValue({
