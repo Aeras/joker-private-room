@@ -57,9 +57,12 @@ function strategyForProjection(projection: PlayerGameProjection): SelectedStrate
 
   if (seat.controller === "temporary_bot") {
     if (seat.owner.type !== "human") return null;
+    const selectedId = seat.temporaryBotStrategyProfileId;
+    const selectedStrategy = selectedId ? permanentStrategy(selectedId) : null;
     return {
-      strategy: strongBasicStrategy,
-      strategyId: TEMPORARY_CONTROLLER_STRATEGY_ID,
+      // Backward compatibility with games taken over before tier selection existed.
+      strategy: selectedStrategy ?? strongBasicStrategy,
+      strategyId: selectedStrategy ? selectedStrategy.id : TEMPORARY_CONTROLLER_STRATEGY_ID,
       controller: "temporary_bot",
     };
   }
