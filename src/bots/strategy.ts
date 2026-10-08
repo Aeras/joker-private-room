@@ -569,10 +569,17 @@ export function createProbabilitySimulationStrategy(
   return {
     id: "probability-simulation-v1",
     chooseDeclaration(view, legalValues) {
-      return analyzeDeclaration(view, legalValues, 3, {
-        seed: `${baseSeed}|tier3-declaration`,
-        budget: options.declarationSimulationBudget,
-      }).selected;
+      return analyzeDeclaration(
+        view,
+        legalValues,
+        3,
+        options.declarationSimulationBudget == null
+          ? { seed: `${baseSeed}|tier3-declaration` }
+          : {
+              seed: `${baseSeed}|tier3-declaration`,
+              budget: options.declarationSimulationBudget,
+            },
+      ).selected;
     },
     chooseTrump: chooseStrongBasicTrump,
     chooseCard(view, legalMoves) {
