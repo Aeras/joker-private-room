@@ -38,6 +38,66 @@ function transferForCell(
   return { bonus, removed };
 }
 
+function phaseScoreTotals(
+  projection: PlayerGameProjection,
+  round: 1 | 2 | 3 | 4,
+): [number, number, number, number] | null {
+  const premia = projection.score.roundPremia.find((record) => record.round === round);
+  if (!premia) return null;
+  const phaseDeals = projection.score.completedDeals.filter((record) => record.round === round);
+  const dealTotals = [0, 0, 0, 0] as [number, number, number, number];
+  for (const record of phaseDeals) {
+    for (let seat = 0; seat < 4; seat += 1) dealTotals[seat] += record.dealScores[seat] ?? 0;
+  }
+  return dealTotals.map(
+    (value, seat) => value + (premia.adjustments[seat] ?? 0),
+  ) as [number, number, number, number];
+}
+
+function SummaryRow({
+  phase,
+  kind,
+  values,
+  playerCount,
+}: {
+  phase: number;
+  kind: "round" | "cumulative";
+  values: readonly number[] | null;
+  playerCount: number;
+}) {
+  const cumulative = kind === "cumulative";
+  return (
+    <tr
+      data-score-summary={`${phase}:${kind}`}
+      className={cn(
+        "h-6 border-b border-[#315b96]/60",
+        cumulative ? "border-b-2 bg-[#ece4d5]/70 font-bold" : "bg-[#f2ebdf]/70 font-semibold",
+      )}
+    >
+      <th
+        scope="row"
+        className="w-8 border-r-2 border-[#315b96]/60 px-0.5 text-center text-[9px] font-bold sm:text-[10px]"
+        title={cumulative ? "Συνολικό αποτέλεσμα παιχνιδιού" : "Σύνολο γύρου"}
+      >
+        {cumulative ? "Σ" : "Γ"}
+      </th>
+      {Array.from({ length: playerCount }, (_, seat) => (
+        <Fragment key={seat}>
+          <td className="w-5 border-r border-[#315b96]/45" />
+          <td
+            className={cn(
+              "min-w-14 border-r-2 border-[#315b96]/60 px-1 text-center text-[11px] tabular-nums sm:text-xs",
+              seat === playerCount - 1 && "border-r-0",
+            )}
+          >
+            {values ? signedScore(values[seat] ?? 0) : ""}
+          </td>
+        </Fragment>
+      ))}
+    </tr>
+  );
+}
+
 function ScoreValue({
   value,
   bonus,
@@ -99,27 +159,27 @@ export function Scoreboard({
       open={open}
       onClose={onClose}
       title={t.totalScores}
-      className="sm:max-w-[min(96vw,72rem)]"
+      className="sm:max-w-[min(90vw,58rem)]"
     >
-      <div className="bg-[#f4efe4] p-2 text-[#274f91] sm:p-4">
+      <div className="bg-[#f4efe4] p-1.5 text-[#274f91] sm:p-2.5">
         <div className="overflow-auto rounded-sm border border-[#315b96]/50 bg-[#f7f2e8] shadow-inner">
           <table
-            className="w-full min-w-[44rem] border-collapse text-[12px] leading-none sm:text-sm"
+            className="mx-auto w-auto min-w-[36rem] border-collapse text-[11px] leading-none sm:min-w-[40rem] sm:text-xs"
             aria-label="Φύλλο βαθμολογίας"
           >
             <thead className="sticky top-0 z-20 bg-[#f7f2e8]">
-              <tr className="h-11 border-b-2 border-[#315b96]/70">
-                <th className="w-10 border-r-2 border-[#315b96]/60 px-1 font-normal" aria-label="Φύλλα" />
+              <tr className="h-9 border-b-2 border-[#315b96]/70">
+                <th className="w-8 border-r-2 border-[#315b96]/60 px-0.5 font-normal" aria-label="Φύλλα" />
                 {playerNames.map((name, seat) => (
                   <th
                     key={seat}
                     colSpan={2}
                     className={cn(
-                      "border-r-2 border-[#315b96]/60 px-2 font-display text-sm font-semibold tracking-wide sm:text-base",
+                      "border-r-2 border-[#315b96]/60 px-1.5 font-display text-xs font-semibold tracking-wide sm:text-sm",
                       seat === playerNames.length - 1 && "border-r-0",
                     )}
                   >
-                    <span className="block max-w-[12rem] truncate">{name}</span>
+                    <span className="block max-w-[9rem] truncate">{name}</span>
                   </th>
                 ))}
               </tr>
@@ -139,13 +199,13 @@ export function Scoreboard({
                           key={deal.dealNumber}
                           data-score-deal={deal.dealNumber}
                           className={cn(
-                            "h-7 border-b border-[#315b96]/45",
+                            "h-6 border-b border-[#315b96]/45",
                             dealIndex === 0 && "border-t-2 border-t-[#315b96]/70",
                           )}
                         >
                           <th
                             scope="row"
-                            className="w-10 border-r-2 border-[#315b96]/60 px-1 text-center font-medium tabular-nums"
+                            className="w-8 border-r-2 border-[#315b96]/60 px-0.5 text-center font-medium tabular-nums"
                           >
                             {deal.cardsPerPlayer}
                           </th>
@@ -161,14 +221,14 @@ export function Scoreboard({
                             return (
                               <Fragment key={seat}>
                                 <td
-                                  className="w-7 border-r border-[#315b96]/45 px-0.5 text-center font-medium tabular-nums"
+                                  className="w-5 border-r border-[#315b96]/45 px-0 text-center font-medium tabular-nums"
                                   data-score-declaration={`${deal.dealNumber}:${seat}`}
                                 >
                                   {declarationMark(declaration)}
                                 </td>
                                 <td
                                   className={cn(
-                                    "min-w-20 border-r-2 border-[#315b96]/60 px-2 text-center tabular-nums",
+                                    "min-w-14 border-r-2 border-[#315b96]/60 px-1 text-center tabular-nums",
                                     seat === playerNames.length - 1 && "border-r-0",
                                   )}
                                   data-score-points={`${deal.dealNumber}:${seat}`}
@@ -186,62 +246,19 @@ export function Scoreboard({
                       );
                     })}
 
-                    {phasePremia && (
-                      <tr
-                        data-score-premia={phase.phase}
-                        className="h-7 border-b border-[#315b96]/55 bg-[#eee6d7]/55"
-                      >
-                        <th
-                          scope="row"
-                          className="border-r-2 border-[#315b96]/60 px-1 text-center text-[10px] font-bold"
-                          title="Πρέμια"
-                        >
-                          Π
-                        </th>
-                        {playerNames.map((_, seat) => (
-                          <Fragment key={seat}>
-                            <td className="border-r border-[#315b96]/45" />
-                            <td
-                              className={cn(
-                                "border-r-2 border-[#315b96]/60 px-2 text-center text-[11px] font-semibold tabular-nums",
-                                seat === playerNames.length - 1 && "border-r-0",
-                              )}
-                            >
-                              {phasePremia.adjustments[seat] === 0
-                                ? ""
-                                : signedScore(phasePremia.adjustments[seat] ?? 0)}
-                            </td>
-                          </Fragment>
-                        ))}
-                      </tr>
-                    )}
-
-                    {phasePremia && (
-                      <tr
-                        data-score-round-total={phase.phase}
-                        className="h-8 border-b-2 border-[#315b96]/75 bg-[#f2ebdf]"
-                      >
-                        <th
-                          scope="row"
-                          className="border-r-2 border-[#315b96]/60 px-1 text-center text-[10px] font-bold"
-                          title="Σύνολο γύρου"
-                        >
-                          Σ
-                        </th>
-                        {playerNames.map((_, seat) => (
-                          <Fragment key={seat}>
-                            <td className="border-r border-[#315b96]/45" />
-                            <td
-                              className={cn(
-                                "border-r-2 border-[#315b96]/60 px-2 text-center font-bold tabular-nums",
-                                seat === playerNames.length - 1 && "border-r-0",
-                              )}
-                            >
-                              {signedScore(phasePremia.totalsAfterPremia[seat] ?? 0)}
-                            </td>
-                          </Fragment>
-                        ))}
-                      </tr>
+                    <SummaryRow
+                      phase={phase.phase}
+                      kind="round"
+                      values={phaseScoreTotals(projection, phase.phase)}
+                      playerCount={playerNames.length}
+                    />
+                    {phase.phase > 1 && (
+                      <SummaryRow
+                        phase={phase.phase}
+                        kind="cumulative"
+                        values={phasePremia?.totalsAfterPremia ?? null}
+                        playerCount={playerNames.length}
+                      />
                     )}
                   </Fragment>
                 );
@@ -252,7 +269,7 @@ export function Scoreboard({
 
         {hasFinalRanking && (
           <div
-            className="grid grid-cols-4 gap-2 border-t-2 border-[#315b96]/70 px-2 pb-2 pt-4 sm:gap-4 sm:px-4"
+            className="mx-auto grid max-w-[40rem] grid-cols-4 gap-2 border-t-2 border-[#315b96]/70 px-2 pb-1.5 pt-2.5 sm:gap-3"
             aria-label="Τελική κατάταξη"
           >
             {[1, 2, 3, 4].map((placement) => {
@@ -264,10 +281,10 @@ export function Scoreboard({
                   className="min-w-0 text-center text-[#274f91]"
                   data-final-placement={placement}
                 >
-                  <div className="font-display text-3xl italic leading-none sm:text-5xl">
+                  <div className="font-display text-2xl italic leading-none sm:text-3xl">
                     {romanPlacement(placement)}
                   </div>
-                  <div className="mt-1 truncate text-xs font-semibold sm:text-sm">
+                  <div className="mt-1 truncate text-[10px] font-semibold sm:text-xs">
                     {playerNames[seat]}
                   </div>
                 </div>
