@@ -117,19 +117,20 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
           size="lg"
           className={cn(
             avatarSize,
+            local ? "joker-table-avatar-local" : "joker-table-avatar-remote",
             "border-0 transition-[filter,opacity] duration-200",
             stats.isTemporarilyControlled && "brightness-50 opacity-65 grayscale-[0.2]",
           )}
         />
       </div>
-      <span className={cn("absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-black", connected ? "bg-online" : "bg-muted-foreground")} aria-label={connected ? t.connected : t.disconnected} />
+      <span className={cn("joker-seat-connection absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-black", connected ? "bg-online" : "bg-muted-foreground")} aria-label={connected ? t.connected : t.disconnected} />
       {stats.isDealer && (
-        <span title={t.dealer} aria-label={t.dealer} className="absolute -left-1 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[0.6rem] font-bold text-primary-foreground">
+        <span title={t.dealer} aria-label={t.dealer} className="joker-seat-dealer absolute -left-1 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[0.6rem] font-bold text-primary-foreground">
           D
         </span>
       )}
       {showCountdown && (
-        <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/90 px-1.5 py-0.5 text-[0.6rem] font-bold tabular-nums" style={{ color: ringColor }} aria-hidden="true">
+        <span className="joker-seat-countdown absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/90 px-1.5 py-0.5 text-[0.6rem] font-bold tabular-nums" style={{ color: ringColor }} aria-hidden="true">
           {remainingSeconds}
         </span>
       )}
@@ -144,11 +145,11 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
           {name}{local && <span className="text-primary"> · ΕΣΥ</span>}
         </div>
         <div className="mt-0.5 flex items-center justify-center gap-2 leading-tight">
-          <span className={cn("font-display text-xs font-bold tabular-nums sm:text-sm", stats.totalScore < 0 ? "text-negative" : "text-primary")} title="Συνολικό σκορ">
+          <span className={cn("joker-seat-score font-display text-xs font-bold tabular-nums sm:text-sm", stats.totalScore < 0 ? "text-negative" : "text-primary")} title="Συνολικό σκορ">
             {score}
           </span>
           <span className="text-white/30">·</span>
-          <span className={cn("text-[10px] font-semibold tabular-nums sm:text-xs", progress.className)} aria-label={progress.label} title="Μπάζες / Δήλωση">
+          <span className={cn("joker-seat-progress text-[10px] font-semibold tabular-nums sm:text-xs", progress.className)} aria-label={progress.label} title="Μπάζες / Δήλωση">
             {progress.text}{progress.marker && <span className="ml-1" aria-hidden="true">{progress.marker}</span>}
           </span>
         </div>

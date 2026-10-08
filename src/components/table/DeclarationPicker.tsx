@@ -14,7 +14,7 @@ export function DeclarationPicker({
   const legal = new Set(legalValues);
 
   return (
-    <div className="mb-3 w-fit overflow-hidden rounded-2xl border border-black/15 bg-white text-center shadow-2xl">
+    <div className="joker-declaration-picker mb-3 w-fit overflow-hidden rounded-2xl border border-black/15 bg-white text-center shadow-2xl">
       <div className="border-b border-black/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-black/75">
         Δήλωσε μπάζες
       </div>

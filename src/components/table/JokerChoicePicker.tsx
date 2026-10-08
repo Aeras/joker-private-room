@@ -34,7 +34,7 @@ export function JokerChoicePicker({
       leadOptions.find((option) => option.context === "LEAD" && option.mode === mode && option.requestedSuit === suit);
 
     const row = (mode: "HIGHER_SUIT" | "SUIT_WINS", title: string) => (
-      <div className="grid grid-cols-[7rem_repeat(4,3.6rem)] items-stretch border-t border-white/10 first:border-t-0">
+      <div className="joker-joker-lead-row grid grid-cols-[7rem_repeat(4,3.6rem)] items-stretch border-t border-white/10 first:border-t-0">
         <div className="flex items-center justify-center px-2 text-center text-[11px] font-semibold leading-tight text-primary">
           {title}
         </div>

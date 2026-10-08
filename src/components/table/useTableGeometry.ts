@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
+import { DESKTOP_TABLE_QUERY, desktopTableScale } from "./desktopTableSizing";
+
 export type VisualSeat = 0 | 1 | 2 | 3;
 
 export interface Point {
@@ -48,6 +50,7 @@ interface GeometryInput {
   localSeatRect?: RectLike | null | undefined;
   viewportWidth: number;
   viewportHeight: number;
+  desktopPointer?: boolean;
 }
 
 const GAP = 12;
@@ -109,7 +112,8 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
 
   // Keep the compact trick within short landscape heights as well as its width.
   const cardWidth = Math.min(
-    clamp(input.viewportWidth * 0.10625, 70, 135),
+    clamp(input.viewportWidth * 0.10625, 70, 135) *
+      desktopTableScale(input.viewportWidth, input.viewportHeight, input.desktopPointer ?? false),
     Math.max(36, usableHeight / 2.55),
   );
   const cardHeight = (cardWidth * 7) / 5;
@@ -237,6 +241,7 @@ export function useTableGeometry(): {
       localSeatRect: localSeatRef.current?.getBoundingClientRect(),
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
+      desktopPointer: window.matchMedia(DESKTOP_TABLE_QUERY).matches,
     });
     const signature = geometrySignature(next);
     if (signature === signatureRef.current) return;
@@ -265,12 +270,15 @@ export function useTableGeometry(): {
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleMeasure);
     for (const node of nodes) observer?.observe(node);
 
+    const desktopMedia = window.matchMedia(DESKTOP_TABLE_QUERY);
+    desktopMedia.addEventListener("change", scheduleMeasure);
     scheduleMeasure();
     window.addEventListener("resize", scheduleMeasure);
     window.addEventListener("orientationchange", scheduleMeasure);
     document.addEventListener("fullscreenchange", scheduleMeasure);
     return () => {
       observer?.disconnect();
+      desktopMedia.removeEventListener("change", scheduleMeasure);
       window.removeEventListener("resize", scheduleMeasure);
       window.removeEventListener("orientationchange", scheduleMeasure);
       document.removeEventListener("fullscreenchange", scheduleMeasure);
@@ -280,3 +288,4 @@ export function useTableGeometry(): {
 
   return { feltRef, topSeatRef, leftSeatRef, rightSeatRef, localSeatRef, geometry };
 }
+
