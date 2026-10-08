@@ -59,10 +59,10 @@ describe("shared local hand geometry", () => {
     view.rerender(<LocalHandRow {...props} visible revealing={false} />);
     expect(hand.style.transform).toContain("var(--card-w) * 0.52 + 0px");
   });
-  it("uses the requested 550ms entrance without changing final hand depth", () => {
+  it("uses the requested 600ms entrance without changing final hand depth", () => {
     const view = render(<LocalHandRow cards={cards} visible legalCardIds={[]} blocked pendingCardId={null} authorityKey="timing" geometry={geometry} revealing onCommit={vi.fn()} />);
     const hand = view.container.querySelector<HTMLElement>("[data-hand-entrance]");
-    expect(hand?.style.transitionDuration).toBe("550ms");
+    expect(hand?.style.transitionDuration).toBe("600ms");
     expect(hand?.style.transitionTimingFunction).toBe("linear");
     act(() => vi.advanceTimersByTime(32));
     expect(hand?.style.transform).toContain("var(--card-w) * 0.52 + 0px");

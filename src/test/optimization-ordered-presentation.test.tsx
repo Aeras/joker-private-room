@@ -126,8 +126,8 @@ describe("presentation interruption and geometry", () => {
     expect(view.container.querySelector('[data-deal-settling="true"]')).not.toBeNull();
     const localCard = view.container.querySelector<HTMLElement>("[data-deal-handoff='local']");
     expect(localCard).not.toBeNull();
-    expect(localCard?.style.transitionDuration).toBe("550ms, 350ms");
-    expect(localCard?.style.transitionDelay).toBe("0ms, 550ms");
+    expect(localCard?.style.transitionDuration).toBe("600ms, 350ms");
+    expect(localCard?.style.transitionDelay).toBe("0ms, 600ms");
     expect(localCard?.style.transform).toContain("translateY(calc(0px + var(--card-w) * 0.7 + 24px))");
     // The target center must reach the 400px viewport bottom, not the
     // measured felt bottom (290px). This catches the formerly 1vh path.
@@ -147,9 +147,9 @@ describe("presentation interruption and geometry", () => {
       const fixedAxis = pos === 0 || pos === 2 ? 0 : 1;
       expect(after[fixedAxis]).toBe(before[fixedAxis]);
     });
-    tick(549); expect(settling).not.toHaveBeenCalledWith(true);
+    tick(599); expect(settling).not.toHaveBeenCalledWith(true);
     tick(1); expect(settling).toHaveBeenLastCalledWith(true);
-    tick(549);
+    tick(599);
     expect(complete).not.toHaveBeenCalled();
     expect(view.container.querySelectorAll("[data-deal-traveling-card]")).toHaveLength(4);
     tick(72); expect(complete).not.toHaveBeenCalled();
@@ -174,15 +174,15 @@ describe("presentation interruption and geometry", () => {
     expect(Array.from(view.container.querySelectorAll("[data-deal-traveling-card]"))).toEqual(backs);
     expect(backs.every(back => back.style.opacity === "0")).toBe(true);
     view.rerender(<DealPresentation {...props} projection={{...next}} geometry={{...geometry,epoch:3}} />);
-    tick(550); expect(settling).toHaveBeenLastCalledWith(true);
-    tick(621); expect(complete).toHaveBeenCalledTimes(1);
+    tick(600); expect(settling).toHaveBeenLastCalledWith(true);
+    tick(671); expect(complete).toHaveBeenCalledTimes(1);
     tick(1); expect(complete).toHaveBeenCalledTimes(2); expect(sequenceComplete).toHaveBeenCalledOnce();
     expect(view.container.childElementCount).toBe(0);
   });
   it("interrupting settle cancels completion and resets settling before replay", () => {
     const complete = vi.fn(); const settling = vi.fn(); const projection = snapshot(); projection.gameId = "settle-interrupt";
     render(<DealPresentation projection={projection} geometry={geometry} onSettlingChange={settling} onPresentationComplete={complete} />);
-    tick(1908); expect(settling).toHaveBeenLastCalledWith(true);
+    tick(1958); expect(settling).toHaveBeenLastCalledWith(true);
     fireEvent.blur(window); expect(settling).toHaveBeenLastCalledWith(false);
     tick(5000); expect(complete).not.toHaveBeenCalled();
     fireEvent.focus(window); tick(3000); expect(complete).toHaveBeenCalledOnce();
