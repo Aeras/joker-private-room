@@ -10,7 +10,10 @@ export function LandscapeTableGuard({ children }: { children: ReactNode }) {
   useEffect(() => {
     const media = window.matchMedia("(orientation: portrait)");
     const sync = () => setPortrait(media.matches);
-    const restoreLock = () => { if (document.visibilityState !== "hidden") void maintainGameLandscape(); };
+    const restoreLock = () => {
+      if (document.fullscreenElement) attemptedGesture.current = true;
+      if (document.visibilityState !== "hidden") void maintainGameLandscape();
+    };
     sync(); restoreLock();
     media.addEventListener("change", sync);
     document.addEventListener("fullscreenchange", restoreLock);
@@ -31,7 +34,12 @@ export function LandscapeTableGuard({ children }: { children: ReactNode }) {
     try { await enterGameDisplayMode(document.getElementById("table-fullscreen-root") ?? undefined); }
     finally { requesting.current = false; }
   };
-  const firstTouchGesture = () => {
+  const firstTouchGesture = (event: React.MouseEvent<HTMLDivElement>) => {
+    const button = event.target instanceof Element ? event.target.closest("button") : null;
+    if (button?.getAttribute("aria-label")?.includes("πλήρη οθόνη") || button?.getAttribute("aria-label") === "Πλήρης οθόνη") {
+      attemptedGesture.current = true;
+      return;
+    }
     if (attemptedGesture.current || document.fullscreenElement || !window.matchMedia("(pointer: coarse)").matches) return;
     attemptedGesture.current = true;
     void enter();
