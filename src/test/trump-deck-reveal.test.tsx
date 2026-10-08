@@ -88,4 +88,16 @@ describe("ordinary deal trump reveal and deck placement", () => {
     expect(view.container.querySelector("[data-deal-settling]")?.getAttribute("data-deal-settling")).toBe("true");
     tick(1272); expect(complete).toHaveBeenCalledTimes(2); expect(sequence).toHaveBeenCalledOnce();
   });
+  it("hides the prior placed deck when an interrupted handoff replays", () => {
+    const placed = vi.fn(), complete = vi.fn(), projection = fixture();
+    const view = render(<DealPresentation projection={projection} geometry={geometry} onTrumpPlaced={placed} onPresentationComplete={complete} />);
+    tick(1358); tick(16); finish(view.container.querySelector("[data-trump-flip]")); finish(view.container.querySelector("[data-trump-deck-motion]"));
+    expect(placed).toHaveBeenLastCalledWith(`${projection.gameId}:2`);
+    tick(200); fireEvent.blur(window); tick(3000); expect(complete).not.toHaveBeenCalled();
+    fireEvent.focus(window); expect(placed).toHaveBeenLastCalledWith(null);
+    tick(1358); tick(16); finish(view.container.querySelector("[data-trump-flip]")); finish(view.container.querySelector("[data-trump-deck-motion]"));
+    expect(placed.mock.calls.map(call => call[0])).toEqual([`${projection.gameId}:2`, null, `${projection.gameId}:2`]);
+    tick(1272); expect(complete).toHaveBeenCalledOnce();
+  });
+
 });

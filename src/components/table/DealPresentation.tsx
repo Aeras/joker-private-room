@@ -98,13 +98,14 @@ function TravelingBack({ beat, pos, geometry, dealerPos, settling, landed = fals
   const easing = settling ? "linear" : "cubic-bezier(0.2, 0.75, 0.25, 1)";
   return <div data-deal-traveling-card data-deal-visual-seat={pos} data-deal-handoff={settling && pos === 0 ? "local" : undefined} className="absolute [--card-w:clamp(3.4rem,8vw,5.5rem)] transition-[transform,opacity]" style={{ opacity: settling ? 0 : 1, left: source.x, top: source.y, zIndex: 30 + beat.stackIndex, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_TRAVEL_MS}ms, ${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${NORMAL_DEAL_TRAVEL_MS}ms`, transitionDelay: settling ? `0ms, ${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transitionTimingFunction: easing, transform: `translate(calc(-50% + ${arrived ? target.x - source.x : 0}px), calc(-50% + ${arrived ? target.y - source.y : 0}px)) ${settling ? pileExitOffset(pos, beat.stackIndex) : ""} scale(${arrived ? 1 : 0.58}) rotate(${arrived ? targetRotation : sourceRotation}deg)` }}><PlayingCard faceDown /></div>;
 }
-export function DealPresentation({ projection, geometry = null, paused = false, onActiveChange, onSettlingChange, onSequenceComplete, onPresentationComplete, trumpTargetRef, onTrumpPlaced }: { projection: PlayerGameProjection; geometry?: TableGeometry | null; paused?: boolean; onActiveChange?: (active: boolean) => void; onSettlingChange?: (settling: boolean) => void; onSequenceComplete?: () => void; onPresentationComplete?: (stage: DealPresentationStage) => void; trumpTargetRef?: RefObject<HTMLDivElement | null>; onTrumpPlaced?: (key: string) => void }) {
+export function DealPresentation({ projection, geometry = null, paused = false, onActiveChange, onSettlingChange, onSequenceComplete, onPresentationComplete, trumpTargetRef, onTrumpPlaced }: { projection: PlayerGameProjection; geometry?: TableGeometry | null; paused?: boolean; onActiveChange?: (active: boolean) => void; onSettlingChange?: (settling: boolean) => void; onSequenceComplete?: () => void; onPresentationComplete?: (stage: DealPresentationStage) => void; trumpTargetRef?: RefObject<HTMLDivElement | null>; onTrumpPlaced?: (key: string | null) => void }) {
   const exposedCard = projection.cards.exposedTrumpCard;
   const artworkSettled = useCriticalCardArtwork([assets.cardBack, ...(exposedCard ? [assets.cardFace(exposedCard)] : [])]);
   const latestProjection = useRef(projection); latestProjection.current = projection;
   const [trumpMotionActive, setTrumpMotionActive] = useState(false);
   const [trumpPlaced, setTrumpPlaced] = useState(false);
   const afterTrump = useRef<(() => void) | null>(null);
+  const presentedTrumpKey = useRef<string | null>(null);
   const onTrumpPlacedRef = useRef(onTrumpPlaced); onTrumpPlacedRef.current = onTrumpPlaced;
   const handArtworkSettled = useCriticalCardArtwork(projection.cards.ownHandVisible ? projection.cards.ownHand.map(card => assets.cardFace(card)) : []);
   const waitingForFirstHand = useRef<string | null>(null);
@@ -155,7 +156,8 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   const completeTrumpMotion = useCallback(() => {
     setTrumpMotionActive(false); setTrumpPlaced(true);
     const current = latestProjection.current;
-    onTrumpPlacedRef.current?.(`${current.gameId}:${current.progression.dealNumber}`);
+    const key = `${current.gameId}:${current.progression.dealNumber}`;
+    presentedTrumpKey.current = key; onTrumpPlacedRef.current?.(key);
     const next = afterTrump.current; afterTrump.current = null; next?.();
   }, []);
   useLayoutEffect(() => {
@@ -178,6 +180,8 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     }
     if (stageKey === previousStageKey.current) return;
     if (!artworkSettled) { onActiveChangeRef.current?.(true); return; }
+    // A cancelled handoff can replay this run; hide its old placed deck first.
+    if (presentedTrumpKey.current != null) { presentedTrumpKey.current = null; onTrumpPlacedRef.current?.(null); }
     startTimingDiagnosticSession(projection.gameId); running.current = true; previousStageKey.current = stageKey; onActiveChangeRef.current?.(true);
     const frozenSequence = sequence.map((beat) => ({ ...beat })); const frozenGeometry = geometry; const frozenViewerSeat = projection.viewerSeat; const frozenDealerPos = visualPosition(frozenViewerSeat, projection.progression.dealerSeat as SeatIndex);
     setRunGeometry(frozenGeometry); setRunViewerSeat(frozenViewerSeat); setRunDealerPos(frozenDealerPos); setBeats(frozenSequence); setVisibleIndex(-1);

@@ -90,7 +90,7 @@ describe("card play readability deadlines", () => {
     tick(1);
     expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(2);
   });
-  it.each(["human", "bot"])("blocks the next %s interaction until 500ms after real landing", _controller => {
+  it.each(["human", "permanent_bot"])("blocks the next %s interaction until 500ms after real landing", _controller => {
     const busy = vi.fn();
     const v = render(<TrickPresentation {...props} onBusyChange={busy} projection={snapshot(0)} />);
     const next = snapshot(1);
