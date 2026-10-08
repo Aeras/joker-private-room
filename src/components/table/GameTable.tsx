@@ -197,19 +197,37 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     }, TRUMP_ANNOUNCEMENT_MS);
   }, [projection.gameId, projection.progression.dealNumber, projection.progression.phase, projection.trump]);
 
+  const [uncertainPlay, setUncertainPlay] = useState<string | null>(null);
+  useEffect(() => {
+    setLocalPlayPresentation(current => {
+      if (!current || current.status !== "submitted" || projection.gameId !== current.gameId || projection.stateVersion <= current.sourceStateVersion) return current;
+      const sameDeal = projection.progression.dealNumber === current.dealNumber;
+      const confirmed = projectionContainsPendingCard(current, sameDeal ? projection.cards.currentTrick : [], [...(sameDeal ? projection.cards.completedTricks : []), ...(projection.cards.presentationTail ?? []).filter(trick => trick.dealNumber === current.dealNumber)]);
+      if (confirmed) return { ...current, status: "accepted", acceptedStateVersion: projection.stateVersion };
+      // An ambiguous transport failure is not a rejection. Wait for canonical evidence.
+      if (uncertainPlay === current.cardId && sameDeal && projection.cards.ownHand.some(card => card.id === current.cardId)) return { ...current, status: "rejected" };
+      return current;
+    });
+  }, [projection, uncertainPlay]);
+
   const commitCard = async (cardId: string, releaseRect: RectLike) => {
-    if (!playAction?.cardIds.includes(cardId) || busy || interactionPresentationActive || playSubmissionLock.current) return;
+    if (!playAction?.cardIds.includes(cardId) || busy || interactionPresentationActive || localPlayPresentation || playSubmissionLock.current) return;
     const card = projection.cards.ownHand.find((candidate) => candidate.id === cardId); if (!card) return;
     playSubmissionLock.current = true; setSubmittingCardId(cardId);
     const geometryEpoch = tableGeometry.geometry?.epoch ?? 0;
     const presentation: LocalPlayPresentation | null = tableGeometry.geometry ? { gameId: projection.gameId, dealNumber: projection.progression.dealNumber, card, cardId, actorSeat: localSeat, sourceStateVersion: projection.stateVersion, acceptedStateVersion: null, geometryEpoch, releaseRect, status: "submitted" } : null;
+    setUncertainPlay(null);
     setLocalPlayPresentation(presentation);
     try {
-      const authoritative = await onCommand({ type: "play_card", cardId });
+      const response = await onCommand({ type: "play_card", cardId });
+      const polled = latestProjection.current;
+      const authoritative = response && response.stateVersion >= polled.stateVersion ? response : polled;
       if (!authoritative || !presentation || authoritative.gameId !== presentation.gameId || authoritative.progression.dealNumber < presentation.dealNumber || authoritative.stateVersion <= presentation.sourceStateVersion || !projectionContainsPendingCard(presentation, authoritative.progression.dealNumber === presentation.dealNumber ? authoritative.cards.currentTrick : [], [...(authoritative.progression.dealNumber === presentation.dealNumber ? authoritative.cards.completedTricks : []), ...(authoritative.cards.presentationTail ?? []).filter(trick => trick.dealNumber === presentation.dealNumber)])) {
-        setLocalPlayPresentation((current) => current && current.cardId === cardId ? { ...current, status: "rejected" } : current); return;
+        setLocalPlayPresentation((current) => current && current.cardId === cardId && current.status === "submitted" ? { ...current, status: "rejected" } : current); return;
       }
       setLocalPlayPresentation((current) => current && current.cardId === cardId && current.sourceStateVersion === presentation.sourceStateVersion ? { ...current, status: "accepted", acceptedStateVersion: authoritative.stateVersion } : current);
+    } catch {
+      setUncertainPlay(cardId);
     } finally { playSubmissionLock.current = false; setSubmittingCardId(null); }
   };
   const [pendingJokerChoice, setPendingJokerChoice] = useState<{ cardId: string; semantic: Extract<GameplayCommand, { type: "choose_joker_semantic" }>["semantic"] } | null>(null);
@@ -298,3 +316,4 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     <div className="relative z-[120]"><Scoreboard open={scoreOpen} onClose={() => setScoreOpen(false)} playerNames={names} sheet={sheet} projection={projection} /></div>
   </div>;
 }
+

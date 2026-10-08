@@ -124,6 +124,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const [paused, setPaused] = useState(document.visibilityState === "hidden");
   const [resumeGeneration, resume] = useState(0);
   const landedCards = useRef(new Set<string>());
+  const lastLandingAt = useRef<number | null>(null);
   const stageCards = useRef(new Set<string>());
   const announcedJokers = useRef(new Set<string>());
   const activeId = useRef<string | null>(null);
@@ -161,10 +162,11 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   useEffect(() => {
     if (activeId.current === active?.id) return;
     activeId.current = active?.id ?? null;
-    landedCards.current.clear(); stageCards.current.clear();
+    landedCards.current.clear(); lastLandingAt.current = null; stageCards.current.clear();
     departingRef.current = null; setDeparting(null);
     if (active?.hydrated) {
       for (const play of active.cards) landedCards.current.add(playKey(play));
+      lastLandingAt.current = performance.now();
       setDisplayedCards([...active.cards]);
     } else setDisplayedCards([]);
   }, [active?.id, active?.cards, active?.hydrated]);
@@ -174,6 +176,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     if (stage === "landing") {
       if (landedCards.current.has(playKey(play))) return;
       landedCards.current.add(playKey(play));
+      lastLandingAt.current = performance.now();
       playGameSound("play", journal.current.active?.id + ":" + playKey(play));
       recordTimingDiagnostic("trick_card_landed", { trickId: journal.current.active?.id ?? "none", seat: play.seatIndex, cardId: play.card.id });
       revise(n => n + 1); return;
@@ -192,9 +195,14 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       journal.current.collect(current.id); departingRef.current = null; setDeparting(null); revise(n => n + 1);
     }
   }, [paused]);
+  const markLocalLanding = useCallback(() => { lastLandingAt.current = performance.now(); }, []);
   const settleLocalFlight = useCallback(() => {
     const local = localPresentationRef.current;
-    if (local?.status === "accepted") landedCards.current.add(local.actorSeat + ":" + local.cardId);
+    if (local?.status === "accepted") {
+      const key = local.actorSeat + ":" + local.cardId;
+      if (lastLandingAt.current == null) lastLandingAt.current = performance.now();
+      landedCards.current.add(key);
+    }
     onLocalFlightSettled(); revise(n => n + 1);
   }, [onLocalFlightSettled]);
 
@@ -205,7 +213,8 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     if (next) {
       if (displayedCards.some(play => !landedCards.current.has(playKey(play)))) return;
       const local = isPresentationCard(localPlayPresentation, next) || (next.seatIndex === projection.viewerSeat && next.card.id === pendingJokerChoice?.cardId);
-      const delay = local || !displayedCards.length ? 0 : trickPresentationTiming(reducedMotion).interPlayBeatMs;
+      // Late delivery consumes the existing readability beat; it does not start a new one.
+      const delay = local || !displayedCards.length ? 0 : Math.max(0, (lastLandingAt.current ?? performance.now()) + trickPresentationTiming(reducedMotion).interPlayBeatMs - performance.now());
       const show = () => {
         setDisplayedCards(cards => [...cards, next]); enqueueJokerAnnouncement(next);
         recordTimingDiagnostic("trick_card_launch", { trickId: active.id, seat: next.seatIndex, cardId: next.card.id });
@@ -288,6 +297,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     <span className="sr-only" aria-live="polite">{departing ? `Η μπάζα κερδήθηκε από τη θέση ${departing.winnerSeat + 1}.` : announcement?.text ?? ""}</span>
     {announcement && <div className="absolute left-0 top-[-4.4rem] z-50 -translate-x-1/2 whitespace-nowrap rounded-xl border border-amber-300/60 bg-black/88 px-4 py-2 text-center text-sm font-semibold text-white shadow-2xl backdrop-blur" data-joker-announcement={announcement.id}>{announcement.text}</div>}
     {visibleCards.map((play) => <AnimatedTrickCard key={`${active?.id}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={geometry} settled={landedCards.current.has(playKey(play))} reducedMotion={reducedMotion} onMotionComplete={onMotionComplete} completionGeneration={resumeGeneration} paused={paused} />)}
-    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} viewerSeat={projection.viewerSeat} geometry={geometry} reducedMotion={reducedMotion} onSettled={settleLocalFlight} />}
+    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} viewerSeat={projection.viewerSeat} geometry={geometry} reducedMotion={reducedMotion} onSettled={settleLocalFlight} onLanded={markLocalLanding} />}
   </div>;
 }
+
