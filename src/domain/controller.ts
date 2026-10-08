@@ -3,6 +3,17 @@ import type { GameplayCommand } from "./gameplayCommands";
 import type { CanonicalGameState } from "./gameState";
 import { projectGameForSeat, type PlayerGameProjection } from "./projection";
 
+/** Deterministically selects one tier from private canonical server entropy, once per takeover. */
+function chooseTemporaryStrategy(state: CanonicalGameState, actor: SeatIndex, serverNow: string): "strong-basic-v1" | "memory-inference-v1" | "probability-simulation-v1" {
+  const entropy = `${state.serverEntropySeed ?? ""}|${state.gameId}|${state.stateVersion}|${actor}|${serverNow}`;
+  let hash = 2166136261;
+  for (let i = 0; i < entropy.length; i += 1) {
+    hash = Math.imul(hash ^ entropy.charCodeAt(i), 16777619);
+  }
+  const tiers = ["strong-basic-v1", "memory-inference-v1", "probability-simulation-v1"] as const;
+  return tiers[(hash >>> 0) % tiers.length]!;
+}
+
 export const HUMAN_TURN_TIMEOUT_MS = 30_000;
 export const MAX_SYNCHRONOUS_BOT_STEPS = 32;
 export const PRESENTATION_SAFE_AUTOMATIC_STEP_BUDGET = 1;
@@ -92,6 +103,7 @@ export function applyOverdueTimeout(
     ...seats[actor],
     controller: "temporary_bot",
     takeoverAt: serverNow,
+    temporaryBotStrategyProfileId: chooseTemporaryStrategy(state, actor, serverNow),
     reclaimable: true,
   };
 
@@ -130,6 +142,7 @@ export function applyReclaimControl(
     takeoverAt: null,
     reclaimable: false,
   };
+  delete seats[seatIndex].temporaryBotStrategyProfileId;
 
   return {
     ok: true,

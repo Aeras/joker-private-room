@@ -153,6 +153,36 @@ describe("controller timeout/reclaim", () => {
     expect(result.state.seats[0].reclaimable).toBe(true);
   });
 
+  it("assigns one of three strategy tiers only once per takeover and clears it on reclaim", () => {
+    const initial = state();
+    initial.serverEntropySeed = "a".repeat(64);
+    const timeout = applyOverdueTimeout(initial, "2026-10-03T19:00:30.000Z");
+    if (!timeout.ok || !timeout.changed) throw new Error("expected takeover");
+    const tier = timeout.state.seats[0].temporaryBotStrategyProfileId;
+    expect(["strong-basic-v1", "memory-inference-v1", "probability-simulation-v1"]).toContain(tier);
+    expect(timeout.state.seats[0].controller).toBe("temporary_bot");
+    const second = applyOverdueTimeout(timeout.state, "2026-10-03T19:01:00.000Z");
+    expect(second).toEqual({ ok: true, changed: false, state: timeout.state });
+    if (!second.ok) throw new Error("unexpected timeout rejection");
+    expect(second.state.seats[0].temporaryBotStrategyProfileId).toBe(tier);
+    const reclaim = applyReclaimControl(timeout.state, 0, "2026-10-03T19:01:00.000Z");
+    if (!reclaim.ok || !reclaim.changed) throw new Error("expected reclaim");
+    expect(reclaim.state.seats[0].temporaryBotStrategyProfileId).toBeUndefined();
+  });
+
+  it("allows all three selected tiers across independent takeover states", () => {
+    const selected = new Set<string>();
+    for (let version = 1; version <= 90; version += 1) {
+      const original = state();
+      original.serverEntropySeed = "b".repeat(64);
+      original.stateVersion = version;
+      const timeout = applyOverdueTimeout(original, "2026-10-03T19:00:30.000Z");
+      if (!timeout.ok || !timeout.changed) throw new Error("expected timeout");
+      selected.add(timeout.state.seats[0].temporaryBotStrategyProfileId ?? "");
+    }
+    expect(selected).toEqual(new Set(["strong-basic-v1", "memory-inference-v1", "probability-simulation-v1"]));
+  });
+
   it("changes controller only after timeout and preserves ownership/hand/score", () => {
     const original = state();
     const result = applyOverdueTimeout(original, "2026-10-03T19:00:30.000Z");
