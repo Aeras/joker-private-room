@@ -28,6 +28,7 @@ export type CanonicalGamePhase =
   | "GAME_COMPLETE";
 
 export type ControllerType = "human" | "temporary_bot" | "permanent_bot";
+export type TemporaryBotStrategyProfileId = "strong-basic-v1" | "memory-inference-v1" | "probability-simulation-v1";
 export type SeatOwner =
   | { type: "human"; playerId: string }
   | {
@@ -45,6 +46,8 @@ export interface CanonicalSeatState {
   controller: ControllerType;
   connected: boolean;
   takeoverAt: string | null;
+  /** Chosen once per temporary takeover; absent for humans and permanent bots. */
+  temporaryBotStrategyProfileId?: TemporaryBotStrategyProfileId;
   reclaimable: boolean;
 }
 
