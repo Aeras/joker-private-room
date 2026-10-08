@@ -1,0 +1,93 @@
+/* All desktop overrides are isolated here. The mobile rules remain unchanged.
+   Keep this media gate / unit in sync with desktopTableSizing.ts. */
+@media (min-width: 1200px) and (min-height: 650px) and (hover: hover) and (pointer: fine) {
+  .joker-room {
+    --desktop-unit: clamp(1px, min(100vw / 1200, 100vh / 650), 2.25px);
+    --desktop-hand-card-w: calc(108 * var(--desktop-unit));
+    --desktop-deal-card-w: calc(88 * var(--desktop-unit));
+    --desktop-trump-card-w: calc(80 * var(--desktop-unit));
+    --desktop-selection-card-w: calc(73.6 * var(--desktop-unit));
+    --desktop-selection-deck-w: calc(76.8 * var(--desktop-unit));
+  }
+  .joker-room .joker-table-avatar-local {
+    width: calc(72 * var(--desktop-unit));
+    height: calc(72 * var(--desktop-unit));
+  }
+  .joker-room .joker-table-avatar-remote {
+    width: calc(64 * var(--desktop-unit));
+    height: calc(64 * var(--desktop-unit));
+  }
+  .joker-room .joker-seat-connection {
+    width: calc(10 * var(--desktop-unit));
+    height: calc(10 * var(--desktop-unit));
+  }
+  .joker-room .joker-seat-dealer {
+    min-width: calc(20 * var(--desktop-unit));
+    height: calc(20 * var(--desktop-unit));
+    font-size: calc(9.6 * var(--desktop-unit));
+  }
+  .joker-room .joker-seat-countdown { font-size: calc(9.6 * var(--desktop-unit)); }
+  .joker-room [data-seat-info-layout] {
+    min-width: calc(112 * var(--desktop-unit));
+    max-width: calc(180 * var(--desktop-unit));
+    padding: calc(4 * var(--desktop-unit)) calc(8 * var(--desktop-unit));
+  }
+  .joker-room [data-seat-info-layout] > div:first-child,
+  .joker-room .joker-seat-progress {
+    font-size: calc(12 * var(--desktop-unit));
+  }
+  .joker-room .joker-seat-score {
+    font-size: calc(14 * var(--desktop-unit));
+  }
+  .joker-room .joker-table-header {
+    gap: calc(4 * var(--desktop-unit));
+    padding-top: max(calc(4 * var(--desktop-unit)), env(safe-area-inset-top));
+  }
+  .joker-room .joker-table-header button,
+  .joker-room .joker-table-header > a {
+    height: calc(32 * var(--desktop-unit));
+    min-width: calc(32 * var(--desktop-unit));
+    font-size: calc(14 * var(--desktop-unit));
+  }
+  .joker-room .joker-table-header svg {
+    width: calc(16 * var(--desktop-unit));
+    height: calc(16 * var(--desktop-unit));
+  }
+  .joker-room .joker-table-header > div:not(:last-child),
+  .joker-room .joker-trump-indicator > div:first-child {
+    font-size: calc(12 * var(--desktop-unit));
+  }
+  .joker-room .joker-declaration-picker > div:first-child {
+    font-size: calc(12 * var(--desktop-unit));
+    padding: calc(8 * var(--desktop-unit));
+  }
+  .joker-room .joker-declaration-picker > .grid {
+    --choice-size: calc(72 * var(--desktop-unit));
+  }
+  .joker-room .joker-declaration-picker button {
+    font-size: calc(20 * var(--desktop-unit));
+  }
+  .joker-room .joker-declaration-picker button > span {
+    font-size: inherit;
+  }
+  .joker-room [data-trump-choice] {
+    --suit-size: calc(96 * var(--desktop-unit));
+    padding: calc(16 * var(--desktop-unit));
+  }
+  .joker-room [data-trump-choice] h2 { font-size: calc(18 * var(--desktop-unit)); }
+  .joker-room [data-trump-choice] .grid:first-of-type button { font-size: calc(48 * var(--desktop-unit)); }
+  .joker-room [data-trump-choice] .grid:last-child button {
+    min-height: calc(48 * var(--desktop-unit));
+    font-size: calc(14 * var(--desktop-unit));
+  }
+  .joker-room .joker-joker-lead-row {
+    grid-template-columns: calc(112 * var(--desktop-unit)) repeat(4, calc(57.6 * var(--desktop-unit)));
+  }
+  .joker-room .joker-joker-lead-row > div { font-size: calc(11 * var(--desktop-unit)); }
+  .joker-room [data-joker-choice-position] button {
+    min-height: calc(48 * var(--desktop-unit));
+    min-width: calc(57.6 * var(--desktop-unit));
+    font-size: calc(14 * var(--desktop-unit));
+  }
+  .joker-room .joker-joker-lead-row button { font-size: calc(30 * var(--desktop-unit)); }
+}

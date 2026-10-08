@@ -49,7 +49,7 @@ export function LocalHandRow({
   }, [visible]);
   const offset = localHandCenterOffset(geometry);
   const laneWidth = geometry?.localHandBounds?.width;
-  const cardWidth = "clamp(3.4rem, min(9.6vw, 22vh), 6.75rem)";
+  const cardWidth = "var(--desktop-hand-card-w, clamp(3.4rem, min(9.6vw, 22vh), 6.75rem))";
   // Detach only from presentation immediately; the canonical hand stays server-owned.
   const presentedCards = cards.filter(card => card.id !== pendingCardId);
   const cardOverlap = presentedCards.length <= 3 ? 0.18 : presentedCards.length <= 5 ? 0.28 : presentedCards.length <= 7 ? 0.36 : 0.42;

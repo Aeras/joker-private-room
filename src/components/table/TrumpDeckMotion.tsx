@@ -62,7 +62,7 @@ export function TrumpDeckMotion({ card, source, rotation, targetRef, onPlaced }:
   }, [stage, card.id]);
   const moving = stage === "moving" || stage === "placed";
   const flipped = stage !== "back";
-  return <div data-trump-deck-motion={stage} className="absolute [--card-w:clamp(3.4rem,8vw,5.5rem)]"
+  return <div data-trump-deck-motion={stage} className="absolute [--card-w:var(--desktop-deal-card-w,clamp(3.4rem,8vw,5.5rem))]"
     style={{ left: source.x, top: source.y, zIndex: 29, transformOrigin: "0 0",
       transform: moving ? `translate(${destination.x}px, ${destination.y}px) rotate(0deg) scale(${destination.scale})` : `rotate(${rotation}deg)`,
       transition: moving ? `transform ${TRUMP_DECK_MOVE_MS}ms cubic-bezier(.2,.75,.25,1)` : "none" }}

@@ -103,7 +103,7 @@ describe("shared local hand geometry", () => {
   it.each([[1, "0.18"], [3, "0.18"], [4, "0.28"], [5, "0.28"], [6, "0.36"], [7, "0.36"], [8, "0.42"], [9, "0.42"]])("keeps a large fixed card width for %i cards and varies only overlap", (count, overlap) => {
     const view = render(<LocalHandRow cards={cards.slice(0, Number(count))} visible legalCardIds={[]} blocked pendingCardId={null} authorityKey="large-hand" geometry={geometry} onCommit={vi.fn()} />);
     const lane = view.container.querySelector<HTMLElement>("[data-hand-lane-width]");
-    expect(lane?.style.getPropertyValue("--card-w")).toBe("clamp(3.4rem, min(9.6vw, 22vh), 6.75rem)");
+    expect(lane?.style.getPropertyValue("--card-w")).toBe("var(--desktop-hand-card-w, clamp(3.4rem, min(9.6vw, 22vh), 6.75rem))");
     expect(lane?.style.getPropertyValue("--card-overlap")).toBe(overlap);
     expect(view.container.querySelector<HTMLElement>("[data-hand-entrance]")?.style.transform).toContain("var(--card-w) * 0.52");
     if (Number(count) > 1) expect(view.container.querySelectorAll<HTMLElement>('[data-hand-layout-card]')[1]?.className).toContain("var(--card-overlap)");
