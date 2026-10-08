@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { Card } from "@/domain/cards";
 import { LOCAL_HAND_ENTRANCE_MS } from "./dealPresentationModel";
 import { DraggableHandCard } from "./DraggableHandCard";
@@ -27,22 +27,25 @@ export function LocalHandRow({
   onCommit: (cardId: string, releaseRect: RectLike) => Promise<void>;
 }) {
   const legal = new Set(legalCardIds);
-  const [entranceSettled, setEntranceSettled] = useState(!revealing);
+  const [entranceSettled, setEntranceSettled] = useState(visible && !revealing);
+  const entered = useRef(visible && !revealing);
   useLayoutEffect(() => {
-    if (!revealing || !visible) {
-      setEntranceSettled(true);
+    if (!visible) {
+      entered.current = false;
+      setEntranceSettled(false);
       return;
     }
+    if (entered.current) return;
     setEntranceSettled(false);
     let second: number | undefined;
     const first = requestAnimationFrame(() => {
-      second = requestAnimationFrame(() => setEntranceSettled(true));
+      second = requestAnimationFrame(() => { entered.current = true; setEntranceSettled(true); });
     });
     return () => {
       cancelAnimationFrame(first);
       if (second != null) cancelAnimationFrame(second);
     };
-  }, [revealing, visible]);
+  }, [visible]);
   const offset = localHandCenterOffset(geometry);
   const laneWidth = geometry?.localHandBounds?.width;
   const cardWidth = "clamp(3.4rem, min(9.6vw, 22vh), 6.75rem)";
@@ -51,7 +54,7 @@ export function LocalHandRow({
 
   return (
     <div
-      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[250ms] motion-reduce:duration-75"
+      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[350ms] motion-reduce:duration-75"
       style={{
         "--card-w": cardWidth,
         transform: `translateX(${offset}px) translateY(calc(var(--card-w) * 0.52 + ${entranceSettled ? "0px" : "var(--card-w) * 1.4 + 48px"}))`,
@@ -60,7 +63,7 @@ export function LocalHandRow({
         transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
       } as React.CSSProperties}
       data-hand-center-offset={offset}
-      data-hand-entrance={revealing && !entranceSettled ? "entering" : "settled"}
+      data-hand-entrance={!entranceSettled ? "entering" : "settled"}
     >
       <div
         className="flex justify-center overflow-visible pt-2"

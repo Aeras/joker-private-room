@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LocalHandRow } from "@/components/table/LocalHandRow";
 import { DialogueOverlay } from "@/components/table/DialogueOverlay";
@@ -44,10 +45,24 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("shared local hand geometry", () => {
-  it("uses the requested 250ms entrance without changing final hand depth", () => {
+  it("starts newly visible cards offscreen even before the parent reveal effect, without restarting", () => {
+    const props = {cards, legalCardIds:[], blocked:true, pendingCardId:null, authorityKey:"visibility", geometry, onCommit:vi.fn()};
+    const view = render(<LocalHandRow {...props} visible={false} />, {wrapper:StrictMode});
+    view.rerender(<LocalHandRow {...props} visible />);
+    const hand=view.container.querySelector<HTMLElement>("[data-hand-entrance]")!;
+    expect(hand.style.transform).toContain("var(--card-w) * 1.4 + 48px");
+    expect(hand.dataset['handEntrance']).toBe("entering");
+    act(() => vi.advanceTimersByTime(16));
+    view.rerender(<LocalHandRow {...props} visible revealing />);
+    act(() => vi.advanceTimersByTime(16));
+    expect(hand.style.transform).toContain("var(--card-w) * 0.52 + 0px");
+    view.rerender(<LocalHandRow {...props} visible revealing={false} />);
+    expect(hand.style.transform).toContain("var(--card-w) * 0.52 + 0px");
+  });
+  it("uses the requested 350ms entrance without changing final hand depth", () => {
     const view = render(<LocalHandRow cards={cards} visible legalCardIds={[]} blocked pendingCardId={null} authorityKey="timing" geometry={geometry} revealing onCommit={vi.fn()} />);
     const hand = view.container.querySelector<HTMLElement>("[data-hand-entrance]");
-    expect(hand?.style.transitionDuration).toBe("250ms");
+    expect(hand?.style.transitionDuration).toBe("350ms");
     act(() => vi.advanceTimersByTime(32));
     expect(hand?.style.transform).toContain("var(--card-w) * 0.52 + 0px");
   });
@@ -171,4 +186,3 @@ describe("non-obstructing dialogue composer", () => {
     expect(view.getByText(/μπορεί να επεξεργαστεί από εξωτερικό πάροχο AI/)).not.toBeNull();
   });
 });
-
