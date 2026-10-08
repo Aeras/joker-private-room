@@ -1,3 +1,4 @@
+import { retryCommandDelivery } from "@/components/table/retryCommandDelivery";
 import { LandscapeTableGuard } from "@/components/table/LandscapeTableGuard";
 import { SnapshotAdmission } from "@/components/table/snapshotAdmission";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -418,14 +419,21 @@ function TablePage() {
     if (!projection || busy || connectionStatusRef.current !== "ready") return null;
     setBusy(true); setError(null);
     try {
-      const result = await submitProjectedGameplayCommand({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion, command } });
+      const data = { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion, command };
+      const result = await retryCommandDelivery(submitProjectedGameplayCommand, { data });
       if (result.ok) {
         const currentRoom = roomRef.current;
         if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return projectionRef.current;
         await refreshAll(); return null;
       }
       if (mounted.current) setError(gameplayFailureMessage(result.code));
-      await refreshAll(); return null;
+      await refreshAll();
+      // A retry may be stale because the original play committed before its response was lost.
+      return command.type === "play_card" ? projectionRef.current : null;
+    } catch (cause) {
+      if (mounted.current) setError("Δεν επιβεβαιώθηκε η κίνηση. Γίνεται επανασύνδεση.");
+      try { await refreshAll(); } catch { /* Periodic reconnect will recover canonical ownership. */ }
+      throw cause;
     } finally { if (mounted.current) setBusy(false); }
   };
 
@@ -585,3 +593,4 @@ function TablePage() {
     </div>
   );
 }
+
