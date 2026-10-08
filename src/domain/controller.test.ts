@@ -163,6 +163,7 @@ describe("controller timeout/reclaim", () => {
     expect(timeout.state.seats[0].controller).toBe("temporary_bot");
     const second = applyOverdueTimeout(timeout.state, "2026-10-03T19:01:00.000Z");
     expect(second).toEqual({ ok: true, changed: false, state: timeout.state });
+    if (!second.ok) throw new Error("unexpected timeout rejection");
     expect(second.state.seats[0].temporaryBotStrategyProfileId).toBe(tier);
     const reclaim = applyReclaimControl(timeout.state, 0, "2026-10-03T19:01:00.000Z");
     if (!reclaim.ok || !reclaim.changed) throw new Error("expected reclaim");
