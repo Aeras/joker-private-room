@@ -30,6 +30,26 @@ export interface PublicInference {
 export const DEFAULT_TIER3_SIMULATION_BUDGET = 96;
 export const MAX_TIER3_SIMULATION_BUDGET = 192;
 
+export const TIER1_DECLARATION_SIMULATION_BUDGET = 192;
+export const TIER2_DECLARATION_SIMULATION_BUDGET = 640;
+export const TIER3_DECLARATION_SIMULATION_BUDGET = 1_800;
+export const MAX_DECLARATION_SIMULATION_BUDGET = 2_400;
+
+type DeclarationTier = 1 | 2 | 3;
+
+interface DeclarationSimulationConfig {
+  tier: DeclarationTier;
+  budget: number;
+  declarationEvidenceWeight: number;
+  uncertaintyPenalty: number;
+}
+
+export interface DeclarationAnalysis {
+  probabilities: number[];
+  expectedScores: ReadonlyMap<number, number>;
+  selected: number;
+}
+
 function requireChoice<T>(values: readonly T[], label: string): T {
   const first = values[0];
   if (first === undefined) throw new Error(`Bot strategy received no legal ${label}`);
@@ -90,6 +110,240 @@ function declarationEstimate(view: PlayerView): number {
   }
 
   return Math.max(0, Math.min(view.cardsPerPlayer, Math.round(estimate)));
+}
+
+
+function declarationScore(view: PlayerView, declared: number, taken: number): number {
+  if (view.scoringProfile === "minus" && taken < declared) {
+    return -100 * (declared - taken);
+  }
+  if (declared === taken) {
+    if (view.cardsPerPlayer > 0 && declared === view.cardsPerPlayer) {
+      return 100 * view.cardsPerPlayer;
+    }
+    return 50 + 50 * declared;
+  }
+  if (taken === 0) return -200;
+  return 10 * taken;
+}
+
+function handPotential(cards: readonly Card[], trump: Suit | null): number {
+  const suitCounts = new Map<Suit, number>();
+  let total = 0;
+  for (const card of cards) {
+    if (card.kind === "joker") {
+      total += 0.96;
+      continue;
+    }
+    suitCounts.set(card.suit, (suitCounts.get(card.suit) ?? 0) + 1);
+    const base: Record<StandardCard["rank"], number> = {
+      "6": 0.03,
+      "7": 0.05,
+      "8": 0.08,
+      "9": 0.12,
+      "10": 0.18,
+      J: 0.28,
+      Q: 0.43,
+      K: 0.65,
+      A: 0.9,
+    };
+    total += base[card.rank] + (card.suit === trump ? 0.16 : 0);
+  }
+  if (trump) {
+    const length = suitCounts.get(trump) ?? 0;
+    if (length >= 3) total += (length - 2) * 0.16;
+  }
+  return total;
+}
+
+function splitSampledOpponentHands(
+  view: PlayerView,
+  sampled: readonly Card[],
+): Map<number, Card[]> {
+  const hands = new Map<number, Card[]>();
+  let cursor = 0;
+  for (let seat = 0; seat < 4; seat += 1) {
+    if (seat === view.seatIndex) continue;
+    hands.set(seat, sampled.slice(cursor, cursor + view.cardsPerPlayer));
+    cursor += view.cardsPerPlayer;
+  }
+  return hands;
+}
+
+function sampleDeclarationEvidenceWeight(
+  view: PlayerView,
+  opponentHands: ReadonlyMap<number, readonly Card[]>,
+  strength: number,
+): number {
+  if (strength <= 0) return 1;
+  let logWeight = 0;
+  for (let seat = 0; seat < 4; seat += 1) {
+    if (seat === view.seatIndex) continue;
+    const declared = view.declarations[seat];
+    if (declared == null) continue;
+    const sampledHand = opponentHands.get(seat) ?? [];
+    const potential = handPotential(sampledHand, view.trump);
+    const distance = Math.abs(potential - declared);
+    logWeight -= strength * distance * distance * 0.55;
+  }
+  return Math.max(0.02, Math.exp(logWeight));
+}
+
+function sampledCardWinProbability(
+  view: PlayerView,
+  candidate: Card,
+  opponentHands: ReadonlyMap<number, readonly Card[]>,
+): number {
+  const allOpponents = [...opponentHands.values()].flat();
+  const opposingJokers = allOpponents.filter((card) => card.kind === "joker").length;
+  if (candidate.kind === "joker") {
+    return opposingJokers === 0 ? 0.97 : opposingJokers === 1 ? 0.76 : 0.62;
+  }
+
+  const rankFraction = (RANK_VALUE[candidate.rank] + 1) / 9;
+  const ownSuitLength = view.hand.filter(
+    (card) => card.kind === "standard" && card.suit === candidate.suit,
+  ).length;
+  const higherSameSuit = allOpponents.filter(
+    (card): card is StandardCard =>
+      card.kind === "standard" &&
+      card.suit === candidate.suit &&
+      RANK_VALUE[card.rank] > RANK_VALUE[candidate.rank],
+  ).length;
+
+  let probability = 0.05 + 0.84 * Math.pow(rankFraction, 1.65);
+  probability += Math.max(0, ownSuitLength - 1) * 0.025;
+
+  if (candidate.suit === view.trump) {
+    probability += 0.12;
+    probability /= 1 + higherSameSuit * 0.5 + opposingJokers * 0.7;
+  } else {
+    probability /= 1 + higherSameSuit * 0.38 + opposingJokers * 0.62;
+    if (view.trump) {
+      let likelyCutters = 0;
+      for (const hand of opponentHands.values()) {
+        const hasSuit = hand.some(
+          (card) => card.kind === "standard" && card.suit === candidate.suit,
+        );
+        const canCut = hand.some(
+          (card) =>
+            card.kind === "joker" ||
+            (card.kind === "standard" && card.suit === view.trump),
+        );
+        if (!hasSuit && canCut) likelyCutters += 1;
+      }
+      probability *= Math.max(0.18, 1 - likelyCutters * 0.23);
+    }
+  }
+
+  return Math.max(0.02, Math.min(0.985, probability));
+}
+
+function declarationConfig(tier: DeclarationTier, requestedBudget?: number): DeclarationSimulationConfig {
+  const defaults = {
+    1: TIER1_DECLARATION_SIMULATION_BUDGET,
+    2: TIER2_DECLARATION_SIMULATION_BUDGET,
+    3: TIER3_DECLARATION_SIMULATION_BUDGET,
+  } as const;
+  const rawBudget = requestedBudget ?? defaults[tier];
+  const budget = Number.isFinite(rawBudget)
+    ? Math.max(0, Math.min(MAX_DECLARATION_SIMULATION_BUDGET, Math.floor(rawBudget)))
+    : defaults[tier];
+  return {
+    tier,
+    budget,
+    declarationEvidenceWeight: tier === 1 ? 0.2 : tier === 2 ? 0.62 : 1.05,
+    uncertaintyPenalty: tier === 1 ? 10 : tier === 2 ? 5 : 1.5,
+  };
+}
+
+export function analyzeDeclaration(
+  view: PlayerView,
+  legalValues: readonly number[],
+  tier: DeclarationTier,
+  options: { seed?: string; budget?: number } = {},
+): DeclarationAnalysis {
+  const first = requireChoice(legalValues, "declaration");
+  if (legalValues.length === 1) {
+    return {
+      probabilities: Array.from({ length: view.cardsPerPlayer + 1 }, (_, index) =>
+        index === first ? 1 : 0,
+      ),
+      expectedScores: new Map([[first, declarationScore(view, first, first)]]),
+      selected: first,
+    };
+  }
+
+  const config = declarationConfig(tier, options.budget);
+  if (config.budget === 0) {
+    const selected = chooseClosestLegal(legalValues, declarationEstimate(view));
+    return {
+      probabilities: Array.from({ length: view.cardsPerPlayer + 1 }, (_, index) =>
+        index === selected ? 1 : 0,
+      ),
+      expectedScores: new Map(legalValues.map((value) => [value, declarationScore(view, value, selected)])),
+      selected,
+    };
+  }
+
+  const inference = derivePublicInference(view);
+  const unknown = fairUnknownCards(view, inference);
+  const opponentCardCount = Math.min(unknown.length, view.cardsPerPlayer * 3);
+  const random = seededRandom(
+    `${options.seed ?? "declaration"}|${tier}|${viewSeed(view)}|${legalValues.join(",")}`,
+  );
+  const weightedOutcomes = Array.from({ length: view.cardsPerPlayer + 1 }, () => 0);
+  let totalWeight = 0;
+
+  for (let iteration = 0; iteration < config.budget; iteration += 1) {
+    const sampled = sampleWithoutReplacement(unknown, opponentCardCount, random);
+    const opponentHands = splitSampledOpponentHands(view, sampled);
+    const weight = sampleDeclarationEvidenceWeight(
+      view,
+      opponentHands,
+      config.declarationEvidenceWeight,
+    );
+    let taken = 0;
+    for (const card of view.hand) {
+      const probability = sampledCardWinProbability(view, card, opponentHands);
+      if (random() < probability) taken += 1;
+    }
+    taken = Math.max(0, Math.min(view.cardsPerPlayer, taken));
+    weightedOutcomes[taken] = (weightedOutcomes[taken] ?? 0) + weight;
+    totalWeight += weight;
+  }
+
+  if (totalWeight <= 0) {
+    const selected = chooseClosestLegal(legalValues, declarationEstimate(view));
+    return {
+      probabilities: weightedOutcomes,
+      expectedScores: new Map(legalValues.map((value) => [value, 0])),
+      selected,
+    };
+  }
+
+  const probabilities = weightedOutcomes.map((weight) => weight / totalWeight);
+  const expectedScores = new Map<number, number>();
+  let selected = first;
+  let bestUtility = Number.NEGATIVE_INFINITY;
+
+  for (const declared of legalValues) {
+    let expected = 0;
+    let catastrophic = 0;
+    for (let taken = 0; taken < probabilities.length; taken += 1) {
+      const probability = probabilities[taken] ?? 0;
+      expected += probability * declarationScore(view, declared, taken);
+      if (declared > 0 && taken === 0) catastrophic += probability;
+    }
+    expectedScores.set(declared, expected);
+    const utility = expected - catastrophic * config.uncertaintyPenalty;
+    if (utility > bestUtility || (utility === bestUtility && declared < selected)) {
+      selected = declared;
+      bestUtility = utility;
+    }
+  }
+
+  return { probabilities, expectedScores, selected };
 }
 
 function suitQuality(view: PlayerView, suit: Suit): number {
@@ -300,6 +554,7 @@ function viewSeed(view: PlayerView): string {
 export interface Tier3StrategyOptions {
   seed?: string;
   simulationBudget?: number;
+  declarationSimulationBudget?: number;
 }
 
 export function createProbabilitySimulationStrategy(
@@ -314,9 +569,10 @@ export function createProbabilitySimulationStrategy(
   return {
     id: "probability-simulation-v1",
     chooseDeclaration(view, legalValues) {
-      const inference = derivePublicInference(view);
-      const exposedHighCards = [...inference.playedCardIds].length / 12;
-      return chooseClosestLegal(legalValues, declarationEstimate(view) + Math.min(1, exposedHighCards));
+      return analyzeDeclaration(view, legalValues, 3, {
+        seed: `${baseSeed}|tier3-declaration`,
+        budget: options.declarationSimulationBudget,
+      }).selected;
     },
     chooseTrump: chooseStrongBasicTrump,
     chooseCard(view, legalMoves) {
@@ -356,7 +612,7 @@ export function createProbabilitySimulationStrategy(
 export const strongBasicStrategy: BotStrategy = {
   id: "strong-basic-v1",
   chooseDeclaration(view, legalValues) {
-    return chooseClosestLegal(legalValues, declarationEstimate(view));
+    return analyzeDeclaration(view, legalValues, 1, { seed: "tier1-declaration" }).selected;
   },
   chooseTrump: chooseStrongBasicTrump,
   chooseCard(view, legalMoves) {
@@ -368,9 +624,7 @@ export const strongBasicStrategy: BotStrategy = {
 export const memoryInferenceStrategy: BotStrategy = {
   id: "memory-inference-v1",
   chooseDeclaration(view, legalValues) {
-    const inference = derivePublicInference(view);
-    const publicInformationAdjustment = Math.min(1, Math.floor(inference.playedCardIds.size / 16));
-    return chooseClosestLegal(legalValues, declarationEstimate(view) + publicInformationAdjustment);
+    return analyzeDeclaration(view, legalValues, 2, { seed: "tier2-declaration" }).selected;
   },
   chooseTrump: chooseStrongBasicTrump,
   chooseCard: chooseMemoryCard,
