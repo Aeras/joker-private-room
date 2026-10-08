@@ -124,6 +124,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const [paused, setPaused] = useState(document.visibilityState === "hidden");
   const [resumeGeneration, resume] = useState(0);
   const landedCards = useRef(new Set<string>());
+  const lastLandingAt = useRef<number | null>(null);
   const stageCards = useRef(new Set<string>());
   const announcedJokers = useRef(new Set<string>());
   const activeId = useRef<string | null>(null);
@@ -161,10 +162,11 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   useEffect(() => {
     if (activeId.current === active?.id) return;
     activeId.current = active?.id ?? null;
-    landedCards.current.clear(); stageCards.current.clear();
+    landedCards.current.clear(); lastLandingAt.current = null; stageCards.current.clear();
     departingRef.current = null; setDeparting(null);
     if (active?.hydrated) {
       for (const play of active.cards) landedCards.current.add(playKey(play));
+      lastLandingAt.current = performance.now();
       setDisplayedCards([...active.cards]);
     } else setDisplayedCards([]);
   }, [active?.id, active?.cards, active?.hydrated]);
@@ -174,6 +176,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     if (stage === "landing") {
       if (landedCards.current.has(playKey(play))) return;
       landedCards.current.add(playKey(play));
+      lastLandingAt.current = performance.now();
       playGameSound("play", journal.current.active?.id + ":" + playKey(play));
       recordTimingDiagnostic("trick_card_landed", { trickId: journal.current.active?.id ?? "none", seat: play.seatIndex, cardId: play.card.id });
       revise(n => n + 1); return;
@@ -194,7 +197,11 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   }, [paused]);
   const settleLocalFlight = useCallback(() => {
     const local = localPresentationRef.current;
-    if (local?.status === "accepted") landedCards.current.add(local.actorSeat + ":" + local.cardId);
+    if (local?.status === "accepted") {
+      const key = local.actorSeat + ":" + local.cardId;
+      if (!landedCards.current.has(key)) lastLandingAt.current = performance.now();
+      landedCards.current.add(key);
+    }
     onLocalFlightSettled(); revise(n => n + 1);
   }, [onLocalFlightSettled]);
 
@@ -205,7 +212,8 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     if (next) {
       if (displayedCards.some(play => !landedCards.current.has(playKey(play)))) return;
       const local = isPresentationCard(localPlayPresentation, next) || (next.seatIndex === projection.viewerSeat && next.card.id === pendingJokerChoice?.cardId);
-      const delay = local || !displayedCards.length ? 0 : trickPresentationTiming(reducedMotion).interPlayBeatMs;
+      // Late delivery consumes the existing readability beat; it does not start a new one.
+      const delay = local || !displayedCards.length ? 0 : Math.max(0, (lastLandingAt.current ?? performance.now()) + trickPresentationTiming(reducedMotion).interPlayBeatMs - performance.now());
       const show = () => {
         setDisplayedCards(cards => [...cards, next]); enqueueJokerAnnouncement(next);
         recordTimingDiagnostic("trick_card_launch", { trickId: active.id, seat: next.seatIndex, cardId: next.card.id });
@@ -291,3 +299,4 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} viewerSeat={projection.viewerSeat} geometry={geometry} reducedMotion={reducedMotion} onSettled={settleLocalFlight} />}
   </div>;
 }
+
