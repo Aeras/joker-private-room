@@ -21,7 +21,9 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
   });
 
   it("shows progress, dealer, local identity and authoritative human deadline together", () => {
-    expect(table).toContain("projection.score.tricksTaken[seat]");
+    expect(table).toContain("tricksTaken: [...projection.score.tricksTaken]");
+    expect(table).toContain("tricksTaken: displayedScore.tricksTaken[seat]");
+    expect(table).toContain("if (!active) refreshDisplayedScore()");
     expect(table).toContain("projection.declarations.values[seat]");
     expect(seat).toContain("<PlayerAvatar");
     expect(seat).toContain("· ΕΣΥ");

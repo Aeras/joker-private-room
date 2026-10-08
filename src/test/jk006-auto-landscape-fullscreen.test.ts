@@ -21,11 +21,12 @@ describe("JK-006 automatic fullscreen landscape entry", () => {
     expect(lobby).toContain("if (!keepDisplayMode) await rollbackGameDisplayMode(displayMode)");
   });
 
-  it("starts display mode directly from the participant Join gesture", () => {
+  it("joins the room lobby before entering the table environment", () => {
+    // Wiring contract: joining a room is not the host's Start gesture.
     const join = read("src/routes/join.tsx");
-    expect(join).toContain("const displayMode = await enterGameDisplayMode()");
-    expect(join.indexOf("enterGameDisplayMode()")) .toBeLessThan(join.indexOf("realIdentityService.verifyPin"));
-    expect(join).toContain("if (!keepDisplayMode) await rollbackGameDisplayMode(displayMode)");
+    expect(join.indexOf("await realIdentityService.verifyPin")).toBeLessThan(join.indexOf("await joinProductionRoom"));
+    expect(join).toContain('navigate({ to: "/lobby", search: { code: result.room.code } })');
+    expect(join).not.toContain("enterGameDisplayMode");
   });
 
   it("suppresses the old portrait rotation blocker", () => {

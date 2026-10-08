@@ -282,6 +282,36 @@ describe("trick resolution", () => {
     expect(result.winnerSeat).toBe(2);
   });
 
+  it.each([null, "spades", "clubs"] as const)("returns SUIT_WINS to its leader when all followers discard (trump %s)", (trump) => {
+    const lead = play(0, joker1, { context: "LEAD", mode: "SUIT_WINS", requestedSuit: "spades" });
+    const result = resolveTrick({
+      trump,
+      plays: [lead, play(1, standard("10-d", "diamonds", "10")),
+        play(2, standard("A-d", "diamonds", "A")), play(3, standard("K-h", "hearts", "K"))],
+    });
+    expect(result).toMatchObject({ winnerSeat: 0, nextLeader: 0, winningPlay: lead, reason: "JOKER_SUIT_WINS" });
+  });
+
+  it("keeps a FROM_BELOW follower below the uncontested SUIT_WINS leader", () => {
+    expect(resolveTrick({
+      trump: "spades",
+      plays: [play(2, joker1, { context: "LEAD", mode: "SUIT_WINS", requestedSuit: "spades" }),
+        play(3, standard("10-d", "diamonds", "10")),
+        play(0, joker2, { context: "OPEN_TRICK", mode: "FROM_BELOW" }),
+        play(1, standard("K-h", "hearts", "K"))],
+    }).winnerSeat).toBe(2);
+  });
+
+  it("keeps a competing Joker above the uncontested SUIT_WINS leader", () => {
+    expect(resolveTrick({
+      trump: "spades",
+      plays: [play(0, joker1, { context: "LEAD", mode: "SUIT_WINS", requestedSuit: "spades" }),
+        play(1, standard("10-d", "diamonds", "10")),
+        play(2, joker2, { context: "OPEN_TRICK", mode: "COMPETE" }),
+        play(3, standard("K-h", "hearts", "K"))],
+    }).winnerSeat).toBe(2);
+  });
+
   it("resolves SUIT_WINS through requested suit plus normal trump", () => {
     const result = resolveTrick({
       trump: "hearts",

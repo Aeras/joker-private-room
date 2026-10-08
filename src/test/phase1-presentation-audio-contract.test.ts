@@ -9,11 +9,13 @@ const table = readFileSync("src/components/table/GameTable.tsx", "utf8");
 const audio = readFileSync("src/lib/gameAudio.ts", "utf8");
 
 describe("JK-001 Phase 1 / JK-006 presentation authority", () => {
-  it("deals only backs from public deal metadata and never reads private deck/card identities", () => {
+  it("deals backs from public metadata and warms only visible viewer artwork", () => {
     expect(deal).toContain("<PlayingCard faceDown />");
     expect(deal).toContain("nextSeat(nextSeat(dealerSeat)");
     expect(deal).not.toContain("projection.cards.deck");
-    expect(deal).not.toContain("ownHand.map");
+    // Viewer-owned faces are decoded for handoff; traveling cards stay face down.
+    // Rendered normal/nine-card coverage lives in deal-face-privacy.test.tsx.
+    expect(deal).toContain("projection.cards.ownHandVisible ? projection.cards.ownHand.map");
     expect(deal).not.toContain("card.id");
   });
 

@@ -29,8 +29,8 @@ jobs:
         run: |
           ! grep -q 'CanonicalGameState' supabase/functions/_shared/dialogue-core.ts supabase/functions/_shared/xai-dialogue.ts supabase/functions/ai-banter/index.ts
           ! grep -q 'PlayerView' supabase/functions/_shared/dialogue-core.ts supabase/functions/_shared/xai-dialogue.ts supabase/functions/ai-banter/index.ts
-          grep -q 'grok-4.7' supabase/functions/_shared/xai-dialogue.ts
-          grep -q 'reasoning: { effort: "low" }' supabase/functions/_shared/xai-dialogue.ts
+          grep -q 'grok-4.3' supabase/functions/_shared/xai-dialogue.ts
+          grep -q 'reasoning: { effort: "none" }' supabase/functions/_shared/xai-dialogue.ts
           grep -q 'XAI_API_KEY' supabase/functions/ai-banter/index.ts
           ! grep -q 'VITE_.*XAI' supabase/functions/ai-banter/index.ts
       - name: TypeScript
