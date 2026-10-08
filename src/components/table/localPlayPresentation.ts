@@ -1,6 +1,6 @@
 import type { Card } from "@/domain/cards";
 import type { SeatIndex } from "@/domain/dealing";
-import type { RectLike } from "./useTableGeometry";
+import type { CardReleaseRect } from "./useTableGeometry";
 
 export type LocalPlayPresentation = {
   gameId: string;
@@ -11,7 +11,7 @@ export type LocalPlayPresentation = {
   sourceStateVersion: number;
   acceptedStateVersion: number | null;
   geometryEpoch: number;
-  releaseRect: RectLike;
+  releaseRect: CardReleaseRect;
   status: "submitted" | "accepted" | "rejected";
 };
 
