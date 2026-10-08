@@ -14,10 +14,10 @@ export const REDUCED_TRICK_SETTLE_MS = 80;
 export const REDUCED_TRICK_INTER_PLAY_BEAT_MS = 120;
 export const REDUCED_TRICK_PLAY_SPACING_MS = REDUCED_TRICK_SETTLE_MS + REDUCED_TRICK_INTER_PLAY_BEAT_MS;
 export const NORMAL_TRICK_HOLD_MS = 850;
-export const NORMAL_TRICK_FLIP_MS = 220;
-export const NORMAL_TRICK_COLLECT_MS = 520;
+export const NORMAL_TRICK_STACK_MS = 400;
+export const NORMAL_TRICK_COLLECT_MS = 600;
 export const REDUCED_TRICK_HOLD_MS = 180;
-export const REDUCED_TRICK_FLIP_MS = 80;
+export const REDUCED_TRICK_STACK_MS = 80;
 export const REDUCED_TRICK_COLLECT_MS = 120;
 export const COLLISION_FAST_FORWARD_MS = 160;
 
@@ -37,16 +37,16 @@ export function trickPresentationTiming(reducedMotion: boolean) {
   const interPlayBeatMs = reducedMotion ? REDUCED_TRICK_INTER_PLAY_BEAT_MS : NORMAL_TRICK_INTER_PLAY_BEAT_MS;
   const playSpacingMs = settleMs + interPlayBeatMs;
   const holdMs = reducedMotion ? REDUCED_TRICK_HOLD_MS : NORMAL_TRICK_HOLD_MS;
-  const flipMs = reducedMotion ? REDUCED_TRICK_FLIP_MS : NORMAL_TRICK_FLIP_MS;
+  const stackMs = reducedMotion ? REDUCED_TRICK_STACK_MS : NORMAL_TRICK_STACK_MS;
   const collectMs = reducedMotion ? REDUCED_TRICK_COLLECT_MS : NORMAL_TRICK_COLLECT_MS;
   return {
     playSpacingMs,
     settleMs,
     interPlayBeatMs,
     holdMs,
-    flipMs,
+    stackMs,
     collectMs,
-    collectStartMs: settleMs + holdMs + flipMs,
-    clearMs: settleMs + holdMs + flipMs + collectMs,
+    collectStartMs: settleMs + holdMs + stackMs,
+    clearMs: settleMs + holdMs + stackMs + collectMs,
   };
 }
