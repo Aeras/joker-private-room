@@ -1,3 +1,4 @@
+import { TRICK_CARD_ROTATION } from "./trickPresentationModel";
 import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlayingCard } from "../joker/PlayingCard";
@@ -46,7 +47,7 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const atTarget = launched && !rejected;
   const width = frozen.release.width;
   const height = frozen.release.height;
-  const rotation = [2, -7, -2, 7][pos] ?? 0;
+  const rotation = TRICK_CARD_ROTATION[pos as 0 | 1 | 2 | 3];
   const targetWidth = frozen.geometry.trickCardSize.width;
   const x = atTarget ? frozen.geometry.feltRect.left + target.x : frozen.release.left + width / 2;
   const y = atTarget ? frozen.geometry.feltRect.top + target.y : frozen.release.top + height / 2;
