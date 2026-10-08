@@ -71,7 +71,13 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
   const landing = landingPoint(pos, motionGeometry);
   const origin = motionGeometry?.seatOrigins[pos] ?? landing;
   const stackTarget = winnerPos == null ? landing : landingPoint(winnerPos, motionGeometry);
-  const collectTarget = winnerPos == null ? landing : trickExitPoint(stackTarget, winnerPos, motionGeometry);
+  const exitTarget = useRef<Point | null>(null);
+  if (departingStage === "collecting" && !exitTarget.current && winnerPos != null) {
+    // Keep the landed pile fixed, but exit past the screen that is visible now.
+    const exitGeometry = motionGeometry ? { ...motionGeometry, dealCenter: { x: window.innerWidth / 2 - motionGeometry.feltRect.left, y: window.innerHeight / 2 - motionGeometry.feltRect.top } } : null;
+    exitTarget.current = trickExitPoint(stackTarget, winnerPos, exitGeometry);
+  }
+  const collectTarget = exitTarget.current ?? (winnerPos == null ? landing : trickExitPoint(stackTarget, winnerPos, motionGeometry));
   const timing = trickPresentationTiming(reducedMotion);
   const duration = departingStage === "stacking" ? timing.stackMs : departingStage === "collecting" ? timing.collectMs : timing.settleMs;
   const completionRef = useRef(onMotionComplete); completionRef.current = onMotionComplete;
@@ -158,6 +164,15 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     onScorePresentationActiveChange?.(Boolean(current && (!current.hydrated || current.winnerSeat != null)));
   }, [projection, revision, onScorePresentationActiveChange]);
   const active = journal.current.active;
+  // One coordinate snapshot owns each trick, including optimistic local flight.
+  // Apply new viewport measurements only to a new trick, never at DOM handoff.
+  const trickGeometry = useRef(new Map<string, TableGeometry>());
+  const geometryKey = active?.id ?? `${projection.gameId}:${projection.progression.dealNumber}:${projection.cards.completedTricks.length + 1}`;
+  if (geometry && (active || localPlayPresentation) && !trickGeometry.current.has(geometryKey)) {
+    trickGeometry.current.set(geometryKey, geometry);
+    while (trickGeometry.current.size > 24) trickGeometry.current.delete(trickGeometry.current.keys().next().value!);
+  }
+  const presentationGeometry = trickGeometry.current.get(geometryKey) ?? geometry;
   const artworkSettled = useCriticalCardArtwork([assets.cardBack, ...(active?.cards.map(play => assets.cardFace(play.card)) ?? [])]);
   useEffect(() => {
     if (activeId.current === active?.id) return;
@@ -296,8 +311,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   return <div className="pointer-events-none absolute z-20 h-0 w-0 [--card-w:clamp(3rem,6vw,5rem)]" style={rootStyle} data-geometry-epoch={geometry?.epoch ?? 0} data-trick-presentation-id={active?.id ?? "current"} data-trick-departing-stage={departing?.stage ?? "none"} aria-label={departing ? "Ολοκληρωμένη μπάζα" : "Τρέχουσα μπάζα"}>
     <span className="sr-only" aria-live="polite">{departing ? `Η μπάζα κερδήθηκε από τη θέση ${departing.winnerSeat + 1}.` : announcement?.text ?? ""}</span>
     {announcement && <div className="absolute left-0 top-[-4.4rem] z-50 -translate-x-1/2 whitespace-nowrap rounded-xl border border-amber-300/60 bg-black/88 px-4 py-2 text-center text-sm font-semibold text-white shadow-2xl backdrop-blur" data-joker-announcement={announcement.id}>{announcement.text}</div>}
-    {visibleCards.map((play) => <AnimatedTrickCard key={`${active?.id}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={geometry} settled={landedCards.current.has(playKey(play))} reducedMotion={reducedMotion} onMotionComplete={onMotionComplete} completionGeneration={resumeGeneration} paused={paused} />)}
-    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} viewerSeat={projection.viewerSeat} geometry={geometry} reducedMotion={reducedMotion} onSettled={settleLocalFlight} onLanded={markLocalLanding} />}
+    {visibleCards.map((play) => <AnimatedTrickCard key={`${active?.id}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={presentationGeometry} settled={landedCards.current.has(playKey(play))} reducedMotion={reducedMotion} onMotionComplete={onMotionComplete} completionGeneration={resumeGeneration} paused={paused} />)}
+    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} viewerSeat={projection.viewerSeat} geometry={presentationGeometry!} reducedMotion={reducedMotion} onSettled={settleLocalFlight} onLanded={markLocalLanding} />}
   </div>;
 }
-
