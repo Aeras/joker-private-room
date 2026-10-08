@@ -140,9 +140,9 @@ export function applyReclaimControl(
     ...seats[seatIndex],
     controller: "human",
     takeoverAt: null,
-    temporaryBotStrategyProfileId: undefined,
     reclaimable: false,
   };
+  delete seats[seatIndex].temporaryBotStrategyProfileId;
 
   return {
     ok: true,
