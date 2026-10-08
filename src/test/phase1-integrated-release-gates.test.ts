@@ -24,7 +24,7 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
     expect(table).toContain("tricksTaken: [...projection.score.tricksTaken]");
     expect(table).toContain("tricksTaken: displayedScore.tricksTaken[seat]");
     expect(table).toContain("if (!active) refreshDisplayedScore()");
-    expect(table).toContain("projection.declarations.values[seat]");
+    expect(table).toContain("displayedScore.declarations[seat]");
     expect(seat).toContain("<PlayerAvatar");
     expect(seat).toContain("· ΕΣΥ");
     expect(seat).toContain("D");
@@ -64,7 +64,7 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
     expect(trick).not.toMatch(/resolveTrick|calculateWinner/);
     expect(trick).toContain("trickPresentationTiming(reducedMotion)");
     expect(trickModel).toContain("NORMAL_TRICK_HOLD_MS = 850");
-    expect(trickModel).toContain("NORMAL_TRICK_INTER_PLAY_BEAT_MS = 1_000");
+    expect(trickModel).toContain("NORMAL_TRICK_INTER_PLAY_BEAT_MS = 500");
   });
 
   it("uses best-effort deduplicated audio with no gameplay dependency", () => {
@@ -88,7 +88,7 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
   it("keeps the declaration panel compact, touchable and server-projected", () => {
     expect(table).toContain("Array.from({ length: 10 }, (_, value) => value)");
     expect(declaration).toContain("grid grid-cols-5");
-    expect(declaration).toContain("h-12");
+    expect(declaration).toContain("h-[var(--choice-size)]");
     expect(declaration).toContain("const legal = new Set(legalValues)");
     expect(declaration).toContain("const allowed = legal.has(value)");
     expect(declaration).toContain("disabled={disabled}");
