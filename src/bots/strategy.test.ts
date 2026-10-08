@@ -4,6 +4,10 @@ import type { Card } from "@/domain/cards";
 import type { PlayerView } from "@/domain/engine";
 import {
   MAX_TIER3_SIMULATION_BUDGET,
+  TIER1_DECLARATION_SIMULATION_BUDGET,
+  TIER2_DECLARATION_SIMULATION_BUDGET,
+  TIER3_DECLARATION_SIMULATION_BUDGET,
+  analyzeDeclaration,
   createProbabilitySimulationStrategy,
   derivePublicInference,
   memoryInferenceStrategy,
@@ -36,6 +40,70 @@ describe("tiered canonical bot strategies", () => {
     expect(resolveBotStrategy("probability-simulation-v1").id).toBe(
       "probability-simulation-v1",
     );
+  });
+
+  it("gives every tier a serious declaration budget, with stronger tiers doing deeper analysis", () => {
+    expect(TIER1_DECLARATION_SIMULATION_BUDGET).toBeGreaterThanOrEqual(128);
+    expect(TIER2_DECLARATION_SIMULATION_BUDGET).toBeGreaterThan(TIER1_DECLARATION_SIMULATION_BUDGET);
+    expect(TIER3_DECLARATION_SIMULATION_BUDGET).toBeGreaterThan(TIER2_DECLARATION_SIMULATION_BUDGET);
+  });
+
+  it("all tiers pass with a genuinely weak three-card hand rather than inventing a bid", () => {
+    const view = makeView({
+      hand: [
+        standard("6-hearts", "hearts", "6"),
+        standard("7-clubs", "clubs", "7"),
+        standard("8-diamonds", "diamonds", "8"),
+      ],
+      cardsPerPlayer: 3,
+      trump: "spades",
+      declarations: [null, null, null, null],
+      scoringProfile: "popular",
+    });
+    expect(strongBasicStrategy.chooseDeclaration(view, [0, 1, 2, 3])).toBe(0);
+    expect(memoryInferenceStrategy.chooseDeclaration(view, [0, 1, 2, 3])).toBe(0);
+    expect(createProbabilitySimulationStrategy({ seed: "weak-hand" }).chooseDeclaration(view, [0, 1, 2, 3])).toBe(0);
+  });
+
+  it("all tiers recognize Joker plus two strong trumps as a serious three-card contract", () => {
+    const view = makeView({
+      hand: [
+        { kind: "joker", id: "joker-1" },
+        standard("A-spades", "spades", "A"),
+        standard("K-spades", "spades", "K"),
+      ],
+      cardsPerPlayer: 3,
+      trump: "spades",
+      declarations: [null, null, null, null],
+      scoringProfile: "popular",
+    });
+    for (const strategy of [
+      strongBasicStrategy,
+      memoryInferenceStrategy,
+      createProbabilitySimulationStrategy({ seed: "strong-hand" }),
+    ]) {
+      expect(strategy.chooseDeclaration(view, [0, 1, 2, 3])).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("declaration analysis uses only own/public information and always obeys legal values", () => {
+    const view = makeView({
+      hand: [
+        { kind: "joker", id: "joker-1" },
+        standard("A-hearts", "hearts", "A"),
+        standard("Q-hearts", "hearts", "Q"),
+      ],
+      cardsPerPlayer: 3,
+      trump: "hearts",
+      declarations: [null, 1, 0, 1],
+      scoringProfile: "popular",
+    });
+    const legal = [0, 1, 3];
+    const analysis = analyzeDeclaration(view, legal, 3, { seed: "fair-info", budget: 256 });
+    expect(legal).toContain(analysis.selected);
+    expect(analysis.probabilities).toHaveLength(4);
+    expect(analysis.probabilities.reduce((sum, value) => sum + value, 0)).toBeCloseTo(1, 6);
+    expect([...analysis.expectedScores.keys()]).toEqual(legal);
   });
 
   it("Tier 1 makes competent declaration and card decisions instead of taking the first option", () => {
