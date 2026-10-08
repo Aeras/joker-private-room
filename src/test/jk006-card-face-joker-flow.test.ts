@@ -137,8 +137,8 @@ describe("JK-006 card artwork, Joker decision, and trick pacing", () => {
     const source = read("src/components/table/TrickPresentation.tsx");
     expect(source).toContain('play.joker?.context === "OPEN_TRICK" && play.joker.mode === "FROM_BELOW"');
     expect(source).toContain('data-joker-from-below={fromBelowJoker ? "true" : undefined}');
-    expect(source).toContain('const faceDown = fromBelowJoker || departingStage === "flipping" || collecting');
-    expect(source).toContain('fromBelowJoker && !departingStage ? "z-0" : "z-10"');
+    expect(source).toContain('const faceDown = fromBelowJoker || collecting');
+    expect(source).toContain('fromBelowJoker ? "z-0" : "z-10"');
     expect(source).toContain("underStackPoint(landing, center)");
   });
 
