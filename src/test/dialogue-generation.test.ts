@@ -118,6 +118,33 @@ describe("AI banter provider boundary", () => {
     expect(line).not.toMatch(/μαλάκ|πούστ|γαμ/i);
   });
 
+  it("allows Monica's private line only for the present, correctly addressed human", () => {
+    const targeted = {
+      ...context,
+      recentBanter: [],
+      event: { ...context.event, type: "TRICK_WON" as const, targetSeat: 0, targetName: "Ζωάλο Πουτς" },
+    };
+    const lines = Array.from({ length: 30 }, (_, i) =>
+      pickDialoguePreset(targeted, () => 0.75 + i * 0.008) ?? "",
+    );
+    expect(lines.some((line) => line.includes("άλλη χώρα"))).toBe(true);
+    const absent = { ...targeted, tableParticipants: context.tableParticipants?.filter((p) => p.seat !== 0) };
+    expect(Array.from({ length: 30 }, (_, i) => pickDialoguePreset(absent, () => 0.75 + i * 0.008))
+      .some((line) => line?.includes("άλλη χώρα"))).toBe(false);
+  });
+
+  it("never exposes strong curated language without profanity consent", () => {
+    const clean = {
+      ...context,
+      botId: "thomoulis" as const,
+      event: { ...context.event, type: "BOT_MISSED_BID" as const },
+      recentBanter: [],
+    };
+    for (let i = 0; i < 60; i++) {
+      expect(pickDialoguePreset(clean, () => i / 60)).not.toMatch(/γαμήσω|πουτάνα|γαμιέσαι/);
+    }
+  });
+
   it("rejects unusable provider output", () => {
     expect(validateDialogueOutput("https://example.com", false).ok).toBe(false);
     expect(validateDialogueOutput("**ωραία μπάζα**", false).ok).toBe(false);
