@@ -140,6 +140,7 @@ describe("automatic bot strategy selection", () => {
     expect(selected).toEqual({
       command: { type: "play_card", cardId: "7-hearts" },
       strategyId: "strong-basic-v1",
+      strategyVersion: "competitive-v2",
       controller: "permanent_bot",
     });
     expect(JSON.stringify(projection)).not.toContain("8-hearts");
@@ -164,7 +165,11 @@ describe("automatic bot strategy selection", () => {
   });
 
   it("uses the pinned temporary bot tier without exposing other players' hands", () => {
-    for (const tier of ["strong-basic-v1", "memory-inference-v1", "probability-simulation-v1"] as const) {
+    for (const tier of [
+      "strong-basic-v1",
+      "memory-inference-v1",
+      "probability-simulation-v1",
+    ] as const) {
       const state = baseState();
       state.seats[0] = {
         seatIndex: 0,
@@ -260,7 +265,10 @@ describe("persisted automatic progression", () => {
               ? { ...seat, controller: "human" as const, reclaimable: false, takeoverAt: null }
               : seat,
           ) as CanonicalGameState["seats"],
-          timing: { currentHumanDeadline: "2026-10-04T00:00:30.000Z", timeoutTakeoverActive: false },
+          timing: {
+            currentHumanDeadline: "2026-10-04T00:00:30.000Z",
+            timeoutTakeoverActive: false,
+          },
         };
         return { ok: false, code: "STALE_STATE", currentStateVersion: 11 };
       },
