@@ -16,13 +16,26 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
   const [error, setError] = useState("");
   useEffect(() => {
     let mounted = true;
-    void Promise.all([getCurrentPlayer(), realIdentityService.listPlayers()]).then(([current, available]) => {
-      if (!mounted) return;
-      setPlayer(current);
-      setChoices(available);
-      setSelected(available[0]?.id ?? "");
-    }).catch(() => { if (mounted) setError("Η σύνδεση δεν είναι διαθέσιμη. Δοκίμασε ξανά."); })
-      .finally(() => { if (mounted) setLoading(false); });
+    void (async () => {
+      try {
+        // Existing sessions must not depend on loading the directory of players.
+        const current = await getCurrentPlayer();
+        if (!mounted) return;
+        if (current) {
+          setPlayer(current);
+          return;
+        }
+        // Only a player without a valid session needs the name selector.
+        const available = await realIdentityService.listPlayers();
+        if (!mounted) return;
+        setChoices(available);
+        setSelected(available[0]?.id ?? "");
+      } catch {
+        if (mounted) setError("Η σύνδεση δεν είναι διαθέσιμη. Δοκίμασε ξανά.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
     return () => { mounted = false; };
   }, []);
   async function connect(event: React.FormEvent) {
