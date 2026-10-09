@@ -2,6 +2,7 @@ import {
   buildDialoguePrompt,
   dialogueLineTooSimilar,
   pickDialoguePreset,
+  pickOccasionalCuratedLine,
   validateDialogueOutput,
   type DialogueGenerationContext,
 } from "./dialogue-core.ts";
@@ -50,6 +51,10 @@ export async function generateDialogueLine(input: {
       ? { text, source: "preset" as const, providerAttempted: false }
       : { text: null, source: "silence" as const, providerAttempted: false };
   };
+
+  // Approved character lines stay available when Grok is enabled, not only on failures.
+  const curated = pickOccasionalCuratedLine(input.context);
+  if (curated) return { text: curated, source: "preset", providerAttempted: false };
 
   if (!input.aiEnabled || !input.apiKey) return preset();
 
