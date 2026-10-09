@@ -133,6 +133,9 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const [resumeGeneration, resume] = useState(0);
   const landedCards = useRef(new Set<string>());
   const lastLandingAt = useRef<number | null>(null);
+  // Landing belongs to the physical card, not the authoritative snapshot.
+  // Preserve this ownership if a newly ingested trick resets its journal state.
+  const localLanded = useRef<string | null>(null);
   const stageCards = useRef(new Set<string>());
   const announcedJokers = useRef(new Set<string>());
   const activeId = useRef<string | null>(null);
@@ -179,10 +182,16 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   }
   const presentationGeometry = trickGeometry.current.get(geometryKey) ?? geometry;
   const artworkSettled = useCriticalCardArtwork([assets.cardBack, ...(active?.cards.map(play => assets.cardFace(play.card)) ?? [])]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (activeId.current === active?.id) return;
     activeId.current = active?.id ?? null;
     landedCards.current.clear(); lastLandingAt.current = null; stageCards.current.clear();
+    if (active && localLanded.current && active.cards.some(play =>
+      `${active.id}:${playKey(play)}` === localLanded.current)) {
+      const matched = active.cards.find(play => `${active.id}:${playKey(play)}` === localLanded.current)!;
+      landedCards.current.add(playKey(matched));
+      lastLandingAt.current = performance.now();
+    }
     departingRef.current = null; setDeparting(null);
     if (active?.hydrated) {
       for (const play of active.cards) landedCards.current.add(playKey(play));
@@ -215,7 +224,13 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       journal.current.collect(current.id); departingRef.current = null; setDeparting(null); revise(n => n + 1);
     }
   }, [paused]);
-  const markLocalLanding = useCallback(() => { lastLandingAt.current = performance.now(); }, []);
+  const markLocalLanding = useCallback(() => {
+    const local = localPresentationRef.current;
+    if (!local) return;
+    const ordinal = journal.current.active?.ordinal ?? (projection.cards.completedTricks.length + 1);
+    localLanded.current = `${local.gameId}:${local.dealNumber}:${ordinal}:${local.actorSeat}:${local.cardId}`;
+    lastLandingAt.current = performance.now();
+  }, [projection.cards.completedTricks.length]);
   const settleLocalFlight = useCallback(() => {
     const local = localPresentationRef.current;
     if (local?.status === "accepted") {
