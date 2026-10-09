@@ -86,6 +86,11 @@ function CreateGame() {
   }, []);
 
   useEffect(() => {
+    if (activeLookup.status !== "waiting") return;
+    void navigate({ to: "/lobby", search: { code: activeLookup.roomCode } });
+  }, [activeLookup.status, activeLookup.status === "waiting" ? activeLookup.roomCode : null, navigate]);
+
+  useEffect(() => {
     if (activeLookup.status !== "active") return;
     void navigate({
       to: "/table",
