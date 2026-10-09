@@ -345,7 +345,7 @@ function TablePage() {
   useEffect(() => {
     let wasVisible = document.visibilityState === "visible";
     let lostFocus = false;
-    const beginReturn = () => { returnSync.begin(); setBusy(false); setError(null); updateConnectionStatus("reconnecting"); };
+    const beginReturn = () => { returnSync.begin(); refreshInFlight.current = null; setBusy(false); setError(null); updateConnectionStatus("reconnecting"); };
     setVisible(wasVisible);
     const refreshForeground = () => {
       void refreshAll();
