@@ -35,4 +35,7 @@ jobs:
           do
             psql -h localhost -U postgres -d jk003 -v ON_ERROR_STOP=1 -f "supabase/migrations/$migration.sql"
           done
+          psql -h localhost -U postgres -d jk003 -v ON_ERROR_STOP=1 -f tests/integration/rulesets-retirement-setup.sql
+          psql -h localhost -U postgres -d jk003 -v ON_ERROR_STOP=1 -f supabase/migrations/20261009051533_joker_admin_bot_lab.sql
+          psql -h localhost -U postgres -d jk003 -v ON_ERROR_STOP=1 -f supabase/migrations/20261009224444_remove_panagiotis_variant.sql
           psql -h localhost -U postgres -d jk003 -v ON_ERROR_STOP=1 -f tests/integration/rulesets.sql

@@ -1,6 +1,5 @@
 import { holdOrdinaryDealForPresentation } from "@/domain/dealPresentationBarrier";
 import { getRuleset } from "@/domain/rulesets";
-import { RESERVED_TARGET_ID } from "@/server/rulesetIdentity";
 import type { SeatIndex } from "@/domain/dealing";
 import {
   activateDealOneAfterPresentation,
@@ -116,7 +115,6 @@ export async function ensureInitialDealerBootstrapPrepared(
     roomId: bootstrap.roomId,
     rulesetId: bootstrap.rulesetId,
     rulesVersion: bootstrap.rulesVersion,
-    targetPlayerId: RESERVED_TARGET_ID,
     bootstrapActionId,
     serverEntropySeed: secureServerEntropySeed(),
     seats,

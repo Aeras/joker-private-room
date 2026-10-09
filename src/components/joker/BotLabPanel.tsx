@@ -279,7 +279,6 @@ export function BotLabPanel({ initial, api }: { initial: LabListView; api: LabAp
                 ["popular", "Popular — Our Rules"],
                 ["classic", "Κλασικό Τζόκερ"],
                 ["minus", "Minus"],
-                ["panagiotis", "Panagiotis Special"],
               ].map(([id, name]) => (
                 <option key={id} value={id}>
                   {name}

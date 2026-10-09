@@ -223,17 +223,16 @@ function localLegalActions(state: CanonicalGameState, seat: SeatIndex, visibleHa
   return actions;
 }
 
-export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex, revealRestrictedIdentity = false): PlayerGameProjection {
+export function projectGameForSeat(state: CanonicalGameState, seat: SeatIndex): PlayerGameProjection {
   if (state.seats[seat]?.seatIndex !== seat) throw new Error("Projection seat does not exist");
   const policy = getRuleset(state.rulesetId, state.rulesVersion);
-  const masked = state.rulesetId === "panagiotis" && !revealRestrictedIdentity;
   const own = visibleOwnHand(state, seat);
   const displayedOwnHand = sortHandForDisplay(own.hand, resolvedTrump(state));
   return {
     gameId: state.gameId,
     roomId: state.roomId,
-    rulesetId: masked ? "popular" : policy.id,
-    rulesVersion: masked ? "popular-v1" : policy.version,
+    rulesetId: policy.id,
+    rulesVersion: policy.version,
     stateSchemaVersion: state.stateSchemaVersion,
     stateVersion: state.stateVersion,
     lifecycle: state.lifecycle,

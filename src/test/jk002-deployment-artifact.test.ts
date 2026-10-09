@@ -111,12 +111,12 @@ describe('JK-002 executable deployment artifact', () => {
     expect(JSON.stringify(takeover.body)).not.toMatch(/canonicalState|hands|serverEntropySeed|deck/);
   });
 
-  for (const rulesetId of ['popular', 'classic', 'minus', 'panagiotis'] as const) {
+  for (const rulesetId of ['popular', 'classic', 'minus'] as const) {
     it('finishes all 24 deals across presentation-safe browser-free ticks and finalizes exactly once: ' + rulesetId, async () => {
       vi.useFakeTimers({ toFake: ['Date'] });
       vi.setSystemTime(new Date('2026-10-05T12:00:00.000Z'));
       try {
-        reset(); state = reconciliationFixture(rulesetId, rulesetId === 'panagiotis');
+        reset(); state = reconciliationFixture(rulesetId);
         let ticks = 0; let bounded = 0; let presentationFallbacks = 0;
         while (state.lifecycle !== 'complete' && ticks++ < 4000) {
           consumed = false;
@@ -137,7 +137,6 @@ describe('JK-002 executable deployment artifact', () => {
         expect(state.score.roundPremia).toHaveLength(4);
         expect(state.score.finalPlacements.every(p => p !== null)).toBe(true);
         expect(finalized).toBe(1); expect(bounded).toBeGreaterThan(0);
-        if (rulesetId === 'panagiotis') expect(presentationFallbacks).toBeGreaterThan(0);
         expect(commands).toContain('settle_deal'); expect(commands).toContain('settle_round');
         expect(versions.every((v, i) => i === 0 || v === versions[i - 1]! + 1)).toBe(true);
         consumed = false; expect((await invoke()).body.claimed).toBe(0); expect(finalized).toBe(1);

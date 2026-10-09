@@ -117,7 +117,7 @@ export const createProductionRoom = createServerFn({ method: "POST" })
   .validator(
     z.object({
       actionId,
-      rulesetId: z.enum(["popular", "classic", "minus", "panagiotis"]),
+      rulesetId: z.enum(["popular", "classic", "minus"]),
       botsTalk: z.boolean(),
       allowProfanity: z.boolean(),
       aiEnabled: z.boolean(),

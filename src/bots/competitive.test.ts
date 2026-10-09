@@ -126,7 +126,7 @@ describe("competitive observation-safe search", () => {
     });
     expect(action.card.id).toBe("Q-hearts");
   });
-  it.each(["classic", "minus", "panagiotis"] as const)(
+  it.each(["classic", "minus"] as const)(
     "new policies finish %s through canonical scoring",
     (ruleset) => {
       const g = simulateFullGame({ ...config, ruleset, seed: 55 });

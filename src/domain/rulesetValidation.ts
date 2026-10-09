@@ -8,17 +8,6 @@ export function assertRulesetState(state: CanonicalGameState): void {
     throw new Error("Unsupported serialization schema");
   if (state.stateSchemaVersion === 3 && state.rulesetId !== "popular")
     throw new Error("Legacy schema only supports Popular");
-  if (
-    policy.allocation === "reserved_lowest" &&
-    (!state.privateRulesetState ||
-      (state.privateRulesetState.targetPlayerId !== null &&
-        !state.seats.some(
-          (seat) =>
-            seat.owner.type === "human" &&
-            seat.owner.playerId === state.privateRulesetState!.targetPlayerId,
-        )))
-  )
-    throw new Error("Invalid frozen target");
   const expected = new Map(createDeck(policy.deckProfile).map((card) => [card.id, card]));
   const valid = (card: (typeof state.cards.deck)[number]) => {
     const canonical = expected.get(card.id);
