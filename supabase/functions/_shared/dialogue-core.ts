@@ -139,6 +139,97 @@ export const DIALOGUE_PERSONALITIES: readonly DialoguePersonality[] = [
   },
 ] as const;
 
+// Curated friends-only phrases. The canonical table roster is mandatory for addressed lines.
+// Event-based rules use public observations only; never infer concealed hands.
+const SHARED_CLEAN_LINES = [
+  "Ρε παιδιά, πού είναι όλα τα Τζόκερ σήμερα; Τα κρύβετε σπίτι σας;",
+  "Εγώ σήμερα δεν παίζω χαρτιά, κάνω συλλογή από σαβούρα.",
+  "{target}, άσε και καμιά μπάζα για μας, μη γίνεσαι μοναχοφάης!",
+  "Κάποιος εδώ μέσα έχει μαζέψει όλη την τράπουλα και κάνει τον ανήξερο.",
+  "Πάλι τα ίδια φύλλα; Ρε συ, ανακάτεψε λίγο, δεν θα παρεξηγηθούμε!",
+  "Αν συνεχίσω έτσι, στο τέλος θα χρωστάω και πόντους από αύριο.",
+  "{target}, πολύ ήσυχος είσαι σήμερα. Τι ετοιμάζεις εκεί πέρα;",
+  "Άμα δεν μου κάτσει κανένα καλό φύλλο, θα αρχίσω να παίζω με ανοιχτά χαρτιά από τα νεύρα μου.",
+  "Ωραία, ωραία... Όλοι μάγκες με καλά φύλλα είστε!",
+  "Παιδιά, αν δείτε πουθενά την τύχη μου, πείτε της ότι την ψάχνω.",
+] as const;
+
+const JOKER_COMPLAINTS = [
+  "Ρε παιδιά, πού πήγαν όλα τα Τζόκερ;",
+  "Πάλι χωρίς Τζόκερ; Κάποιος με δουλεύει εδώ μέσα!",
+  "Ρε {target}, όλα τα Τζόκερ σε σένα έρχονται;",
+  "Άμα δείτε κανένα Τζόκερ, στείλτε το από δω!",
+] as const;
+
+const SHARED_SPICY_LINES = [
+  "Τώρα, τώρα θα σας γαμήσω όλους!",
+  "Είσαι μεγάλη πουτάνα!",
+  "Τι κωλόχαρτα είναι αυτά, μη σας γαμήσω όλους!",
+  "Όταν γαμιέσαι, κουνιέσαι;",
+] as const;
+
+const MONIKA_CLEAN_LINES = [
+  "Κάναμε όλες τις δουλειές και τώρα παίζουμε Τζόκερ!",
+  "Όλη μέρα στο πόδι και τώρα ήρθα να σας κερδίσω κιόλας!",
+  "Μαγείρεψα, καθάρισα, τώρα αφήστε με να παίξω λίγο!",
+  "Επιτέλους κάθισα κι εγώ! Μη μου χαλάσετε τη διάθεση!",
+  "Τόσες δουλειές έκανα σήμερα, ένα καλό φύλλο δεν δικαιούμαι;",
+  "Άφησα τις δουλειές για να παίξω και μου δίνετε τέτοια χαρτιά;",
+] as const;
+
+function presentHuman(context: DialogueGenerationContext, displayName: string): DialogueTableParticipant | undefined {
+  return context.tableParticipants?.find((p) =>
+    p.kind === "human" && normalizeDialogueLine(p.displayName) === normalizeDialogueLine(displayName)
+  );
+}
+
+function addressedTo(context: DialogueGenerationContext, name: string): boolean {
+  const recipient = presentHuman(context, name);
+  return recipient != null && context.event.targetSeat === recipient.seat;
+}
+
+function curatedCandidates(context: DialogueGenerationContext): string[] {
+  const type = context.event.type;
+  const hasNamedTarget = context.event.targetSeat != null &&
+    context.tableParticipants?.some((p) => p.seat === context.event.targetSeat) === true;
+  const result: string[] = [];
+  if (["TRICK_WON", "ROUND_END", "GAME_END", "COMEBACK", "SCORE_COLLAPSE", "BOT_MISSED_BID", "BOT_GOT_MINUS_200"].includes(type)) {
+    result.push(...SHARED_CLEAN_LINES.filter((line) => !line.includes("{target}") || hasNamedTarget));
+    if (context.botId === "ka-monika") result.push(...MONIKA_CLEAN_LINES);
+  }
+  // Mere passage of deals does not prove an own-hand Joker drought.
+  // Joker complaints must wait for an authoritative own-hand drought observation.
+  void JOKER_COMPLAINTS;
+  if (context.botId === "ka-monika" && addressedTo(context, "Ζωάλο Πουτς") &&
+      ["TRICK_WON", "ROUND_END", "PLAYER_MISSED_BID"].includes(type)) {
+    result.push("Με σένα δεν μπορούμε να συνεννοηθούμε, ίσως επειδή είσαι από άλλη χώρα!");
+  }
+  if (context.botId === "thomoulis" && addressedTo(context, "Τζαμανάς Δικώνετε") &&
+      ["TRICK_WON", "ROUND_END", "PLAYER_MISSED_BID"].includes(type)) {
+    result.push("Μιχάλη, δες λίγο τα mail που σου έστειλα.");
+    result.push("Μιχάλη, πάμε να κόψουμε κάνα τιμολόγιο, μπας και πληρωθούμε.");
+  }
+  if (context.botId === "giorgos-nousios" && addressedTo(context, "Git") &&
+      ["TRICK_WON", "ROUND_END", "PLAYER_HIT_EXACT_BID"].includes(type)) {
+    result.push("Και ο κουνιστός θέλει να κερδίσει εμένα;");
+  }
+  if (context.profanityEnabled && ["TRICK_WON", "COMEBACK", "BOT_STOLE_CRITICAL_TRICK"].includes(type)) {
+    result.push(SHARED_SPICY_LINES[0]);
+  }
+  if (context.profanityEnabled && ["BOT_MISSED_BID", "BOT_GOT_MINUS_200", "SCORE_COLLAPSE"].includes(type)) {
+    result.push(SHARED_SPICY_LINES[2]);
+  }
+  if (context.profanityEnabled && hasNamedTarget &&
+      ["PLAYER_STOLE_CRITICAL_TRICK", "PLAYER_MISSED_BID", "TRICK_WON"].includes(type)) {
+    result.push(SHARED_SPICY_LINES[1], SHARED_SPICY_LINES[3]);
+  }
+  if (context.profanityEnabled && addressedTo(context, "Git") &&
+      ["TRICK_WON", "PLAYER_MISSED_BID"].includes(type)) {
+    result.push("Ελάτε να γαμήσουμε τον Παναγιώτη!");
+  }
+  return result;
+}
+
 const PERSONALITY_BY_ID = new Map(DIALOGUE_PERSONALITIES.map((personality) => [personality.id, personality] as const));
 
 export function getDialoguePersonality(id: string): DialoguePersonality | null {
@@ -217,6 +308,11 @@ export function pickDialoguePreset(
   if (context.event.type === "HUMAN_MESSAGE_TO_BOT") {
     const fallback = HUMAN_MESSAGE_FALLBACKS[context.botId];
     pool = context.profanityEnabled ? [...fallback.clean, ...fallback.spicy] : [...fallback.clean];
+  }
+  // Occasionally introduce a curated line; preserve the normal dynamic personality flow.
+  // A single roll avoids deterministic repetition and leaves recent-text filtering authoritative.
+  if (random() > 0.72 && context.event.type !== "HUMAN_MESSAGE_TO_BOT" && context.event.type !== "BOT_MESSAGE_TO_BOT") {
+    pool = [...pool, ...curatedCandidates(context)];
   }
   const rendered = pool.map((line) => renderPreset(line, context.event));
   const fresh = rendered.filter((line) => !dialogueLineTooSimilar(line, context.recentBanter));
