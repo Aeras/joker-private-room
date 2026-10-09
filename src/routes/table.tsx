@@ -23,6 +23,9 @@ import type { PlayerGameProjection } from "@/domain/projection";
 import type { GameReadinessSnapshot } from "@/server/gameReadiness";
 import {
   getDialogueMessages,
+  listEmojiReactions,
+  sendEmojiReaction,
+  type EmojiReaction,
   requestBotDialogueReply,
   requestDialogueReaction,
   sendHumanMessageToBot,
@@ -115,6 +118,9 @@ function TablePage() {
   const [projection, setProjection] = useState<PlayerGameProjection | null>(null);
   const [readiness, setReadiness] = useState<GameReadinessSnapshot | null>(null);
   const [messages, setMessages] = useState<DialogueMessage[]>([]);
+  const [emojiReactions, setEmojiReactions] = useState<EmojiReaction[]>([]);
+  const [emojiBusy, setEmojiBusy] = useState(false);
+  const [emojiNow, setEmojiNow] = useState(() => Date.now());
   const [connectionStatus, setConnectionStatus] = useState<TableConnectionStatus>("initial-loading");
   const [tableEpoch, setTableEpoch] = useState(0);
   const [presentationTick, setPresentationTick] = useState(0);
@@ -247,6 +253,47 @@ function TablePage() {
     const result = await getProjectedGameReadiness({ data: { gameId } });
     if (mounted.current && result.ok) setReadiness(result);
   }, [gameId]);
+
+  const refreshEmojis = useCallback(async () => {
+    if (!gameId || !roomRef.current) return;
+    const result = await listEmojiReactions({ data: { gameId } });
+    if (mounted.current && result.ok) setEmojiReactions(result.reactions);
+  }, [gameId]);
+
+  const sendEmoji = useCallback(async (slug: string) => {
+    if (!gameId || !roomRef.current || !projectionRef.current || emojiBusy) return;
+    const localSeat = projectionRef.current.viewerSeat;
+    if (roomRef.current.seats[localSeat]?.occupant.type !== "human") return;
+    setEmojiBusy(true);
+    try {
+      const result = await sendEmojiReaction({ data: { gameId, emoji: slug } });
+      if (result.ok && mounted.current) {
+        setEmojiReactions(previous => [...previous.filter(r => r.seat !== result.reaction.seat), result.reaction]);
+        setEmojiNow(Date.now());
+      }
+    } finally {
+      if (mounted.current) setEmojiBusy(false);
+    }
+  }, [gameId, emojiBusy]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setEmojiNow(Date.now()), 200);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!gameId || !room) return;
+    void refreshEmojis();
+    const timer = window.setInterval(() => void refreshEmojis(), 650);
+    return () => window.clearInterval(timer);
+  }, [gameId, Boolean(room), refreshEmojis]);
+
+  const emojiBySeat: Record<number, string> = {};
+  for (const reaction of emojiReactions) {
+    if (Date.parse(reaction.expiresAt) > emojiNow && room?.seats[reaction.seat]?.occupant.type === "human") {
+      emojiBySeat[reaction.seat] = reaction.emoji;
+    }
+  }
 
   const refreshDialogue = useCallback(async () => {
     if (!gameId || !roomRef.current?.botSettings.botsTalk) return;
@@ -650,7 +697,7 @@ function TablePage() {
   return (
     <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
       <LandscapeTableGuard>
-      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onTurnPresentationComplete={completeTurn} onNineCardPresentationComplete={completeNineCardStage} />
+      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onTurnPresentationComplete={completeTurn} onNineCardPresentationComplete={completeNineCardStage} emojiBySeat={emojiBySeat} onEmojiSend={sendEmoji} emojiBusy={emojiBusy} />
       <TableMessaging key={projection.gameId} room={room} projection={projection} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} feedback={dialogueFeedback} onSend={sendDialogue} />
 
