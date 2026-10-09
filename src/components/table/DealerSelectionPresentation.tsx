@@ -1,6 +1,9 @@
+import { useReducedMotion } from "./useReducedMotion";
+import { REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
+import { PresentationRun } from "./presentationRun";
 import { assets } from "@/assets/registry";
 import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Card } from "@/domain/cards";
 import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
@@ -59,6 +62,8 @@ function RevealedCard({
   geometry: TableGeometry;
   finalAce: boolean;
 }) {
+  const preference = useReducedMotion();
+  const reduced = useRef(preference).current;
   const [arrived, setArrived] = useState(false);
   const pos = visualSeat(viewerSeat, beat.seat);
   const center = geometry.dealCenter;
@@ -73,11 +78,12 @@ function RevealedCard({
 
   return (
     <div
-      className={`absolute left-0 top-0 [--card-w:var(--desktop-selection-card-w,clamp(2.95rem,5.8vw,4.6rem))] transition-transform ease-out ${finalAce ? "z-40 drop-shadow-[0_0_18px_var(--gold)]" : "z-30"}`}
+      className={`absolute left-0 top-0 [--card-w:var(--desktop-selection-card-w,clamp(2.95rem,5.8vw,4.6rem))] transition-[transform,opacity] ease-out ${finalAce ? "z-40 drop-shadow-[0_0_18px_var(--gold)]" : "z-30"}`}
       style={{
         zIndex: finalAce ? 60 : 30 + beat.stackIndex,
+        opacity: reduced && !arrived ? 0 : 1,
         transitionDuration: `${DEALER_SELECTION_CARD_TRAVEL_MS}ms`,
-        transform: relativeTransform(arrived ? target : center, center, arrived ? 1 : 0.72),
+        transform: relativeTransform(arrived ? target : reduced ? { x: target.x, y: target.y + REDUCED_MOTION_DISTANCE_PX } : center, center, reduced || arrived ? 1 : 0.72),
       }}
     >
       <PlayingCard card={beat.card} />
@@ -104,6 +110,7 @@ export function DealerSelectionPresentation({
   const [run, setRun] = useState<FrozenRun | null>(null);
   const [openingVisible, setOpeningVisible] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
+  const runs = useRef(new PresentationRun());
   const timers = useRef<number[]>([]);
   const startupFrames = useRef<number[]>([]);
   const startedKey = useRef<string | null>(null);
@@ -121,12 +128,18 @@ export function DealerSelectionPresentation({
   const geometryReady = geometry != null;
   const needsPresentation = Boolean(selectionKey && selection && dealerSelectionNeedsPresentation(projection));
 
-  const clearTimers = useCallback(() => {
+  const clearTimers = useCallback(() => { runs.current.invalidate();
     for (const timer of timers.current) window.clearTimeout(timer);
     timers.current = [];
     for (const frame of startupFrames.current) window.cancelAnimationFrame(frame);
     startupFrames.current = [];
   }, []);
+
+  useLayoutEffect(() => {
+    clearTimers(); startedKey.current = null; setRun(null);
+    setOpeningVisible(false); setVisibleCount(0);
+    return clearTimers;
+  }, [selectionKey, clearTimers]);
 
   useEffect(() => {
     if (interrupted) return;
@@ -141,8 +154,8 @@ export function DealerSelectionPresentation({
     }
     if (startedKey.current === selectionKey) return;
 
-    const firstFrame = window.requestAnimationFrame(() => {
-      const secondFrame = window.requestAnimationFrame(() => {
+    const firstFrame = window.requestAnimationFrame(runs.current.guard(() => {
+      const secondFrame = window.requestAnimationFrame(runs.current.guard(() => {
         if (startedKey.current === selectionKey) return;
         const openingCard = selection.openingCard ?? selection.revealedSelectionCards[0];
         if (!openingCard) {
@@ -191,7 +204,7 @@ export function DealerSelectionPresentation({
         });
 
         beats.forEach((beat, index) => {
-          timers.current.push(window.setTimeout(() => {
+          timers.current.push(window.setTimeout(runs.current.guard(() => {
             setVisibleCount(index + 1);
             recordTimingDiagnostic("dealer_card_visible", {
               index,
@@ -200,21 +213,21 @@ export function DealerSelectionPresentation({
               finalAce: index === beats.length - 1,
             });
             playGameSound("deal", beat.id);
-          }, cueMs + index * staggerMs));
+          }), cueMs + index * staggerMs));
         });
 
         const completeAt = cueMs + beats.length * staggerMs + holdMs;
-        timers.current.push(window.setTimeout(() => {
+        timers.current.push(window.setTimeout(runs.current.guard(() => {
           recordTimingDiagnostic("dealer_sequence_complete", { scheduledOffsetMs: completeAt });
           markDealerSelectionPresented(projection);
           setOpeningVisible(false);
           setVisibleCount(0);
           setRun(null);
           onActiveChangeRef.current(false);
-        }, completeAt));
-      });
+        }), completeAt));
+      }));
       startupFrames.current.push(secondFrame);
-    });
+    }));
     startupFrames.current.push(firstFrame);
   }, [geometryReady, needsPresentation, selectionKey, interrupted, resumeGeneration, geometry, projection, selection, artworkSettled]);
 

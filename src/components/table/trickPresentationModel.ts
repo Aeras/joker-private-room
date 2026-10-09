@@ -4,26 +4,8 @@ import type { PlayedCard } from "@/domain/engine";
 // Keep the existing small natural tilts, shared by local flight and table ownership.
 export const TRICK_CARD_ROTATION = [2, 83, 178, -83] as const;
 
-// Human-readable trick pacing is defined from the previous card's settled frame,
-// not merely from when its animation started. This keeps bot/remote presentation
-// independent from raw computation or reconciliation speed.
-export const NORMAL_TRICK_SETTLE_MS = 340;
-// Only FROM_BELOW travels and turns more slowly; all other card pacing stays intact.
-export const NORMAL_FROM_BELOW_FLIGHT_MS = 450;
-export const NORMAL_FROM_BELOW_FLIP_MS = 300;
-export const NORMAL_TRICK_INTER_PLAY_BEAT_MS = 160;
-export const NORMAL_TRICK_PLAY_SPACING_MS = NORMAL_TRICK_SETTLE_MS + NORMAL_TRICK_INTER_PLAY_BEAT_MS;
-export const REDUCED_TRICK_SETTLE_MS = 80;
-export const REDUCED_TRICK_INTER_PLAY_BEAT_MS = 120;
-export const REDUCED_TRICK_PLAY_SPACING_MS = REDUCED_TRICK_SETTLE_MS + REDUCED_TRICK_INTER_PLAY_BEAT_MS;
-export const NORMAL_TRICK_HOLD_MS = 550;
-export const NORMAL_TRICK_STACK_MS = 250;
-export const NORMAL_TRICK_COLLECT_MS = 380;
-export const REDUCED_TRICK_HOLD_MS = 180;
-export const REDUCED_TRICK_STACK_MS = 80;
-export const REDUCED_TRICK_COLLECT_MS = 120;
-export const COLLISION_FAST_FORWARD_MS = 160;
-
+import { NORMAL_TRICK_SETTLE_MS, NORMAL_TRICK_INTER_PLAY_BEAT_MS, REDUCED_TRICK_SETTLE_MS, REDUCED_TRICK_INTER_PLAY_BEAT_MS, NORMAL_TRICK_HOLD_MS, NORMAL_TRICK_STACK_MS, NORMAL_TRICK_COLLECT_MS, REDUCED_TRICK_HOLD_MS, REDUCED_TRICK_STACK_MS, REDUCED_TRICK_COLLECT_MS } from "./presentationTiming";
+export { NORMAL_TRICK_SETTLE_MS, NORMAL_FROM_BELOW_FLIGHT_MS, NORMAL_FROM_BELOW_FLIP_MS, NORMAL_TRICK_INTER_PLAY_BEAT_MS, NORMAL_TRICK_PLAY_SPACING_MS, REDUCED_TRICK_SETTLE_MS, REDUCED_TRICK_INTER_PLAY_BEAT_MS, REDUCED_TRICK_PLAY_SPACING_MS, NORMAL_TRICK_HOLD_MS, NORMAL_TRICK_STACK_MS, NORMAL_TRICK_COLLECT_MS, REDUCED_TRICK_HOLD_MS, REDUCED_TRICK_STACK_MS, REDUCED_TRICK_COLLECT_MS, COLLISION_FAST_FORWARD_MS } from "./presentationTiming";
 export function completedTrickPresentationId(input: {
   gameId: string;
   dealNumber: number;

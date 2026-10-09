@@ -1,6 +1,8 @@
+import { useReducedMotion } from "./useReducedMotion";
 import { useLayoutEffect, useRef } from "react";
 
-export const HAND_REFLOW_MS = 250;
+import { HAND_REFLOW_MS } from "./presentationTiming";
+export { HAND_REFLOW_MS } from "./presentationTiming";
 
 function translationX(node: HTMLElement): number {
   const transform = getComputedStyle(node).transform;
@@ -17,6 +19,7 @@ function translationX(node: HTMLElement): number {
 
 /** Animate layout displacement on wrappers, independently of the card's drag transform. */
 export function useHandReflow(identity: string, enabled: boolean) {
+  const reduced = useReducedMotion();
   const root = useRef<HTMLDivElement>(null);
   const previous = useRef(new Map<string, number>());
   const previousIdentity = useRef<string | null>(null);
@@ -28,13 +31,13 @@ export function useHandReflow(identity: string, enabled: boolean) {
     const nodes = Array.from(container.querySelectorAll<HTMLElement>("[data-hand-layout-card]"));
     const ids = new Set(nodes.map((node) => node.dataset["handLayoutCard"]!));
     for (const [id, animation] of animations.current) {
-      if (!enabled || !ids.has(id)) {
+      if (reduced || !enabled || !ids.has(id)) {
         animation.cancel();
         animations.current.delete(id);
       }
     }
     const changed =
-      enabled && previousIdentity.current !== null && previousIdentity.current !== identity;
+      !reduced && enabled && previousIdentity.current !== null && previousIdentity.current !== identity;
     const next = new Map<string, number>();
     const origin = container.getBoundingClientRect().left;
     for (const node of nodes) {

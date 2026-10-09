@@ -1,3 +1,6 @@
+import { useReducedMotion } from "./useReducedMotion";
+import { REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
+import { PresentationRun } from "./presentationRun";
 import { assets } from "@/assets/registry";
 import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 import { markPresentationCompleted } from "./presentationCompletion";
@@ -22,7 +25,8 @@ import type { Point, TableGeometry, VisualSeat } from "./useTableGeometry";
 
 type DealBeat = { id: string; seat: SeatIndex; index: number; stackIndex: number };
 export type DealPresentationStage = "initial" | "remaining" | "full";
-export const NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS = 1_800;
+import { NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS } from "./presentationTiming";
+export { NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS } from "./presentationTiming";
 const FALLBACK_TARGET: Record<VisualSeat, string> = { 0: "translate(-50%, 22vh)", 1: "translate(-26vw, -50%)", 2: "translate(-50%, -22vh)", 3: "translate(26vw, -50%)" };
 const SEAT_ROTATION: Record<VisualSeat, number> = { 0: 0, 1: 90, 2: 180, 3: -90 };
 const FALLBACK_DEALER_SOURCE: Record<VisualSeat, { left: string; top: string }> = {
@@ -79,13 +83,15 @@ function DealerDeckStack({ geometry, dealerPos, settling }: { geometry: TableGeo
   </div>;
 }
 function TravelingBack({ beat, pos, geometry, dealerPos, settling, landed = false }: { beat: DealBeat; pos: VisualSeat; geometry: TableGeometry | null; dealerPos: VisualSeat; settling: boolean; landed?: boolean }) {
+  const preference = useReducedMotion();
+  const reduced = useRef(preference).current;
   const [arrived, setArrived] = useState(landed);
   useLayoutEffect(() => { if (landed) { setArrived(true); return; } setArrived(false); const frame = window.requestAnimationFrame(() => setArrived(true)); return () => window.cancelAnimationFrame(frame); }, [beat.id, landed]);
   const sourceRotation = SEAT_ROTATION[dealerPos];
   const targetRotation = SEAT_ROTATION[pos];
   if (!geometry) {
     const fallback = FALLBACK_DEALER_SOURCE[dealerPos];
-    return <div data-deal-traveling-card data-deal-visual-seat={pos} className="absolute [--card-w:var(--desktop-deal-card-w,clamp(3.4rem,8vw,5.5rem))] transition-[transform,opacity] ease-out" style={{ opacity: settling ? 0 : 1, left: fallback.left, top: fallback.top, zIndex: 30 + beat.stackIndex, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_TRAVEL_MS}ms, ${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${NORMAL_DEAL_TRAVEL_MS}ms`, transitionDelay: settling ? `0ms, ${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transform: arrived ? `${FALLBACK_TARGET[pos]} ${settling ? pileExitOffset(pos, beat.stackIndex, fallback) : ""} rotate(${targetRotation}deg)` : `translate(-50%, -50%) scale(.58) rotate(${sourceRotation}deg)` }}><PlayingCard faceDown /></div>;
+    return <div data-deal-traveling-card data-deal-visual-seat={pos} className="absolute [--card-w:var(--desktop-deal-card-w,clamp(3.4rem,8vw,5.5rem))] transition-[transform,opacity] ease-out" style={{ opacity: settling || (reduced && !arrived) ? 0 : 1, left: fallback.left, top: fallback.top, zIndex: 30 + beat.stackIndex, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_TRAVEL_MS}ms, ${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${NORMAL_DEAL_TRAVEL_MS}ms`, transitionDelay: settling ? `0ms, ${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transform: reduced ? `${FALLBACK_TARGET[pos]} translateY(${arrived ? 0 : REDUCED_MOTION_DISTANCE_PX}px) rotate(${targetRotation}deg)` : arrived ? `${FALLBACK_TARGET[pos]} ${settling && !reduced ? pileExitOffset(pos, beat.stackIndex, fallback) : ""} rotate(${targetRotation}deg)` : `translate(-50%, -50%) scale(.58) rotate(${sourceRotation}deg)` }}><PlayingCard faceDown /></div>;
   }
   const source = dealerSourcePoint(geometry, dealerPos);
   const baseTarget = viewportPoint(geometry, geometry.dealTargets[pos]);
@@ -94,9 +100,9 @@ function TravelingBack({ beat, pos, geometry, dealerPos, settling, landed = fals
     x: pos === 1 ? -geometry.feltRect.left : pos === 3 ? geometry.feltRect.left + 2 * geometry.dealCenter.x : geometry.dealTargets[pos].x,
     y: pos === 0 ? geometry.feltRect.top + 2 * geometry.dealCenter.y : pos === 2 ? -geometry.feltRect.top : geometry.dealTargets[pos].y,
   };
-  const target = stackedTarget(settling ? viewportPoint(geometry, sideTarget) : baseTarget, pos, beat.stackIndex);
+  const target = stackedTarget(settling && !reduced ? viewportPoint(geometry, sideTarget) : baseTarget, pos, beat.stackIndex);
   const easing = settling ? "linear" : "cubic-bezier(0.2, 0.75, 0.25, 1)";
-  return <div data-deal-traveling-card data-deal-visual-seat={pos} data-deal-handoff={settling && pos === 0 ? "local" : undefined} className="absolute [--card-w:var(--desktop-deal-card-w,clamp(3.4rem,8vw,5.5rem))] transition-[transform,opacity]" style={{ opacity: settling ? 0 : 1, left: source.x, top: source.y, zIndex: 30 + beat.stackIndex, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_TRAVEL_MS}ms, ${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${NORMAL_DEAL_TRAVEL_MS}ms`, transitionDelay: settling ? `0ms, ${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transitionTimingFunction: easing, transform: `translate(calc(-50% + ${arrived ? target.x - source.x : 0}px), calc(-50% + ${arrived ? target.y - source.y : 0}px)) ${settling ? pileExitOffset(pos, beat.stackIndex) : ""} scale(${arrived ? 1 : 0.58}) rotate(${arrived ? targetRotation : sourceRotation}deg)` }}><PlayingCard faceDown /></div>;
+  return <div data-deal-traveling-card data-deal-visual-seat={pos} data-deal-handoff={settling && pos === 0 ? "local" : undefined} className="absolute [--card-w:var(--desktop-deal-card-w,clamp(3.4rem,8vw,5.5rem))] transition-[transform,opacity]" style={{ opacity: settling || (reduced && !arrived) ? 0 : 1, left: source.x, top: source.y, zIndex: 30 + beat.stackIndex, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_TRAVEL_MS}ms, ${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${NORMAL_DEAL_TRAVEL_MS}ms`, transitionDelay: settling ? `0ms, ${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transitionTimingFunction: easing, transform: `translate(calc(-50% + ${arrived || reduced ? target.x - source.x : 0}px), calc(-50% + ${reduced ? target.y - source.y + (arrived ? 0 : REDUCED_MOTION_DISTANCE_PX) : arrived ? target.y - source.y : 0}px)) ${settling && !reduced ? pileExitOffset(pos, beat.stackIndex) : ""} scale(${reduced || arrived ? 1 : 0.58}) rotate(${reduced || arrived ? targetRotation : sourceRotation}deg)` }}><PlayingCard faceDown /></div>;
 }
 export function DealPresentation({ projection, geometry = null, paused = false, onActiveChange, onSettlingChange, onSequenceComplete, onPresentationComplete, trumpTargetRef, onTrumpPlaced }: { projection: PlayerGameProjection; geometry?: TableGeometry | null; paused?: boolean; onActiveChange?: (active: boolean) => void; onSettlingChange?: (settling: boolean) => void; onSequenceComplete?: () => void; onPresentationComplete?: (stage: DealPresentationStage) => void; trumpTargetRef?: RefObject<HTMLDivElement | null>; onTrumpPlaced?: (key: string | null) => void }) {
   const exposedCard = projection.cards.exposedTrumpCard;
@@ -117,6 +123,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   const [resumeGeneration, resume] = useState(0);
   const previousGameId = useRef(projection.gameId); const previousStageKey = useRef<string | null>(null); const acknowledgedStageKey = useRef<string | null>(null);
   const [beats, setBeats] = useState<DealBeat[]>([]); const [visibleIndex, setVisibleIndex] = useState(-1); const [runGeometry, setRunGeometry] = useState<TableGeometry | null>(null); const [runViewerSeat, setRunViewerSeat] = useState<SeatIndex>(projection.viewerSeat); const [runDealerPos, setRunDealerPos] = useState<VisualSeat>(0);
+  const runs = useRef(new PresentationRun());
   const timers = useRef<number[]>([]); const onActiveChangeRef = useRef(onActiveChange); const onSequenceCompleteRef = useRef(onSequenceComplete); const onPresentationCompleteRef = useRef(onPresentationComplete);
   onActiveChangeRef.current = onActiveChange; onSequenceCompleteRef.current = onSequenceComplete; onPresentationCompleteRef.current = onPresentationComplete;
   const stage = stageFor(projection);
@@ -126,7 +133,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     const count = stage === "initial" ? 12 : stage === "remaining" ? 24 : projection.progression.cardsPerPlayer * 4; const dealer = projection.progression.dealerSeat as SeatIndex;
     return Array.from({ length: count }, (_, index) => ({ id: `${stageKey}:${index}`, seat: recipientFor(dealer, index), index, stackIndex: Math.floor(index / 4) + (stage === "remaining" ? 3 : 0) }));
   }, [projection.progression.cardsPerPlayer, projection.progression.dealerSeat, stage, stageKey]);
-  const clearTimers = useCallback(() => { for (const timer of timers.current) window.clearTimeout(timer); timers.current = []; }, []);
+  const clearTimers = useCallback(() => { runs.current.invalidate(); for (const timer of timers.current) window.clearTimeout(timer); timers.current = []; }, []);
   const clearPresentation = useCallback(() => { clearTimers(); running.current = false; waitingForFirstHand.current = null; afterTrump.current = null; setTrumpMotionActive(false); setTrumpPlaced(false); setSettling(false); onSettlingChangeRef.current?.(false); setBeats([]); setVisibleIndex(-1); setRunGeometry(null); onActiveChangeRef.current?.(false); }, [clearTimers]);
   const notifyCompletion = useCallback((key: string, presentationStage: DealPresentationStage, startup: boolean) => {
     const completionScope = `${key}:${startup ? "startup" : "gameplay"}`;
@@ -146,12 +153,12 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     }
     const { settleMs, tailMs } = dealPresentationTiming(false);
     setSettling(true);
-    timers.current.push(window.setTimeout(() => onSettlingChangeRef.current?.(true), NORMAL_DEAL_HANDOFF_FADE_DELAY_MS));
+    timers.current.push(window.setTimeout(runs.current.guard(() => onSettlingChangeRef.current?.(true)), NORMAL_DEAL_HANDOFF_FADE_DELAY_MS));
     recordTimingDiagnostic("deal_sequence_settling", { stage: presentationStage, settleMs });
-    timers.current.push(window.setTimeout(() => {
+    timers.current.push(window.setTimeout(runs.current.guard(() => {
       recordTimingDiagnostic("deal_sequence_complete", { stage: presentationStage });
       markPresented(key); notifyCompletion(key, presentationStage, startup); clearPresentation();
-    }, settleMs + tailMs));
+    }), settleMs + tailMs));
   }, [clearPresentation, notifyCompletion]);
   const completeTrumpMotion = useCallback(() => {
     setTrumpMotionActive(false); setTrumpPlaced(true);
@@ -182,7 +189,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     if (!artworkSettled) { onActiveChangeRef.current?.(true); return; }
     // A cancelled handoff can replay this run; hide its old placed deck first.
     if (presentedTrumpKey.current != null) { presentedTrumpKey.current = null; onTrumpPlacedRef.current?.(null); }
-    startTimingDiagnosticSession(projection.gameId); running.current = true; previousStageKey.current = stageKey; onActiveChangeRef.current?.(true);
+    clearTimers(); startTimingDiagnosticSession(projection.gameId); running.current = true; previousStageKey.current = stageKey; onActiveChangeRef.current?.(true);
     const frozenSequence = sequence.map((beat) => ({ ...beat })); const frozenGeometry = geometry; const frozenViewerSeat = projection.viewerSeat; const frozenDealerPos = visualPosition(frozenViewerSeat, projection.progression.dealerSeat as SeatIndex);
     setRunGeometry(frozenGeometry); setRunViewerSeat(frozenViewerSeat); setRunDealerPos(frozenDealerPos); setBeats(frozenSequence); setVisibleIndex(-1);
     if (presentationStage !== "remaining") playGameSound("shuffle", `${projection.gameId}:${projection.progression.dealNumber}`);
@@ -191,23 +198,27 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     recordTimingDiagnostic("deal_sequence_start", { browserReducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false, gameplayReducedMotionOverride: false, stage: presentationStage, dealNumber: projection.progression.dealNumber, dealerSeat: projection.progression.dealerSeat ?? -1, cardCount: frozenSequence.length, staggerMs, travelMs: NORMAL_DEAL_TRAVEL_MS, settleMs, tailMs, leadInMs, frozenGeometryEpoch: frozenGeometry?.epoch ?? 0, dealCenterX: frozenGeometry?.dealCenter.x ?? null, dealCenterY: frozenGeometry?.dealCenter.y ?? null });
     frozenSequence.forEach((beat, index) => {
       const scheduledOffsetMs = leadInMs + index * staggerMs;
-      timers.current.push(window.setTimeout(() => { setVisibleIndex(index); recordTimingDiagnostic("deal_card_visible", { index, seat: beat.seat, stage: presentationStage, scheduledOffsetMs }); playGameSound("deal", beat.id); }, scheduledOffsetMs));
+      timers.current.push(window.setTimeout(runs.current.guard(() => { setVisibleIndex(index); recordTimingDiagnostic("deal_card_visible", { index, seat: beat.seat, stage: presentationStage, scheduledOffsetMs }); playGameSound("deal", beat.id); }), scheduledOffsetMs));
     });
     const settleAt = leadInMs + (frozenSequence.length - 1) * staggerMs + NORMAL_DEAL_TRAVEL_MS;
-    timers.current.push(window.setTimeout(() => {
+    timers.current.push(window.setTimeout(runs.current.guard(() => {
       if (presentationStage === "full" && exposedCard) {
-        afterTrump.current = () => beginHandoff(stageKey, presentationStage, startup);
+        afterTrump.current = runs.current.guard(() => beginHandoff(stageKey, presentationStage, startup));
         setTrumpMotionActive(true);
       } else beginHandoff(stageKey, presentationStage, startup);
-    }, settleAt));
-  }, [clearPresentation, geometry, notifyCompletion, paused, projection.gameId, projection.progression.dealNumber, projection.progression.dealerSeat, projection.progression.phase, projection.viewerSeat, sequence, stage, stageKey, interrupted, resumeGeneration, artworkSettled, handArtworkSettled, projection.cards.ownHandVisible, projection.lifecycle, exposedCard, beginHandoff]);
+    }), settleAt));
+  }, [clearTimers, clearPresentation, geometry, notifyCompletion, paused, projection.gameId, projection.progression.dealNumber, projection.progression.dealerSeat, projection.progression.phase, projection.viewerSeat, sequence, stage, stageKey, interrupted, resumeGeneration, artworkSettled, handArtworkSettled, projection.cards.ownHandVisible, projection.lifecycle, exposedCard, beginHandoff]);
   useLayoutEffect(() => {
     const interrupt = () => { setInterrupted(true); clearPresentation(); if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null; };
     const restore = () => { if (document.visibilityState !== "hidden") { setInterrupted(false); resume(n => n + 1); } };
     const orientation = () => { interrupt(); restore(); };
     const visibility = () => document.visibilityState === "hidden" ? interrupt() : restore();
     window.addEventListener("orientationchange", orientation); window.addEventListener("focus", restore); window.addEventListener("blur", interrupt); document.addEventListener("visibilitychange", visibility);
-    return () => { window.removeEventListener("orientationchange", orientation); window.removeEventListener("focus", restore); window.removeEventListener("blur", interrupt); document.removeEventListener("visibilitychange", visibility); clearTimers(); };
+    return () => {
+      window.removeEventListener("orientationchange", orientation); window.removeEventListener("focus", restore); window.removeEventListener("blur", interrupt); document.removeEventListener("visibilitychange", visibility);
+      clearTimers(); running.current = false; waitingForFirstHand.current = null; afterTrump.current = null;
+      if (stageKey && !dealPresentationWasCompleted(stageKey)) previousStageKey.current = null;
+    };
   }, [clearPresentation, clearTimers, stageKey]);
   // Public face-down counts survive the choice boundary and reconnect; no
   // hidden hand is needed. Resolved trump no longer contains chooserSeat.
@@ -231,9 +242,9 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   const displayDealerPos = beats.length ? runDealerPos : visualPosition(projection.viewerSeat, projection.progression.dealerSeat as SeatIndex);
   return <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true" data-deal-settling={settling} data-deal-geometry-epoch={runGeometry?.epoch ?? 0} data-dealer-visual-pos={runDealerPos}>
     {beats.length > 0 && !trumpMotionActive && !trumpPlaced && <DealerDeckStack geometry={displayGeometry} dealerPos={displayDealerPos} settling={settling} />}
-    {trumpMotionActive && exposedCard && <TrumpDeckMotion card={exposedCard}
+    {trumpMotionActive && exposedCard && <TrumpDeckMotion key={stageKey ?? "trump"} card={exposedCard}
       source={displayGeometry ? dealerSourcePoint(displayGeometry, displayDealerPos) : { x: window.innerWidth * Number.parseFloat(FALLBACK_DEALER_SOURCE[displayDealerPos].left) / 100, y: window.innerHeight * Number.parseFloat(FALLBACK_DEALER_SOURCE[displayDealerPos].top) / 100 }}
-      rotation={SEAT_ROTATION[displayDealerPos]} targetRef={trumpTargetRef} onPlaced={completeTrumpMotion} />}
+      rotation={SEAT_ROTATION[displayDealerPos]} targetRef={trumpTargetRef} onPlaced={runs.current.guard(completeTrumpMotion)} />}
     {cards.map((beat) => { const pos = visualPosition(displayViewerSeat, beat.seat); const retained = !visibleIds.has(beat.id); const exits = settling && (stage !== "initial" || beat.seat === chooserSeat); return <TravelingBack key={beat.id} settling={exits} landed={retained} beat={beat} pos={pos} geometry={displayGeometry} dealerPos={displayDealerPos} />; })}
   </div>;
 }

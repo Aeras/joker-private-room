@@ -1,3 +1,5 @@
+import { PresentationRun, presentationTimeout } from "./presentationRun";
+import { REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
 import { NORMAL_FROM_BELOW_FLIP_MS, NORMAL_FROM_BELOW_FLIGHT_MS, TRICK_CARD_ROTATION } from "./trickPresentationModel";
 import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -7,15 +9,14 @@ import { playGameSound } from "@/lib/gameAudio";
 import type { LocalPlayPresentation } from "./localPlayPresentation";
 import type { TableGeometry } from "./useTableGeometry";
 
-export const LOCAL_FLIGHT_MS = 300;
-export const REDUCED_LOCAL_FLIGHT_MS = 75;
-export const MOTION_FALLBACK_SLACK_MS = 120;
-
+import { LOCAL_FLIGHT_MS, REDUCED_LOCAL_FLIGHT_MS, MOTION_FALLBACK_SLACK_MS } from "./presentationTiming";
+export { LOCAL_FLIGHT_MS, REDUCED_LOCAL_FLIGHT_MS, MOTION_FALLBACK_SLACK_MS } from "./presentationTiming";
 /** Authority confirmation never restarts this mounted flight. */
 export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMotion, onSettled, onLanded }: {
   presentation: LocalPlayPresentation; geometry: TableGeometry; viewerSeat: number;
   reducedMotion: boolean; onSettled: () => void; onLanded?: () => void;
 }) {
+  const motionReduced = useRef(reducedMotion).current;
   const frozen = useRef({ geometry, release: presentation.releaseRect, viewerSeat }).current;
   const [launched, setLaunched] = useState(false);
   const [landed, setLanded] = useState(false);
@@ -24,20 +25,20 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const callback = useRef(onSettled); callback.current = onSettled;
   const landingCallback = useRef(onLanded); landingCallback.current = onLanded;
   const fromBelow = presentation.jokerSemantic?.context === "OPEN_TRICK" && presentation.jokerSemantic.mode === "FROM_BELOW";
-  const duration = reducedMotion ? REDUCED_LOCAL_FLIGHT_MS : fromBelow ? NORMAL_FROM_BELOW_FLIGHT_MS : LOCAL_FLIGHT_MS;
-  const flipDuration = reducedMotion ? REDUCED_LOCAL_FLIGHT_MS : NORMAL_FROM_BELOW_FLIP_MS;
+  const duration = motionReduced ? REDUCED_LOCAL_FLIGHT_MS : fromBelow ? NORMAL_FROM_BELOW_FLIGHT_MS : LOCAL_FLIGHT_MS;
+  const flipDuration = motionReduced ? REDUCED_LOCAL_FLIGHT_MS : NORMAL_FROM_BELOW_FLIP_MS;
   const rejected = presentation.status === "rejected";
   const motionCompleted = useRef(new Set<string>());
-  const completeMotion = useCallback(() => { const stage = rejected ? "returned" : "landed"; if (motionCompleted.current.has(stage)) return; motionCompleted.current.add(stage); recordTimingDiagnostic("local_flight_" + stage, { cardId: presentation.cardId, durationMs: duration }); if (rejected) setReturned(true); else { landingCallback.current?.(); playGameSound("play", `${presentation.gameId}:${presentation.dealNumber}:local-flight:${presentation.cardId}:${presentation.sourceStateVersion}`); setLanded(true); } }, [rejected, duration, presentation.cardId]);
+  const completeMotion = useCallback(() => { const stage = rejected ? "returned" : "landed"; if (motionCompleted.current.has(stage)) return; motionCompleted.current.add(stage); recordTimingDiagnostic("local_flight_" + stage, { cardId: presentation.cardId, durationMs: duration }); if (rejected) setReturned(true); else { landingCallback.current?.(); playGameSound("play", `${presentation.gameId}:${presentation.dealNumber}:local-flight:${presentation.cardId}:${presentation.sourceStateVersion}`); setLanded(true); } }, [rejected, duration, presentation.cardId, presentation.gameId, presentation.dealNumber, presentation.sourceStateVersion]);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => { recordTimingDiagnostic("local_flight_launch", { cardId: presentation.cardId, durationMs: duration }); setLaunched(true); });
-    return () => cancelAnimationFrame(frame);
+    const run = new PresentationRun();
+    const frame = requestAnimationFrame(run.guard(() => { recordTimingDiagnostic("local_flight_launch", { cardId: presentation.cardId, durationMs: duration }); setLaunched(true); }));
+    return () => { run.invalidate(); cancelAnimationFrame(frame); };
   }, [duration, presentation.cardId]);
   useEffect(() => {
     if (!launched && !rejected) return;
-    const timer = window.setTimeout(completeMotion, duration + MOTION_FALLBACK_SLACK_MS);
-    return () => window.clearTimeout(timer);
+    return presentationTimeout(completeMotion, duration + MOTION_FALLBACK_SLACK_MS);
   }, [completeMotion, duration, launched, rejected]);
   useEffect(() => {
     if (finished.current || !(rejected ? returned : landed && presentation.status === "accepted")) return;
@@ -55,13 +56,17 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const targetWidth = frozen.geometry.trickCardSize.width;
   const x = atTarget ? frozen.geometry.feltRect.left + target.x : frozen.release.left + frozen.release.width / 2;
   const y = atTarget ? frozen.geometry.feltRect.top + target.y : frozen.release.top + frozen.release.height / 2;
-  return <div className="fixed left-0 top-0 z-40 transition-transform ease-out" style={{
-    "--card-w": `${width}px`, transitionDuration: `${duration}ms`,
+  const destinationX = frozen.geometry.feltRect.left + target.x;
+  const destinationY = frozen.geometry.feltRect.top + target.y;
+  const visualX = motionReduced ? destinationX : x;
+  const visualY = motionReduced ? destinationY + (atTarget ? 0 : REDUCED_MOTION_DISTANCE_PX) : y;
+  return <div className="fixed left-0 top-0 z-40 transition-[transform,opacity] ease-out" style={{
+    "--card-w": `${width}px`, opacity: motionReduced && !atTarget ? 0 : 1, transitionDuration: `${duration}ms`,
     ...(fromBelow ? { transitionTimingFunction: "ease-in-out" } : {}),
     ...(fromBelow && atTarget ? { zIndex: 0, animation: `joker-under-layer ${flipDuration}ms linear both` } : {}),
-    transform: `translate(${x - width / 2}px, ${y - height / 2}px) rotate(${atTarget ? rotation : frozen.release.rotation ?? 0}deg) scale(${atTarget ? targetWidth / width : 1})`,
+    transform: `translate(${visualX - width / 2}px, ${visualY - height / 2}px) rotate(${motionReduced || atTarget ? rotation : frozen.release.rotation ?? 0}deg) scale(${motionReduced || atTarget ? targetWidth / width : 1})`,
   } as React.CSSProperties} data-local-flight-card={presentation.cardId} data-local-flight-status={presentation.status}
     onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform") completeMotion(); }}>
-    {fromBelow ? <UnderJokerFace card={presentation.card} flipped={atTarget} duration={flipDuration} /> : <PlayingCard card={presentation.card} />}
+    {fromBelow ? <UnderJokerFace card={presentation.card} flipped={atTarget} duration={flipDuration} reducedMotion={motionReduced} /> : <PlayingCard card={presentation.card} />}
   </div>;
 }

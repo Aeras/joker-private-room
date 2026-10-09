@@ -1,3 +1,4 @@
+import { JOKER_ANNOUNCEMENT_MS } from "@/components/table/presentationTiming";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -25,7 +26,7 @@ describe("JK-006 presentation barriers", () => {
   it("retains Joker semantics as a three-second center presentation event", () => {
     const trick = read("src/components/table/TrickPresentation.tsx");
     const picker = read("src/components/table/JokerChoicePicker.tsx");
-    expect(trick).toContain("JOKER_ANNOUNCEMENT_MS = 3_000");
+    expect(JOKER_ANNOUNCEMENT_MS).toBe(3_000);
     expect(picker).toContain("Τζόκερ από πάνω");
     expect(picker).toContain("Τζόκερ από κάτω");
     expect(trick).toContain("Θέλω μεγαλύτερο Μπαστούνι");
