@@ -192,6 +192,28 @@ describe("AI banter provider boundary", () => {
     expect(clean.every((line) => !line || !/γαμ|πουτ|μαλάκ|γιόμπιδ/.test(line))).toBe(true);
   });
 
+  it("uses the two approved lines for an idle human without calling AI", async () => {
+    const event = { ...context.event, type: "HUMAN_TURN_IDLE" as const,
+      id: "state-42:HUMAN_TURN_IDLE:0:60", targetSeat: 0, targetName: "Ζωάλο Πούτς" };
+    const clean = await generateDialogueLine({
+      context: { ...context, event, recentBanter: [], profanityEnabled: false },
+      aiEnabled: true, apiKey: "unused", fetchImpl: vi.fn<typeof fetch>(),
+    });
+    expect(clean.text).toBe("Άντε παίξε, κοιμισμένε!");
+    expect(clean.providerAttempted).toBe(false);
+    const spicy = await generateDialogueLine({
+      context: { ...context, event, recentBanter: [], profanityEnabled: true },
+      aiEnabled: true, apiKey: "unused", fetchImpl: vi.fn<typeof fetch>(),
+    });
+    expect(spicy.text).toBe("Ελάτε να τον γαμήσουμε τον καθυστερημένο!");
+    expect(spicy.providerAttempted).toBe(false);
+    const repeated = await generateDialogueLine({
+      context: { ...context, event, recentBanter: ["thomoulis: Άντε παίξε, κοιμισμένε!"] },
+      aiEnabled: false,
+    });
+    expect(repeated.text).toBeNull();
+  });
+
   it("rejects unusable provider output", () => {
     expect(validateDialogueOutput("https://example.com", false).ok).toBe(false);
     expect(validateDialogueOutput("**ωραία μπάζα**", false).ok).toBe(false);
