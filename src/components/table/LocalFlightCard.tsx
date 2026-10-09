@@ -1,4 +1,4 @@
-import { NORMAL_FROM_BELOW_FLIGHT_MS, TRICK_CARD_ROTATION } from "./trickPresentationModel";
+import { NORMAL_FROM_BELOW_FLIP_MS, NORMAL_FROM_BELOW_FLIGHT_MS, TRICK_CARD_ROTATION } from "./trickPresentationModel";
 import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlayingCard } from "../joker/PlayingCard";
@@ -25,6 +25,7 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const landingCallback = useRef(onLanded); landingCallback.current = onLanded;
   const fromBelow = presentation.jokerSemantic?.context === "OPEN_TRICK" && presentation.jokerSemantic.mode === "FROM_BELOW";
   const duration = reducedMotion ? REDUCED_LOCAL_FLIGHT_MS : fromBelow ? NORMAL_FROM_BELOW_FLIGHT_MS : LOCAL_FLIGHT_MS;
+  const flipDuration = reducedMotion ? REDUCED_LOCAL_FLIGHT_MS : NORMAL_FROM_BELOW_FLIP_MS;
   const rejected = presentation.status === "rejected";
   const motionCompleted = useRef(new Set<string>());
   const completeMotion = useCallback(() => { const stage = rejected ? "returned" : "landed"; if (motionCompleted.current.has(stage)) return; motionCompleted.current.add(stage); recordTimingDiagnostic("local_flight_" + stage, { cardId: presentation.cardId, durationMs: duration }); if (rejected) setReturned(true); else { landingCallback.current?.(); setLanded(true); } }, [rejected, duration, presentation.cardId]);
@@ -58,10 +59,10 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   return <div className="fixed left-0 top-0 z-40 transition-transform ease-out" style={{
     "--card-w": `${width}px`, transitionDuration: `${duration}ms`,
     ...(fromBelow ? { transitionTimingFunction: "ease-in-out" } : {}),
-    ...(fromBelow && atTarget ? { zIndex: 0, animation: `joker-under-layer ${duration}ms linear both` } : {}),
+    ...(fromBelow && atTarget ? { zIndex: 0, animation: `joker-under-layer ${flipDuration}ms linear both` } : {}),
     transform: `translate(${x - width / 2}px, ${y - height / 2}px) rotate(${atTarget ? rotation : frozen.release.rotation ?? 0}deg) scale(${atTarget ? targetWidth / width : 1})`,
   } as React.CSSProperties} data-local-flight-card={presentation.cardId} data-local-flight-status={presentation.status}
     onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform") completeMotion(); }}>
-    {fromBelow ? <UnderJokerFace card={presentation.card} flipped={atTarget} duration={duration} /> : <PlayingCard card={presentation.card} />}
+    {fromBelow ? <UnderJokerFace card={presentation.card} flipped={atTarget} duration={flipDuration} /> : <PlayingCard card={presentation.card} />}
   </div>;
 }

@@ -141,9 +141,9 @@ it.each([0, 1, 2, 3] as const)("FROM_BELOW seat %i keeps the normal slot, smooth
   expect(surface.style.transform).toContain(`${slot.x - g.usableCenter.x}px`);
   expect(surface.style.transform).toContain(`${slot.y - g.usableCenter.y}px`);
   expect(surface.className).toContain("z-0");
-  expect(surface.style.transitionDuration).toBe("550ms");
+  expect(surface.style.transitionDuration).toBe("450ms");
   expect(surface.style.transitionTimingFunction).toBe("ease-in-out");
-  expect(view.container.querySelector<HTMLElement>("[data-joker-under-flip]")!.style.transition).toBe("transform 550ms ease-in-out");
+  expect(view.container.querySelector<HTMLElement>("[data-joker-under-flip]")!.style.transition).toBe("transform 300ms ease-in-out");
   view.rerender(<TrickPresentation {...props} geometry={geom(1100, 560)} projection={{ ...projection }} />);
   expect(view.container.querySelector("[data-trick-seat]")).toBe(surface);
   expect(surface.style.transform).toContain(`${slot.x - g.usableCenter.x}px`);
@@ -188,11 +188,13 @@ it.each(["FROM_BELOW", "COMPETE"] as const)("local %s owns its full travel and f
   const view = render(<LocalFlightCard presentation={presentation} geometry={geom()} viewerSeat={0} reducedMotion={false} onSettled={settled} />);
   tick(16);
   const surface = view.container.querySelector<HTMLElement>("[data-local-flight-card]")!;
-  expect(surface.style.transitionDuration).toBe(mode === "FROM_BELOW" ? "550ms" : "300ms");
+  expect(surface.style.transitionDuration).toBe(mode === "FROM_BELOW" ? "450ms" : "300ms");
   if (mode === "FROM_BELOW") {
-    expect(view.container.querySelector<HTMLElement>("[data-joker-under-flip]")!.style.transition).toBe("transform 550ms ease-in-out");
-    tick(420); expect(settled).not.toHaveBeenCalled();
-    tick(249); expect(settled).not.toHaveBeenCalled();
+    expect(view.container.querySelector<HTMLElement>("[data-joker-under-flip]")!.style.transition).toBe("transform 300ms ease-in-out");
+    expect(surface.style.animation).toBe("joker-under-layer 300ms linear both");
+    tick(300); expect(settled).not.toHaveBeenCalled();
+    tick(120); expect(settled).not.toHaveBeenCalled();
+    tick(149); expect(settled).not.toHaveBeenCalled();
     tick(1); expect(settled).toHaveBeenCalledTimes(1);
   } else {
     tick(420); expect(settled).toHaveBeenCalledTimes(1);
