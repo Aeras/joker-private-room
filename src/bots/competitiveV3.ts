@@ -3,8 +3,8 @@ import { requestedSuitForTrick, resolveTrick, type PlayedCard } from "@/domain/e
 import { completeActions } from "./competitive";
 
 /**
- * Experimental v3 late-trick policy. Purely local and public information.
- * Deliberately NOT wired into production automatic bot selection until verified.
+ * Competitive v3 late-trick policy. Purely local and public information.
+ * Enabled only for fully observable final-seat trick decisions.
  */
 export function chooseExactProtectionPlay(args: {
   hand: readonly Card[];
@@ -45,7 +45,7 @@ export function chooseExactProtectionPlay(args: {
     // plausible current win; later actors may still overtake.
     if (trick.length) {
       const rival = trick.filter(p => p.card.kind === "standard");
-      if (action.card.kind === "joker") return action.joker?.mode !== "FROM_BELOW";
+      if (action.card.kind === "joker") return true;
       const ownTrump = trump != null && action.card.suit === trump;
       const theirTrump = rival.filter(p => p.card.kind === "standard" && p.card.suit === trump);
       if (theirTrump.length) return ownTrump && cardPower(action.card) > Math.max(...theirTrump.map(p => cardPower(p.card)));
