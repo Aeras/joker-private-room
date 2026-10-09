@@ -145,6 +145,30 @@ describe("AI banter provider boundary", () => {
     }
   });
 
+  it("delivers curated lines on eligible live events even when the AI provider is on", async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const result = await generateDialogueLine({
+      context: {
+        ...context,
+        recentBanter: [],
+        event: {
+          ...context.event,
+          id: "state-3:TRICK_WON:0",
+          type: "TRICK_WON",
+          targetSeat: 0,
+          targetName: "Ζωάλο Πουτς",
+        },
+      },
+      aiEnabled: true,
+      apiKey: "test-key",
+      fetchImpl,
+    });
+    expect(result.source).toBe("preset");
+    expect(result.text).toBeTruthy();
+    expect(result.providerAttempted).toBe(false);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("rejects unusable provider output", () => {
     expect(validateDialogueOutput("https://example.com", false).ok).toBe(false);
     expect(validateDialogueOutput("**ωραία μπάζα**", false).ok).toBe(false);
