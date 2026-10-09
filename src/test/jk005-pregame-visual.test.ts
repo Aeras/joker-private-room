@@ -39,9 +39,9 @@ describe("landscape pregame application shell", () => {
     const create = read("src/routes/create.tsx");
     const css = read("src/pregame.css");
 
-    expect(create).toContain("PlayerSessionGate");
+    expect(create).toContain("getCurrentPlayer()");
     expect(create).toContain("pregame-create-grid");
-    expect(create).not.toContain("pregame-pin-input");
+    expect(create).toContain("pregame-pin-input");
     expect(create).toContain("pregame-rule-card");
     expect(create).toContain("pregame-bot-panel");
     expect(create).toContain("pregame-create-cta");
