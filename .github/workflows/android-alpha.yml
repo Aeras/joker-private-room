@@ -25,8 +25,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # GitHub ubuntu-latest runners include Android command-line tools.
-      - name: Install Android SDK platform
+      - name: Set up Android SDK\n        uses: android-actions/setup-android@v4\n\n      - name: Install Android SDK platform
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
