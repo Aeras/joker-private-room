@@ -1,0 +1,34 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'app.joker.alpha'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'app.joker.alpha'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.0-alpha'
+    }
+    buildFeatures { buildConfig true }
+    flavorDimensions 'content'
+    productFlavors {
+        web {
+            dimension 'content'
+            applicationIdSuffix '.web'
+            resValue 'string', 'app_name', 'Joker Web Alpha'
+            buildConfigField 'boolean', 'USE_LOCAL_ASSETS', 'false'
+        }
+        local {
+            dimension 'content'
+            applicationIdSuffix '.local'
+            resValue 'string', 'app_name', 'Joker Local Alpha'
+            buildConfigField 'boolean', 'USE_LOCAL_ASSETS', 'true'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
