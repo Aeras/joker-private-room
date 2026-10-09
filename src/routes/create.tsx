@@ -200,7 +200,7 @@ function CreateGame() {
           </div>
           <div className="pregame-auth-block">
             <SectionLabel>{t.pin}</SectionLabel>
-            <input value={pin} onChange={(e) => setPin(e.target.value.replace(/D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className="pregame-auth-control pregame-pin-input w-full border border-input bg-secondary text-center text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className="pregame-auth-control pregame-pin-input w-full border border-input bg-secondary text-center text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
           </div>
           <div className="pregame-auth-action">
             <JButton size="lg" className="pregame-primary-button pregame-auth-control w-full" onClick={unlock} disabled={!host || pin.length !== 4 || authBusy}>Συνέχεια</JButton>
