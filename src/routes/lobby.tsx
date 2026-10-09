@@ -1,10 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Bot, Share2, X } from "lucide-react";
+import { Bot, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CopyButton, copyText } from "@/components/joker/CopyButton";
 import { JButton, jButton } from "@/components/joker/JButton";
 import { LobbySeat } from "@/components/joker/LobbySeat";
-import { RoomCodeCard } from "@/components/joker/RoomCodeCard";
 import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
 import type { PublicBotDefinition, PublicPlayer, Room } from "@/domain/players";
 import { publicRulesetName } from "@/domain/rulesetPresentation";
@@ -20,7 +18,6 @@ import {
   startProductionRoom,
   leaveWaitingRoom,
 } from "@/services/roomFunctions";
-import { roomInviteUrl } from "@/services/rooms";
 
 export const Route = createFileRoute("/lobby")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -190,18 +187,6 @@ function Lobby() {
     void navigate({ to: "/join", search: { code: undefined } });
   };
 
-  const invite = async () => {
-    const url = roomInviteUrl(room.code);
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "JOKER", text: `${t.roomCode}: ${room.code}`, url });
-        return;
-      } catch {
-        // Fall through to copy.
-      }
-    }
-    await copyText(url);
-  };
 
   return (
     <ScreenShell
@@ -213,11 +198,6 @@ function Lobby() {
           {error && <p className="text-sm text-negative">{error}</p>}
           <div className="flex items-center gap-2">
             {room.status === "lobby" && <JButton variant="outlineGold" onClick={() => void leave()}>Έξοδος</JButton>}
-            <JButton variant="outlineGold" className="pregame-secondary-button" onClick={invite}>
-              <Share2 className="h-4 w-4" />
-              {t.inviteFriends}
-            </JButton>
-            <CopyButton text={roomInviteUrl(room.code)} label={t.copyLink} kind="link" />
             {room.status === "lobby" ? (
               <JButton size="lg" className="pregame-primary-button min-w-64 text-lg" disabled={!isHost || starting || botBusy} onClick={start}>
                 {t.startGame}
@@ -235,7 +215,7 @@ function Lobby() {
     >
       <div className="pregame-lobby-grid">
         <section className="pregame-room-summary panel">
-          <RoomCodeCard code={room.code} />
+          <p className="text-center font-semibold">Δωμάτιο αναμονής</p>
           <p className="mt-2 text-center text-sm text-muted-foreground">{room.rulesetName ?? publicRulesetName(room.rulesetId)}</p>
           <p className="mt-4 text-center text-xs text-muted-foreground">
             {isHost ? "Πάτησε μια κενή θέση για να επιλέξεις bot." : "Περιμένουμε τον host να ξεκινήσει."}
