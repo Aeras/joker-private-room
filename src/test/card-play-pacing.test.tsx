@@ -85,7 +85,7 @@ describe("card play readability deadlines", () => {
     fireEvent(first, landed);
     tick(100);
     v.rerender(<TrickPresentation {...props} projection={structuredClone(snapshot(2))} />);
-    tick(199);
+    tick(59);
     expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(1);
     tick(1);
     expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(2);
