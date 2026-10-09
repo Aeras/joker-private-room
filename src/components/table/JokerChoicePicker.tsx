@@ -82,19 +82,19 @@ export function JokerChoicePicker({
           <div className="flex items-center justify-center gap-2.5">
             <button
               type="button"
-              disabled={busy || !compete}
-              onClick={() => compete && onSelect(compete)}
-              className="h-11 min-w-[9rem] rounded-xl border border-red-300/60 bg-red-600 px-4 text-sm font-bold text-white shadow-[0_8px_22px_rgba(185,28,28,.28)] transition-transform enabled:hover:-translate-y-0.5 enabled:hover:bg-red-500 enabled:active:translate-y-0 disabled:opacity-40"
-            >
-              Τζόκερ από πάνω
-            </button>
-            <button
-              type="button"
               disabled={busy || !fromBelow}
               onClick={() => fromBelow && onSelect(fromBelow)}
               className="h-11 min-w-[9rem] rounded-xl border border-[#b99a5d] bg-white px-4 text-sm font-bold text-black shadow-[0_8px_22px_rgba(0,0,0,.24)] transition-transform enabled:hover:-translate-y-0.5 enabled:bg-white enabled:active:translate-y-0 disabled:opacity-40"
             >
               Τζόκερ από κάτω
+            </button>
+            <button
+              type="button"
+              disabled={busy || !compete}
+              onClick={() => compete && onSelect(compete)}
+              className="h-11 min-w-[9rem] rounded-xl border border-red-300/60 bg-red-600 px-4 text-sm font-bold text-white shadow-[0_8px_22px_rgba(185,28,28,.28)] transition-transform enabled:hover:-translate-y-0.5 enabled:hover:bg-red-500 enabled:active:translate-y-0 disabled:opacity-40"
+            >
+              Τζόκερ από πάνω
             </button>
           </div>
         </div>

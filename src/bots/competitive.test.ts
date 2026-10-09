@@ -235,33 +235,19 @@ describe("competitive observation-safe search", () => {
     expect(after).toEqual(before);
     expect(selectCompetitiveCommand(after)).toEqual(selectCompetitiveCommand(before));
   });
-  it("keeps the chosen Joker meaning through the separate canonical semantic command", () => {
-    let expected: string | null = null,
-      checked = 0;
-    simulateFullGame(
-      { ...config, seed: 12 },
-      {
-        select: (p) => {
-          const old = selectBaselineGameplayCommand(p)!;
-          const report = analyzeCompetitive(p, 1, old.command, { now: () => 0 });
-          if (p.progression.phase === "JOKER_DECISION" && expected) {
-            const pending = p.cards.currentTrick.find((c) => c.card.kind === "joker" && !c.joker)!;
-            expect(report.command.type).toBe("choose_joker_semantic");
-            if (report.command.type === "choose_joker_semantic")
-              expect(pending.card.id + "/" + JSON.stringify(report.command.semantic)).toBe(
-                expected,
-              );
-            checked++;
-            expected = null;
-          } else if (
-            report.command.type === "play_card" &&
-            report.command.cardId.startsWith("joker")
-          )
-            expected = report.candidates[0]!.key;
-          return report.command;
-        },
-      },
-    );
+  it("commits the evaluated Joker meaning atomically without a second decision", () => {
+    let checked = 0;
+    simulateFullGame({ ...config, seed: 12 }, { select: p => {
+      expect(p.progression.phase).not.toBe("JOKER_DECISION");
+      const old = selectBaselineGameplayCommand(p)!;
+      const report = analyzeCompetitive(p, 1, old.command, { now: () => 0 });
+      if (report.command.type === "play_card" && report.command.cardId.startsWith("joker")) {
+        expect(report.command.jokerSemantic).toBeDefined();
+        expect(report.command.cardId + "/" + JSON.stringify(report.command.jokerSemantic)).toBe(report.candidates[0]!.key);
+        checked++;
+      }
+      return report.command;
+    }});
     expect(checked).toBeGreaterThan(0);
   }, 60000);
   it("JSONB key ordering does not alter public-state seeds or the chosen decision", () => {

@@ -368,7 +368,7 @@ export function analyzeCompetitive(
     command:
       action.type === "choose_joker_semantic"
         ? { type: "choose_joker_semantic", semantic: play.joker! }
-        : { type: "play_card", cardId: play.card.id },
+        : { type: "play_card", cardId: play.card.id, ...(play.joker ? { jokerSemantic: play.joker } : {}) },
   }));
   if (action.type === "declare")
     for (const value of action.values)

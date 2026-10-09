@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Maximize, Minimize, Trophy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { assets } from "@/assets/registry";
 
 import type { GameplayCommand } from "@/domain/gameplayCommands";
@@ -241,7 +242,10 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     const geometryEpoch = tableGeometry.geometry?.epoch ?? 0;
     const presentation: LocalPlayPresentation | null = tableGeometry.geometry ? { gameId: projection.gameId, dealNumber: projection.progression.dealNumber, card, cardId, actorSeat: localSeat, sourceStateVersion: projection.stateVersion, acceptedStateVersion: null, geometryEpoch, releaseRect, status: "submitted", ...(jokerSemantic ? { jokerSemantic } : {}) } : null;
     setUncertainPlay(null);
-    setLocalPlayPresentation(presentation);
+    // Mount the chosen Joker's flight before command transport/serialization.
+    // Acceptance still never owns motion timing.
+    if (jokerSemantic) flushSync(() => setLocalPlayPresentation(presentation));
+    else setLocalPlayPresentation(presentation);
     try {
       const response = jokerSemantic ? await onCommand({ type: "play_card", cardId, jokerSemantic }) : await onCommand({ type: "play_card", cardId });
       const polled = latestProjection.current;
@@ -349,7 +353,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     <footer className="absolute inset-x-0 bottom-[max(.15rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center">
       {error && <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>}
       {!interactionPresentationActive && declarationAction && pendingDeclarationValue == null && <div className="relative top-5 animate-in slide-in-from-bottom-2 fade-in duration-200"><DeclarationPicker values={declarationValues} legalValues={declarationAction.values} busy={busy} onSelect={(value) => void submitDeclaration(value)} /></div>}
-      {!startupPresentationActive && !handRevealActive && ownArtworkSettled && (jokerIntent || jokerAction) && !pendingJokerChoice && <JokerChoicePicker options={jokerIntent?.options ?? jokerAction!.options} busy={busy} trumpSuit={projection.trump.status === "resolved" ? projection.trump.suit : null} onSelect={(semantic) => void submitJokerChoice(semantic)} />}
+      {!startupPresentationActive && !handRevealActive && ownArtworkSettled && projection.seats[localSeat].controller === "human" && (jokerIntent || jokerAction) && !pendingJokerChoice && <JokerChoicePicker options={jokerIntent?.options ?? jokerAction!.options} busy={busy} trumpSuit={projection.trump.status === "resolved" ? projection.trump.suit : null} onSelect={(semantic) => void submitJokerChoice(semantic)} />}
       {reclaimAvailable && <JButton className="mb-2" variant="outlineGold" size="sm" disabled={busy} onClick={onReclaim}>Πάρε ξανά τον έλεγχο</JButton>}
       <LocalHandRow cards={handPresented ? projection.cards.ownHand : []} visible={handPresented && projection.cards.ownHandVisible && ownArtworkSettled} legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []} blocked={interactionPresentationActive || busy || Boolean(submittingCardId) || Boolean(jokerIntent)} pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null} authorityKey={handAuthorityKey} geometry={tableGeometry.geometry} revealing={handRevealActive} onCommit={commitCard} />
       <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
