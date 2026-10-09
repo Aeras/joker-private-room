@@ -285,7 +285,7 @@ export function getDialoguePersonality(id: string): DialoguePersonality | null {
 
 function renderPreset(line: string, event: PublicDialogueEvent, context?: DialogueGenerationContext): string {
   const target = context?.tableParticipants?.find((p) => p.seat === event.targetSeat);
-  return line.replaceAll("{target}", target?.displayName ?? event.targetName ?? "φίλε");
+  return line.replaceAll("{target}", event.targetName ?? target?.displayName ?? "φίλε");
 }
 
 export const RECENT_BANTER_LIMIT = 10;
