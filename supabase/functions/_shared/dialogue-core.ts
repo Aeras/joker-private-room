@@ -22,6 +22,7 @@ export type DialogueEventType =
   | "SCORE_COLLAPSE"
   | "BOT_REVENGE_SUCCESS"
   | "TRICK_WON"
+  | "HUMAN_TURN_IDLE"
   | "ROUND_END"
   | "GAME_END"
   | "HUMAN_MESSAGE_TO_BOT"
@@ -387,6 +388,12 @@ export function pickDialoguePreset(
   context: DialogueGenerationContext,
   random: () => number = Math.random,
 ): string | null {
+  if (context.event.type === "HUMAN_TURN_IDLE") {
+    const phrase = context.profanityEnabled
+      ? "Ελάτε να τον γαμήσουμε τον καθυστερημένο!"
+      : "Άντε παίξε, κοιμισμένε!";
+    return dialogueLineTooSimilar(phrase, context.recentBanter) ? null : phrase;
+  }
   const personality = getDialoguePersonality(context.botId);
   if (!personality) return null;
   const candidates = personality.presets.filter((preset) => preset.eventTypes.includes(context.event.type));
