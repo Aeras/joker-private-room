@@ -244,24 +244,24 @@ async function callLobbyQuery(body: Record<string, unknown>): Promise<Record<str
 export const listWaitingRooms = createServerFn({ method: "GET" }).handler(
   async (): Promise<LobbyLookupResult> => {
     const r = await callLobbyQuery({ action: "list_waiting" });
-    return r.ok === true && Array.isArray(r.rooms)
-      ? { ok: true, rooms: r.rooms as WaitingRoomSummary[] }
-      : { ok: false, code: String(r.code ?? "SERVICE_UNAVAILABLE") };
+    return r['ok'] === true && Array.isArray(r['rooms'])
+      ? { ok: true, rooms: r['rooms'] as WaitingRoomSummary[] }
+      : { ok: false, code: String(r['code'] ?? "SERVICE_UNAVAILABLE") };
   },
 );
 export const getCurrentRoomMembership = createServerFn({ method: "GET" }).handler(
   async (): Promise<MembershipResult> => {
     const r = await callLobbyQuery({ action: "membership" });
-    return r.ok === true
-      ? { ok: true, membership: (r.membership ?? null) as RoomMembership | null }
-      : { ok: false, code: String(r.code ?? "SERVICE_UNAVAILABLE") };
+    return r['ok'] === true
+      ? { ok: true, membership: (r['membership'] ?? null) as RoomMembership | null }
+      : { ok: false, code: String(r['code'] ?? "SERVICE_UNAVAILABLE") };
   },
 );
 export const leaveWaitingRoom = createServerFn({ method: "POST" })
   .validator(z.object({ code: roomCode }))
   .handler(async ({ data }): Promise<LeaveWaitingResult> => {
     const r = await callLobbyQuery({ action: "leave_waiting", code: data.code });
-    return r.ok === true
-      ? { ok: true, cancelled: r.cancelled === true }
-      : { ok: false, code: String(r.code ?? "SERVICE_UNAVAILABLE") };
+    return r['ok'] === true
+      ? { ok: true, cancelled: r['cancelled'] === true }
+      : { ok: false, code: String(r['code'] ?? "SERVICE_UNAVAILABLE") };
   });
