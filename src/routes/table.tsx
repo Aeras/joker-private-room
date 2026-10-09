@@ -149,6 +149,7 @@ function TablePage() {
   const nineCardAckInFlight = useRef<string | null>(null);
   const autoStartInFlight = useRef(false);
   const reclaimInFlight = useRef<number | null>(null);
+  const refreshInFlight = useRef<Promise<void> | null>(null);
 
   const updateConnectionStatus = useCallback((status: TableConnectionStatus) => {
     connectionStatusRef.current = status;
@@ -218,7 +219,9 @@ function TablePage() {
     updateConnectionStatus(roomRef.current && projectionRef.current ? "reconnecting" : "failed");
   }, [updateConnectionStatus]);
 
-  const refreshAll = useCallback(async () => {
+  const refreshAll = useCallback((): Promise<void> => {
+    if (refreshInFlight.current) return refreshInFlight.current;
+    const running = (async () => {
     if (!code || !gameId) return markRefreshFailure("Δεν βρέθηκε έγκυρη ενεργή παρτίδα.");
     const generation = returnSync.generation;
     const request = admission.beginRequest();
@@ -248,6 +251,12 @@ function TablePage() {
         markRefreshFailure("Δεν ήταν δυνατός ο συγχρονισμός. Γίνεται νέα προσπάθεια.");
       }
     }
+    })();
+    const guarded = running.finally(() => {
+      if (refreshInFlight.current === guarded) refreshInFlight.current = null;
+    });
+    refreshInFlight.current = guarded;
+    return guarded;
   }, [acceptSnapshot, admission, code, gameId, markRefreshFailure, returnSync, updateConnectionStatus]);
 
   const refreshReadiness = useCallback(async () => {
@@ -336,7 +345,7 @@ function TablePage() {
   useEffect(() => {
     let wasVisible = document.visibilityState === "visible";
     let lostFocus = false;
-    const beginReturn = () => { returnSync.begin(); setBusy(false); setError(null); updateConnectionStatus("reconnecting"); };
+    const beginReturn = () => { returnSync.begin(); refreshInFlight.current = null; setBusy(false); setError(null); updateConnectionStatus("reconnecting"); };
     setVisible(wasVisible);
     const refreshForeground = () => {
       void refreshAll();
