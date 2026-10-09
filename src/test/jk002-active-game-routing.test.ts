@@ -43,7 +43,7 @@ describe("JK-002 active-game lookup and routing", () => {
 
     expect(create).toContain("useCurrentActiveGame()");
     expect(create).toContain('to: "/table"');
-    expect(join).toContain("<PlayerSessionGate>");
+    expect(join).toContain("<PlayerSessionGate onAuthenticated=");
     expect(join).toContain("listWaitingRooms()");
     expect(join).toContain("joinProductionRoom");
     expect(join).toContain('to: "/lobby"');
