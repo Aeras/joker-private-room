@@ -26,18 +26,18 @@ export const Route = createFileRoute("/join")({
 });
 
 function JoinPage() {
+  const activeLookup = useCurrentActiveGame();
   return (
     <ScreenShell title="Συμμετοχή σε παιχνίδι" variant="pregame" contentClassName="pregame-centered-content">
-      <PlayerSessionGate>
-        {() => <AvailableRooms />}
+      <PlayerSessionGate onAuthenticated={() => { void activeLookup.refresh(); }}>
+        {() => <AvailableRooms activeLookup={activeLookup} />}
       </PlayerSessionGate>
     </ScreenShell>
   );
 }
 
-function AvailableRooms() {
+function AvailableRooms({ activeLookup }: { activeLookup: ReturnType<typeof useCurrentActiveGame> }) {
   const navigate = useNavigate();
-  const activeLookup = useCurrentActiveGame();
   const [rooms, setRooms] = useState<WaitingRoomSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
