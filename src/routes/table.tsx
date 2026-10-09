@@ -45,6 +45,7 @@ import {
   terminateProjectedGame,
 } from "@/services/gameProjectionFunctions";
 import { getProductionRoom } from "@/services/roomFunctions";
+import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 
 export const Route = createFileRoute("/table")({
   ssr: false,
@@ -150,6 +151,9 @@ function TablePage() {
   const autoStartInFlight = useRef(false);
   const reclaimInFlight = useRef<number | null>(null);
   const refreshInFlight = useRef<Promise<void> | null>(null);
+  const refreshQueued = useRef(false);
+  const roomRefreshInFlight = useRef<ReturnType<typeof getProductionRoom> | null>(null);
+  const refreshScope = useRef(admission);
 
   const updateConnectionStatus = useCallback((status: TableConnectionStatus) => {
     connectionStatusRef.current = status;
@@ -219,17 +223,38 @@ function TablePage() {
     updateConnectionStatus(roomRef.current && projectionRef.current ? "reconnecting" : "failed");
   }, [updateConnectionStatus]);
 
-  const refreshAll = useCallback((): Promise<void> => {
-    if (refreshInFlight.current) return refreshInFlight.current;
+  const refreshAll = useCallback((followUp = false): Promise<void> => {
+    if (refreshScope.current !== admission) {
+      refreshScope.current = admission;
+      refreshInFlight.current = null;
+      roomRefreshInFlight.current = null;
+      refreshQueued.current = false;
+    }
+    if (refreshInFlight.current) {
+      if (followUp) refreshQueued.current = true;
+      return refreshInFlight.current;
+    }
     const running = (async () => {
     if (!code || !gameId) return markRefreshFailure("Δεν βρέθηκε έγκυρη ενεργή παρτίδα.");
     const generation = returnSync.generation;
     const request = admission.beginRequest();
     try {
-      const [roomResult, initialGameResult] = await Promise.all([
-        getProductionRoom({ data: { code } }), getProjectedGameState({ data: { gameId } }),
-      ]);
-      let gameResult = initialGameResult;
+      if (!roomRefreshInFlight.current) {
+        const requestRoom = getProductionRoom({ data: { code } });
+        const guardedRoom = requestRoom.finally(() => {
+          if (roomRefreshInFlight.current === guardedRoom) roomRefreshInFlight.current = null;
+        });
+        roomRefreshInFlight.current = guardedRoom;
+      }
+      // Keep room metadata fresh without making each card wait for it. Capture
+      // failures as values immediately so a slow game read cannot leave an
+      // unhandled room rejection.
+      const roomRequest = roomRefreshInFlight.current.then(
+        result => result,
+        () => ({ ok: false as const, code: "SERVICE_UNAVAILABLE" as const }),
+      );
+      const readStartedAt = performance.now();
+      let gameResult = await getProjectedGameState({ data: { gameId } });
       const current = () => mounted.current && activeAdmission.current === admission && returnSync.accepts(generation);
       if (!current()) return;
       // A reconciler CAS collision on a read is synchronization, not a rejected player move.
@@ -237,11 +262,36 @@ function TablePage() {
         gameResult = await getProjectedGameState({ data: { gameId } });
         if (!current()) return;
       }
-      if ((!roomResult.ok || !gameResult.ok) && !admission.acceptsFailure(request)) return;
-      if (!roomResult.ok) return markRefreshFailure(gameplayFailureMessage(roomResult.code));
+      recordTimingDiagnostic("game_projection_response", { durationMs: performance.now() - readStartedAt, stateVersion: gameResult.ok ? gameResult.projection.stateVersion : null, ok: gameResult.ok });
       if (!gameResult.ok) {
+        if (!admission.acceptsFailure(request)) return;
         if (gameResult.code === "STALE_STATE") { setError(null); updateConnectionStatus("reconnecting"); return; }
         return markRefreshFailure(gameplayFailureMessage(gameResult.code));
+      }
+      const cachedRoom = roomRef.current;
+      if (!returnSync.pending && connectionStatusRef.current === "ready" && cachedRoom &&
+          isCoherentTableSnapshot({ room: cachedRoom, projection: gameResult.projection, expectedGameId: gameId })) {
+        acceptSnapshot(cachedRoom, gameResult.projection, true);
+        void roomRequest.then(roomResult => {
+          if (!current()) return;
+          if (!roomResult.ok) {
+            if (admission.acceptsFailure(request)) markRefreshFailure(gameplayFailureMessage(roomResult.code));
+            return;
+          }
+          // Never pair a late room response with its older game response.
+          const latest = projectionRef.current;
+          if (latest && isCoherentTableSnapshot({ room: roomResult.room, projection: latest, expectedGameId: gameId })) {
+            acceptSnapshot(roomResult.room, latest);
+          }
+        });
+        return;
+      }
+      // Initial entry and reconnect still require a fresh coherent pair.
+      const roomResult = await roomRequest;
+      if (!current()) return;
+      if (!roomResult.ok) {
+        if (admission.acceptsFailure(request)) markRefreshFailure(gameplayFailureMessage(roomResult.code));
+        return;
       }
       if (!acceptSnapshot(roomResult.room, gameResult.projection, true)) {
         markRefreshFailure("Η κατάσταση του δωματίου και της παρτίδας δεν συμφωνεί ακόμη. Γίνεται επανασύνδεση.");
@@ -253,7 +303,12 @@ function TablePage() {
     }
     })();
     const guarded = running.finally(() => {
-      if (refreshInFlight.current === guarded) refreshInFlight.current = null;
+      if (refreshInFlight.current === guarded) {
+        refreshInFlight.current = null;
+        const queued = refreshQueued.current;
+        refreshQueued.current = false;
+        if (queued && mounted.current && activeAdmission.current === admission && document.visibilityState === "visible") void refreshAll();
+      }
     });
     refreshInFlight.current = guarded;
     return guarded;
@@ -345,7 +400,7 @@ function TablePage() {
   useEffect(() => {
     let wasVisible = document.visibilityState === "visible";
     let lostFocus = false;
-    const beginReturn = () => { returnSync.begin(); refreshInFlight.current = null; setBusy(false); setError(null); updateConnectionStatus("reconnecting"); };
+    const beginReturn = () => { returnSync.begin(); refreshInFlight.current = null; refreshQueued.current = false; roomRefreshInFlight.current = null; setBusy(false); setError(null); updateConnectionStatus("reconnecting"); };
     setVisible(wasVisible);
     const refreshForeground = () => {
       void refreshAll();
@@ -443,7 +498,7 @@ function TablePage() {
   // Subsequent bot-to-bot steps each have a new authoritative version, and
   // are serialized by refreshAll's single-flight guard.
   useEffect(() => {
-    if (automaticActorPending && document.visibilityState === "visible") void refreshAll();
+    if (automaticActorPending && document.visibilityState === "visible") void refreshAll(true);
   }, [automaticActorPending, projection?.stateVersion, refreshAll]);
 
   useEffect(() => {
@@ -568,8 +623,10 @@ function TablePage() {
     setBusy(true); setError(null);
     try {
       const data = { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion, command };
+      const commandStartedAt = performance.now();
       const result = await retryCommandDelivery(submitProjectedGameplayCommand, { data });
       if (!stillCurrent()) return null;
+      recordTimingDiagnostic("game_command_response", { durationMs: performance.now() - commandStartedAt, commandType: command.type, ok: result.ok, stateVersion: result.ok ? result.projection.stateVersion : null });
       if (result.ok) {
         const currentRoom = roomRef.current;
         if (currentRoom && acceptSnapshot(currentRoom, result.projection)) return projectionRef.current;
