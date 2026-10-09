@@ -8,6 +8,7 @@ on:
         "supabase/tests/bot-lab/**",
         "supabase/functions/bot-lab*/**",
         "src/server/botLab/**",
+        "scripts/bot-lab-db-e2e.ts",
         ".github/workflows/joker-bot-lab-db.yml",
       ]
   workflow_dispatch:
@@ -30,6 +31,14 @@ jobs:
           psql -h localhost -U postgres -d joker_lab_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261003173620_jk001_phase1_fix_session_validation_ambiguity.sql
           psql -h localhost -U postgres -d joker_lab_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261009051533_joker_admin_bot_lab.sql
           psql -h localhost -U postgres -d joker_lab_test -v ON_ERROR_STOP=1 -f supabase/tests/bot-lab/behavior.sql
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - name: Durable canonical-engine JSONB checkpoint end-to-end test
+        run: |
+          npm install --prefix "$RUNNER_TEMP/bot-lab-e2e" --no-save @electric-sql/pglite@0.5.8
+          export BOT_LAB_PGLITE_ROOT="$RUNNER_TEMP/bot-lab-e2e/node_modules/@electric-sql/pglite"
+          bun scripts/bot-lab-db-e2e.ts
+          bun scripts/bot-lab-db-e2e.ts --compare
       - uses: denoland/setup-deno@v2
         with: { deno-version: v2.x }
       - name: Edge module dependency/type checks

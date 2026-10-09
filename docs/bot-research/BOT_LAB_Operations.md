@@ -20,3 +20,5 @@ Local disposable PostgreSQL-compatible PGlite loaded the actual existing session
 JSONB sorts object keys. Competitive decision seeds normalize public card/semantic fields, and worker configuration equality is structural, preventing checkpoint recovery from changing strategy merely because the database reordered JSON keys.
 
 Before production activation, verify actual Edge CPU/invocation cost, pg_net dispatch/cron recovery, browser-close continuation and cancellation on the external project. The 5,000-game option is bounded but has not been load-tested on production infrastructure.
+
+The repository now includes scripts/bot-lab-db-e2e.ts. CI installs its pinned PGlite test dependency in the runner's temporary directory; it loads real migration/auth SQL and advances actual bounded worker chunks through JSONB. Normal mode validates 10 full games; --compare validates 20 full games and the matched-pair/seed denominators. Neither mode connects to production. Decision inspection retains the first and last ten decisions so endgame actions are included.
