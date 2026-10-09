@@ -68,7 +68,7 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
   showCards?: boolean;
   local?: boolean;
   infoLayout?: "below" | "left";
-  reactionEmoji?: string | null;
+  reactionEmoji?: string | null | undefined;
 }) {
   const o = seat.occupant;
   const name = o.type === "human" ? o.player.displayName : o.type === "bot" ? o.bot.displayName : t.emptySeat;
