@@ -33,7 +33,7 @@ describe("ordered public trick journal", () => {
     const projection = snapshot(1); projection.timing = { currentHumanDeadline: null, turnPresentation: { token: 10, requiredSeats: [0], completedSeats: [], fallbackAt: "2026-10-06T00:00:30.000Z" } };
     view.rerender(<TrickPresentation {...props} projection={projection} />);
     for (let card = 0; card < 4; card++) { tick(card ? 1000 : 0); tick(16); const surfaces = Array.from(view.container.querySelector("[data-trick-presentation-id]")!.children).filter(el => (el as HTMLElement).style.transitionDuration); finish(surfaces.at(-1)!); }
-    expect(ready).not.toHaveBeenCalled(); tick(850); expect(ready).not.toHaveBeenCalled();
+    expect(ready).not.toHaveBeenCalled(); tick(550); expect(ready).not.toHaveBeenCalled();
     const surfaces = Array.from(view.container.querySelector("[data-trick-presentation-id]")!.children).filter(el => (el as HTMLElement).style.transitionDuration);
     surfaces.forEach(finish); expect(ready).not.toHaveBeenCalled(); expect(collected).not.toHaveBeenCalled();
     fireEvent.blur(window); surfaces.forEach(finish); expect(ready).not.toHaveBeenCalled(); fireEvent.focus(window);
@@ -220,7 +220,7 @@ describe("presentation interruption and geometry", () => {
       const surfaces = Array.from(root.children).filter(el => (el as HTMLElement).style.transitionDuration);
       surfaces.forEach(finish); expect(root.getAttribute("data-trick-departing-stage")).toBe("collecting");
       const collectingSurface = root.querySelector<HTMLElement>("[data-trick-collecting='true']");
-      expect(collectingSurface?.style.transitionDuration).toBe("600ms, 120ms");
+      expect(collectingSurface?.style.transitionDuration).toBe("380ms, 120ms");
       expect(collectingSurface?.style.transitionTimingFunction).toBe("linear");
       view.rerender(<TrickPresentation {...props} geometry={{ ...geometry, epoch: ordinal + 2 }} projection={snapshot(3)} />);
       expect(view.container.querySelector("[data-trick-departing-stage='collecting']")).not.toBeNull();
