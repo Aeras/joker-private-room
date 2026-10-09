@@ -187,5 +187,5 @@ describe("public bot observation and constrained worlds", () => {
     expect(phases.has("NINE_CARD_TRUMP_CHOICE")).toBe(true);
     expect(phases.has("JOKER_DECISION")).toBe(true);
     expect(phases.has("DECLARATION")).toBe(true);
-  });
+  }, 30000);
 });

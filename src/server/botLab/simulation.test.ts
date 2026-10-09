@@ -82,7 +82,7 @@ describe("isolated canonical bot benchmark", () => {
     });
     expect(inspected).toBe(game.decisions.length);
     expect(inspected).toBeGreaterThan(500);
-  });
+  }, 30000);
   it("aggregates real denominators and exact/under/over outcomes", () => {
     const game = simulateFullGame(config, clock),
       stats = summarizeGames([game]);

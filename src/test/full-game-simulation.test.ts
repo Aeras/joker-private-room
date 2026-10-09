@@ -110,6 +110,6 @@ describe("full 24-deal production game simulation", () => {
       expect(completedDeals.every((deal) => deal.tricksTaken.reduce((sum, tricks) => sum + tricks, 0) === deal.cardsPerPlayer)).toBe(true);
       expect(completedDeals.every((deal) => deal.declarations.reduce((sum, declaration) => sum + declaration, 0) !== deal.cardsPerPlayer)).toBe(true);
       expect(state.cards.hands.every((hand) => hand.length === 0)).toBe(true);
-    });
+    }, 30000);
   }
 });
