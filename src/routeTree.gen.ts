@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BotLabRouteImport } from './routes/bot-lab'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as JoinRouteImport } from './routes/join'
@@ -20,6 +21,11 @@ import { Route as TableRouteImport } from './routes/table'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BotLabRoute = BotLabRouteImport.update({
+  id: '/bot-lab',
+  path: '/bot-lab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateRoute = CreateRouteImport.update({
@@ -55,6 +61,7 @@ const TableRoute = TableRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/bot-lab': typeof BotLabRoute
   '/create': typeof CreateRoute
   '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/bot-lab': typeof BotLabRoute
   '/create': typeof CreateRoute
   '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/bot-lab': typeof BotLabRoute
   '/create': typeof CreateRoute
   '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
@@ -84,12 +93,28 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/create' | '/history' | '/join' | '/lobby' | '/settings' | '/table'
+    | '/'
+    | '/bot-lab'
+    | '/create'
+    | '/history'
+    | '/join'
+    | '/lobby'
+    | '/settings'
+    | '/table'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/create' | '/history' | '/join' | '/lobby' | '/settings' | '/table'
+  to:
+    | '/'
+    | '/bot-lab'
+    | '/create'
+    | '/history'
+    | '/join'
+    | '/lobby'
+    | '/settings'
+    | '/table'
   id:
     | '__root__'
     | '/'
+    | '/bot-lab'
     | '/create'
     | '/history'
     | '/join'
@@ -100,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BotLabRoute: typeof BotLabRoute
   CreateRoute: typeof CreateRoute
   HistoryRoute: typeof HistoryRoute
   JoinRoute: typeof JoinRoute
@@ -115,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bot-lab': {
+      id: '/bot-lab'
+      path: '/bot-lab'
+      fullPath: '/bot-lab'
+      preLoaderRoute: typeof BotLabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create': {
@@ -164,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BotLabRoute: BotLabRoute,
   CreateRoute: CreateRoute,
   HistoryRoute: HistoryRoute,
   JoinRoute: JoinRoute,

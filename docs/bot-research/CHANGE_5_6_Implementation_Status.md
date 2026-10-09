@@ -1,5 +1,20 @@
 # Changes 5 and 6 — verified implementation increments
 
+## Current delivery status — 9 October 2026
+
+The Phase 1/2 sections below are historical snapshots from PRs #154/#155. Their then-open items are superseded by these increments:
+
+- PR #156 enabled competitive-v2 for permanent and temporary Tier 1/2/3 bots. Public observations and legal-world sampling drive bounded joint card/Joker, declaration and trump evaluation using canonical scoring/premia. Frozen baseline remains available only for comparison/fallback. See COMPETITIVE_V2.md for exact capabilities and approximations.
+- PR #157 added serialized canonical-engine checkpoints/RNG recovery and release benchmark evidence. Held-out Popular validation completed 720 games with positive target score/win-share deltas and seed-clustered intervals for every tier; pilots cover the other three rulesets. See COMPETITIVE_V2_Benchmarks.md and retained aggregate JSON. This does not establish strength against humans or universal tier ordering.
+- PR #158 merged the durable admin-only backend, migration, Edge boundaries, actual statistics, lease fencing, cancellation and recovery. Main at that merge: `0db0aa70544ce637efd3d12efccc16c14305bbb8`. All CI including Full Regression passed (37890657049); PostgreSQL/Deno CI 37890656851. A scoped full-game-test timeout and two obsolete source-string guards were corrected without altering runtime search limits.
+- The final interface increment adds the server-authorized home entry and guarded `/bot-lab` route, real job configuration/history/progress/cancellation, results/comparison/latency intervals and bounded synthetic decision inspection. Nine UI behavioral tests cover access, stale poll fencing and non-fabricated progress. Its CI also repeats 10 real worker/database games and 20 matched-comparison games, including full JSONB checkpoint recovery.
+
+**Production activation remains pending:** migration `20261009051533_joker_admin_bot_lab.sql` has not been applied to production, neither Lab Edge Function has been deployed, and the scheduler switch remains disabled. No Publish or production deployment was performed. Follow BOT_LAB_Operations.md on the external owner-controlled JOKER project only.
+
+Local browser visual verification was attempted: Chrome was unavailable to the browser tool, and the in-app browser timed out reaching the local Windows server. Mobile/desktop visual acceptance, real pg_net/cron delivery, browser-close continuation, revoked-session acceptance, production Edge CPU/cost and 5,000-game load acceptance remain required. Automated tests/build do not replace those checks. Animations, audio, avatars, table layout, rules and live multiplayer timing remain unchanged.
+
+## Historical implementation log
+
 ## Phase 1: canonical headless benchmark foundation
 
 Base: `ed5085985d4ec5ef8314054a15e7893533ed96e7`. The three mandatory research/design documents were read before this phase. Changes 1–4 remain untouched.

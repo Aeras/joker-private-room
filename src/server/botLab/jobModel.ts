@@ -164,6 +164,6 @@ export function compactLabResult(game: SimulationResult) {
     placements: game.placements,
     metrics,
     // One bounded synthetic-game inspection sample; never live-game data.
-    inspection: game.decisions.slice(0, 20),
+    inspection: [...game.decisions.slice(0, 10), ...game.decisions.slice(-10)],
   };
 }

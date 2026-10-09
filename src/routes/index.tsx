@@ -5,6 +5,7 @@ import { FullscreenButton } from "@/components/joker/FullscreenButton";
 import { JButton, jButton } from "@/components/joker/JButton";
 import { t } from "@/i18n/el";
 import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
+import { BotLabEntry } from "@/components/joker/BotLabEntry";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -66,6 +67,7 @@ function Home() {
           )}
 
           <div className="home-secondary-actions">
+            <BotLabEntry />
             <Link to="/history"><History className="h-4 w-4" />Ιστορικό</Link>
             <Link to="/settings"><Settings2 className="h-4 w-4" />Ρυθμίσεις</Link>
           </div>
