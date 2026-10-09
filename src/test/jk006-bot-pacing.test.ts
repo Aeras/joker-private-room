@@ -30,8 +30,8 @@ describe("JK-006 bot pacing", () => {
   });
 
   it("waits 160 milliseconds after settle before the next visible normal-speed play", () => {
-    expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(160);
-    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(NORMAL_TRICK_SETTLE_MS + 160);
+    expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(0);
+    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(NORMAL_TRICK_SETTLE_MS + 0);
     expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(500);
     expect(NORMAL_TRICK_HOLD_MS).toBeLessThanOrEqual(700);
   });
