@@ -1,0 +1,76 @@
+name: Android Alpha APK
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android-alpha/**'
+      - '.github/workflows/android-alpha.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-android-alpha:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Bundle Local variant static assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p android-alpha/app/src/local/assets/public
+          for folder in cards avatars table emojis audio; do
+            if [[ -d "public/$folder" ]]; then
+              cp -a "public/$folder" "android-alpha/app/src/local/assets/public/$folder"
+            fi
+          done
+          du -sh android-alpha/app/src/local/assets/public
+
+      - name: Build Web and Local debug APKs
+        working-directory: android-alpha
+        run: gradle --no-daemon :app:assembleWebDebug :app:assembleLocalDebug
+
+      - name: Rename APK files
+        run: |
+          mkdir -p apk-output
+          cp android-alpha/app/build/outputs/apk/web/debug/app-web-debug.apk apk-output/Joker-Web-Alpha.apk
+          cp android-alpha/app/build/outputs/apk/local/debug/app-local-debug.apk apk-output/Joker-Local-Alpha.apk
+          ls -lh apk-output/
+
+      - name: Upload Joker Web
+        uses: actions/upload-artifact@v4
+        with:
+          name: Joker-Web-Alpha
+          path: apk-output/Joker-Web-Alpha.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Joker Local
+        uses: actions/upload-artifact@v4
+        with:
+          name: Joker-Local-Alpha
+          path: apk-output/Joker-Local-Alpha.apk
+          if-no-files-found: error
+          retention-days: 30

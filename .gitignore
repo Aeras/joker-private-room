@@ -30,3 +30,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated Android Alpha files
+android-alpha/.gradle/
+android-alpha/build/
+android-alpha/app/build/
+android-alpha/app/src/local/assets/public/
+android-alpha/local.properties
