@@ -439,6 +439,13 @@ function TablePage() {
     automaticActorSeat != null &&
     projection.seats[automaticActorSeat]?.controller !== "human" &&
     !projection.timing?.turnPresentation;
+  // Kick off the first follow-up read as soon as a bot becomes the actor.
+  // Subsequent bot-to-bot steps each have a new authoritative version, and
+  // are serialized by refreshAll's single-flight guard.
+  useEffect(() => {
+    if (automaticActorPending && document.visibilityState === "visible") void refreshAll();
+  }, [automaticActorPending, projection?.stateVersion, refreshAll]);
+
   useEffect(() => {
     const interval = automaticActorPending ? 500 : 1500;
     const timer = window.setInterval(() => {
