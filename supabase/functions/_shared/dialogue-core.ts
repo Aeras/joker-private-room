@@ -362,6 +362,16 @@ export function pickOccasionalCuratedLine(context: DialogueGenerationContext): s
   return candidates[Math.floor(unsigned / 8) % candidates.length] ?? null;
 }
 
+export function pickApprovedBotReply(context: DialogueGenerationContext): string | null {
+  if (!context.profanityEnabled || context.event.type !== "BOT_MESSAGE_TO_BOT" ||
+      !context.event.publicSummary?.endsWith(SPECIAL_SPICY_LINES.photocopyQuestion)) return null;
+  const starter = context.event.publicSummary.split(":")[0]?.trim();
+  if (!starter || starter === context.botId ||
+      !context.tableParticipants?.some((p) => p.kind === "bot" && p.botId === starter)) return null;
+  return dialogueLineTooSimilar(SPECIAL_SPICY_LINES.photocopyAnswer, context.recentBanter)
+    ? null : SPECIAL_SPICY_LINES.photocopyAnswer;
+}
+
 export function pickDialoguePreset(
   context: DialogueGenerationContext,
   random: () => number = Math.random,
