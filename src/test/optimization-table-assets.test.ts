@@ -33,11 +33,11 @@ describe("reviewed table artwork resolution", () => {
 
   it("keeps canonical card registry identities and coalesced artwork URL resolution", () => {
     expect(assets.cardBack).toBe("/cards/runtime-png/backs/blue_back.png");
-    expect(assets.cardArtwork(assets.cardBack)).toBe("/cards/runtime-png/backs/blue_back.png");
+    expect(assets.cardArtwork(assets.cardBack)).toBe("/cards/optimized-png/backs/blue_back.png");
     for (const suit of ["spades", "clubs"] as const) {
       const face = assets.cardFace({ id: `${suit}-6`, kind: "standard", suit, rank: "6" });
       expect(face).toBeDefined();
-      if (face) expect(assets.cardArtwork(face)).toBe(`/cards/runtime-png/faces/${suit}_6.png`);
+      if (face) expect(assets.cardArtwork(face)).toBe(`/cards/optimized-png/faces/${suit}_6.png`);
     }
   });
 });

@@ -1,0 +1,717 @@
+[
+  {
+    "source": "/cards/runtime-png/backs/blue_back.png",
+    "derivative": "/cards/optimized-png/backs/blue_back.png",
+    "dimensions": [
+      238,
+      333
+    ],
+    "pixelExact": true,
+    "sourceBytes": 67479,
+    "derivativeBytes": 59141,
+    "sourceSha256": "9b22de9f10a3a89cd9590317953bf49442b8d5a7458fbbd240cc64c3559152ab",
+    "derivativeSha256": "145d437d903c92f76b2940d57751841014b1ada722b121492158fc4a21ad5022"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_10.png",
+    "derivative": "/cards/optimized-png/faces/clubs_10.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 26753,
+    "derivativeBytes": 24498,
+    "sourceSha256": "76d7e7002c2e5df78a2c0bbe880cf61e7e48a7c0acea9b14743f82da6ca25c0f",
+    "derivativeSha256": "1149053bc0c3a67b174eddd5c8ae33762da28afccc8aec1ee3601d17623ba918"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_2.png",
+    "derivative": "/cards/optimized-png/faces/clubs_2.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 12144,
+    "derivativeBytes": 10967,
+    "sourceSha256": "6af540cb253bab96127bd21d9cc905e0477976a3660e3c2b5d9855d419e2849b",
+    "derivativeSha256": "bbb36ada2a844cccd45fa6968bd471d4e9af3680f41e9bda0310ff75084b33c5"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_3.png",
+    "derivative": "/cards/optimized-png/faces/clubs_3.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 14735,
+    "derivativeBytes": 13408,
+    "sourceSha256": "a81da135b5c3903a5513fc402d50e1c214dc228e5c7090220a4828101e261d00",
+    "derivativeSha256": "2e1b56df33585c282b9b256db9356fc87d6b1cfaa8ed68ba974efaf3d03e9551"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_4.png",
+    "derivative": "/cards/optimized-png/faces/clubs_4.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 14656,
+    "derivativeBytes": 13191,
+    "sourceSha256": "2e5dd5338487a0776704f309a77f3715e6723f21f7d4045c4fcdbad29e1787e0",
+    "derivativeSha256": "8da56f2f6d9ba95439888a36b66a933e822d6c0a6ec3948086aade46853195e9"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_5.png",
+    "derivative": "/cards/optimized-png/faces/clubs_5.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 18057,
+    "derivativeBytes": 16492,
+    "sourceSha256": "c389e1245e4214dc94be1deef7dfbbd457484f31837a2cd9af7c62c41c9ea3ed",
+    "derivativeSha256": "8e04673f0762a20b5431d67c5478615756188a6908e5027fabfc91d05f45ec3f"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_6.png",
+    "derivative": "/cards/optimized-png/faces/clubs_6.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 20692,
+    "derivativeBytes": 18915,
+    "sourceSha256": "7e70c030f659a11e107a6a18fec2064476e53dd5b08840646b8716b6d55e09df",
+    "derivativeSha256": "87d05bdbb94206307261c430be75bfdef9b8dbf78159be820ff70e248bdcda56"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_7.png",
+    "derivative": "/cards/optimized-png/faces/clubs_7.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 21031,
+    "derivativeBytes": 19248,
+    "sourceSha256": "bfc33b0581bd01d8b2a41341b58ec5120553158ace32af879e7d172748cd4696",
+    "derivativeSha256": "17f22b51a36c9d265b9d49c2511840f6d993ec2b31c392f403545979366c1fcf"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_8.png",
+    "derivative": "/cards/optimized-png/faces/clubs_8.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 25258,
+    "derivativeBytes": 23299,
+    "sourceSha256": "83dd1fba90285117bbb150e04da758efcd98cec41e658161ee7b38b5ce6050b2",
+    "derivativeSha256": "0bea508fe346a79fcc75f8fcb49a5d956d7a97063056c3df3aa082ba143dfdc1"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_9.png",
+    "derivative": "/cards/optimized-png/faces/clubs_9.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 26681,
+    "derivativeBytes": 24468,
+    "sourceSha256": "48218339aa40750fa2ab9b7eacde06436920838f48fe33d734e5edc3f1e9296e",
+    "derivativeSha256": "ad342e2649bedde278014c4ea1f55330bb452f604997ea00afdca165ab9a451a"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_ace.png",
+    "derivative": "/cards/optimized-png/faces/clubs_ace.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 9196,
+    "derivativeBytes": 8050,
+    "sourceSha256": "185ac304200d8922cd0247b0fb2b719245f267cf2534f7b5bcaacac4cb11e2db",
+    "derivativeSha256": "92684dd46a7479b3d18fc7add328cdeaac401ad718d580882b46d79a7a79f50a"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_jack.png",
+    "derivative": "/cards/optimized-png/faces/clubs_jack.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 127066,
+    "derivativeBytes": 122263,
+    "sourceSha256": "e3bfc54f1ce99b4000571cf5d396bb856ba6842f305b3cfcf453eb0e3f8c8526",
+    "derivativeSha256": "d690f1e2cdd96c126fb2a3d507c372c3c3011f191c0e379d17731cbd22817db9"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_king.png",
+    "derivative": "/cards/optimized-png/faces/clubs_king.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 119273,
+    "derivativeBytes": 114544,
+    "sourceSha256": "8d70c0933359dcf1fa6213f64de675afacbec71aee49a7a577cde1d33245461d",
+    "derivativeSha256": "4506b2c80bce39b052ffc1290a99dadcd8a81fbacac65e8bdb9306d66280db7d"
+  },
+  {
+    "source": "/cards/runtime-png/faces/clubs_queen.png",
+    "derivative": "/cards/optimized-png/faces/clubs_queen.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 129482,
+    "derivativeBytes": 125430,
+    "sourceSha256": "0b0746d13521761a7d3df54291fd93e5eda2a4bf36186d0fdeb8eeac95e177e9",
+    "derivativeSha256": "a75acb1992ae7e351946583c5730525176b21b990c1d35f40904e5e8bccd95ab"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_10.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_10.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 21635,
+    "derivativeBytes": 19635,
+    "sourceSha256": "cb9bca79115bd51e488a9ef6efc8642b5cc29ea5ca4e9693aa7f604aa40db63b",
+    "derivativeSha256": "a26ca5453facb127b40c1cc2f9964a211e3cfcab4b0d4a9b448a2f7f34521ba4"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_2.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_2.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 10528,
+    "derivativeBytes": 9387,
+    "sourceSha256": "579807007d0af74a157c0ae29b2be60e81f04fd9351c2b2d9f2f21696c3ba079",
+    "derivativeSha256": "48d4e57636cab8bb574b4c916355df292053cfb575fcf646e3aa2d80ae0f722e"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_3.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_3.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 12407,
+    "derivativeBytes": 11120,
+    "sourceSha256": "cf32df4d5bc580c112f2380f992bc6717d90778ecba9fda2429a857581b4dc1f",
+    "derivativeSha256": "5c11829362be0c04b7c63ea4f011897b77b1f1ee5d15d292cb383f7e7d98dbef"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_4.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_4.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 12606,
+    "derivativeBytes": 11258,
+    "sourceSha256": "1d743b11b2728e3d149ff56fdeb3465ddc78a9b0e5b9dba4b04a57bdf11dc51a",
+    "derivativeSha256": "9d5d28c7f49339d6eb2695fcd7e74757fe14796fe2401288bdc2edfa14523376"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_5.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_5.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 15391,
+    "derivativeBytes": 13963,
+    "sourceSha256": "e8556f870fabc6716b2f460840805f3fdb79efbde197497b4ac4f336cfa0bddc",
+    "derivativeSha256": "982a41e75f4020e6b43318fc67c1cc1a2e5b9e5aeb13dd4fefaccb93aa68f5c4"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_6.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_6.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 17805,
+    "derivativeBytes": 16215,
+    "sourceSha256": "3a75f00a30283ac1fe1105d9c071678afc4eb305f8eaa42e49921ffe7ab994ab",
+    "derivativeSha256": "63a62e4f29569bcfe76fddd6a9e93b18c72426cdc1367c3e50c5c1f6b4cacf6c"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_7.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_7.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 17628,
+    "derivativeBytes": 16010,
+    "sourceSha256": "d523056ff5335b7fcba5f8f8f4a8a1d3d84005f90f35f27151a932fb389faa98",
+    "derivativeSha256": "02a761dc200d74d3415132759d529e55bee288ed2de70d5c08bcb5bf12211fae"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_8.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_8.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 21367,
+    "derivativeBytes": 19565,
+    "sourceSha256": "dc806eddb954afa06885ce3901612377be7e931daae6f7162b02526807584c9c",
+    "derivativeSha256": "ff7b76165bc025c2047b4ddd22140ecb5ed85d266bef868ff4dd3c378791713b"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_9.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_9.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 22339,
+    "derivativeBytes": 20429,
+    "sourceSha256": "9c13844b1d5e6538ce633e1b851077069f650e07995336bcb0c67c4030a6df53",
+    "derivativeSha256": "914c5182f751333cccac352f7f4592ff702866974a2ffe7e80f33587eecc3128"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_ace.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_ace.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 8235,
+    "derivativeBytes": 7147,
+    "sourceSha256": "5eeba219b188df7503652f3d43b6c615ace20ddfae0557fc74430388cbe059d0",
+    "derivativeSha256": "3e1f7ca0bb3da8c797e7a145fcef9d3f775af34b117ad3ca0af34351e8a62c2f"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_jack.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_jack.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 123377,
+    "derivativeBytes": 118453,
+    "sourceSha256": "3f61295e96755ab0cc3bd16a4afd6083b07e5d3e8f91b24bda0513c2ba51aef1",
+    "derivativeSha256": "02bbd035b2c1e7cc07d32d3306684fa113b79c1b5688df32c287f81f62036d83"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_king.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_king.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 133751,
+    "derivativeBytes": 129160,
+    "sourceSha256": "3258cfa20db0371de7defaeb13bb82c61ab9612fece7c36aa6da5c467902757d",
+    "derivativeSha256": "58cb81bd731151f75572757d32209848ccdbd9dbec791ea5cda9b266a887a728"
+  },
+  {
+    "source": "/cards/runtime-png/faces/diamonds_queen.png",
+    "derivative": "/cards/optimized-png/faces/diamonds_queen.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 116305,
+    "derivativeBytes": 112107,
+    "sourceSha256": "7fddc3001f6da00acea01ed21fb2724a8063ca5853fc5a37acaddb01c57904a0",
+    "derivativeSha256": "98ea12302726aa73d42429f69a0b92981ad5a3229c9f3ee078cfc62ab41bcde5"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_10.png",
+    "derivative": "/cards/optimized-png/faces/hearts_10.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 23360,
+    "derivativeBytes": 21108,
+    "sourceSha256": "b42f38824a57840776f2c9c1cee80eaa7298b07f094c76f53d3e08f8af51fe88",
+    "derivativeSha256": "aac56f98d3fe9c0594574006920cdfcf6e8cee39fffc2e64f1c4cde1a4423baa"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_2.png",
+    "derivative": "/cards/optimized-png/faces/hearts_2.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 11024,
+    "derivativeBytes": 9830,
+    "sourceSha256": "d88a3e256da9dcc1fcab942a5262bfb2b2927a71fe92dd20235db317b2839e82",
+    "derivativeSha256": "128519c2a15615bd7a70a187bad98e5daeb27aa15c9911cde57d5a2d0485c38a"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_3.png",
+    "derivative": "/cards/optimized-png/faces/hearts_3.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 13102,
+    "derivativeBytes": 11776,
+    "sourceSha256": "2fff7f4d2987094e32439adf65e71d25ebb786a247b5e698318532fc06d801e7",
+    "derivativeSha256": "4119a8ae44b5b9a00ebb09f9ace857c552d6411b16c112f418eb0213b6016ee5"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_4.png",
+    "derivative": "/cards/optimized-png/faces/hearts_4.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 13216,
+    "derivativeBytes": 11794,
+    "sourceSha256": "8016ad720dc16e2672078d6ddc481cbdced3683cb536db69ce538e51f94c35f8",
+    "derivativeSha256": "dc5a92095600d696b8de91f52758ce2c463ac660cf2884edd4267af89f2fd886"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_5.png",
+    "derivative": "/cards/optimized-png/faces/hearts_5.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 16050,
+    "derivativeBytes": 14533,
+    "sourceSha256": "4992bbbc9e02d250ee39fdf99218a2adeff294a11caccdeb823ae5c69a465fbe",
+    "derivativeSha256": "e7682f36c47a7b088f1bbc845362617ac1bebb4f008c19deca902cfdfb0fa7ce"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_6.png",
+    "derivative": "/cards/optimized-png/faces/hearts_6.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 18519,
+    "derivativeBytes": 16795,
+    "sourceSha256": "94fd51db0e936456c9068d98d743045a4309e4b95de0952e4d9a8f9b98cc0118",
+    "derivativeSha256": "00207ab2117bda76098959777f12f88592e552013ba3f31a77739dc2bdbae778"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_7.png",
+    "derivative": "/cards/optimized-png/faces/hearts_7.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 18376,
+    "derivativeBytes": 16600,
+    "sourceSha256": "91df919f1f5d025dc510b91ee3fab51004980c8b21f0c594433e5a27d1b3bfd0",
+    "derivativeSha256": "5a405890e0be10d15787b4df5ca6758c8e4004752a28ad61105e6a87538a7b60"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_8.png",
+    "derivative": "/cards/optimized-png/faces/hearts_8.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 22142,
+    "derivativeBytes": 20197,
+    "sourceSha256": "1b2265f38651270acf8c708b40cac9682e7fa2f7a8ad04a39107adc556bc2e5a",
+    "derivativeSha256": "1aeb7c7f5f37ea5e592c8876e9e31a9378af5944882b1688afb5e6eb2a9f34a6"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_9.png",
+    "derivative": "/cards/optimized-png/faces/hearts_9.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 23572,
+    "derivativeBytes": 21441,
+    "sourceSha256": "f81a43b0b7eedb8ef8536259b8282a848a3aee7732672069a9e226719680738c",
+    "derivativeSha256": "67e867179d8d7982a18a402b208d930abb007b89cc30643014b0df31ebd5c41a"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_ace.png",
+    "derivative": "/cards/optimized-png/faces/hearts_ace.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 8567,
+    "derivativeBytes": 7446,
+    "sourceSha256": "c6f9221b9360ea92440a74c74acf5edcebcb917549405d7b52cd86c22a043a3b",
+    "derivativeSha256": "c25b824df4e86694b5ff9d59a33de2178b00374b9ef3db7ee52282411359d6b9"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_jack.png",
+    "derivative": "/cards/optimized-png/faces/hearts_jack.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 132060,
+    "derivativeBytes": 127972,
+    "sourceSha256": "e61f55d0dd0113bc1c567262834421487f68890278472c1f536ebae8baaa48c2",
+    "derivativeSha256": "30429469e2ee8583749f901657c468526891697bfaf9bd244b77badf4c3dc88b"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_king.png",
+    "derivative": "/cards/optimized-png/faces/hearts_king.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 131170,
+    "derivativeBytes": 127008,
+    "sourceSha256": "8ef39d47bb9fe4922b5eb3a441c8bd387497696d113319f3cb0508674125fe7b",
+    "derivativeSha256": "326a644eaa6de37f8c15e0cee72af57aa63456c62cff91b14f7b07687818b74c"
+  },
+  {
+    "source": "/cards/runtime-png/faces/hearts_queen.png",
+    "derivative": "/cards/optimized-png/faces/hearts_queen.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 129602,
+    "derivativeBytes": 125266,
+    "sourceSha256": "b11dde13458ec1f45e7c22226dce1e798029c52cbdca27655f28a875e727671b",
+    "derivativeSha256": "d425b2a48b2a938518d66cf80e4efc6523bc9fae9e5d0892b0cf4b166e800898"
+  },
+  {
+    "source": "/cards/runtime-png/faces/joker_black.png",
+    "derivative": "/cards/optimized-png/faces/joker_black.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 71455,
+    "derivativeBytes": 69102,
+    "sourceSha256": "ebb08899cf42d78ae5aadc7b948806b35d60227703d24449eeb138eca03a9da6",
+    "derivativeSha256": "9489c0cd69f705c21a8354761754f88b79e8c3e6baecb32886189cf04a29d366"
+  },
+  {
+    "source": "/cards/runtime-png/faces/joker_red.png",
+    "derivative": "/cards/optimized-png/faces/joker_red.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 65675,
+    "derivativeBytes": 62850,
+    "sourceSha256": "17c4d39256340f8bdc8197f4e65fd5badd81bf982ef631024de6a8ece257708c",
+    "derivativeSha256": "11c60710f3bf73a572605adc4a259ddb26e9a6e63deaa9bd0897dac0349a7045"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_10.png",
+    "derivative": "/cards/optimized-png/faces/spades_10.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 24901,
+    "derivativeBytes": 22727,
+    "sourceSha256": "dd80a9ce70121852995732a3a5cb8680ee6f91927855bf39c6f249090c610713",
+    "derivativeSha256": "a8d2fb6a89afb41f583ffb7bd574247371a5137e0c5adb305ed588ea5c2c8b65"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_2.png",
+    "derivative": "/cards/optimized-png/faces/spades_2.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 11806,
+    "derivativeBytes": 10594,
+    "sourceSha256": "d6fe0cf97b118ebd2d3b6f07ecc48d8524de52b7ef64029526cce840c12af71e",
+    "derivativeSha256": "ccf599b943b88040b75b44659163ba7beefd5bb568047d3d2b08d292bed4ca91"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_3.png",
+    "derivative": "/cards/optimized-png/faces/spades_3.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 14147,
+    "derivativeBytes": 12839,
+    "sourceSha256": "0b2ab0804e220a81baa9f6022a10866fc4ca9a4272dc3a016a2b790b55e86a22",
+    "derivativeSha256": "4912df8d082c3e391b5814a1ae1fe0e7a4e304fbb258b4188cfb61af38ac15e9"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_4.png",
+    "derivative": "/cards/optimized-png/faces/spades_4.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 14054,
+    "derivativeBytes": 12651,
+    "sourceSha256": "5fdb64f0a43e9797ddcbc9d1c39cd376d96ad805d69eab663c85f6984edf492c",
+    "derivativeSha256": "9c4b0180c2deb0a59a5ada9f940ddac57e611c60dc92a305119ef5a0b20632cb"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_5.png",
+    "derivative": "/cards/optimized-png/faces/spades_5.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 17121,
+    "derivativeBytes": 15584,
+    "sourceSha256": "b4974e0f5693711118fa60e6d5696b37f6feaedf1aa08b319fb90e457c10adf4",
+    "derivativeSha256": "97d96b9ca2865eb8b559c60ddfd453ff0702803556a287e2b5493259d7fd5d64"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_6.png",
+    "derivative": "/cards/optimized-png/faces/spades_6.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 19649,
+    "derivativeBytes": 17971,
+    "sourceSha256": "4acf0b47fcfb0ee5e6bd63cb919358652ba19838be52010abe7bf15a02ee5cfd",
+    "derivativeSha256": "3847f266562e75e824688b337ec5fb9f8a41ef24a5ee0425b026b491142b034e"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_7.png",
+    "derivative": "/cards/optimized-png/faces/spades_7.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 20159,
+    "derivativeBytes": 18381,
+    "sourceSha256": "cbd65dc7741a09b80e488d0e633b56d5fa6a9ea1328d4770d3197633924086eb",
+    "derivativeSha256": "18dff56207e9b3b489671612e525757d41088a7fb9f63b4f83ed857b1e7b1525"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_8.png",
+    "derivative": "/cards/optimized-png/faces/spades_8.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 23917,
+    "derivativeBytes": 22004,
+    "sourceSha256": "4207d24d7539f9e80de912f944737c9fcc89977bf3e74ad4758296de0d47d586",
+    "derivativeSha256": "05ac21b11d8b0022d181ef2c89ce4188b8ac9001966fd88e090e97509fc346aa"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_9.png",
+    "derivative": "/cards/optimized-png/faces/spades_9.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 25104,
+    "derivativeBytes": 23022,
+    "sourceSha256": "82a2f2a55b67e715a1db5f7ef75efabcf1ecd02b280b24db1dbb3dd392c1a88e",
+    "derivativeSha256": "7acb09511e546a3cb248cfb8c70b4241b61b4c157e89d758781f3666a516ea38"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_ace.png",
+    "derivative": "/cards/optimized-png/faces/spades_ace.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 9035,
+    "derivativeBytes": 7905,
+    "sourceSha256": "f8ff9b91680526690cf089f19211d39b77ccbb23040970a1ca93b41e017ff7f0",
+    "derivativeSha256": "b17b82ffc5701363b1d36657619d9409cf8901f951570bf37701aff17af11ce1"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_jack.png",
+    "derivative": "/cards/optimized-png/faces/spades_jack.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 124891,
+    "derivativeBytes": 120840,
+    "sourceSha256": "60d2c99590bd954762855061d18c5148a54ef9987fa70a0874239dbfa67bcf7f",
+    "derivativeSha256": "06921ab9a9f7dfa2d370b22aa9079c0acdee9306ad6496bce4753847b9b32d59"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_king.png",
+    "derivative": "/cards/optimized-png/faces/spades_king.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 119596,
+    "derivativeBytes": 115003,
+    "sourceSha256": "3a1b506fd9fe556bae73faa8bf19c5c9cc0c31bc7c717ef6e8a2da79d6209b4e",
+    "derivativeSha256": "a9969a0183ff1baec2a70c0f6a5f5bcb0ff9228eaa64ca8c316d9dd14bfac2da"
+  },
+  {
+    "source": "/cards/runtime-png/faces/spades_queen.png",
+    "derivative": "/cards/optimized-png/faces/spades_queen.png",
+    "dimensions": [
+      360,
+      503
+    ],
+    "pixelExact": true,
+    "sourceBytes": 121469,
+    "derivativeBytes": 117313,
+    "sourceSha256": "ec0fa3a5814265c6a6467846e359a27dc18015072b5787d4c6d54497f27476af",
+    "derivativeSha256": "7740f0a32b4d5e2d77bc004b9c00d9a13c748ce0b58c5231e954a24be55b8176"
+  }
+]
