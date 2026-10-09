@@ -75,3 +75,31 @@ end;
 $$;
 revoke all on function public.leave_waiting_room_internal(text,text) from public,anon,authenticated;
 grant execute on function public.leave_waiting_room_internal(text,text) to service_role;
+
+-- Enforce exclusive participation even if old code-based endpoints are called.
+-- Player-scoped advisory lock serializes conflicting room joins/creates.
+create or replace function private.ensure_single_open_room_internal()
+returns trigger language plpgsql security definer
+set search_path = pg_catalog, public, private
+as $$
+begin
+  if new.occupant_type <> 'human' or new.player_id is null then return new; end if;
+  perform pg_advisory_xact_lock(hashtextextended(new.player_id::text, 20261009));
+  if exists (
+    select 1 from public.room_seats s join public.rooms r on r.id=s.room_id
+    where s.player_id=new.player_id and s.occupant_type='human'
+      and s.room_id<>new.room_id and r.status='lobby'
+  ) or exists (
+    select 1 from public.game_participants gp join public.games g on gp.game_id=g.id
+    where gp.player_id=new.player_id and gp.owner_type='human' and gp.status='active'
+      and g.room_id<>new.room_id
+  ) then
+    raise exception 'ACTIVE_GAME_EXISTS' using errcode = '23505';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists single_open_room_for_human on public.room_seats;
+create trigger single_open_room_for_human
+before insert or update of occupant_type, player_id on public.room_seats
+for each row execute function private.ensure_single_open_room_internal();
