@@ -194,7 +194,10 @@ export const submitProjectedGameplayCommand = createServerFn({ method: "POST" })
       command: data.command as GameplayCommand,
     });
     if (!result.ok) return result;
-    const loaded = await settleAutomaticState(data.gameId);
+    // Confirm the human card first. Executing the next bot inside this POST
+    // delays the acknowledgement and can make the landed local card look stuck.
+    // The independent reconciler / foreground polling advances the next actor.
+    const loaded = await loadCanonicalGameState(data.gameId);
     if (!loaded.ok) return { ok: false, code: loaded.code };
     const projection = projected(loaded);
     return projection
