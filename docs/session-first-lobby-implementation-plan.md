@@ -7,7 +7,7 @@
 - Join shows server-authorized **not-yet-started** available rooms (owner, variant, occupied seats). Join requires no room code input; opaque room code may remain internal as a backend locator.
 - Exactly one room/game participation per human, enforced transactionally on server, not just by disabled buttons or session storage.
 - Once joined, use existing four-seat lobby with human/bot seats; joining user cannot browse rooms until explicit pre-start leave.
-- Pre-start non-host Leave atomically releases seat and returns to list. Host Leave policy is OPEN: no new behavior must be invented or silently close/transfer an occupied room.
+- Pre-start non-host Leave atomically releases their seat and returns to available games. **Confirmed host Leave:** atomically cancel the entire unstarted room, release ALL waiting participants, and return every connected player to the authenticated home/game-selection screen. Do not transfer host. Notify clients/realtime and prevent late join/start of cancelled room.
 - Host starts: room instantly disappears from joinable list and existing gameplay proceeds.
 - Restart/reopen: Return goes to existing lobby if unstarted, and to *current authoritative game projection* if started.
 - With other humans, existing 30s timeout and temporary bot ownership preserved. One-human + bots remains paused on disconnect, resumes at frozen authoritative state.
@@ -28,7 +28,7 @@
 - /create currently repeats PIN prompt; this PR reuses validated session when possible, but legacy form remains as fallback until new flow is deployed.
 - Database create_room_internal currently checks active_game_for_player_internal, which excludes pre-start lobby membership, so race-safe uniqueness must be addressed before enabling public room list.
 - Existing room-commands endpoint accepts session token only through trusted server-side cookie proxy; preserve this boundary.
-- Host departure behavior before starting is not yet specified. Do not alter it without explicit product decision.
+- Host departure before starting is CONFIRMED: cancel the room for everyone and release their membership. If host merely closes the browser or loses connection, do not interpret that as a deliberate Exit; preserve resume behavior.
 
 ## Release policy
 Do not merge phase 1 alone into production just because TS tests pass. Login, lobby discovery, membership protection and return must be validated together before replacing the current user journey. Keep gameplay rules, private deck and bot authority unchanged.
