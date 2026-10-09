@@ -110,6 +110,15 @@ Deno.serve(async (req: Request) => {
     } else if (action === "get") {
       rpcName = "get_room_for_session_internal";
       args = { p_session_token: sessionToken, p_code: String(body?.code ?? "") };
+    } else if (action === "list_waiting") {
+      rpcName = "list_waiting_rooms_internal";
+      args = { p_session_token: sessionToken };
+    } else if (action === "membership") {
+      rpcName = "get_current_room_membership_internal";
+      args = { p_session_token: sessionToken };
+    } else if (action === "leave_waiting") {
+      rpcName = "leave_waiting_room_internal";
+      args = { p_session_token: sessionToken, p_code: String(body?.code ?? "") };
     } else if (action === "active_game") {
       rpcName = "get_current_active_game_internal";
       args = { p_session_token: sessionToken };
@@ -219,6 +228,9 @@ Deno.serve(async (req: Request) => {
 
     const { data, error } = await admin.rpc(rpcName, args);
     if (error) {
+      if (error.code === "23505" && error.message === "ACTIVE_GAME_EXISTS") {
+        return json({ ok: false, code: "ACTIVE_GAME_EXISTS" }, 409);
+      }
       console.error("room-command-rpc-failed", { action, code: error.code });
       return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
     }

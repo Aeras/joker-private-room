@@ -7,15 +7,18 @@ on:
 jobs:
   rulesets:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env: { POSTGRES_PASSWORD: ci-only, POSTGRES_DB: jk003 }
-        ports: ['5432:5432']
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     env: { PGPASSWORD: ci-only }
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare local PostgreSQL (no container registry)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql postgresql-client
+          sudo systemctl start postgresql
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "ALTER ROLE postgres WITH PASSWORD 'ci-only'"
+          sudo -u postgres createdb jk003
       - name: Disposable database authorization, identity and privacy integration
         run: |
           set -euo pipefail

@@ -1,149 +1,144 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { JButton } from "@/components/joker/JButton";
-import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
-import type { PublicPlayer } from "@/domain/players";
+import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
+import { ScreenShell } from "@/components/joker/ScreenShell";
 import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
-import { t } from "@/i18n/el";
-import { authFailureMessage } from "@/lib/auth-feedback";
 import { roomFailureMessage } from "@/lib/room-feedback";
-import { cn } from "@/lib/utils";
-import { realIdentityService } from "@/services/realIdentity";
-import { joinProductionRoom } from "@/services/roomFunctions";
+import {
+  joinProductionRoom,
+  listWaitingRooms,
+  type WaitingRoomSummary,
+} from "@/services/roomFunctions";
 
 export const Route = createFileRoute("/join")({
-  validateSearch: (s: Record<string, unknown>) => ({ code: typeof s["code"] === "string" ? s["code"] : undefined }),
-  head: () => ({ meta: [{ title: "Συμμετοχή σε παιχνίδι — JOKER" }, { name: "description", content: "Μπες σε ιδιωτικό δωμάτιο JOKER με κωδικό." }] }),
-  component: JoinGame,
+  // Accept older invitation URLs, but never require their code.
+  validateSearch: (s: Record<string, unknown>) => ({
+    code: typeof s["code"] === "string" ? s["code"] : undefined,
+  }),
+  head: () => ({
+    meta: [
+      { title: "Διαθέσιμα παιχνίδια — JOKER" },
+      { name: "description", content: "Συμμετοχή σε διαθέσιμο παιχνίδι JOKER." },
+    ],
+  }),
+  component: JoinPage,
 });
 
-const inputCls = "h-14 w-full rounded-xl border border-input bg-secondary px-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
-
-function JoinGame() {
-  const { code: initialCode } = Route.useSearch();
-  const navigate = useNavigate();
+function JoinPage() {
   const activeLookup = useCurrentActiveGame();
-  const [code, setCode] = useState(initialCode ?? "");
-  const [players, setPlayers] = useState<PublicPlayer[]>([]);
-  const [playerId, setPlayerId] = useState("");
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [authBusy, setAuthBusy] = useState(false);
-  const joinActionId = useRef<string | null>(null);
-
-  useEffect(() => {
-    realIdentityService.listPlayers().then((list) => {
-      const joinable = list;
-      setPlayers(joinable);
-      setPlayerId(joinable[0]?.id ?? "");
-    }).catch(() => setError(t.authUnavailable)).finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    if (activeLookup.status !== "active") return;
-    void navigate({
-      to: "/table",
-      search: { code: activeLookup.activeGame.roomCode, gameId: activeLookup.activeGame.gameId },
-    });
-  }, [activeLookup.activeGame, activeLookup.status, navigate]);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!playerId || !/^\d{4}$/.test(pin) || authBusy) { setError(t.invalidJoin); return; }
-
-    setAuthBusy(true);
-    try {
-      const auth = await realIdentityService.verifyPin(playerId, pin);
-      if (!auth.ok) { setError(authFailureMessage(auth)); return; }
-
-      const current = await activeLookup.refresh();
-      if (current.ok && current.activeGame) {
-        void navigate({ to: "/table", search: { code: current.activeGame.roomCode, gameId: current.activeGame.gameId } });
-        return;
-      }
-      if (!current.ok) {
-        setError(current.code === "SERVICE_UNAVAILABLE"
-          ? "Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού. Δοκίμασε ξανά."
-          : t.invalidPin);
-        return;
-      }
-
-      if (code.trim().length !== 4) {
-        setError("Δεν έχεις ενεργό παιχνίδι. Συμπλήρωσε τον κωδικό του δωματίου στο οποίο θέλεις να μπεις.");
-        return;
-      }
-
-      joinActionId.current ??= crypto.randomUUID();
-      const result = await joinProductionRoom({ data: { actionId: joinActionId.current, code: code.trim().toUpperCase() } });
-      if (!result.ok) {
-        if (result.code === "ACTIVE_GAME_EXISTS" && result.activeGame?.roomCode) {
-          joinActionId.current = null;
-          navigate({ to: "/lobby", search: { code: result.activeGame.roomCode } });
-          return;
-        }
-        if (result.code !== "SERVICE_UNAVAILABLE") joinActionId.current = null;
-        setError(roomFailureMessage(result));
-        return;
-      }
-
-      joinActionId.current = null;
-      navigate({ to: "/lobby", search: { code: result.room.code } });
-    } catch {
-      setError(t.authUnavailable);
-    } finally {
-      setAuthBusy(false);
-    }
-  };
-
-  if (activeLookup.status === "loading" || activeLookup.status === "active") {
-    return <div className="surface-room min-h-dvh" />;
-  }
-
-  if (activeLookup.status === "error") {
-    return (
-      <ScreenShell title={t.joinGame} variant="pregame" contentClassName="pregame-centered-content">
-        <div className="panel max-w-xl space-y-3 p-4">
-          <p className="text-sm text-negative">Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού.</p>
-          <JButton className="pregame-primary-button w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
-        </div>
-      </ScreenShell>
-    );
-  }
-
   return (
-    <ScreenShell title={t.joinGame} variant="pregame" contentClassName="pregame-centered-content">
-      <form onSubmit={submit} className="pregame-join-card">
-        <p className="col-span-full text-sm text-muted-foreground">Για επιστροφή στο ενεργό παιχνίδι σου, επίλεξε όνομα και βάλε το PIN σου. Κωδικός χρειάζεται μόνο για συμμετοχή σε νέο δωμάτιο.</p>
-        <div>
-          <SectionLabel>{t.roomCode} (προαιρετικό)</SectionLabel>
-          <input disabled={authBusy} aria-label={t.roomCode} value={code} onChange={(e) => { setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4)); joinActionId.current = null; }} placeholder="J7K4" autoCapitalize="characters" className={cn(inputCls, "text-center font-display text-2xl tracking-[0.4em]")} />
-        </div>
-
-        <div className="pregame-player-picker">
-          <SectionLabel>{t.playerName}</SectionLabel>
-          <div className="grid grid-cols-2 gap-2">
-            {players.map((p) => (
-              <button type="button" disabled={authBusy} key={p.id} onClick={() => { setPlayerId(p.id); joinActionId.current = null; }} className={cn("h-12 rounded-xl border px-3 text-sm transition-all active:scale-[0.98]", playerId === p.id ? "border-primary bg-gold-soft text-primary" : "border-border bg-secondary text-foreground")}>
-                {p.displayName}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <SectionLabel>{t.pin}</SectionLabel>
-          <input disabled={authBusy} aria-label={t.pin} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className={cn(inputCls, "text-center text-2xl tracking-[0.5em]")} />
-        </div>
-
-        <div className="flex items-end">
-          <JButton type="submit" size="lg" className="pregame-primary-button h-14 w-full" disabled={loading || authBusy}>{t.enterGame}</JButton>
-        </div>
-
-        {error && <p className="col-span-full text-center text-sm text-negative">{error}</p>}
-      </form>
+    <ScreenShell title="Συμμετοχή σε παιχνίδι" variant="pregame" contentClassName="pregame-centered-content">
+      <PlayerSessionGate onAuthenticated={() => { void activeLookup.refresh(); }}>
+        {() => <AvailableRooms activeLookup={activeLookup} />}
+      </PlayerSessionGate>
     </ScreenShell>
   );
 }
 
+function AvailableRooms({ activeLookup }: { activeLookup: ReturnType<typeof useCurrentActiveGame> }) {
+  const navigate = useNavigate();
+  const [rooms, setRooms] = useState<WaitingRoomSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pending = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (activeLookup.status === "waiting") {
+      void navigate({ to: "/lobby", search: { code: activeLookup.roomCode } });
+    } else if (activeLookup.status === "active") {
+      void navigate({
+        to: "/table",
+        search: { code: activeLookup.activeGame.roomCode, gameId: activeLookup.activeGame.gameId },
+      });
+    }
+  }, [activeLookup.status, activeLookup.status === "waiting" ? activeLookup.roomCode : null,
+      activeLookup.status === "active" ? activeLookup.activeGame.gameId : null, navigate]);
+
+  useEffect(() => {
+    if (activeLookup.status !== "none") return;
+    let mounted = true;
+    const update = async () => {
+      try {
+        const result = await listWaitingRooms();
+        if (!mounted) return;
+        if (result.ok) {
+          setRooms(result.rooms);
+          setError(null);
+        } else {
+          setError("Δεν ήταν δυνατή η φόρτωση των δωματίων.");
+        }
+      } catch {
+        if (mounted) setError("Δεν ήταν δυνατή η φόρτωση των δωματίων.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    void update();
+    const interval = window.setInterval(() => void update(), 2500);
+    return () => { mounted = false; window.clearInterval(interval); };
+  }, [activeLookup.status]);
+
+  async function join(code: string) {
+    if (busy || activeLookup.status !== "none") return;
+    setBusy(true);
+    setError(null);
+    try {
+      pending.current ??= crypto.randomUUID();
+      const result = await joinProductionRoom({ data: { code, actionId: pending.current } });
+      if (result.ok) {
+        pending.current = null;
+        void navigate({ to: "/lobby", search: { code: result.room.code } });
+      } else if (result.code === "ACTIVE_GAME_EXISTS") {
+        pending.current = null;
+        setError("Συμμετέχεις ήδη σε άλλο παιχνίδι.");
+        await activeLookup.refresh();
+      } else {
+        if (result.code !== "SERVICE_UNAVAILABLE") pending.current = null;
+        setError(roomFailureMessage(result));
+      }
+    } catch {
+      setError("Δεν ήταν δυνατή η συμμετοχή. Δοκίμασε ξανά.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (activeLookup.status === "loading" || activeLookup.status === "waiting" ||
+      activeLookup.status === "active") {
+    return <p role="status" className="text-center">Έλεγχος συμμετοχής…</p>;
+  }
+  if (activeLookup.status === "error" || activeLookup.status === "unauthenticated") {
+    return (
+      <div className="panel mx-auto max-w-lg space-y-3 p-4 text-center">
+        <p>Δεν ήταν δυνατός ο έλεγχος της συμμετοχής σου.</p>
+        <JButton onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
+      </div>
+    );
+  }
+  return (
+    <div className="panel mx-auto w-full max-w-2xl space-y-3 p-4">
+      <h2 className="text-xl font-semibold">Διαθέσιμα παιχνίδια</h2>
+      {loading && <p role="status">Φόρτωση δωματίων…</p>}
+      {!loading && rooms.length === 0 && !error && (
+        <p>Δεν υπάρχουν διαθέσιμα παιχνίδια αυτή τη στιγμή.</p>
+      )}
+      {rooms.map((room) => (
+        <div key={room.code} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+          <div>
+            <strong>Παιχνίδι του {room.hostName}</strong>
+            <p className="text-sm text-muted-foreground">
+              {room.rulesetId} · {room.occupied}/4 θέσεις
+            </p>
+          </div>
+          <JButton disabled={busy} onClick={() => void join(room.code)}>Συμμετοχή</JButton>
+        </div>
+      ))}
+      {error && <p role="alert" className="text-sm text-negative">{error}</p>}
+      <JButton variant="outlineGold" onClick={() => void navigate({ to: "/" })}>
+        Αρχική οθόνη
+      </JButton>
+    </div>
+  );
+}

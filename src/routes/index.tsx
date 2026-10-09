@@ -6,6 +6,7 @@ import { JButton, jButton } from "@/components/joker/JButton";
 import { t } from "@/i18n/el";
 import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
 import { BotLabEntry } from "@/components/joker/BotLabEntry";
+import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,7 +40,12 @@ function Home() {
         </section>
 
         <section className="home-menu" aria-label="Κύριο μενού">
-          {activeLookup.status === "active" ? (
+          <PlayerSessionGate allowLogout={activeLookup.status !== "active" && activeLookup.status !== "waiting"} onAuthenticated={() => { void activeLookup.refresh(); }}>{() => <>
+          {activeLookup.status === "waiting" ? (
+            <Link to="/lobby" search={{ code: activeLookup.roomCode }} className={jButton({ size: "lg", className: "pregame-primary-button home-main-action" })}>
+              Επιστροφή στο παιχνίδι
+            </Link>
+          ) : activeLookup.status === "active" ? (
             <Link
               to="/table"
               search={{ code: activeLookup.activeGame.roomCode, gameId: activeLookup.activeGame.gameId }}
@@ -61,16 +67,17 @@ function Home() {
               <Link to="/join" search={{ code: undefined }} className="home-choice-card">
                 <span className="home-choice-card__number">02</span>
                 <strong>{t.joinGame}</strong>
-                <small>Μπες με κωδικό δωματίου</small>
+                <small>Δες τα διαθέσιμα παιχνίδια</small>
               </Link>
             </div>
           )}
 
-          <div className="home-secondary-actions">
+          {activeLookup.status !== "waiting" && activeLookup.status !== "active" && <div className="home-secondary-actions">
             <BotLabEntry />
             <Link to="/history"><History className="h-4 w-4" />Ιστορικό</Link>
             <Link to="/settings"><Settings2 className="h-4 w-4" />Ρυθμίσεις</Link>
-          </div>
+          </div>}
+          </>}</PlayerSessionGate>
         </section>
       </main>
 

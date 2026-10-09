@@ -36,16 +36,19 @@ describe("JK-002 active-game lookup and routing", () => {
     expect(home).toContain("activeLookup.activeGame.gameId");
   });
 
-  it("guards deep-linked Create and Join and rechecks immediately after authentication", () => {
+  it("preserves authenticated create routing and replaces code-based join with discovery", () => {
     const create = read("src/routes/create.tsx");
     const join = read("src/routes/join.tsx");
+    const lookup = read("src/hooks/useCurrentActiveGame.ts");
 
-    for (const source of [create, join]) {
-      expect(source).toContain("useCurrentActiveGame()");
-      expect(source).toContain("await activeLookup.refresh()");
-      expect(source).toContain('current.code === "SERVICE_UNAVAILABLE"');
-      expect(source).toContain('to: "/table"');
-      expect(source).toContain('activeLookup.status === "error"');
-    }
+    expect(create).toContain("useCurrentActiveGame()");
+    expect(create).toContain('to: "/table"');
+    expect(join).toContain("<PlayerSessionGate onAuthenticated=");
+    expect(join).toContain("listWaitingRooms()");
+    expect(join).toContain("joinProductionRoom");
+    expect(join).toContain('to: "/lobby"');
+    expect(join).not.toContain("Κωδικός δωματίου");
+    expect(lookup).toContain("getCurrentRoomMembership()");
+    expect(lookup).toContain('status: "waiting"');
   });
 });

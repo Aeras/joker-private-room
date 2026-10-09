@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   getCurrentActiveGame,
+  getCurrentRoomMembership,
   type ActiveGameSummary,
   type CurrentActiveGameResult,
 } from "@/services/roomFunctions";
@@ -10,18 +11,22 @@ export type ActiveGameLookupState =
   | { status: "none"; activeGame: null }
   | { status: "unauthenticated"; activeGame: null }
   | { status: "error"; activeGame: null }
-  | { status: "active"; activeGame: ActiveGameSummary };
+  | { status: "active"; activeGame: ActiveGameSummary }
+  | { status: "waiting"; activeGame: null; roomCode: string };
 
 export function useCurrentActiveGame() {
   const [state, setState] = useState<ActiveGameLookupState>({ status: "loading", activeGame: null });
 
   const refresh = useCallback(async (): Promise<CurrentActiveGameResult> => {
     try {
-      const result = await getCurrentActiveGame();
+      const [result, membership] = await Promise.all([getCurrentActiveGame(), getCurrentRoomMembership()]);
       if (result.ok) {
-        setState(result.activeGame
-          ? { status: "active", activeGame: result.activeGame }
-          : { status: "none", activeGame: null });
+        if (result.activeGame) setState({ status: "active", activeGame: result.activeGame });
+        else {
+          if (membership.ok && membership.membership?.lifecycle === "lobby") setState({ status: "waiting", activeGame: null, roomCode: membership.membership.code });
+          else if (!membership.ok) setState({ status: "error", activeGame: null });
+          else setState({ status: "none", activeGame: null });
+        }
       } else if (result.code === "NOT_AUTHENTICATED") {
         setState({ status: "unauthenticated", activeGame: null });
       } else {

@@ -28,7 +28,7 @@ describe("landscape pregame application shell", () => {
     expect(shell).toContain("<FullscreenButton");
     expect(shell).toContain("pregame-portrait-gate");
     expect(create).toContain("pregame-create-grid");
-    expect(join).toContain("pregame-join-card");
+    expect(join).toContain("Διαθέσιμα παιχνίδια");
     expect(lobby).toContain("pregame-lobby-grid");
     expect(css).toContain("height: 100dvh");
     expect(css).toContain("overflow: hidden");
@@ -39,8 +39,8 @@ describe("landscape pregame application shell", () => {
     const create = read("src/routes/create.tsx");
     const css = read("src/pregame.css");
 
-    expect(create).toContain("pregame-auth-control");
-    expect(create).toContain("pregame-host-control");
+    expect(create).toContain("getCurrentPlayer()");
+    expect(create).toContain("pregame-create-grid");
     expect(create).toContain("pregame-pin-input");
     expect(create).toContain("pregame-rule-card");
     expect(create).toContain("pregame-bot-panel");

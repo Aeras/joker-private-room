@@ -13,6 +13,7 @@ import { authFailureMessage } from "@/lib/auth-feedback";
 import { roomFailureMessage } from "@/lib/room-feedback";
 import { cn } from "@/lib/utils";
 import { realIdentityService } from "@/services/realIdentity";
+import { getCurrentPlayer } from "@/services/authFunctions";
 
 const AI_BANTER_CREATOR_PLAYER_ID = "a1f36a77-1732-44d4-8c3b-4623a6e6ed0c";
 import { createProductionRoom, getAvailableRulesets } from "@/services/roomFunctions";
@@ -69,6 +70,25 @@ function CreateGame() {
       })
       .catch(() => setAuthError(t.authUnavailable));
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      const current = await getCurrentPlayer();
+      if (!current || !mounted) return;
+      const available = await getAvailableRulesets();
+      if (!mounted || !available.ok) return;
+      setVerifiedHost(current);
+      setHost(current);
+      setOptions(available.options);
+    })().catch(() => undefined);
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (activeLookup.status !== "waiting") return;
+    void navigate({ to: "/lobby", search: { code: activeLookup.roomCode } });
+  }, [activeLookup.status, activeLookup.status === "waiting" ? activeLookup.roomCode : null, navigate]);
 
   useEffect(() => {
     if (activeLookup.status !== "active") return;
@@ -180,7 +200,7 @@ function CreateGame() {
           </div>
           <div className="pregame-auth-block">
             <SectionLabel>{t.pin}</SectionLabel>
-            <input value={pin} onChange={(e) => setPin(e.target.value.replace(/D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className="pregame-auth-control pregame-pin-input w-full border border-input bg-secondary text-center text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" autoComplete="off" placeholder="••••" className="pregame-auth-control pregame-pin-input w-full border border-input bg-secondary text-center text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
           </div>
           <div className="pregame-auth-action">
             <JButton size="lg" className="pregame-primary-button pregame-auth-control w-full" onClick={unlock} disabled={!host || pin.length !== 4 || authBusy}>Συνέχεια</JButton>

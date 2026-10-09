@@ -9,7 +9,7 @@ import {
 } from "@/integrations/external-supabase/client";
 
 const SESSION_COOKIE = "__Host-joker_session";
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24;
+const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 export type AuthFailureCode =
   | "INVALID_CREDENTIALS"
