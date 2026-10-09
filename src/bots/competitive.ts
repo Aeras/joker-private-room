@@ -48,8 +48,28 @@ export function strategicRandom(seed: string): () => number {
     return v / 4294967296;
   };
 }
+function semanticForSeed(play: PlayedCard) {
+  const j = play.joker;
+  return !j
+    ? null
+    : j.context === "LEAD"
+      ? { context: j.context, mode: j.mode, requestedSuit: j.requestedSuit }
+      : { context: j.context, mode: j.mode };
+}
+/** Rebuild the original canonical field order. JSONB object-key order is not
+ * game information and must not change a reproducible policy seed. */
+function playsForSeed(plays: readonly PlayedCard[]) {
+  return plays.map((p) => ({
+    seatIndex: p.seatIndex,
+    card:
+      p.card.kind === "joker"
+        ? { kind: p.card.kind, id: p.card.id }
+        : { kind: p.card.kind, id: p.card.id, suit: p.card.suit, rank: p.card.rank },
+    ...(p.joker ? { joker: semanticForSeed(p) } : {}),
+  }));
+}
 function key(play: PlayedCard): string {
-  return `${play.card.id}/${JSON.stringify(play.joker ?? null)}`;
+  return play.card.id + "/" + JSON.stringify(semanticForSeed(play));
 }
 export function completeActions(
   hand: readonly Card[],
@@ -322,7 +342,7 @@ export function analyzeCompetitive(
     cancelled: options.cancelled ?? (() => false),
     expired: () => now() >= deadline,
   };
-  const seed = `${options.seed ?? COMPETITIVE_VERSION}/${o.rulesVersion}/${o.identity.gameId}/${o.identity.dealNumber}/${o.identity.seat}/${[...o.ownHand, ...(o.pendingJoker?.seatIndex === o.identity.seat ? [o.pendingJoker.card] : [])].map((c) => c.id).sort()}/${JSON.stringify(o.committedTrick)}/${o.declarations}/${o.tricksTaken}/${o.publicScore.cumulativeTotals}`;
+  const seed = `${options.seed ?? COMPETITIVE_VERSION}/${o.rulesVersion}/${o.identity.gameId}/${o.identity.dealNumber}/${o.identity.seat}/${[...o.ownHand, ...(o.pendingJoker?.seatIndex === o.identity.seat ? [o.pendingJoker.card] : [])].map((c) => c.id).sort()}/${JSON.stringify(playsForSeed(o.committedTrick))}/${o.declarations}/${o.tricksTaken}/${o.publicScore.cumulativeTotals}`;
   const random = strategicRandom(seed);
   const endgame = Math.max(...o.remainingHandSizes) <= 2;
   const targetWorlds = policy.worlds * (tier === 3 && endgame ? 2 : 1);

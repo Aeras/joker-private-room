@@ -1,3 +1,4 @@
+import { stableJson } from "@/lib/stableFingerprint";
 import { describe, expect, it } from "vitest";
 import { simulateFullGame, LAB_TIERS } from "@/server/botLab/simulation.server";
 import { selectBaselineGameplayCommand } from "./baselineRuntime";
@@ -263,4 +264,28 @@ describe("competitive observation-safe search", () => {
     );
     expect(checked).toBeGreaterThan(0);
   }, 60000);
+  it("JSONB key ordering does not alter public-state seeds or the chosen decision", () => {
+    let checked = false;
+    simulateFullGame(
+      { ...config, strategyVersion: "baseline" },
+      {
+        select: (p) => {
+          const old = selectBaselineGameplayCommand(p)!;
+          if (
+            !checked &&
+            p.progression.phase === "CARD_PLAY" &&
+            p.cards.currentTrick.length === 2
+          ) {
+            checked = true;
+            const options = { now: () => 0 };
+            expect(analyzeCompetitive(JSON.parse(stableJson(p)), 3, old.command, options)).toEqual(
+              analyzeCompetitive(p, 3, old.command, options),
+            );
+          }
+          return old.command;
+        },
+      },
+    );
+    expect(checked).toBe(true);
+  }, 30000);
 });
