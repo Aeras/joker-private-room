@@ -134,8 +134,8 @@ export const createProductionRoom = createServerFn({ method: "POST" })
       botsTalk: data.botsTalk,
       allowProfanity: data.botsTalk && data.allowProfanity,
       aiEnabled: data.botsTalk && data.aiEnabled,
-      ttsEnabled: data.botsTalk && data.aiEnabled && data.ttsEnabled,
-      showDialogueText: data.botsTalk && data.aiEnabled && data.ttsEnabled ? data.showDialogueText : true,
+      ttsEnabled: data.botsTalk && data.ttsEnabled,
+      showDialogueText: data.botsTalk && data.ttsEnabled ? data.showDialogueText : true,
       intensity: data.intensity,
     }),
   );
