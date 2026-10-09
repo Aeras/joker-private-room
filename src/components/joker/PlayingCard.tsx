@@ -1,10 +1,12 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { assets } from "@/assets/registry";
 import {
   hasCardAssetFailed,
   isCardAssetReady,
   preloadCardAsset,
   resolvedCardArtwork,
+  CARD_RETRY_COOLDOWN_MS,
+  recoverCardAsset,
 } from "@/assets/cardPreload";
 import { cardLabel, isRedSuit, SUIT_SYMBOL, type Card } from "@/domain/cards";
 import { cn } from "@/lib/utils";
@@ -40,7 +42,7 @@ export function PlayingCard({
     return (
       <div className={cn(base, "overflow-hidden border border-primary/30 bg-card-face")} aria-label="Κλειστό φύλλο">
         {back ? (
-          <CardArtwork artwork={back} alt="" fallback={<div className="card-back-pattern absolute inset-[3px] rounded-[0.35rem]" />} />
+          <CardArtwork key={back} artwork={back} alt="" fallback={<div className="card-back-pattern absolute inset-[3px] rounded-[0.35rem]" />} />
         ) : (
           <div className="card-back-pattern absolute inset-[3px] rounded-[0.35rem]" />
         )}
@@ -74,34 +76,52 @@ function CardArtwork({
 }) {
   const [loaded, setLoaded] = useState(() => isCardAssetReady(artwork));
   const [failed, setFailed] = useState(() => hasCardAssetFailed(artwork));
+  const [retry, setRetry] = useState(0);
+  const domLoaded = useRef(false);
 
   useEffect(() => {
-    setLoaded(isCardAssetReady(artwork));
-    setFailed(hasCardAssetFailed(artwork));
-    if (isCardAssetReady(artwork) || hasCardAssetFailed(artwork)) return;
+    setLoaded(!retry && isCardAssetReady(artwork));
+    setFailed(!retry && hasCardAssetFailed(artwork));
+    if (!retry && isCardAssetReady(artwork)) return;
     let cancelled = false;
-    void preloadCardAsset(artwork).then((ok) => {
-      if (cancelled) return;
+    void (retry ? recoverCardAsset(artwork) : preloadCardAsset(artwork)).then((ok) => {
+      if (cancelled || domLoaded.current) return;
       setLoaded(ok);
       setFailed(!ok);
     });
     return () => {
       cancelled = true;
     };
-  }, [artwork]);
+  }, [artwork, retry]);
+
+  useEffect(() => {
+    if (!failed || retry >= 2) return;
+    const timer = window.setTimeout(() => setRetry(value => value + 1), CARD_RETRY_COOLDOWN_MS + 50);
+    return () => window.clearTimeout(timer);
+  }, [failed, retry]);
+  useEffect(() => {
+    if (!failed) return;
+    // After bounded automatic attempts, a real network recovery may retry again.
+    const online = () => setRetry(value => value + 1);
+    window.addEventListener("online", online);
+    return () => window.removeEventListener("online", online);
+  }, [failed]);
 
   return (
     <>
       {!loaded && !failed && <div className="absolute inset-0 bg-card-face" aria-hidden="true" />}
       {failed && fallback}
-      {!failed && (
+      {(
         <img
+          key={retry}
           src={resolvedCardArtwork(artwork)}
           alt={alt}
-          onError={() => setFailed(true)}
+          decoding="async"
+          onLoad={() => { domLoaded.current = true; setLoaded(true); setFailed(false); }}
+          onError={() => { domLoaded.current = false; setFailed(true); }}
           className={cn(
             "absolute inset-0 h-full w-full object-cover transition-opacity duration-75",
-            loaded ? "opacity-100" : "opacity-0",
+            loaded && !failed ? "opacity-100" : "opacity-0",
           )}
           data-card-artwork-loaded={loaded ? "true" : "false"}
         />
@@ -135,6 +155,6 @@ function CardFace({ card, artwork }: { card: Card; artwork: string | undefined }
   );
 
   return artwork
-    ? <CardArtwork artwork={artwork} alt={cardLabel(card)} fallback={semanticFallback} />
+    ? <CardArtwork key={artwork} artwork={artwork} alt={cardLabel(card)} fallback={semanticFallback} />
     : semanticFallback;
 }

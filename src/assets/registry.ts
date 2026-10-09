@@ -58,7 +58,7 @@ function tableAvatar(url: string | undefined): string | undefined {
   return match && tableAvatarNames.has(match[1]!) ? "/avatars/table/" + match[1] + ".webp" : url;
 }
 function cardArtwork(url: string): string {
-  return url;
+  return url.startsWith(`${RUNTIME_CARD_ROOT}/`) ? url.replace(RUNTIME_CARD_ROOT, "/cards/optimized-png") : url;
 }
 
 export const assets = {

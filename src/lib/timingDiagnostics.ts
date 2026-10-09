@@ -107,6 +107,8 @@ function activeRuntimeTimings() {
     },
     polling: {
       gameStateMs: 1500,
+      automaticActorGameStateMs: 500,
+      automaticActorImmediateRefresh: true,
       dialogueMs: 1000,
     },
   };

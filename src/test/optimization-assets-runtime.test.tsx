@@ -1,53 +1,96 @@
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 let images: FakeImage[];
-let resolveDecode: () => void;
-let rejectDecode: (error: Error) => void;
 class FakeImage {
+  static cached = true;
   decoding = ""; onload: (() => void) | null = null; onerror: (() => void) | null = null;
-  complete = true; naturalWidth = 100; private url = "";
-  decode = vi.fn(() => new Promise<void>((resolve, reject) => { resolveDecode = resolve; rejectDecode = reject; }));
+  complete = FakeImage.cached; naturalWidth = FakeImage.cached ? 100 : 0; private url = "";
+  resolve!: () => void; reject!: (error: Error) => void;
+  decode = vi.fn(() => new Promise<void>((resolve, reject) => { this.resolve = resolve; this.reject = reject; }));
   set src(value: string) { this.url = value; images.push(this); }
   get src() { return this.url; }
 }
-beforeEach(() => { vi.resetModules(); vi.useFakeTimers(); images = []; vi.stubGlobal("Image", FakeImage); localStorage.clear(); });
+const image = (url: string) => images.filter(item => item.src === url).at(-1)!;
+beforeEach(() => { vi.resetModules(); vi.useFakeTimers(); images = []; FakeImage.cached = true; vi.stubGlobal("Image", FakeImage); localStorage.clear(); });
 afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
-describe("decoded artwork readiness", () => {
-  it("cached load still waits for decode; duplicate requests coalesce and warm cache is ready", async () => {
+describe("decoded artwork readiness and slow-device recovery", () => {
+  it("cached load waits for decode and coalesces duplicate requests", async () => {
     const cache = await import("@/assets/cardPreload");
-    const first = cache.preloadCardAsset("/test.png"), second = cache.preloadCardAsset("/test.png");
-    expect(second).toBe(first); expect(cache.isCardAssetReady("/test.png")).toBe(false);
-    resolveDecode(); await first;
+    const first = cache.preloadCardAsset("/test.png");
+    expect(cache.preloadCardAsset("/test.png")).toBe(first);
+    expect(cache.isCardAssetReady("/test.png")).toBe(false);
+    image("/test.png").resolve(); await first;
     expect(cache.cardAssetStatus("/test.png")).toBe("decoded-ready");
     expect(await cache.preloadCardAsset("/test.png")).toBe(true);
-    expect(images.filter(image => image.src === "/test.png")).toHaveLength(1);
+    expect(images.filter(item => item.src === "/test.png")).toHaveLength(1);
   });
-  it("decode failure is retryable then bounded terminal failure", async () => {
-    const cache = await import("@/assets/cardPreload"); const request = cache.preloadCardAsset("/fail.png");
-    rejectDecode(new Error("Decode rejected")); await Promise.resolve(); expect(cache.cardAssetStatus("/fail.png")).toBe("retryable");
-    vi.advanceTimersByTime(250); rejectDecode(new Error("Decode rejected")); await Promise.resolve();
-    expect(await request).toBe(false); expect(cache.cardAssetStatus("/fail.png")).toBe("failed");
-    expect(await cache.preloadCardAsset("/fail.png")).toBe(false);
-    expect(images.filter(image => image.src === "/fail.png")).toHaveLength(2);
+  it("decode rejection after valid load is renderable, not a permanent fallback", async () => {
+    const cache = await import("@/assets/cardPreload"); const request = cache.preloadCardAsset("/decode.png");
+    image("/decode.png").reject(new Error("Memory pressure"));
+    expect(await request).toBe(true); expect(cache.cardAssetStatus("/decode.png")).toBe("renderable-ready");
   });
-  it("hung critical decode resolves to fallback without waiting indefinitely", async () => {
+  it("a hung decode of a loaded image has a bounded renderable completion", async () => {
     const cache = await import("@/assets/cardPreload"); const request = cache.preloadCardAsset("/hung.png");
-    await vi.advanceTimersByTimeAsync(5250); expect(await request).toBe(false);
+    await vi.advanceTimersByTimeAsync(cache.CARD_DECODE_TIMEOUT_MS);
+    expect(await request).toBe(true); expect(cache.cardAssetStatus("/hung.png")).toBe("renderable-ready");
   });
-  it("critical PNG artwork retries the same source without requesting old WebPs", async () => {
-    const cache = await import("@/assets/cardPreload"); const request = cache.preloadCardAsset("/cards/runtime-png/backs/blue_back.png");
-    expect(cache.resolvedCardArtwork("/cards/runtime-png/backs/blue_back.png")).toBe("/cards/runtime-png/backs/blue_back.png");
-    rejectDecode(new Error("PNG temporarily unavailable")); await Promise.resolve(); vi.advanceTimersByTime(250);
-    expect(images.at(-1)?.src).toBe("/cards/runtime-png/backs/blue_back.png"); resolveDecode();
-    expect(await request).toBe(true); expect(cache.resolvedCardArtwork("/cards/runtime-png/backs/blue_back.png")).toBe("/cards/runtime-png/backs/blue_back.png");
-    expect(images.some(image => image.src.includes("/cards/optimized/"))).toBe(false);
+  it("slow transfers survive the old 2.5s deadline", async () => {
+    FakeImage.cached = false;
+    const cache = await import("@/assets/cardPreload"); const request = cache.preloadCardAsset("/slow.png");
+    const slow = image("/slow.png");
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(cache.cardAssetStatus("/slow.png")).toBe("loading");
+    slow.complete = true; slow.naturalWidth = 100; slow.onload!();
+    slow.resolve();
+    expect(await request).toBe(true);
   });
-  it("critical hook gates presentation until decode completes", async () => {
+  it("an unavailable image has a bounded fallback rather than a deadlock", async () => {
+    FakeImage.cached = false;
+    const cache = await import("@/assets/cardPreload"); const request = cache.preloadCardAsset("/offline.png");
+    await vi.advanceTimersByTimeAsync(cache.CARD_LOAD_TIMEOUT_MS * 2 + 250);
+    expect(await request).toBe(false); expect(cache.cardAssetStatus("/offline.png")).toBe("failed");
+  });
+  it("network failures retry twice, then can recover after cooldown", async () => {
+    const cache = await import("@/assets/cardPreload"); const request = cache.preloadCardAsset("/fail.png");
+    image("/fail.png").onerror!(); expect(cache.cardAssetStatus("/fail.png")).toBe("retryable");
+    await vi.advanceTimersByTimeAsync(250); image("/fail.png").onerror!();
+    expect(await request).toBe(false); expect(await cache.preloadCardAsset("/fail.png")).toBe(false);
+    await vi.advanceTimersByTimeAsync(cache.CARD_RETRY_COOLDOWN_MS);
+    const recovered = cache.preloadCardAsset("/fail.png"); image("/fail.png").resolve();
+    expect(await recovered).toBe(true);
+  });
+  it("optimized PNG failure falls back to the preserved original", async () => {
+    const cache = await import("@/assets/cardPreload"); const url = "/cards/runtime-png/backs/blue_back.png";
+    const request = cache.preloadCardAsset(url);
+    image("/cards/optimized-png/backs/blue_back.png").onerror!();
+    await vi.advanceTimersByTimeAsync(250); image(url).resolve();
+    expect(await request).toBe(true); expect(cache.resolvedCardArtwork(url)).toBe(url);
+    expect(images.some(item => item.src.endsWith(".webp"))).toBe(false);
+  });
+  it("background warming starts only two requests; critical artwork bypasses warming", async () => {
+    const cache = await import("@/assets/cardPreload");
+    await vi.advanceTimersByTimeAsync(50);
+    expect(images).toHaveLength(2);
+    const critical = cache.preloadCardAsset("/critical.png"); expect(images).toHaveLength(3);
+    image("/critical.png").resolve(); expect(await critical).toBe(true);
+  });
+  it("critical hook gates until decode completes", async () => {
     const { useCriticalCardArtwork } = await import("@/components/table/useCriticalCardArtwork");
     function Harness() { return <div>{useCriticalCardArtwork(["/critical.png"]) ? "settled" : "waiting"}</div>; }
     const view = render(<Harness />); expect(view.container.textContent).toBe("waiting");
-    await act(async () => { resolveDecode(); await Promise.resolve(); });
+    await act(async () => { image("/critical.png").resolve(); await Promise.resolve(); });
     expect(view.container.textContent).toBe("settled");
+  });
+  it("a DOM load restores artwork even if the preload failed; changed artwork gets fresh readiness", async () => {
+    const { PlayingCard } = await import("@/components/joker/PlayingCard");
+    const view = render(<PlayingCard card={{ kind: "standard", id: "8-clubs", suit: "clubs", rank: "8" }} />);
+    const node = view.container.querySelector("img")!;
+    fireEvent.error(node); expect(view.container.querySelector("[data-card-semantic-fallback]")).not.toBeNull();
+    fireEvent.load(node); expect(view.container.querySelector("[data-card-semantic-fallback]")).toBeNull();
+    expect(node).toHaveAttribute("data-card-artwork-loaded", "true");
+    view.rerender(<PlayingCard card={{ kind: "standard", id: "9-clubs", suit: "clubs", rank: "9" }} />);
+    expect(view.container.querySelector("img")).not.toBe(node);
+    expect(view.container.querySelector("img")).toHaveAttribute("data-card-artwork-loaded", "false");
   });
 });
 describe("bounded timing capture", () => {
