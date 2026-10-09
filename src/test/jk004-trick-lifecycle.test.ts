@@ -36,13 +36,13 @@ describe("JK-004 completed trick presentation", () => {
     const timing = trickPresentationTiming(false);
     expect(NORMAL_TRICK_SETTLE_MS).toBeGreaterThanOrEqual(250);
     expect(NORMAL_TRICK_SETTLE_MS).toBeLessThanOrEqual(450);
-    expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(700);
+    expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(500);
     expect(NORMAL_TRICK_HOLD_MS).toBeLessThanOrEqual(1100);
     expect(NORMAL_TRICK_STACK_MS).toBeGreaterThanOrEqual(150);
     expect(NORMAL_TRICK_STACK_MS).toBeLessThanOrEqual(500);
     expect(NORMAL_TRICK_COLLECT_MS).toBeGreaterThanOrEqual(250);
     expect(NORMAL_TRICK_COLLECT_MS).toBeLessThanOrEqual(600);
-    expect(NORMAL_TRICK_COLLECT_MS).toBe(600);
+    expect(NORMAL_TRICK_COLLECT_MS).toBe(380);
     expect(timing.collectStartMs).toBeGreaterThan(timing.holdMs);
     expect(timing.clearMs).toBeGreaterThan(timing.collectStartMs);
   });

@@ -33,10 +33,10 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(NORMAL_DEAL_TRAVEL_MS).toBe(308);
     expect(NORMAL_DEAL_SETTLE_MS).toBe(1200);
     expect(NORMAL_DEAL_TAIL_MS).toBe(72);
-    expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(300);
+    expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(160);
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(NORMAL_TRICK_SETTLE_MS + NORMAL_TRICK_INTER_PLAY_BEAT_MS);
     expect(NORMAL_TRICK_SETTLE_MS).toBeGreaterThanOrEqual(300);
-    expect(NORMAL_TRICK_HOLD_MS).toBe(850);
+    expect(NORMAL_TRICK_HOLD_MS).toBe(550);
     expect(NORMAL_TRICK_STACK_MS).toBeGreaterThanOrEqual(180);
   });
 

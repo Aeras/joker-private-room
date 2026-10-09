@@ -43,7 +43,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("card play readability deadlines", () => {
-  it("unchanged polls and parent renders do not restart the 300ms wait", () => {
+  it("unchanged polls and parent renders do not restart the 160ms wait", () => {
     const v = render(<TrickPresentation {...props} projection={snapshot(1)} />);
     v.rerender(<TrickPresentation {...props} projection={snapshot(2)} />);
     const count = () => v.container.querySelectorAll("[data-trick-seat]").length;
@@ -51,9 +51,9 @@ describe("card play readability deadlines", () => {
     tick(100);
     const unchanged = structuredClone(snapshot(2));
     v.rerender(<TrickPresentation {...props} projection={unchanged} />);
-    tick(100);
+    tick(40);
     v.rerender(<TrickPresentation {...props} projection={unchanged} />);
-    tick(99);
+    tick(19);
     expect(count()).toBe(1);
     tick(1);
     expect(count()).toBe(2);
@@ -69,7 +69,7 @@ describe("card play readability deadlines", () => {
     const v = render(<TrickPresentation {...props} projection={snapshot(1)} />);
     tick(100);
     v.rerender(<TrickPresentation {...props} projection={snapshot(2)} />);
-    tick(199);
+    tick(59);
     expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(1);
     tick(1);
     expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(2);
@@ -85,12 +85,12 @@ describe("card play readability deadlines", () => {
     fireEvent(first, landed);
     tick(100);
     v.rerender(<TrickPresentation {...props} projection={structuredClone(snapshot(2))} />);
-    tick(199);
+    tick(59);
     expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(1);
     tick(1);
     expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(2);
   });
-  it.each(["human", "permanent_bot"])("blocks the next %s interaction until 300ms after real landing", _controller => {
+  it.each(["human", "permanent_bot"])("blocks the next %s interaction until 160ms after real landing", _controller => {
     const busy = vi.fn();
     const v = render(<TrickPresentation {...props} onBusyChange={busy} projection={snapshot(0)} />);
     const next = snapshot(1);
@@ -102,9 +102,9 @@ describe("card play readability deadlines", () => {
     const landed = new Event("transitionend", { bubbles: true });
     Object.defineProperty(landed, "propertyName", { value: "transform" }); fireEvent(first, landed);
     expect(busy).toHaveBeenLastCalledWith(true);
-    tick(150);
+    tick(80);
     v.rerender(<TrickPresentation {...props} onBusyChange={busy} projection={structuredClone(next)} geometry={{ ...geometry, epoch: 8 }} />);
-    tick(149); expect(busy).toHaveBeenLastCalledWith(true);
+    tick(79); expect(busy).toHaveBeenLastCalledWith(true);
     tick(1); expect(busy).toHaveBeenLastCalledWith(false);
   });
   it("hidden/visible recovery consumes an elapsed beat without adding another pause", () => {
