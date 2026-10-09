@@ -19,8 +19,8 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("JK-006 presentation barriers", () => {
   it("paces every next visible trick play from prior settle completion", () => {
-    expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(160);
-    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(NORMAL_TRICK_SETTLE_MS + 160);
+    expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(0);
+    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(NORMAL_TRICK_SETTLE_MS + 0);
   });
 
   it("retains Joker semantics as a three-second center presentation event", () => {

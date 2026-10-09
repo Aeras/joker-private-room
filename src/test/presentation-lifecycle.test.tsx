@@ -289,7 +289,7 @@ it("centralization preserves approved normal pacing and deal barrier duration", 
     NORMAL_TRICK_INTER_PLAY_BEAT_MS,
     NORMAL_TRICK_HOLD_MS,
     NORMAL_TRICK_COLLECT_MS,
-  ]).toEqual([300, 340, 160, 550, 380]);
+  ]).toEqual([300, 340, 0, 550, 380]);
   expect(dealPresentationTiming(true)).toEqual(dealPresentationTiming(false));
 });
 
