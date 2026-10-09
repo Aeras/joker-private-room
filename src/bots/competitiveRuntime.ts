@@ -1,6 +1,10 @@
 import type { PlayerGameProjection } from "@/domain/projection";
 import { selectBaselineGameplayCommand } from "./baselineRuntime";
 import { analyzeCompetitive, COMPETITIVE_VERSION, type CompetitiveTier } from "./competitive";
+import { chooseExactProtectionPlay } from "./competitiveV3";
+import { observeBot } from "./observation";
+
+export const COMPETITIVE_V3_VERSION = "competitive-v3";
 
 /** Catalog tier IDs remain compatible with existing games and temporary
  * takeovers. The explicit algorithm version identifies the new policy. */
@@ -28,6 +32,32 @@ export function selectCompetitiveCommand(projection: PlayerGameProjection) {
     id === "probability-simulation-v1" ? 3 : id === "memory-inference-v1" ? 2 : 1;
   try {
     const report = analyzeCompetitive(projection, tier, fallback.command);
+    // V3 applies to late tricks after a confirmed declaration; all other
+    // phases retain the proven V2 search. The canonical engine still validates
+    // every card and Joker meaning. A failed V3 evaluation falls back to V2.
+    const observation = observeBot(projection);
+    const ownBid = observation.declarations[observation.identity.seat];
+    if (projection.progression.phase === "CARD_PLAY" &&
+        ownBid !== null && ownBid !== undefined &&
+        observation.ownHand.length > 0 && observation.ownHand.length <= 2) {
+      try {
+        const choice = chooseExactProtectionPlay({
+          hand: observation.ownHand,
+          trick: observation.committedTrick,
+          trump: observation.trump,
+          seat: observation.identity.seat,
+          bid: ownBid,
+          taken: observation.tricksTaken[observation.identity.seat]!,
+          remaining: observation.ownHand.length,
+        });
+        const v3Command = { type: "play_card" as const, cardId: choice.card.id,
+          ...(choice.joker ? { jokerSemantic: choice.joker } : {}) };
+        const legal = projection.local.legalActions.find(a => a.type === "play_card");
+        if (legal?.cardIds.includes(choice.card.id)) {
+          return { ...fallback, command: v3Command, strategyVersion: COMPETITIVE_V3_VERSION, report };
+        }
+      } catch { /* Preserve V2 on any V3 evaluation failure. */ }
+    }
     return { ...fallback, command: report.command, strategyVersion: COMPETITIVE_VERSION, report };
   } catch {
     return { ...fallback, strategyVersion: COMPETITIVE_VERSION, report: null };
