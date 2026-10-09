@@ -13,6 +13,7 @@ import { authFailureMessage } from "@/lib/auth-feedback";
 import { roomFailureMessage } from "@/lib/room-feedback";
 import { cn } from "@/lib/utils";
 import { realIdentityService } from "@/services/realIdentity";
+import { getCurrentPlayer } from "@/services/authFunctions";
 
 const AI_BANTER_CREATOR_PLAYER_ID = "a1f36a77-1732-44d4-8c3b-4623a6e6ed0c";
 import { createProductionRoom, getAvailableRulesets } from "@/services/roomFunctions";
@@ -68,6 +69,20 @@ function CreateGame() {
         setHost((current) => current ?? list[0] ?? null);
       })
       .catch(() => setAuthError(t.authUnavailable));
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      const current = await getCurrentPlayer();
+      if (!current || !mounted) return;
+      const available = await getAvailableRulesets();
+      if (!mounted || !available.ok) return;
+      setVerifiedHost(current);
+      setHost(current);
+      setOptions(available.options);
+    })().catch(() => undefined);
+    return () => { mounted = false; };
   }, []);
 
   useEffect(() => {
