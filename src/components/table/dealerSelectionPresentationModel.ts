@@ -2,11 +2,8 @@ import { markPresentationCompleted, presentationWasCompleted } from "./presentat
 import { nextSeat, type SeatIndex } from "@/domain/dealing";
 import type { PlayerGameProjection } from "@/domain/projection";
 
-export const DEALER_START_CUE_MS = 350;
-export const DEALER_SELECTION_STAGGER_MS = 350;
-export const DEALER_SELECTION_CARD_TRAVEL_MS = 308;
-export const DEALER_SELECTION_WINNER_HOLD_MS = 490;
 
+export { DEALER_START_CUE_MS, DEALER_SELECTION_STAGGER_MS, DEALER_SELECTION_CARD_TRAVEL_MS, DEALER_SELECTION_WINNER_HOLD_MS } from "./presentationTiming";
 export function dealerSelectionRecipient(firstRecipientSeat: SeatIndex, cardIndex: number): SeatIndex {
   return nextSeat(firstRecipientSeat, cardIndex % 4);
 }

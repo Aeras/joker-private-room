@@ -1,3 +1,4 @@
+import { NORMAL_TRICK_HOLD_MS, NORMAL_TRICK_INTER_PLAY_BEAT_MS } from "@/components/table/presentationTiming";
 // Architecture wiring checks only; behavioral motion/recovery/barriers are exercised
 // in optimization-motion-ownership, ordered-presentation and deal-barriers tests.
 import { readFileSync } from "node:fs";
@@ -9,7 +10,6 @@ const seat = readFileSync("src/components/table/TableSeat.tsx", "utf8");
 const gesture = readFileSync("src/components/table/DraggableHandCard.tsx", "utf8");
 const deal = readFileSync("src/components/table/DealPresentation.tsx", "utf8");
 const trick = readFileSync("src/components/table/TrickPresentation.tsx", "utf8");
-const trickModel = readFileSync("src/components/table/trickPresentationModel.ts", "utf8");
 const declaration = readFileSync("src/components/table/DeclarationPicker.tsx", "utf8");
 const audio = readFileSync("src/lib/gameAudio.ts", "utf8");
 
@@ -63,8 +63,8 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
     expect(trick).toContain("winnerSeat: active.winnerSeat");
     expect(trick).not.toMatch(/resolveTrick|calculateWinner/);
     expect(trick).toContain("trickPresentationTiming(reducedMotion)");
-    expect(trickModel).toContain("NORMAL_TRICK_HOLD_MS = 550");
-    expect(trickModel).toContain("NORMAL_TRICK_INTER_PLAY_BEAT_MS = 160");
+    expect(NORMAL_TRICK_HOLD_MS).toBe(550);
+    expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(160);
   });
 
   it("uses best-effort deduplicated audio with no gameplay dependency", () => {
@@ -80,7 +80,7 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
     expect(trick).toContain('window.addEventListener("orientationchange", orientation)');
     expect(deal).not.toContain("motion-reduce:duration-75");
     expect(deal).toContain("dealPresentationTiming(false)");
-    expect(trick).toContain("prefers-reduced-motion: reduce");
+    expect(trick).toContain("useReducedMotion()");
     expect(deal).toContain("dealPresentationWasCompleted(stageKey)");
     expect(trick).toContain("active?.hydrated");
   });

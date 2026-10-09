@@ -1,3 +1,5 @@
+import { useReducedMotion } from "./useReducedMotion";
+import { PresentationRun, presentationTimeout } from "./presentationRun";
 import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 import { assets } from "@/assets/registry";
 import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
@@ -24,7 +26,7 @@ type Departing = { id: string; cards: PlayedCard[]; winnerSeat: SeatIndex; stage
 type JokerAnnouncement = { id: string; text: string };
 
 const FALLBACK_LANDING: Record<Pos, Point> = { 0: { x: 0, y: 38 }, 1: { x: -40, y: 0 }, 2: { x: 0, y: -38 }, 3: { x: 40, y: 0 } };
-const JOKER_ANNOUNCEMENT_MS = 3_000;
+import { JOKER_ANNOUNCEMENT_MS, COLLECTION_FADE_MS, REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
 const HIGHER_SUIT_LABEL: Record<Suit, string> = { hearts: "Θέλω μεγαλύτερη Κούπα", diamonds: "Θέλω μεγαλύτερο Καρό", clubs: "Θέλω μεγαλύτερο Σπαθι", spades: "Θέλω μεγαλύτερο Μπαστούνι" };
 const SUIT_WINS_LABEL: Record<Suit, string> = { hearts: "Παίρνουν Κούπες", diamonds: "Παίρνουν Καρό", clubs: "Παίρνουν Σπαθιά", spades: "Παίρνουν Μπαστούνια" };
 function posOf(viewerSeat: SeatIndex, seat: number): Pos { return ((seat - viewerSeat + 4) % 4) as Pos; }
@@ -82,33 +84,40 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
   const timing = trickPresentationTiming(reducedMotion);
   const fromBelowJoker = isFromBelowJoker(play);
   const duration = departingStage === "stacking" ? timing.stackMs : departingStage === "collecting" ? timing.collectMs : fromBelowJoker && !reducedMotion ? NORMAL_FROM_BELOW_FLIGHT_MS : timing.settleMs;
+  const runs = useRef(new PresentationRun());
+  const completionScope = `${completionGeneration}:${departingStage ?? "landing"}:${paused}`;
+  const previousCompletionScope = useRef(completionScope);
+  if (previousCompletionScope.current !== completionScope) {
+    runs.current.invalidate(); previousCompletionScope.current = completionScope;
+  }
   const completionRef = useRef(onMotionComplete); completionRef.current = onMotionComplete;
   const playRef = useRef(play); playRef.current = play;
   useEffect(() => {
     if (paused || !arrived || departingStage === "holding" || (!departingStage && settled)) return;
-    const timer = window.setTimeout(() => completionRef.current(playRef.current, departingStage ?? "landing"), duration + MOTION_FALLBACK_SLACK_MS);
-    return () => window.clearTimeout(timer);
+    return presentationTimeout(runs.current.guard(() => completionRef.current(playRef.current, departingStage ?? "landing")), duration + MOTION_FALLBACK_SLACK_MS);
   }, [arrived, departingStage, duration, play.card.id, completionGeneration, paused, settled]);
   const collecting = departingStage === "collecting";
   const stacking = departingStage === "stacking";
   const faceDown = fromBelowJoker || collecting;
   const settledPoint = fromBelowJoker ? underStackPoint(landing, center) : landing;
   const alignedRotation = winnerPos == null ? TRICK_CARD_ROTATION[pos] : stackRotation(pos, winnerPos);
-  const transform = collecting
-    ? relativeTransform(collectTarget, center, alignedRotation)
+  const transform = reducedMotion && (collecting || stacking)
+    ? relativeTransform(settledPoint, center, TRICK_CARD_ROTATION[pos])
+    : collecting
+    ? relativeTransform(reducedMotion ? stackTarget : collectTarget, center, alignedRotation)
     : stacking ? relativeTransform(stackTarget, center, alignedRotation)
-    : departedTransform(arrived, false, settledPoint, origin, center, pos);
-  const frames = stacking && !winner && winnerPos != null ? Array.from({ length: 17 }, (_, index) => {
+    : departedTransform(arrived, false, settledPoint, reducedMotion ? { x: settledPoint.x, y: settledPoint.y + REDUCED_MOTION_DISTANCE_PX } : origin, center, pos);
+  const frames = stacking && !reducedMotion && !winner && winnerPos != null ? Array.from({ length: 17 }, (_, index) => {
     const t = (1 - Math.cos(index / 16 * Math.PI)) / 2;
     const pose = pinnedStackPose(settledPoint, stackTarget, pos, winnerPos, motionGeometry?.trickCardSize.height ?? 100, t);
     return `${index / 16 * 100}%{transform:${relativeTransform(pose.point, center, pose.rotation)}}`;
   }).join("") : "";
   const easing = collecting ? "linear" : fromBelowJoker && !departingStage ? "ease-in-out" : "cubic-bezier(0.22, 1, 0.36, 1)";
-  return <div data-joker-from-below={fromBelowJoker ? "true" : undefined} data-trick-seat={play.seatIndex} data-trick-collecting={collecting ? "true" : undefined} className={cn("fixed transition-[transform,opacity]", fromBelowJoker ? "z-0" : "z-10")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms`, transitionTimingFunction: easing, animationName: frames ? animationId : "none", animationDuration: `${duration}ms`, animationTimingFunction: "linear", animationPlayState: paused ? "paused" : "running", opacity: collecting ? 0 : 1, transitionDelay: collecting ? `0ms, ${Math.max(0, duration - 120)}ms` : "0ms", ...(collecting ? { transitionDuration: `${duration}ms, 120ms` } : {}) } as React.CSSProperties} onAnimationEnd={(event) => { if (event.target === event.currentTarget && event.animationName === animationId && stacking) completionRef.current(play, "stacking"); }} onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform" && !stacking) completionRef.current(play, departingStage ?? "landing"); }}>
+  return <div data-joker-from-below={fromBelowJoker ? "true" : undefined} data-trick-seat={play.seatIndex} data-trick-collecting={collecting ? "true" : undefined} className={cn("fixed transition-[transform,opacity]", fromBelowJoker ? "z-0" : "z-10")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms`, transitionTimingFunction: easing, animationName: frames ? animationId : "none", animationDuration: `${duration}ms`, animationTimingFunction: "linear", animationPlayState: paused ? "paused" : "running", opacity: collecting || (reducedMotion && !arrived) ? 0 : 1, transitionDelay: collecting ? `0ms, ${reducedMotion ? 0 : Math.max(0, duration - COLLECTION_FADE_MS)}ms` : "0ms", ...(collecting ? { transitionDuration: `${duration}ms, ${COLLECTION_FADE_MS}ms` } : {}) } as React.CSSProperties} onAnimationEnd={runs.current.guard((event) => { if (event.target === event.currentTarget && event.animationName === animationId && stacking) completionRef.current(play, "stacking"); })} onTransitionEnd={runs.current.guard((event) => { if (event.target === event.currentTarget && event.propertyName === "transform" && !stacking) completionRef.current(play, departingStage ?? "landing"); })}>
     {frames && <style>{`@keyframes ${animationId}{${frames}}`}</style>}
-    {fromBelowJoker ? <UnderJokerFace card={play.card} flipped={arrived} duration={reducedMotion ? timing.settleMs : NORMAL_FROM_BELOW_FLIP_MS} /> : <div className="relative">
-      <div style={{ opacity: faceDown ? 0 : 1, transition: collecting ? "opacity 120ms linear" : undefined }}><PlayingCard card={play.card} /></div>
-      <div className="absolute inset-0" style={{ opacity: faceDown ? 1 : 0, transition: collecting ? "opacity 120ms linear" : undefined }}><PlayingCard faceDown /></div>
+    {fromBelowJoker ? <UnderJokerFace card={play.card} flipped={arrived} duration={reducedMotion ? timing.settleMs : NORMAL_FROM_BELOW_FLIP_MS} reducedMotion={reducedMotion} /> : <div className="relative">
+      <div style={{ opacity: faceDown ? 0 : 1, transition: collecting ? `opacity ${COLLECTION_FADE_MS}ms linear` : undefined }}><PlayingCard card={play.card} /></div>
+      <div className="absolute inset-0" style={{ opacity: faceDown ? 1 : 0, transition: collecting ? `opacity ${COLLECTION_FADE_MS}ms linear` : undefined }}><PlayingCard faceDown /></div>
     </div>}
   </div>;
 }
@@ -141,7 +150,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const activeId = useRef<string | null>(null);
   const departingRef = useRef(departing); departingRef.current = departing;
   const localPresentationRef = useRef(localPlayPresentation); localPresentationRef.current = localPlayPresentation;
-  const reducedMotion = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+  const reducedMotion = useReducedMotion();
   const resolvedTrumpSuit = projection.trump?.status === "resolved" ? projection.trump.suit : null;
 
   const enqueueJokerAnnouncement = useCallback((play: PlayedCard) => {
@@ -156,8 +165,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const announcementId = announcementQueue[0]?.id;
   useEffect(() => {
     if (!announcementId) return;
-    const timer = window.setTimeout(() => setAnnouncementQueue(items => items[0]?.id === announcementId ? items.slice(1) : items), JOKER_ANNOUNCEMENT_MS);
-    return () => window.clearTimeout(timer);
+    return presentationTimeout(() => setAnnouncementQueue(items => items[0]?.id === announcementId ? items.slice(1) : items), JOKER_ANNOUNCEMENT_MS);
   }, [announcementId]);
 
   // Publish the latch before the parent's passive score reconciliation can run.
@@ -201,7 +209,8 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   }, [active?.id, active?.cards, active?.hydrated]);
 
   const onMotionComplete = useCallback((play: PlayedCard, stage: DepartingStage | "landing") => {
-    if (paused) return;
+    if (paused || !active || journal.current.active?.id !== active.id) return;
+    if (!active.cards.some(card => playKey(card) === playKey(play))) return;
     if (stage === "landing") {
       if (landedCards.current.has(playKey(play))) return;
       landedCards.current.add(playKey(play));
@@ -223,7 +232,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       collectionCallback.current?.();
       journal.current.collect(current.id); departingRef.current = null; setDeparting(null); revise(n => n + 1);
     }
-  }, [paused]);
+  }, [paused, active]);
   const markLocalLanding = useCallback(() => {
     const local = localPresentationRef.current;
     if (!local) return;
@@ -255,8 +264,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
         recordTimingDiagnostic("trick_card_launch", { trickId: active.id, seat: next.seatIndex, cardId: next.card.id });
       };
       if (local) { show(); return undefined; }
-      const timer = window.setTimeout(show, delay);
-      return () => window.clearTimeout(timer);
+      return presentationTimeout(() => { if (journal.current.active?.id === active.id) show(); }, delay);
     }
     if (active.winnerSeat == null || localPlayPresentation || !active.cards.every(play => landedCards.current.has(playKey(play)))) return;
     stageCards.current.clear();
@@ -268,14 +276,14 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
 
   useEffect(() => {
     if (paused || departing?.stage !== "holding") return;
-    const timer = window.setTimeout(() => {
+    return presentationTimeout(() => {
+      if (departingRef.current?.id !== departing.id || departingRef.current.stage !== "holding") return;
       const next = { ...departing, stage: "stacking" as const }; departingRef.current = next; stageCards.current.clear();
       const stationaryWinner = next.cards.find(play => play.seatIndex === next.winnerSeat);
       if (stationaryWinner) stageCards.current.add(playKey(stationaryWinner));
       recordTimingDiagnostic("trick_stack_start", { trickId: next.id, stackMs: trickPresentationTiming(reducedMotion).stackMs });
       setDeparting(next);
     }, trickPresentationTiming(reducedMotion).holdMs);
-    return () => window.clearTimeout(timer);
   }, [departing, paused, reducedMotion]);
   useEffect(() => {
     const interrupt = () => setPaused(true);
@@ -298,8 +306,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       lastLandingAt.current + trickPresentationTiming(reducedMotion).interPlayBeatMs - performance.now()) : 0;
     setBeatPending(remaining > 0);
     if (remaining <= 0 || paused) return;
-    const timer = window.setTimeout(() => setBeatPending(false), remaining);
-    return () => window.clearTimeout(timer);
+    return presentationTimeout(() => setBeatPending(false), remaining);
   }, [active?.id, hasActiveTrick, revision, paused, reducedMotion, resumeGeneration]);
   const currentId = projection.gameId + ":" + projection.progression.dealNumber + ":" + (projection.cards.completedTricks.length + 1);
   const busy = beatPending || Boolean(active && (active.id !== currentId || departing || displayedCards.length < active.cards.length || displayedCards.some(play => !landedCards.current.has(playKey(play)))));
@@ -343,6 +350,6 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     <span className="sr-only" aria-live="polite">{departing ? `Η μπάζα κερδήθηκε από τη θέση ${departing.winnerSeat + 1}.` : announcement?.text ?? ""}</span>
     {announcement && <div className="absolute left-0 top-[-4.4rem] z-50 -translate-x-1/2 whitespace-nowrap rounded-xl border border-amber-300/60 bg-black/88 px-4 py-2 text-center text-sm font-semibold text-white shadow-2xl backdrop-blur" data-joker-announcement={announcement.id}>{announcement.text}</div>}
     {visibleCards.map((play) => <AnimatedTrickCard key={`${active?.id}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={presentationGeometry} settled={landedCards.current.has(playKey(play))} reducedMotion={reducedMotion} onMotionComplete={onMotionComplete} completionGeneration={resumeGeneration} paused={paused} />)}
-    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} viewerSeat={projection.viewerSeat} geometry={presentationGeometry!} reducedMotion={reducedMotion} onSettled={settleLocalFlight} onLanded={markLocalLanding} />}
+    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.gameId}:${localPlayPresentation.dealNumber}:${localPlayPresentation.actorSeat}:${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} viewerSeat={projection.viewerSeat} geometry={presentationGeometry!} reducedMotion={reducedMotion} onSettled={settleLocalFlight} onLanded={markLocalLanding} />}
   </div>;
 }

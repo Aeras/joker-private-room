@@ -1,3 +1,5 @@
+import { useReducedMotion } from "./useReducedMotion";
+import { HAND_REVEAL_SPREAD_MS, REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Card } from "@/domain/cards";
 import { LOCAL_HAND_ENTRANCE_MS } from "./dealPresentationModel";
@@ -27,6 +29,7 @@ export function LocalHandRow({
   revealing?: boolean;
   onCommit: (cardId: string, releaseRect: CardReleaseRect) => Promise<void>;
 }) {
+  const reduced = useReducedMotion();
   const legal = new Set(legalCardIds);
   const [entranceSettled, setEntranceSettled] = useState(visible && !revealing);
   const entered = useRef(visible && !revealing);
@@ -53,18 +56,18 @@ export function LocalHandRow({
   // Detach only from presentation immediately; the canonical hand stays server-owned.
   const presentedCards = cards.filter(card => card.id !== pendingCardId);
   const cardOverlap = presentedCards.length <= 3 ? 0.18 : presentedCards.length <= 5 ? 0.28 : presentedCards.length <= 7 ? 0.36 : 0.42;
-  const revealOverlap = entranceSettled ? cardOverlap : 0.86;
+  const revealOverlap = reduced || entranceSettled ? cardOverlap : 0.86;
 
   const handLayoutRef = useHandReflow(JSON.stringify(presentedCards.map(card => card.id)), visible && entranceSettled && !revealing);
 
   return (
     <div
       ref={handLayoutRef}
-      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] duration-[600ms] motion-reduce:duration-75"
+      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] "
       style={{
         "--card-w": cardWidth,
-        transform: `translateX(${offset}px) translateY(${entranceSettled ? "calc(var(--card-w) * 0.52 + 0px)" : "calc(100% + max(.15rem, env(safe-area-inset-bottom)) + 2px)"})`,
-        opacity: 1,
+        transform: `translateX(${offset}px) translateY(${entranceSettled ? "calc(var(--card-w) * 0.52 + 0px)" : reduced ? `calc(var(--card-w) * 0.52 + ${REDUCED_MOTION_DISTANCE_PX}px)` : "calc(100% + max(.15rem, env(safe-area-inset-bottom)) + 2px)"})`,
+        opacity: reduced && !entranceSettled ? 0 : 1,
         transitionDuration: `${LOCAL_HAND_ENTRANCE_MS}ms`,
         transitionTimingFunction: "linear",
       } as React.CSSProperties}
@@ -80,7 +83,7 @@ export function LocalHandRow({
       >
         {visible ? (
           presentedCards.map((card, index) => (
-            <div key={card.id} data-hand-layout-card={card.id} className={`relative shrink-0 ${index > 0 ? "-ml-[calc(var(--card-w)*var(--card-overlap))]" : ""} ${revealing || !entranceSettled ? "transition-[margin-left] duration-[520ms]" : ""}`}>
+            <div key={card.id} style={{ transitionDuration: revealing || !entranceSettled ? `${HAND_REVEAL_SPREAD_MS}ms` : undefined }} data-hand-layout-card={card.id} className={`relative shrink-0 ${index > 0 ? "-ml-[calc(var(--card-w)*var(--card-overlap))]" : ""} ${revealing || !entranceSettled ? "transition-[margin-left] " : ""}`}>
             <DraggableHandCard
               card={card}
               legal={legal.has(card.id)}
