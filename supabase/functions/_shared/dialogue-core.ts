@@ -168,6 +168,31 @@ const SHARED_SPICY_LINES = [
   "Όταν γαμιέσαι, κουνιέσαι;",
 ] as const;
 
+
+const APPROVED_SPICY_LINES = [
+  "Ρε μαλάκες, ποιος γαμημένος ανακατεύει την τράπουλα;",
+  "Άντε γαμήσου ρε, μου χάλασες όλη τη δήλωση!",
+  "Τι έγινε ρε πούστη μου; Όλα τα καλά χαρτιά στα δικά σας χέρια είναι;",
+  "Ρε μαλάκα, άσε καμιά μπάζα και για μας, θα μας γαμήσεις όλους;",
+  "Πάρ' τα τώρα, να δούμε ποιος γαμάει ποιον εδώ μέσα!",
+  "Με τέτοια κωλόχαρτα, ούτε ο διάολος δεν με σώζει!",
+  "Ρε αρχίδι, πού τον έκρυβες τόση ώρα τον Τζόκερ;",
+  "Τι σκατά παίζετε ρε μαλάκες; Θα με τρελάνετε σήμερα!",
+  "Πάλι με γαμήσατε στη δήλωση! Δεν σας αντέχω άλλο!",
+  "Εσύ ρε μαλάκα, παίζεις Τζόκερ ή ήρθες να μας σπάσεις τ' αρχίδια;",
+  "Σήμερα θα σας πάρει ο διάολος όλους, μουνόπανα!",
+  "Πού στον πούτσο πήγαν τα καλά χαρτιά; Όλα σε σας τα μοίρασαν;",
+  "Ρε μαλάκα, τι μου πέταξες τώρα; Άντε γαμήσου, μου τα χάλασες όλα!",
+  "Έχω γαμηθεί να μετράω μπάζες κι εσείς παίζετε ό,τι σας κατέβει!",
+  "Πούστη μου, ούτε ένα γαμημένο φύλλο της προκοπής δεν μου έκατσε!",
+  "Ρε αρχίδι, πάλι εσύ πήρες την μπάζα; Θα μας αφήσεις να παίξουμε καθόλου;",
+  "Άντε ρε μαλάκες, τώρα αρχίζει το γαμήσι! Κρατηθείτε!",
+  "Γαμώ την τύχη μου, πάλι στον πάτο είμαι! Τι σκατά γίνεται σήμερα;",
+  "Ρε μαλάκα, από πού ξεφύτρωσε αυτός ο Τζόκερ; Μας δουλεύεις όλους;",
+  "Τόση ώρα με γαμάτε όλοι και τώρα που πήρα μια μπάζα, σας κακοφάνηκε;"
+] as const;
+const SPECIAL_SPICY_LINES = { archimandritis: "Κύριε ελέησον, μουνόπανα!", shared: "Γαμιέστε γιόμπιδες!", named: "Γαμήστε τον {target}!", photocopyQuestion: "Μήπως βγάζετε φωτοτυπίες;", photocopyAnswer: "Βγάζουν μαλακίες!" } as const;
+
 const MONIKA_CLEAN_LINES = [
   "Κάναμε όλες τις δουλειές και τώρα παίζουμε Τζόκερ!",
   "Όλη μέρα στο πόδι και τώρα ήρθα να σας κερδίσω κιόλας!",
@@ -227,6 +252,28 @@ function curatedCandidates(context: DialogueGenerationContext): string[] {
       ["TRICK_WON", "PLAYER_MISSED_BID"].includes(type)) {
     result.push("Ελάτε να γαμήσουμε τον Παναγιώτη!");
   }
+  if (context.profanityEnabled) {
+    if (["TRICK_WON", "PLAYER_GOT_MINUS_200", "BOT_GOT_MINUS_200", "GAME_END"].includes(type)) {
+      result.push(SPECIAL_SPICY_LINES.shared);
+      if (context.botId === "archimandritis") result.push(SPECIAL_SPICY_LINES.archimandritis);
+      if ((context.tableParticipants?.filter((p) => p.kind === "bot").length ?? 0) >= 2)
+        result.push(SPECIAL_SPICY_LINES.photocopyQuestion);
+    }
+    const indexes: Record<string, readonly number[]> = {
+      TRICK_WON: [3,4,7,9,12,15,16,19],
+      JOKER_PLAYED: [6,18],
+      PLAYER_GOT_MINUS_200: [1,8,13],
+      BOT_GOT_MINUS_200: [0,2,5,8,11,14,17],
+      OVERTRICK: [7,12,13],
+      UNDERTRICK: [1,8,13],
+      GAME_END: [2,10,17],
+    };
+    result.push(...(indexes[type] ?? []).map((i) => APPROVED_SPICY_LINES[i]!));
+    const target = context.tableParticipants?.find((p) =>
+      p.kind === "human" && p.seat === context.event.targetSeat);
+    if (target && ["TRICK_WON", "PLAYER_GOT_MINUS_200"].includes(type))
+      result.push(SPECIAL_SPICY_LINES.named);
+  }
   return result;
 }
 
@@ -236,8 +283,9 @@ export function getDialoguePersonality(id: string): DialoguePersonality | null {
   return PERSONALITY_BY_ID.get(id as CanonicalDialogueBotId) ?? null;
 }
 
-function renderPreset(line: string, event: PublicDialogueEvent): string {
-  return line.replaceAll("{target}", event.targetName ?? "φίλε");
+function renderPreset(line: string, event: PublicDialogueEvent, context?: DialogueGenerationContext): string {
+  const target = context?.tableParticipants?.find((p) => p.seat === event.targetSeat);
+  return line.replaceAll("{target}", target?.displayName ?? event.targetName ?? "φίλε");
 }
 
 export const RECENT_BANTER_LIMIT = 10;
@@ -300,7 +348,7 @@ export function dialogueLineTooSimilar(candidate: string, recent: readonly strin
 export function pickOccasionalCuratedLine(context: DialogueGenerationContext): string | null {
   if (context.event.type === "HUMAN_MESSAGE_TO_BOT" || context.event.type === "BOT_MESSAGE_TO_BOT") return null;
   const candidates = curatedCandidates(context)
-    .map((line) => renderPreset(line, context.event))
+    .map((line) => renderPreset(line, context.event, context))
     .filter((line) => !dialogueLineTooSimilar(line, context.recentBanter));
   if (!candidates.length) return null;
   const key = `${context.event.id}|${context.botId}`;
@@ -327,6 +375,15 @@ export function pickDialoguePreset(
   if (context.intensity === "chaos" && context.profanityEnabled) {
     pool = [...pool, ...CHAOS_GENERIC_FALLBACKS[context.botId]];
   }
+  if (context.event.type === "BOT_MESSAGE_TO_BOT" && context.profanityEnabled &&
+      context.event.publicSummary?.endsWith(SPECIAL_SPICY_LINES.photocopyQuestion)) {
+    const starter = context.event.publicSummary.split(":")[0]?.trim();
+    if (starter && starter !== context.botId &&
+        (context.tableParticipants?.some((p) => p.kind === "bot" && p.botId === starter) ?? false)) {
+      return dialogueLineTooSimilar(SPECIAL_SPICY_LINES.photocopyAnswer, context.recentBanter)
+        ? null : SPECIAL_SPICY_LINES.photocopyAnswer;
+    }
+  }
   if (context.event.type === "HUMAN_MESSAGE_TO_BOT") {
     const fallback = HUMAN_MESSAGE_FALLBACKS[context.botId];
     pool = context.profanityEnabled ? [...fallback.clean, ...fallback.spicy] : [...fallback.clean];
@@ -336,7 +393,7 @@ export function pickDialoguePreset(
   if (random() > 0.72 && context.event.type !== "HUMAN_MESSAGE_TO_BOT" && context.event.type !== "BOT_MESSAGE_TO_BOT") {
     pool = [...pool, ...curatedCandidates(context)];
   }
-  const rendered = pool.map((line) => renderPreset(line, context.event));
+  const rendered = pool.map((line) => renderPreset(line, context.event, context));
   const fresh = rendered.filter((line) => !dialogueLineTooSimilar(line, context.recentBanter));
   if (fresh.length === 0) return null;
   return fresh[Math.floor(random() * fresh.length)] ?? fresh[0]!;
