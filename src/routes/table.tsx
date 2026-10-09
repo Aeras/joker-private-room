@@ -135,6 +135,7 @@ function TablePage() {
   const connectionStatusRef = useRef<TableConnectionStatus>("initial-loading");
   const previousProjectionRef = useRef<PlayerGameProjection | null>(null);
   const seenDialogueMessages = useRef(new Set<string>());
+  const idleWarningsRequested = useRef(new Set<string>());
   const readySent = useRef<boolean | null>(null);
   const presentationAckInFlight = useRef<string | null>(null);
   const nineCardAckInFlight = useRef<string | null>(null);
@@ -155,6 +156,35 @@ function TablePage() {
       void requestDialogueReaction({ data: { gameId: next.gameId, eventId: dialogueEvent.id } }).catch(() => undefined);
     }
   }, []);
+
+  useEffect(() => {
+    if (!room?.botSettings.botsTalk || !projection || !gameId) return;
+    if (projection.lifecycle !== "active" ||
+        !["CARD_PLAY", "JOKER_DECISION"].includes(projection.progression.phase)) return;
+    const seat = projection.progression.currentActorSeat;
+    if (seat == null || room.seats[seat]?.occupant.type !== "human") return;
+    if (projection.seats[seat]?.controller === "temporary_bot" || projection.timing?.turnPresentation) return;
+    const deadline = projection.timing?.currentHumanDeadline ?? projection.local.humanDeadline;
+    const deadlineMs = deadline ? Date.parse(deadline) : NaN;
+    if (!Number.isFinite(deadlineMs)) return;
+    const eventId = `state-${projection.stateVersion}:HUMAN_TURN_IDLE:${seat}:60`;
+    const fireAt = deadlineMs - 20_000;
+    if (Date.now() >= deadlineMs) return;
+    const fire = () => {
+      if (idleWarningsRequested.current.has(eventId) || document.visibilityState !== "visible") return;
+      const latest = projectionRef.current;
+      if (!latest || latest.stateVersion !== projection.stateVersion ||
+          latest.progression.currentActorSeat !== seat || Date.now() >= deadlineMs) return;
+      idleWarningsRequested.current.add(eventId);
+      // Server checks that 10+ seconds really elapsed and the human is still up.
+      void requestDialogueReaction({ data: { gameId, eventId } }).catch(() => undefined);
+    };
+    const delay = Math.max(0, fireAt - Date.now() + 100);
+    const timer = window.setTimeout(fire, delay);
+    const onVisible = () => { if (document.visibilityState === "visible" && Date.now() >= fireAt) fire(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { window.clearTimeout(timer); document.removeEventListener("visibilitychange", onVisible); };
+  }, [room, projection, gameId]);
 
   const acceptSnapshot = useCallback((nextRoom: Room, nextProjection: PlayerGameProjection, freshRead = false): boolean => {
     if (!mounted.current || activeAdmission.current !== admission) return false;
