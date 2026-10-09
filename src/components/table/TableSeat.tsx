@@ -1,3 +1,4 @@
+import { emojiUrl } from "./EmojiPicker";
 import { useEffect, useState } from "react";
 import { assets } from "@/assets/registry";
 import type { Seat } from "@/domain/players";
@@ -60,13 +61,14 @@ function progressPresentation(tricksTaken: number, declaration: number | null) {
   };
 }
 
-export function TableSeat({ seat, stats, orientation, showCards = true, local = false, infoLayout = "below" }: {
+export function TableSeat({ seat, stats, orientation, showCards = true, local = false, infoLayout = "below", reactionEmoji }: {
   seat: Seat;
   stats: SeatStats;
   orientation: "horizontal" | "vertical";
   showCards?: boolean;
   local?: boolean;
   infoLayout?: "below" | "left";
+  reactionEmoji?: string | null | undefined;
 }) {
   const o = seat.occupant;
   const name = o.type === "human" ? o.player.displayName : o.type === "bot" ? o.bot.displayName : t.emptySeat;
@@ -109,7 +111,11 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
       aria-label={showCountdown ? `Ενεργός παίκτης, ${remainingSeconds} δευτερόλεπτα απομένουν` : stats.isActive ? "Ενεργός παίκτης" : undefined}
     >
       <div className="rounded-full bg-black p-0.5">
-        <PlayerAvatar
+        {reactionEmoji && emojiUrl(reactionEmoji) ? (
+          <div data-emoji-seat={seat.index} className={cn(avatarSize, "flex items-center justify-center overflow-hidden rounded-full bg-secondary")} role="img" aria-label="Smiley αντίδραση">
+            <img src={emojiUrl(reactionEmoji)!} alt="" className="h-full w-full object-contain p-0.5" />
+          </div>
+        ) : <PlayerAvatar
           name={name}
           isBot={o.type === "bot"}
           imageUrl={assets.tableAvatar(explicitAvatar ?? assets.avatar(id, name))}
@@ -121,7 +127,7 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
             "border-0 transition-[filter,opacity] duration-200",
             stats.isTemporarilyControlled && "brightness-50 opacity-65 grayscale-[0.2]",
           )}
-        />
+        />}
       </div>
       <span className={cn("joker-seat-connection absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-black", connected ? "bg-online" : "bg-muted-foreground")} aria-label={connected ? t.connected : t.disconnected} />
       {stats.isDealer && (

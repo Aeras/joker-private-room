@@ -19,6 +19,7 @@ import { dealerSelectionNeedsPresentation } from "./dealerSelectionPresentationM
 import { SoundToggle } from "./SoundToggle";
 import { Scoreboard } from "./Scoreboard";
 import { TableSeat } from "./TableSeat";
+import { EmojiPicker } from "./EmojiPicker";
 import { TableSurface } from "./TableSurface";
 import { TableUtilityMenu } from "./TableUtilityMenu";
 import { TrickPresentation } from "./TrickPresentation";
@@ -56,9 +57,12 @@ function phaseMessage(projection: PlayerGameProjection): string {
   }
 }
 
-export function GameTable({ room, projection, busy, error, onCommand, onReclaim, onEndGame, onNineCardPresentationComplete, onTurnPresentationComplete }: {
+export function GameTable({ room, projection, busy, error, onCommand, onReclaim, onEndGame, onNineCardPresentationComplete, onTurnPresentationComplete, emojiBySeat, onEmojiSend, emojiBusy }: {
   room: Room;
   projection: PlayerGameProjection;
+  emojiBySeat?: Record<number, string>;
+  onEmojiSend?: (slug: string) => void;
+  emojiBusy?: boolean;
   busy: boolean;
   error: string | null;
   onCommand: (command: GameplayCommand) => Promise<PlayerGameProjection | null>;
@@ -108,6 +112,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const tableGeometry = useTableGeometry();
   const localSeat = projection.viewerSeat;
   const [scoreOpen, setScoreOpen] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [portrait, setPortrait] = useState(false);
   const [submittingCardId, setSubmittingCardId] = useState<string | null>(null);
@@ -303,7 +308,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     const seat = seatAt(pos); const roomSeat = room.seats[seat]; if (!roomSeat) return null;
     const publicDeadline = projection.timing?.currentHumanDeadline ?? projection.local.humanDeadline;
     const isActor = !interactionPresentationActive && projection.progression.currentActorSeat === seat;
-    return <TableSeat seat={roomSeat} orientation={orientation} infoLayout={pos === 2 ? "left" : "below"} showCards={false} local={pos === 0} stats={{ totalScore: displayedScore.cumulativeTotals[seat], declaration: displayedScore.dealNumber !== projection.progression.dealNumber ? displayedScore.declarations[seat] ?? null : startupPresentationActive ? null : pos === 0 ? pendingDeclarationValue ?? displayedScore.declarations[seat] ?? null : displayedScore.declarations[seat] ?? null, tricksTaken: displayedScore.tricksTaken[seat], isDealer: !dealerIntroActive && projection.progression.dealerSeat === seat, isActive: isActor, cardCount: startupPresentationActive ? 0 : publicCardCount(projection, seat), humanDeadline: isActor && countdownPhase ? publicDeadline : null, isTemporarilyControlled: projection.seats[seat].owner.type === "human" && projection.seats[seat].controller === "temporary_bot" }} />;
+    return <TableSeat seat={roomSeat} reactionEmoji={emojiBySeat?.[seat]} orientation={orientation} infoLayout={pos === 2 ? "left" : "below"} showCards={false} local={pos === 0} stats={{ totalScore: displayedScore.cumulativeTotals[seat], declaration: displayedScore.dealNumber !== projection.progression.dealNumber ? displayedScore.declarations[seat] ?? null : startupPresentationActive ? null : pos === 0 ? pendingDeclarationValue ?? displayedScore.declarations[seat] ?? null : displayedScore.declarations[seat] ?? null, tricksTaken: displayedScore.tricksTaken[seat], isDealer: !dealerIntroActive && projection.progression.dealerSeat === seat, isActive: isActor, cardCount: startupPresentationActive ? 0 : publicCardCount(projection, seat), humanDeadline: isActor && countdownPhase ? publicDeadline : null, isTemporarilyControlled: projection.seats[seat].owner.type === "human" && projection.seats[seat].controller === "temporary_bot" }} />;
   };
 
   const forcedEnd = projection.termination?.kind === "host_ended";
@@ -334,6 +339,10 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
     </footer>
     {projection.lifecycle === "complete" && (forcedEnd || !trickPresentationBusy) && <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl border border-primary/40 bg-card/95 p-6 text-center shadow-2xl"><h2 className="font-display text-2xl text-primary">{forcedEnd ? "Η παρτίδα τερματίστηκε" : "Τελικό αποτέλεσμα"}</h2>{forcedEnd ? <p className="mt-3 text-sm text-white/70">Ο host τερμάτισε την παρτίδα. Όλοι οι παίκτες έχουν αποδεσμευτεί.</p> : <div className="mt-4 space-y-2">{finalRows.map((row) => <div key={row.seat} className="flex items-center justify-between rounded-xl bg-secondary/70 px-4 py-2"><span>{row.placement}η θέση · {nameAt(row.seat)}</span><strong className="tabular-nums">{row.score}</strong></div>)}</div>}<div className="mt-5 flex justify-center gap-2">{!forcedEnd && <JButton variant="outlineGold" onClick={() => setScoreOpen(true)}>Αναλυτικό σκορ</JButton>}<Link to="/" className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground">Αρχική</Link></div></div></div>}
+    {onEmojiSend && projection.lifecycle === "active" && room.seats[localSeat]?.occupant.type === "human" && (
+      <EmojiPicker open={emojiOpen} onToggle={() => setEmojiOpen(v => !v)}
+        busy={Boolean(emojiBusy)} onSelect={slug => { setEmojiOpen(false); onEmojiSend(slug); }} />
+    )}
     <div className="relative z-[120]"><Scoreboard open={scoreOpen} onClose={() => setScoreOpen(false)} playerNames={names} projection={projection} /></div>
   </div>;
 }

@@ -163,6 +163,19 @@ Deno.serve(async (req: Request) => {
       return json(data ?? { ok: false, code: "SERVICE_UNAVAILABLE" }, data?.ok === true ? 200 : 404);
     }
 
+    if (body?.action === "emoji-send" || body?.action === "emoji-list") {
+      const sending = body.action === "emoji-send";
+      const slug = typeof body.emoji === "string" ? body.emoji : "";
+      const { data, error } = await admin.rpc(
+        sending ? "send_emoji_reaction_internal" : "list_emoji_reactions_internal",
+        sending
+          ? { p_session_token: body.sessionToken, p_game_id: body.gameId, p_emoji_slug: slug }
+          : { p_session_token: body.sessionToken, p_game_id: body.gameId },
+      );
+      if (error) return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
+      return json(data ?? { ok: false, code: "SERVICE_UNAVAILABLE" }, data?.ok === true ? 200 : 409);
+    }
+
     let event: PublicDialogueEvent | null = null;
 
     if (body?.action === "generate-state") {
