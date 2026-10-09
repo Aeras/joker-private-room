@@ -28,7 +28,7 @@ describe("landscape pregame application shell", () => {
     expect(shell).toContain("<FullscreenButton");
     expect(shell).toContain("pregame-portrait-gate");
     expect(create).toContain("pregame-create-grid");
-    expect(join).toContain("pregame-join-card");
+    expect(join).toContain("Διαθέσιμα παιχνίδια");
     expect(lobby).toContain("pregame-lobby-grid");
     expect(css).toContain("height: 100dvh");
     expect(css).toContain("overflow: hidden");
