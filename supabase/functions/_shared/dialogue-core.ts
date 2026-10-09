@@ -357,10 +357,20 @@ export function pickOccasionalCuratedLine(context: DialogueGenerationContext): s
   let hash = 2166136261;
   for (let i = 0; i < key.length; i++) hash = Math.imul(hash ^ key.charCodeAt(i), 16777619);
   const unsigned = hash >>> 0;
-  // Every second eligible event gets an approved line. The other events remain
-  // available for natural AI speech. Rotation avoids always picking the first line.
+  // Preserve room for spontaneous Grok dialogue, with stable retry behavior.
   if (unsigned % 2 !== 0) return null;
-  return candidates[Math.floor(unsigned / 2) % candidates.length] ?? null;
+  const approved = context.profanityEnabled
+    ? candidates.filter((line) =>
+        (APPROVED_SPICY_LINES as readonly string[]).includes(line) ||
+        line === SPECIAL_SPICY_LINES.shared ||
+        line === SPECIAL_SPICY_LINES.archimandritis ||
+        line.startsWith("Γαμήστε τον ") ||
+        line === SPECIAL_SPICY_LINES.photocopyQuestion)
+    : [];
+  // In profanity-enabled rooms use the newly approved pool when eligible,
+  // instead of burying it behind dozens of generic older candidates.
+  const pool = approved.length > 0 && unsigned % 10 !== 0 ? approved : candidates;
+  return pool[Math.floor(unsigned / 2) % pool.length] ?? null;
 }
 
 export function pickApprovedBotReply(context: DialogueGenerationContext): string | null {
