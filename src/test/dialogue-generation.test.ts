@@ -128,7 +128,7 @@ describe("AI banter provider boundary", () => {
       pickDialoguePreset(targeted, () => 0.75 + i * 0.008) ?? "",
     );
     expect(lines.some((line) => line.includes("άλλη χώρα"))).toBe(true);
-    const absent = { ...targeted, tableParticipants: context.tableParticipants?.filter((p) => p.seat !== 0) };
+    const absent = { ...targeted, tableParticipants: (context.tableParticipants ?? []).filter((p) => p.seat !== 0) };
     expect(Array.from({ length: 30 }, (_, i) => pickDialoguePreset(absent, () => 0.75 + i * 0.008))
       .some((line) => line?.includes("άλλη χώρα"))).toBe(false);
   });
