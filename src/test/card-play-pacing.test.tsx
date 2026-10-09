@@ -43,18 +43,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("card play readability deadlines", () => {
-  it("unchanged polls and parent renders do not restart the 160ms wait", () => {
+  it("unchanged polls do not add a wait to an already landed card", () => {
     const v = render(<TrickPresentation {...props} projection={snapshot(1)} />);
     v.rerender(<TrickPresentation {...props} projection={snapshot(2)} />);
     const count = () => v.container.querySelectorAll("[data-trick-seat]").length;
-    expect(count()).toBe(1);
+    tick(0); expect(count()).toBe(2);
     tick(100);
     const unchanged = structuredClone(snapshot(2));
     v.rerender(<TrickPresentation {...props} projection={unchanged} />);
     tick(40);
     v.rerender(<TrickPresentation {...props} projection={unchanged} />);
     tick(19);
-    expect(count()).toBe(1);
+    tick(0); expect(count()).toBe(2);
     tick(1);
     expect(count()).toBe(2);
   });
@@ -65,16 +65,16 @@ describe("card play readability deadlines", () => {
     tick(0);
     expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(2);
   });
-  it("partially elapsed beat waits only the remaining time", () => {
+  it("a snapshot following an already landed card launches without a beat", () => {
     const v = render(<TrickPresentation {...props} projection={snapshot(1)} />);
     tick(100);
     v.rerender(<TrickPresentation {...props} projection={snapshot(2)} />);
     tick(59);
-    expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(1);
+    expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(2);
     tick(1);
     expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(2);
   });
-  it("a live remote card starts the beat only when its motion completes", () => {
+  it("a live remote card gates the next launch until its motion completes", () => {
     const v = render(<TrickPresentation {...props} projection={snapshot(0)} />);
     v.rerender(<TrickPresentation {...props} projection={snapshot(2)} />);
     tick(0);
@@ -82,15 +82,16 @@ describe("card play readability deadlines", () => {
     const first = v.container.querySelector("[data-trick-seat]")!;
     const landed = new Event("transitionend", { bubbles: true });
     Object.defineProperty(landed, "propertyName", { value: "transform" });
+    expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(1);
     fireEvent(first, landed);
     tick(100);
     v.rerender(<TrickPresentation {...props} projection={structuredClone(snapshot(2))} />);
     tick(59);
-    expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(1);
+    expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(2);
     tick(1);
     expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(2);
   });
-  it.each(["human", "permanent_bot"])("blocks the next %s interaction until 160ms after real landing", _controller => {
+  it.each(["human", "permanent_bot"])("releases the next %s interaction immediately after real landing", _controller => {
     const busy = vi.fn();
     const v = render(<TrickPresentation {...props} onBusyChange={busy} projection={snapshot(0)} />);
     const next = snapshot(1);
@@ -98,13 +99,14 @@ describe("card play readability deadlines", () => {
     next.seats = [{ controller: _controller }] as unknown as PlayerGameProjection["seats"];
     v.rerender(<TrickPresentation {...props} onBusyChange={busy} projection={next} />);
     tick(0); tick(16);
+    expect(busy).toHaveBeenLastCalledWith(true);
     const first = v.container.querySelector("[data-trick-seat]")!;
     const landed = new Event("transitionend", { bubbles: true });
     Object.defineProperty(landed, "propertyName", { value: "transform" }); fireEvent(first, landed);
-    expect(busy).toHaveBeenLastCalledWith(true);
+    expect(busy).toHaveBeenLastCalledWith(false);
     tick(80);
     v.rerender(<TrickPresentation {...props} onBusyChange={busy} projection={structuredClone(next)} geometry={{ ...geometry, epoch: 8 }} />);
-    tick(79); expect(busy).toHaveBeenLastCalledWith(true);
+    tick(79); expect(busy).toHaveBeenLastCalledWith(false);
     tick(1); expect(busy).toHaveBeenLastCalledWith(false);
   });
   it("hidden/visible recovery consumes an elapsed beat without adding another pause", () => {

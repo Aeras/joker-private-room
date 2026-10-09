@@ -152,7 +152,7 @@ describe("JK-006 card artwork, Joker decision, and trick pacing", () => {
   // GameTable tests in card-play-transport-recovery.test.tsx.
 
   it("paces live trick plays so the previous card can settle before the next one appears", () => {
-    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBeGreaterThanOrEqual(480);
+    expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(340);
     expect(NORMAL_TRICK_HOLD_MS).toBeGreaterThanOrEqual(500);
   });
 });

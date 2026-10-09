@@ -64,7 +64,7 @@ describe("JK-001 Phase 1 / JK-006 integrated non-asset release gates", () => {
     expect(trick).not.toMatch(/resolveTrick|calculateWinner/);
     expect(trick).toContain("trickPresentationTiming(reducedMotion)");
     expect(NORMAL_TRICK_HOLD_MS).toBe(550);
-    expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(160);
+    expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(0);
   });
 
   it("uses best-effort deduplicated audio with no gameplay dependency", () => {
