@@ -61,7 +61,7 @@ function progressPresentation(tricksTaken: number, declaration: number | null) {
   };
 }
 
-export function TableSeat({ seat, stats, orientation, showCards = true, local = false, infoLayout = "below", reactionEmoji }: {
+export function TableSeat({ seat, stats, orientation, showCards = true, local = false, infoLayout = "below", reactionEmoji, chatMessage, chatSide = "right" }: {
   seat: Seat;
   stats: SeatStats;
   orientation: "horizontal" | "vertical";
@@ -69,6 +69,8 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
   local?: boolean;
   infoLayout?: "below" | "left";
   reactionEmoji?: string | null | undefined;
+  chatMessage?: string | undefined;
+  chatSide?: "left" | "right" | "above";
 }) {
   const o = seat.occupant;
   const name = o.type === "human" ? o.player.displayName : o.type === "bot" ? o.bot.displayName : t.emptySeat;
@@ -146,6 +148,15 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
   const identity = (
     <div className={cn("relative flex flex-col items-center", stats.isActive && "drop-shadow-[0_0_10px_var(--gold)]")}>
       {avatar}
+      {chatMessage && (
+        <div role="status" data-chat-seat={seat.index}
+          className={cn("pointer-events-none absolute z-[85] w-max max-w-[min(13rem,32vw)] break-words rounded-xl border border-primary/50 bg-black/90 px-2.5 py-1.5 text-center text-xs font-semibold leading-snug text-white shadow-xl",
+            chatSide === "left" ? "right-[calc(100%+0.4rem)] top-1/2 -translate-y-1/2" :
+            chatSide === "above" ? "bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2" :
+            "left-[calc(100%+0.4rem)] top-1/2 -translate-y-1/2")}>
+          {chatMessage}
+        </div>
+      )}
       <div data-seat-info-layout={infoLayout} className={cn(infoLayout === "left" ? "absolute right-full top-1/2 mr-2 -translate-y-1/2" : "-mt-1", "min-w-24 max-w-36 rounded-md border border-primary/40 bg-black/85 px-2 py-1 text-center shadow-lg backdrop-blur-sm", local && "min-w-28")}>
         <div className="truncate text-[10px] font-semibold leading-tight text-foreground sm:text-xs">
           {name}{local && <span className="text-primary"> · ΕΣΥ</span>}
