@@ -37,16 +37,14 @@ jobs:
         id: permanent_profiles
         continue-on-error: true
         run: |
-          grep -q 'owner.strategyProfileId' src/bots/runtime.ts
-          grep -q 'resolveBotStrategy' src/bots/runtime.ts
-          grep -q 'permanent_bot' src/bots/runtime.ts
+          # Profile resolution now lives in the shared frozen baseline selector.
+          # Exercise the public competitive entry point instead of its old file layout.
+          bunx vitest run src/bots/runtime.test.ts -t 'resolves a permanent bot'
       - name: Temporary controller separation guard
         id: temporary_controller
         continue-on-error: true
         run: |
-          grep -q 'temporary-controller-v1' src/bots/runtime.ts
-          grep -q 'owner.type !== "human"' src/bots/runtime.ts
-          ! grep -q 'botId.*temporary-controller' src/bots/runtime.ts
+          bunx vitest run src/bots/runtime.test.ts -t 'temporary'
       - name: Fair projection strategy boundary guard
         id: fair_projection
         continue-on-error: true
