@@ -43,7 +43,7 @@ export function EmojiPicker({ open, onToggle, onSelect, busy }: {
   busy: boolean;
 }) {
   return (
-    <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(.6rem,env(safe-area-inset-right))] z-[75]">
+    <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] right-[calc(max(.75rem,env(safe-area-inset-right))+3.4rem)] z-[75]">
       {open && (
         <div role="dialog" aria-label="Επιλογή smiley" className="absolute bottom-11 right-0 w-[min(18rem,85vw)] rounded-2xl border border-primary/35 bg-[#21252b]/95 p-2 shadow-2xl backdrop-blur-md">
           <div className="mb-2 flex items-center justify-between px-1 text-xs text-white/85"><span>Smileys</span><button type="button" onClick={onToggle} aria-label="Κλείσιμο"><X className="h-4 w-4"/></button></div>
