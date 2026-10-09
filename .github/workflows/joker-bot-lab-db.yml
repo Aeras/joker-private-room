@@ -1,0 +1,38 @@
+name: JOKER Bot Lab Database
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      [
+        "supabase/migrations/*bot_lab*",
+        "supabase/tests/bot-lab/**",
+        "supabase/functions/bot-lab*/**",
+        "src/server/botLab/**",
+        ".github/workflows/joker-bot-lab-db.yml",
+      ]
+  workflow_dispatch:
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: test, POSTGRES_DB: joker_lab_test }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env: { PGPASSWORD: test }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Actual SQL authorization, lease, recovery, cancellation and idempotency
+        run: |
+          psql -h localhost -U postgres -d joker_lab_test -v ON_ERROR_STOP=1 -f supabase/tests/bot-lab/setup.sql
+          psql -h localhost -U postgres -d joker_lab_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261003173620_jk001_phase1_fix_session_validation_ambiguity.sql
+          psql -h localhost -U postgres -d joker_lab_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261009051533_joker_admin_bot_lab.sql
+          psql -h localhost -U postgres -d joker_lab_test -v ON_ERROR_STOP=1 -f supabase/tests/bot-lab/behavior.sql
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - name: Edge module dependency/type checks
+        run: |
+          deno check --config supabase/functions/bot-lab/deno.json supabase/functions/bot-lab/index.ts
+          deno check --config supabase/functions/bot-lab-worker/deno.json supabase/functions/bot-lab-worker/index.ts

@@ -15,3 +15,9 @@ verify_jwt = false
 
 [functions.table-messages]
 verify_jwt = false
+
+[functions.bot-lab]
+verify_jwt = false
+
+[functions.bot-lab-worker]
+verify_jwt = false
