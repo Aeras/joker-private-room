@@ -5,6 +5,7 @@ import {
   buildDialoguePrompt,
   dialogueLineTooSimilar,
   pickDialoguePreset,
+  pickOccasionalCuratedLine,
   pickApprovedBotReply,
   serializeProviderContext,
   validateDialogueOutput,
@@ -177,6 +178,18 @@ describe("AI banter provider boundary", () => {
     expect(pickApprovedBotReply(base)).toBeTruthy();
     expect(pickApprovedBotReply({ ...base, profanityEnabled: false })).toBeNull();
     expect(pickApprovedBotReply({ ...base, botId: "ka-monika" })).toBeNull();
+  });
+
+  it("surfaces approved phrases in real deal events with profanity enabled", () => {
+    const base = { ...context, recentBanter: [], profanityEnabled: true,
+      event: { ...context.event, type: "BOT_GOT_MINUS_200" as const, speakerBotId: "ka-monika" as const } };
+    const lines = Array.from({ length: 64 }, (_, i) =>
+      pickOccasionalCuratedLine({ ...base, event: { ...base.event, id: "state-" + i + ":BOT_GOT_MINUS_200:1" } }));
+    expect(lines.some((line) => line?.includes("γαμημένος") || line?.includes("γαμημένα") || line?.includes("γιόμπιδες"))).toBe(true);
+    const clean = Array.from({ length: 64 }, (_, i) =>
+      pickOccasionalCuratedLine({ ...base, profanityEnabled: false,
+        event: { ...base.event, id: "state-" + i + ":BOT_GOT_MINUS_200:1" } }));
+    expect(clean.every((line) => !line || !/γαμ|πουτ|μαλάκ|γιόμπιδ/.test(line))).toBe(true);
   });
 
   it("rejects unusable provider output", () => {
