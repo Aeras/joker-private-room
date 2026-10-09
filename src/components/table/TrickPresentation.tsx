@@ -14,7 +14,7 @@ import { UnderJokerFace } from "./UnderJokerFace";
 import { LocalFlightCard, MOTION_FALLBACK_SLACK_MS } from "./LocalFlightCard";
 import type { LocalPlayPresentation } from "./localPlayPresentation";
 import { pinnedStackPose, stackRotation, trickExitPoint } from "./trickCollectionMotion";
-import { NORMAL_FROM_BELOW_FLIGHT_MS, TRICK_CARD_ROTATION, trickPresentationTiming } from "./trickPresentationModel";
+import { NORMAL_FROM_BELOW_FLIP_MS, NORMAL_FROM_BELOW_FLIGHT_MS, TRICK_CARD_ROTATION, trickPresentationTiming } from "./trickPresentationModel";
 import type { Point, TableGeometry, VisualSeat } from "./useTableGeometry";
 
 type Pos = VisualSeat;
@@ -106,7 +106,7 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
   const easing = collecting ? "linear" : fromBelowJoker && !departingStage ? "ease-in-out" : "cubic-bezier(0.22, 1, 0.36, 1)";
   return <div data-joker-from-below={fromBelowJoker ? "true" : undefined} data-trick-seat={play.seatIndex} data-trick-collecting={collecting ? "true" : undefined} className={cn("fixed transition-[transform,opacity]", fromBelowJoker ? "z-0" : "z-10")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms`, transitionTimingFunction: easing, animationName: frames ? animationId : "none", animationDuration: `${duration}ms`, animationTimingFunction: "linear", animationPlayState: paused ? "paused" : "running", opacity: collecting ? 0 : 1, transitionDelay: collecting ? `0ms, ${Math.max(0, duration - 120)}ms` : "0ms", ...(collecting ? { transitionDuration: `${duration}ms, 120ms` } : {}) } as React.CSSProperties} onAnimationEnd={(event) => { if (event.target === event.currentTarget && event.animationName === animationId && stacking) completionRef.current(play, "stacking"); }} onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform" && !stacking) completionRef.current(play, departingStage ?? "landing"); }}>
     {frames && <style>{`@keyframes ${animationId}{${frames}}`}</style>}
-    {fromBelowJoker ? <UnderJokerFace card={play.card} flipped={arrived} duration={duration} /> : <div className="relative">
+    {fromBelowJoker ? <UnderJokerFace card={play.card} flipped={arrived} duration={reducedMotion ? timing.settleMs : NORMAL_FROM_BELOW_FLIP_MS} /> : <div className="relative">
       <div style={{ opacity: faceDown ? 0 : 1, transition: collecting ? "opacity 120ms linear" : undefined }}><PlayingCard card={play.card} /></div>
       <div className="absolute inset-0" style={{ opacity: faceDown ? 1 : 0, transition: collecting ? "opacity 120ms linear" : undefined }}><PlayingCard faceDown /></div>
     </div>}
