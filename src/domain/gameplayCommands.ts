@@ -21,7 +21,7 @@ import { holdNineCardRemainingDealForPresentation } from "./nineCardPresentation
 export type GameplayCommand =
   | { type: "declare"; value: number }
   | { type: "choose_trump"; suit: Suit | null }
-  | { type: "play_card"; cardId: string }
+  | { type: "play_card"; cardId: string; jokerSemantic?: JokerSemantic }
   | { type: "choose_joker_semantic"; semantic: JokerSemantic };
 
 export type GameplayCommandFailureCode =
@@ -353,7 +353,16 @@ export function applyGameplayCommand(args: ApplyGameplayCommandArgs): GameplayCo
   switch (command.type) {
     case "declare": result = applyDeclarationCommand(state, seat, command.value, serverNow); break;
     case "choose_trump": result = applyTrumpChoice(state, seat, command.suit, serverNow); break;
-    case "play_card": result = applyCardPlay(state, seat, command.cardId, serverNow); break;
+    case "play_card": {
+      result = applyCardPlay(state, seat, command.cardId, serverNow);
+      if (result.ok && command.jokerSemantic) {
+        if (result.state.progression.phase !== "JOKER_DECISION") return { ok: false, code: "INVALID_JOKER_CHOICE" };
+        // Validate through the existing rule contract, but persist only one CAS
+        // transition: no publicly committed intermediate Joker decision.
+        result = applyJokerChoice({ ...result.state, stateVersion: state.stateVersion }, seat, command.jokerSemantic, serverNow);
+      }
+      break;
+    }
     case "choose_joker_semantic": result = applyJokerChoice(state, seat, command.semantic, serverNow); break;
   }
   return result;

@@ -67,7 +67,7 @@ const jokerSemantic = z.discriminatedUnion("context", [
 const gameplayCommand = z.discriminatedUnion("type", [
   z.object({ type: z.literal("declare"), value: z.number().int().min(0).max(9) }),
   z.object({ type: z.literal("choose_trump"), suit: suit.nullable() }),
-  z.object({ type: z.literal("play_card"), cardId: z.string().min(1).max(64) }),
+  z.object({ type: z.literal("play_card"), cardId: z.string().min(1).max(64), jokerSemantic: jokerSemantic.optional() }),
   z.object({ type: z.literal("choose_joker_semantic"), semantic: jokerSemantic }),
 ]);
 
