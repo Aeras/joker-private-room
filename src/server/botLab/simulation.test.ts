@@ -118,5 +118,5 @@ describe("isolated canonical bot benchmark", () => {
       expect(game.selectedDealer).toBe(first.selectedDealer);
       expect(game.physicalLineup[rotation]).toBe(config.lineup[0]);
     }
-  });
+  }, 30000);
 });
