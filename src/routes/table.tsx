@@ -12,6 +12,7 @@ import { dealerSelectionPresentationKey } from "@/components/table/dealerSelecti
 import type { DealPresentationStage } from "@/components/table/DealPresentation";
 import { GameTable } from "@/components/table/GameTable";
 import { TableMessaging } from "@/components/table/TableMessaging";
+import type { LiveTableMessage } from "@/lib/liveTableMessages";
 import {
   isCoherentTableSnapshot,
   type TableConnectionStatus,
@@ -120,6 +121,7 @@ function TablePage() {
   const [messages, setMessages] = useState<DialogueMessage[]>([]);
   const [emojiReactions, setEmojiReactions] = useState<EmojiReaction[]>([]);
   const [emojiBusy, setEmojiBusy] = useState(false);
+  const [tableMessages, setTableMessages] = useState<LiveTableMessage[]>([]);
   const [emojiNow, setEmojiNow] = useState(() => Date.now());
   const [connectionStatus, setConnectionStatus] = useState<TableConnectionStatus>("initial-loading");
   const [tableEpoch, setTableEpoch] = useState(0);
@@ -697,8 +699,8 @@ function TablePage() {
   return (
     <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
       <LandscapeTableGuard>
-      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onTurnPresentationComplete={completeTurn} onNineCardPresentationComplete={completeNineCardStage} emojiBySeat={emojiBySeat} onEmojiSend={sendEmoji} emojiBusy={emojiBusy} />
-      <TableMessaging key={projection.gameId} room={room} projection={projection} />
+      <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onTurnPresentationComplete={completeTurn} onNineCardPresentationComplete={completeNineCardStage} emojiBySeat={emojiBySeat} onEmojiSend={sendEmoji} emojiBusy={emojiBusy} chatMessages={tableMessages} />
+      <TableMessaging key={projection.gameId} room={room} projection={projection} onMessagesChange={setTableMessages} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} feedback={dialogueFeedback} onSend={sendDialogue} />
 
       {waitingForPlay && landscape && (

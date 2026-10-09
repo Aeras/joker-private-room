@@ -11,9 +11,11 @@ import { ChatPanel } from "./ChatPanel";
 export function TableMessaging({
   room,
   projection,
+  onMessagesChange,
 }: {
   room: Room;
   projection: PlayerGameProjection;
+  onMessagesChange?: (messages: LiveTableMessage[]) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<LiveTableMessage[]>([]);
@@ -28,6 +30,8 @@ export function TableMessaging({
         ? s.occupant.bot.displayName
         : `${s.index + 1}`,
   );
+
+  useEffect(() => { onMessagesChange?.(messages); }, [messages, onMessagesChange]);
 
   useEffect(() => {
     ++generation.current;
@@ -104,16 +108,6 @@ export function TableMessaging({
         >
           <MessageCircle className="h-4 w-4" />
         </JButton>
-      </div>
-      <div
-        aria-live="polite"
-        className="pointer-events-none absolute left-1/2 top-[16vh] z-[75] w-[min(90vw,32rem)] -translate-x-1/2 space-y-1"
-      >
-        {messages.map((m) => (
-          <div key={m.id} className="rounded-xl bg-black/85 px-3 py-2 text-sm text-white">
-            <strong>{names[m.fromSeat]}</strong> → {m.to === "all" ? t.messageEveryone : names[m.to]}: {m.text}
-          </div>
-        ))}
       </div>
       <div className="relative z-[130]">
         <ChatPanel
