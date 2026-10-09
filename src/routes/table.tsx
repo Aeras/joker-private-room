@@ -614,7 +614,7 @@ function TablePage() {
   }, [connectionStatus, geometryReady, landscape, projection?.lifecycle, projection?.progression.phase, readiness?.allReady, readiness?.isHost, startGame, visible]);
 
   const endGame = async (): Promise<boolean> => {
-    if (!projection || busy || connectionStatusRef.current !== "ready") return false;
+    if (!projection || (busy && projection.lifecycle !== "starting") || connectionStatusRef.current !== "ready") return false;
     setBusy(true); setError(null);
     try {
       const result = await terminateProjectedGame({ data: { gameId: projection.gameId, actionId: crypto.randomUUID(), expectedStateVersion: projection.stateVersion } });
@@ -704,7 +704,7 @@ function TablePage() {
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} feedback={dialogueFeedback} onSend={sendDialogue} />
 
       {waitingForPlay && landscape && (
-        <div className="absolute inset-0 z-[95] flex items-center justify-center bg-black/15" role="status" aria-live="polite">
+        <div className="pointer-events-none absolute inset-0 z-[95] flex items-center justify-center bg-black/15" role="status" aria-live="polite">
           <div className="min-w-52 rounded-2xl border border-primary/40 bg-black/80 px-5 py-4 text-center shadow-2xl backdrop-blur">
             <div className="text-xs uppercase tracking-[.18em] text-white/55">Παίκτες έτοιμοι</div>
             <div className="mt-1 text-lg font-semibold text-white">{readyCount == null ? `—/${humanCount}` : `${readyCount}/${humanCount}`}</div>
