@@ -28,7 +28,7 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const flipDuration = reducedMotion ? REDUCED_LOCAL_FLIGHT_MS : NORMAL_FROM_BELOW_FLIP_MS;
   const rejected = presentation.status === "rejected";
   const motionCompleted = useRef(new Set<string>());
-  const completeMotion = useCallback(() => { const stage = rejected ? "returned" : "landed"; if (motionCompleted.current.has(stage)) return; motionCompleted.current.add(stage); recordTimingDiagnostic("local_flight_" + stage, { cardId: presentation.cardId, durationMs: duration }); if (rejected) setReturned(true); else { landingCallback.current?.(); setLanded(true); } }, [rejected, duration, presentation.cardId]);
+  const completeMotion = useCallback(() => { const stage = rejected ? "returned" : "landed"; if (motionCompleted.current.has(stage)) return; motionCompleted.current.add(stage); recordTimingDiagnostic("local_flight_" + stage, { cardId: presentation.cardId, durationMs: duration }); if (rejected) setReturned(true); else { landingCallback.current?.(); playGameSound("play", `${presentation.gameId}:${presentation.dealNumber}:local-flight:${presentation.cardId}:${presentation.sourceStateVersion}`); setLanded(true); } }, [rejected, duration, presentation.cardId]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => { recordTimingDiagnostic("local_flight_launch", { cardId: presentation.cardId, durationMs: duration }); setLaunched(true); });
@@ -42,7 +42,6 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   useEffect(() => {
     if (finished.current || !(rejected ? returned : landed && presentation.status === "accepted")) return;
     finished.current = true;
-    if (!rejected) playGameSound("play", `${presentation.gameId}:${presentation.dealNumber}:local-flight:${presentation.cardId}:${presentation.sourceStateVersion}`);
     callback.current();
   }, [landed, presentation, rejected, returned]);
 
