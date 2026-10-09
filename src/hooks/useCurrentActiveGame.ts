@@ -19,11 +19,10 @@ export function useCurrentActiveGame() {
 
   const refresh = useCallback(async (): Promise<CurrentActiveGameResult> => {
     try {
-      const result = await getCurrentActiveGame();
+      const [result, membership] = await Promise.all([getCurrentActiveGame(), getCurrentRoomMembership()]);
       if (result.ok) {
         if (result.activeGame) setState({ status: "active", activeGame: result.activeGame });
         else {
-          const membership = await getCurrentRoomMembership();
           if (membership.ok && membership.membership?.lifecycle === "lobby") setState({ status: "waiting", activeGame: null, roomCode: membership.membership.code });
           else if (!membership.ok) setState({ status: "error", activeGame: null });
           else setState({ status: "none", activeGame: null });
