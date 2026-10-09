@@ -62,14 +62,14 @@ describe("local motion ownership", () => {
     const root = view.container.querySelector("[data-trick-presentation-id]")!;
     const localCanonical = root.lastElementChild as HTMLElement;
     expect(localCanonical.style.transform).toContain("scale(1)"); // No second seat-origin entry.
-    tick(850);
+    tick(550);
     expect(root.getAttribute("data-trick-departing-stage")).toBe("stacking");
     const surfaces = Array.from(root.children).filter(el => (el as HTMLElement).style.transitionDuration);
     expect(surfaces).toHaveLength(4);
-    expect(surfaces.every(el => (el as HTMLElement).style.transitionDuration === "400ms")).toBe(true);
+    expect(surfaces.every(el => (el as HTMLElement).style.transitionDuration === "250ms")).toBe(true);
     surfaces.slice(0, 3).forEach(finish); expect(root.getAttribute("data-trick-departing-stage")).toBe("stacking");
     finish(surfaces[3]!); expect(root.getAttribute("data-trick-departing-stage")).toBe("collecting");
-    expect(surfaces.every(el => (el as HTMLElement).style.transitionDuration === "600ms, 120ms")).toBe(true);
+    expect(surfaces.every(el => (el as HTMLElement).style.transitionDuration === "380ms, 120ms")).toBe(true);
     expect(surfaces.every(el => (el as HTMLElement).style.transitionTimingFunction === "linear")).toBe(true);
     surfaces.slice(0, 3).forEach(finish); expect(root.isConnected).toBe(true);
     finish(surfaces[3]!); expect(view.container.querySelector("[data-trick-presentation-id]")).toBeNull();
