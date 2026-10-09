@@ -40,7 +40,7 @@ function Home() {
         </section>
 
         <section className="home-menu" aria-label="Κύριο μενού">
-          <PlayerSessionGate>{() => <>
+          <PlayerSessionGate onAuthenticated={() => { void activeLookup.refresh(); }}>{() => <>
           {activeLookup.status === "active" ? (
             <Link
               to="/table"
