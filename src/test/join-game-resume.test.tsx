@@ -70,6 +70,15 @@ describe("session-first join and game resume", () => {
     expect(mocks.verifyPin).not.toHaveBeenCalled();
   });
 
+  it("resumes an authenticated player without querying the list of names", async () => {
+    mocks.listPlayers.mockRejectedValue(new Error("Player directory unavailable"));
+    render(<Component />);
+    expect(await screen.findByText("Παιχνίδι του Νίκος")).toBeTruthy();
+    expect(screen.getByText("Git")).toBeTruthy();
+    expect(mocks.listPlayers).not.toHaveBeenCalled();
+    expect(screen.queryByText("Η σύνδεση δεν είναι διαθέσιμη. Δοκίμασε ξανά.")).toBeNull();
+  });
+
   it("asks for the personal PIN only without an existing session", async () => {
     mocks.getCurrentPlayer.mockResolvedValue(null);
     render(<Component />);
