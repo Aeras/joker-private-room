@@ -56,6 +56,8 @@ export async function generateDialogueLine(input: {
   const approvedReply = pickApprovedBotReply(input.context);
   if (approvedReply) return { text: approvedReply, source: "preset", providerAttempted: false };
 
+  if (input.context.event.type === "HUMAN_TURN_IDLE") return preset();
+
   // Approved character lines stay available when Grok is enabled, not only on failures.
   const curated = pickOccasionalCuratedLine(input.context);
   if (curated) return { text: curated, source: "preset", providerAttempted: false };
