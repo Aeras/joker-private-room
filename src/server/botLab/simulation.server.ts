@@ -113,10 +113,19 @@ export function validateSimulationConfig(config: SimulationConfig): void {
 /** Isolated, all-bot full game. No DB, network, live rooms, sleep or UI imports.
  * Presentation holds have no human observers, so the canonical all-bot route
  * has no delay. We never remove holds from a real multiplayer state. */
-export function simulateFullGame(
-  config: SimulationConfig,
-  control: SimulationControl = {},
-): SimulationResult {
+
+export interface SimulationCheckpoint {
+  schema: 1;
+  config: SimulationConfig;
+  physicalLineup: LabLineup;
+  selectedDealer: SeatIndex;
+  state: CanonicalGameState;
+  laterRandomState: number;
+  steps: number;
+  decisions: DecisionRecord[];
+  tricks: SimulationResult["tricks"];
+}
+export function createSimulationCheckpoint(config: SimulationConfig): SimulationCheckpoint {
   validateSimulationConfig(config);
   const rotation = config.rotation ?? 0;
   const physicalLineup = [0, 1, 2, 3].map(
@@ -126,7 +135,6 @@ export function simulateFullGame(
   const selectionRandom = seededRandom(config.seed ^ 0xa5a5a5a5);
   // Separate deck streams: additional semantic commands never consume shuffle RNG.
   const firstDealRandom = seededRandom(config.seed ^ 0x3c6ef372);
-  const laterDealRandom = seededRandom(config.seed ^ 0x9e3779b9);
   const serverNow = "2026-10-09T00:00:00.000Z";
   const pending = createInitialDealerBootstrapState({
     gameId: "00000000-0000-4000-8000-00000000b001",
@@ -155,13 +163,61 @@ export function simulateFullGame(
     dealOneShuffleRandom: firstDealRandom,
     serverNow,
   });
-  let state = activateDealOneAfterPresentation(bootstrap, serverNow);
+  const state = activateDealOneAfterPresentation(bootstrap, serverNow);
   const selectedDealer = state.progression.dealerSeat!;
-  const decisions: DecisionRecord[] = [];
-  const tricks: SimulationResult["tricks"] = [];
-  const now = control.now ?? (() => performance.now());
-  let steps = 0;
-  while (state.lifecycle !== "complete") {
+
+  return {
+    schema: 1,
+    config: structuredClone(config),
+    physicalLineup,
+    selectedDealer,
+    state,
+    laterRandomState: (config.seed ^ 0x9e3779b9) >>> 0,
+    steps: 0,
+    decisions: [],
+    tricks: [],
+  };
+}
+/** Serializable, isolated continuation. Leases and persistence belong to the
+ * job layer. A failed/cancelled chunk never mutates its committed input. */
+export function advanceSimulationCheckpoint(
+  input: SimulationCheckpoint,
+  control: SimulationControl = {},
+  limits: { maxSteps?: number; maxMs?: number } = {},
+): SimulationCheckpoint {
+  if (
+    input.schema !== 1 ||
+    input.state.gameId !== "00000000-0000-4000-8000-00000000b001" ||
+    input.state.seats.some((s) => s.owner.type !== "bot" || s.controller !== "permanent_bot")
+  )
+    throw new Error("Invalid lab checkpoint");
+  validateSimulationConfig(input.config);
+  const maxSteps = limits.maxSteps ?? 32,
+    maxMs = limits.maxMs ?? 500;
+  if (
+    !Number.isInteger(maxSteps) ||
+    maxSteps < 1 ||
+    maxSteps > 64 ||
+    !Number.isFinite(maxMs) ||
+    maxMs < 1 ||
+    maxMs > 750
+  )
+    throw new Error("Invalid chunk limits");
+  const checkpoint = structuredClone(input);
+  const { config, physicalLineup, decisions, tricks } = checkpoint;
+  const rotation = config.rotation ?? 0;
+  let state = checkpoint.state,
+    steps = checkpoint.steps,
+    chunkSteps = 0;
+  const serverNow = "2026-10-09T00:00:00.000Z";
+  const now = control.now ?? (() => performance.now()),
+    began = now();
+  const laterDealRandom = () => {
+    checkpoint.laterRandomState =
+      (Math.imul(checkpoint.laterRandomState, 1664525) + 1013904223) >>> 0;
+    return checkpoint.laterRandomState / 0x1_0000_0000;
+  };
+  while (state.lifecycle !== "complete" && chunkSteps++ < maxSteps && now() - began < maxMs) {
     if (control.cancelled?.())
       throw new SimulationFailure(
         "CANCELLED",
@@ -218,6 +274,14 @@ export function simulateFullGame(
     });
     state = next.state;
   }
+
+  checkpoint.state = state;
+  checkpoint.steps = steps;
+  return checkpoint;
+}
+export function resultOfCheckpoint(checkpoint: SimulationCheckpoint): SimulationResult {
+  const { config, physicalLineup, selectedDealer, state, steps, decisions, tricks } = checkpoint;
+  if (state.lifecycle !== "complete") throw new Error("Simulation is not complete");
   if (
     state.score.completedDeals?.length !== DEALS.length ||
     state.score.finalPlacements.some((value) => value == null)
@@ -235,4 +299,14 @@ export function simulateFullGame(
     decisions,
     tricks,
   };
+}
+
+export function simulateFullGame(
+  config: SimulationConfig,
+  control: SimulationControl = {},
+): SimulationResult {
+  let checkpoint = createSimulationCheckpoint(config);
+  while (checkpoint.state.lifecycle !== "complete")
+    checkpoint = advanceSimulationCheckpoint(checkpoint, control, { maxSteps: 64, maxMs: 750 });
+  return resultOfCheckpoint(checkpoint);
 }

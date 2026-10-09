@@ -1,0 +1,1577 @@
+{
+  "start": 750000,
+  "seeds": 30,
+  "results": [
+    {
+      "tier": "strong-basic-v1",
+      "seeds": 30,
+      "games": 240,
+      "elapsedMs": 152672.8978,
+      "score": {
+        "independentSeeds": 30,
+        "matchedGames": 120,
+        "meanScoreDelta": 766.9166666666666,
+        "approximate95CI": [
+          679.0399572284666,
+          854.7933761048666
+        ]
+      },
+      "winShareDelta": 0.5583333333333333,
+      "approximate95WinShareCI": [
+        0.4521341782689051,
+        0.6645324883977616
+      ],
+      "candidateDecisionMs": {
+        "p50": 0.6163999999989755,
+        "p95": 5.873160000003917,
+        "p99": 7.869765999998998
+      },
+      "baselineStats": {
+        "strong-basic-v1": {
+          "starts": 240,
+          "participations": 240,
+          "outrightWins": 60,
+          "tiedWins": 2,
+          "winShare": 61,
+          "meanScore": 781.8333333333334,
+          "medianScore": 805,
+          "exactByDealSize": {
+            "1": {
+              "deals": 480,
+              "exact": 360,
+              "under": 30,
+              "over": 90
+            },
+            "2": {
+              "deals": 480,
+              "exact": 311,
+              "under": 35,
+              "over": 134
+            },
+            "3": {
+              "deals": 480,
+              "exact": 258,
+              "under": 52,
+              "over": 170
+            },
+            "4": {
+              "deals": 480,
+              "exact": 180,
+              "under": 85,
+              "over": 215
+            },
+            "5": {
+              "deals": 480,
+              "exact": 154,
+              "under": 104,
+              "over": 222
+            },
+            "6": {
+              "deals": 480,
+              "exact": 139,
+              "under": 148,
+              "over": 193
+            },
+            "7": {
+              "deals": 480,
+              "exact": 118,
+              "under": 141,
+              "over": 221
+            },
+            "8": {
+              "deals": 480,
+              "exact": 103,
+              "under": 136,
+              "over": 241
+            },
+            "9": {
+              "deals": 1920,
+              "exact": 439,
+              "under": 551,
+              "over": 930
+            }
+          },
+          "penalties": 335,
+          "penaltyPoints": 67000,
+          "jokerModes": {
+            "COMPETE": 1308,
+            "HIGHER_SUIT": 604,
+            "FROM_BELOW": 8
+          },
+          "jokerTricksWon": 1212,
+          "jokerTricksLost": 708,
+          "premiaAwards": 5,
+          "premiaBonusPoints": 1000,
+          "premiaRemovedPoints": 200,
+          "decisionLatency": {
+            "p50": 0.001299999999901047,
+            "p95": 1.8541049999970705,
+            "p99": 2.6986050000066997
+          }
+        },
+        "memory-inference-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 29,
+          "tiedWins": 0,
+          "winShare": 29,
+          "meanScore": 819.6666666666666,
+          "medianScore": 830,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 180,
+              "under": 15,
+              "over": 45
+            },
+            "2": {
+              "deals": 240,
+              "exact": 153,
+              "under": 17,
+              "over": 70
+            },
+            "3": {
+              "deals": 240,
+              "exact": 131,
+              "under": 27,
+              "over": 82
+            },
+            "4": {
+              "deals": 240,
+              "exact": 98,
+              "under": 42,
+              "over": 100
+            },
+            "5": {
+              "deals": 240,
+              "exact": 85,
+              "under": 48,
+              "over": 107
+            },
+            "6": {
+              "deals": 240,
+              "exact": 65,
+              "under": 68,
+              "over": 107
+            },
+            "7": {
+              "deals": 240,
+              "exact": 53,
+              "under": 69,
+              "over": 118
+            },
+            "8": {
+              "deals": 240,
+              "exact": 69,
+              "under": 57,
+              "over": 114
+            },
+            "9": {
+              "deals": 960,
+              "exact": 221,
+              "under": 255,
+              "over": 484
+            }
+          },
+          "penalties": 158,
+          "penaltyPoints": 31600,
+          "jokerModes": {
+            "COMPETE": 654,
+            "HIGHER_SUIT": 302,
+            "FROM_BELOW": 4
+          },
+          "jokerTricksWon": 620,
+          "jokerTricksLost": 340,
+          "premiaAwards": 1,
+          "premiaBonusPoints": 200,
+          "premiaRemovedPoints": 0,
+          "decisionLatency": {
+            "p50": 0.02049999999871943,
+            "p95": 6.12263000000148,
+            "p99": 8.770066000000151
+          }
+        },
+        "probability-simulation-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 29,
+          "tiedWins": 2,
+          "winShare": 30,
+          "meanScore": 811.1666666666666,
+          "medianScore": 820,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 180,
+              "under": 15,
+              "over": 45
+            },
+            "2": {
+              "deals": 240,
+              "exact": 154,
+              "under": 19,
+              "over": 67
+            },
+            "3": {
+              "deals": 240,
+              "exact": 123,
+              "under": 35,
+              "over": 82
+            },
+            "4": {
+              "deals": 240,
+              "exact": 103,
+              "under": 44,
+              "over": 93
+            },
+            "5": {
+              "deals": 240,
+              "exact": 83,
+              "under": 50,
+              "over": 107
+            },
+            "6": {
+              "deals": 240,
+              "exact": 64,
+              "under": 75,
+              "over": 101
+            },
+            "7": {
+              "deals": 240,
+              "exact": 57,
+              "under": 69,
+              "over": 114
+            },
+            "8": {
+              "deals": 240,
+              "exact": 62,
+              "under": 62,
+              "over": 116
+            },
+            "9": {
+              "deals": 960,
+              "exact": 248,
+              "under": 297,
+              "over": 415
+            }
+          },
+          "penalties": 172,
+          "penaltyPoints": 34400,
+          "jokerModes": {
+            "COMPETE": 672,
+            "HIGHER_SUIT": 275,
+            "FROM_BELOW": 10,
+            "SUIT_WINS": 3
+          },
+          "jokerTricksWon": 629,
+          "jokerTricksLost": 331,
+          "premiaAwards": 3,
+          "premiaBonusPoints": 600,
+          "premiaRemovedPoints": 150,
+          "decisionLatency": {
+            "p50": 0.06199999999444117,
+            "p95": 17.348720000006868,
+            "p99": 24.133941000001794
+          }
+        }
+      },
+      "candidateStats": {
+        "strong-basic-v1": {
+          "starts": 240,
+          "participations": 240,
+          "outrightWins": 100,
+          "tiedWins": 1,
+          "winShare": 100.5,
+          "meanScore": 1162.5416666666667,
+          "medianScore": 1065,
+          "exactByDealSize": {
+            "1": {
+              "deals": 480,
+              "exact": 359,
+              "under": 33,
+              "over": 88
+            },
+            "2": {
+              "deals": 480,
+              "exact": 307,
+              "under": 54,
+              "over": 119
+            },
+            "3": {
+              "deals": 480,
+              "exact": 269,
+              "under": 67,
+              "over": 144
+            },
+            "4": {
+              "deals": 480,
+              "exact": 222,
+              "under": 83,
+              "over": 175
+            },
+            "5": {
+              "deals": 480,
+              "exact": 217,
+              "under": 101,
+              "over": 162
+            },
+            "6": {
+              "deals": 480,
+              "exact": 182,
+              "under": 133,
+              "over": 165
+            },
+            "7": {
+              "deals": 480,
+              "exact": 179,
+              "under": 126,
+              "over": 175
+            },
+            "8": {
+              "deals": 480,
+              "exact": 193,
+              "under": 112,
+              "over": 175
+            },
+            "9": {
+              "deals": 1920,
+              "exact": 751,
+              "under": 504,
+              "over": 665
+            }
+          },
+          "penalties": 311,
+          "penaltyPoints": 62200,
+          "jokerModes": {
+            "FROM_BELOW": 139,
+            "COMPETE": 1286,
+            "HIGHER_SUIT": 464,
+            "SUIT_WINS": 31
+          },
+          "jokerTricksWon": 1323,
+          "jokerTricksLost": 597,
+          "premiaAwards": 28,
+          "premiaBonusPoints": 6450,
+          "premiaRemovedPoints": 1000,
+          "decisionLatency": {
+            "p50": 0.20939999999995962,
+            "p95": 3.480539999997924,
+            "p99": 7.177735000003151
+          }
+        },
+        "memory-inference-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 7,
+          "tiedWins": 1,
+          "winShare": 7.5,
+          "meanScore": 809.4166666666666,
+          "medianScore": 840,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 181,
+              "under": 13,
+              "over": 46
+            },
+            "2": {
+              "deals": 240,
+              "exact": 145,
+              "under": 22,
+              "over": 73
+            },
+            "3": {
+              "deals": 240,
+              "exact": 128,
+              "under": 27,
+              "over": 85
+            },
+            "4": {
+              "deals": 240,
+              "exact": 102,
+              "under": 44,
+              "over": 94
+            },
+            "5": {
+              "deals": 240,
+              "exact": 85,
+              "under": 48,
+              "over": 107
+            },
+            "6": {
+              "deals": 240,
+              "exact": 70,
+              "under": 68,
+              "over": 102
+            },
+            "7": {
+              "deals": 240,
+              "exact": 55,
+              "under": 74,
+              "over": 111
+            },
+            "8": {
+              "deals": 240,
+              "exact": 65,
+              "under": 57,
+              "over": 118
+            },
+            "9": {
+              "deals": 960,
+              "exact": 215,
+              "under": 257,
+              "over": 488
+            }
+          },
+          "penalties": 166,
+          "penaltyPoints": 33200,
+          "jokerModes": {
+            "COMPETE": 654,
+            "HIGHER_SUIT": 302,
+            "FROM_BELOW": 4
+          },
+          "jokerTricksWon": 660,
+          "jokerTricksLost": 300,
+          "premiaAwards": 0,
+          "premiaBonusPoints": 0,
+          "premiaRemovedPoints": 0,
+          "decisionLatency": {
+            "p50": 0.022400000001653098,
+            "p95": 6.119155000003411,
+            "p99": 8.713523000007699
+          }
+        },
+        "probability-simulation-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 12,
+          "tiedWins": 0,
+          "winShare": 12,
+          "meanScore": 821.8333333333334,
+          "medianScore": 815,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 180,
+              "under": 15,
+              "over": 45
+            },
+            "2": {
+              "deals": 240,
+              "exact": 151,
+              "under": 17,
+              "over": 72
+            },
+            "3": {
+              "deals": 240,
+              "exact": 124,
+              "under": 36,
+              "over": 80
+            },
+            "4": {
+              "deals": 240,
+              "exact": 96,
+              "under": 49,
+              "over": 95
+            },
+            "5": {
+              "deals": 240,
+              "exact": 74,
+              "under": 56,
+              "over": 110
+            },
+            "6": {
+              "deals": 240,
+              "exact": 72,
+              "under": 68,
+              "over": 100
+            },
+            "7": {
+              "deals": 240,
+              "exact": 64,
+              "under": 68,
+              "over": 108
+            },
+            "8": {
+              "deals": 240,
+              "exact": 69,
+              "under": 67,
+              "over": 104
+            },
+            "9": {
+              "deals": 960,
+              "exact": 232,
+              "under": 297,
+              "over": 431
+            }
+          },
+          "penalties": 158,
+          "penaltyPoints": 31600,
+          "jokerModes": {
+            "COMPETE": 680,
+            "HIGHER_SUIT": 269,
+            "FROM_BELOW": 9,
+            "SUIT_WINS": 2
+          },
+          "jokerTricksWon": 694,
+          "jokerTricksLost": 266,
+          "premiaAwards": 0,
+          "premiaBonusPoints": 0,
+          "premiaRemovedPoints": 0,
+          "decisionLatency": {
+            "p50": 0.06279999999969732,
+            "p95": 17.324140000007354,
+            "p99": 24.15604700000098
+          }
+        }
+      }
+    },
+    {
+      "tier": "memory-inference-v1",
+      "seeds": 30,
+      "games": 240,
+      "elapsedMs": 198323.78690000004,
+      "score": {
+        "independentSeeds": 30,
+        "matchedGames": 120,
+        "meanScoreDelta": 932.25,
+        "approximate95CI": [
+          836.8295992378506,
+          1027.6704007621493
+        ]
+      },
+      "winShareDelta": 0.5666666666666667,
+      "approximate95WinShareCI": [
+        0.4671760868164758,
+        0.6661572465168575
+      ],
+      "candidateDecisionMs": {
+        "p50": 1.4298500000004424,
+        "p95": 15.419950000035168,
+        "p99": 20.320569000010146
+      },
+      "baselineStats": {
+        "strong-basic-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 26,
+          "tiedWins": 1,
+          "winShare": 26.5,
+          "meanScore": 768.25,
+          "medianScore": 775,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 180,
+              "under": 15,
+              "over": 45
+            },
+            "2": {
+              "deals": 240,
+              "exact": 153,
+              "under": 18,
+              "over": 69
+            },
+            "3": {
+              "deals": 240,
+              "exact": 124,
+              "under": 28,
+              "over": 88
+            },
+            "4": {
+              "deals": 240,
+              "exact": 89,
+              "under": 40,
+              "over": 111
+            },
+            "5": {
+              "deals": 240,
+              "exact": 81,
+              "under": 51,
+              "over": 108
+            },
+            "6": {
+              "deals": 240,
+              "exact": 65,
+              "under": 80,
+              "over": 95
+            },
+            "7": {
+              "deals": 240,
+              "exact": 59,
+              "under": 69,
+              "over": 112
+            },
+            "8": {
+              "deals": 240,
+              "exact": 54,
+              "under": 69,
+              "over": 117
+            },
+            "9": {
+              "deals": 960,
+              "exact": 211,
+              "under": 273,
+              "over": 476
+            }
+          },
+          "penalties": 173,
+          "penaltyPoints": 34600,
+          "jokerModes": {
+            "COMPETE": 654,
+            "HIGHER_SUIT": 302,
+            "FROM_BELOW": 4
+          },
+          "jokerTricksWon": 610,
+          "jokerTricksLost": 350,
+          "premiaAwards": 2,
+          "premiaBonusPoints": 350,
+          "premiaRemovedPoints": 150,
+          "decisionLatency": {
+            "p50": 0.0013000000035390258,
+            "p95": 1.789575000014155,
+            "p99": 2.6201820000039877
+          }
+        },
+        "memory-inference-v1": {
+          "starts": 240,
+          "participations": 240,
+          "outrightWins": 67,
+          "tiedWins": 0,
+          "winShare": 67,
+          "meanScore": 817.25,
+          "medianScore": 795,
+          "exactByDealSize": {
+            "1": {
+              "deals": 480,
+              "exact": 360,
+              "under": 30,
+              "over": 90
+            },
+            "2": {
+              "deals": 480,
+              "exact": 309,
+              "under": 35,
+              "over": 136
+            },
+            "3": {
+              "deals": 480,
+              "exact": 259,
+              "under": 54,
+              "over": 167
+            },
+            "4": {
+              "deals": 480,
+              "exact": 189,
+              "under": 88,
+              "over": 203
+            },
+            "5": {
+              "deals": 480,
+              "exact": 164,
+              "under": 104,
+              "over": 212
+            },
+            "6": {
+              "deals": 480,
+              "exact": 139,
+              "under": 131,
+              "over": 210
+            },
+            "7": {
+              "deals": 480,
+              "exact": 112,
+              "under": 141,
+              "over": 227
+            },
+            "8": {
+              "deals": 480,
+              "exact": 115,
+              "under": 129,
+              "over": 236
+            },
+            "9": {
+              "deals": 1920,
+              "exact": 469,
+              "under": 527,
+              "over": 924
+            }
+          },
+          "penalties": 329,
+          "penaltyPoints": 65800,
+          "jokerModes": {
+            "COMPETE": 1308,
+            "HIGHER_SUIT": 604,
+            "FROM_BELOW": 8
+          },
+          "jokerTricksWon": 1223,
+          "jokerTricksLost": 697,
+          "premiaAwards": 7,
+          "premiaBonusPoints": 1400,
+          "premiaRemovedPoints": 0,
+          "decisionLatency": {
+            "p50": 0.01780000003054738,
+            "p95": 5.8778000000165775,
+            "p99": 8.516643000033799
+          }
+        },
+        "probability-simulation-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 26,
+          "tiedWins": 1,
+          "winShare": 26.5,
+          "meanScore": 791.3333333333334,
+          "medianScore": 840,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 180,
+              "under": 15,
+              "over": 45
+            },
+            "2": {
+              "deals": 240,
+              "exact": 155,
+              "under": 18,
+              "over": 67
+            },
+            "3": {
+              "deals": 240,
+              "exact": 122,
+              "under": 35,
+              "over": 83
+            },
+            "4": {
+              "deals": 240,
+              "exact": 102,
+              "under": 46,
+              "over": 92
+            },
+            "5": {
+              "deals": 240,
+              "exact": 79,
+              "under": 53,
+              "over": 108
+            },
+            "6": {
+              "deals": 240,
+              "exact": 71,
+              "under": 74,
+              "over": 95
+            },
+            "7": {
+              "deals": 240,
+              "exact": 65,
+              "under": 66,
+              "over": 109
+            },
+            "8": {
+              "deals": 240,
+              "exact": 61,
+              "under": 65,
+              "over": 114
+            },
+            "9": {
+              "deals": 960,
+              "exact": 236,
+              "under": 311,
+              "over": 413
+            }
+          },
+          "penalties": 173,
+          "penaltyPoints": 34600,
+          "jokerModes": {
+            "COMPETE": 680,
+            "HIGHER_SUIT": 269,
+            "FROM_BELOW": 9,
+            "SUIT_WINS": 2
+          },
+          "jokerTricksWon": 635,
+          "jokerTricksLost": 325,
+          "premiaAwards": 1,
+          "premiaBonusPoints": 200,
+          "premiaRemovedPoints": 150,
+          "decisionLatency": {
+            "p50": 0.05989999999292195,
+            "p95": 16.498920000006912,
+            "p99": 23.580114999997896
+          }
+        }
+      },
+      "candidateStats": {
+        "strong-basic-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 3,
+          "tiedWins": 0,
+          "winShare": 3,
+          "meanScore": 724.6666666666666,
+          "medianScore": 745,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 180,
+              "under": 15,
+              "over": 45
+            },
+            "2": {
+              "deals": 240,
+              "exact": 149,
+              "under": 25,
+              "over": 66
+            },
+            "3": {
+              "deals": 240,
+              "exact": 121,
+              "under": 26,
+              "over": 93
+            },
+            "4": {
+              "deals": 240,
+              "exact": 92,
+              "under": 44,
+              "over": 104
+            },
+            "5": {
+              "deals": 240,
+              "exact": 83,
+              "under": 59,
+              "over": 98
+            },
+            "6": {
+              "deals": 240,
+              "exact": 64,
+              "under": 73,
+              "over": 103
+            },
+            "7": {
+              "deals": 240,
+              "exact": 66,
+              "under": 63,
+              "over": 111
+            },
+            "8": {
+              "deals": 240,
+              "exact": 50,
+              "under": 82,
+              "over": 108
+            },
+            "9": {
+              "deals": 960,
+              "exact": 228,
+              "under": 278,
+              "over": 454
+            }
+          },
+          "penalties": 182,
+          "penaltyPoints": 36400,
+          "jokerModes": {
+            "COMPETE": 652,
+            "HIGHER_SUIT": 302,
+            "FROM_BELOW": 6
+          },
+          "jokerTricksWon": 624,
+          "jokerTricksLost": 336,
+          "premiaAwards": 0,
+          "premiaBonusPoints": 0,
+          "premiaRemovedPoints": 2700,
+          "decisionLatency": {
+            "p50": 0.0025000000023283064,
+            "p95": 1.7931999999593244,
+            "p99": 2.6159869999965304
+          }
+        },
+        "memory-inference-v1": {
+          "starts": 240,
+          "participations": 240,
+          "outrightWins": 110,
+          "tiedWins": 0,
+          "winShare": 110,
+          "meanScore": 1280.1666666666667,
+          "medianScore": 1200,
+          "exactByDealSize": {
+            "1": {
+              "deals": 480,
+              "exact": 359,
+              "under": 31,
+              "over": 90
+            },
+            "2": {
+              "deals": 480,
+              "exact": 307,
+              "under": 45,
+              "over": 128
+            },
+            "3": {
+              "deals": 480,
+              "exact": 287,
+              "under": 61,
+              "over": 132
+            },
+            "4": {
+              "deals": 480,
+              "exact": 251,
+              "under": 69,
+              "over": 160
+            },
+            "5": {
+              "deals": 480,
+              "exact": 213,
+              "under": 90,
+              "over": 177
+            },
+            "6": {
+              "deals": 480,
+              "exact": 206,
+              "under": 117,
+              "over": 157
+            },
+            "7": {
+              "deals": 480,
+              "exact": 179,
+              "under": 118,
+              "over": 183
+            },
+            "8": {
+              "deals": 480,
+              "exact": 206,
+              "under": 99,
+              "over": 175
+            },
+            "9": {
+              "deals": 1920,
+              "exact": 800,
+              "under": 444,
+              "over": 676
+            }
+          },
+          "penalties": 274,
+          "penaltyPoints": 54800,
+          "jokerModes": {
+            "COMPETE": 1310,
+            "HIGHER_SUIT": 459,
+            "FROM_BELOW": 114,
+            "SUIT_WINS": 37
+          },
+          "jokerTricksWon": 1386,
+          "jokerTricksLost": 534,
+          "premiaAwards": 35,
+          "premiaBonusPoints": 8000,
+          "premiaRemovedPoints": 0,
+          "decisionLatency": {
+            "p50": 0.37589999999909196,
+            "p95": 9.021934999985367,
+            "p99": 18.946590999977197
+          }
+        },
+        "probability-simulation-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 7,
+          "tiedWins": 0,
+          "winShare": 7,
+          "meanScore": 802.0833333333334,
+          "medianScore": 800,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 179,
+              "under": 15,
+              "over": 46
+            },
+            "2": {
+              "deals": 240,
+              "exact": 150,
+              "under": 17,
+              "over": 73
+            },
+            "3": {
+              "deals": 240,
+              "exact": 121,
+              "under": 36,
+              "over": 83
+            },
+            "4": {
+              "deals": 240,
+              "exact": 97,
+              "under": 47,
+              "over": 96
+            },
+            "5": {
+              "deals": 240,
+              "exact": 74,
+              "under": 58,
+              "over": 108
+            },
+            "6": {
+              "deals": 240,
+              "exact": 63,
+              "under": 74,
+              "over": 103
+            },
+            "7": {
+              "deals": 240,
+              "exact": 60,
+              "under": 75,
+              "over": 105
+            },
+            "8": {
+              "deals": 240,
+              "exact": 76,
+              "under": 64,
+              "over": 100
+            },
+            "9": {
+              "deals": 960,
+              "exact": 236,
+              "under": 289,
+              "over": 435
+            }
+          },
+          "penalties": 172,
+          "penaltyPoints": 34400,
+          "jokerModes": {
+            "COMPETE": 678,
+            "HIGHER_SUIT": 269,
+            "FROM_BELOW": 12,
+            "SUIT_WINS": 1
+          },
+          "jokerTricksWon": 697,
+          "jokerTricksLost": 263,
+          "premiaAwards": 0,
+          "premiaBonusPoints": 0,
+          "premiaRemovedPoints": 0,
+          "decisionLatency": {
+            "p50": 0.062399999995250255,
+            "p95": 16.679124999998017,
+            "p99": 23.546665000001667
+          }
+        }
+      }
+    },
+    {
+      "tier": "probability-simulation-v1",
+      "seeds": 30,
+      "games": 240,
+      "elapsedMs": 252448.90999999997,
+      "score": {
+        "independentSeeds": 30,
+        "matchedGames": 120,
+        "meanScoreDelta": 1050.8333333333333,
+        "approximate95CI": [
+          952.6320955045202,
+          1149.0345711621464
+        ]
+      },
+      "winShareDelta": 0.7,
+      "approximate95WinShareCI": [
+        0.6319087832895941,
+        0.7680912167104058
+      ],
+      "candidateDecisionMs": {
+        "p50": 2.4262999999918975,
+        "p95": 29.00613000002048,
+        "p99": 39.3914120000135
+      },
+      "baselineStats": {
+        "strong-basic-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 24,
+          "tiedWins": 1,
+          "winShare": 24.5,
+          "meanScore": 764.8333333333334,
+          "medianScore": 770,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 180,
+              "under": 15,
+              "over": 45
+            },
+            "2": {
+              "deals": 240,
+              "exact": 156,
+              "under": 18,
+              "over": 66
+            },
+            "3": {
+              "deals": 240,
+              "exact": 127,
+              "under": 27,
+              "over": 86
+            },
+            "4": {
+              "deals": 240,
+              "exact": 93,
+              "under": 39,
+              "over": 108
+            },
+            "5": {
+              "deals": 240,
+              "exact": 78,
+              "under": 54,
+              "over": 108
+            },
+            "6": {
+              "deals": 240,
+              "exact": 67,
+              "under": 75,
+              "over": 98
+            },
+            "7": {
+              "deals": 240,
+              "exact": 57,
+              "under": 69,
+              "over": 114
+            },
+            "8": {
+              "deals": 240,
+              "exact": 63,
+              "under": 67,
+              "over": 110
+            },
+            "9": {
+              "deals": 960,
+              "exact": 204,
+              "under": 272,
+              "over": 484
+            }
+          },
+          "penalties": 173,
+          "penaltyPoints": 34600,
+          "jokerModes": {
+            "COMPETE": 654,
+            "HIGHER_SUIT": 302,
+            "FROM_BELOW": 4
+          },
+          "jokerTricksWon": 616,
+          "jokerTricksLost": 344,
+          "premiaAwards": 1,
+          "premiaBonusPoints": 150,
+          "premiaRemovedPoints": 0,
+          "decisionLatency": {
+            "p50": 0.0010999999940395355,
+            "p95": 1.5035549999942297,
+            "p99": 2.224042999965604
+          }
+        },
+        "memory-inference-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 32,
+          "tiedWins": 1,
+          "winShare": 32.5,
+          "meanScore": 818.5833333333334,
+          "medianScore": 830,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 180,
+              "under": 15,
+              "over": 45
+            },
+            "2": {
+              "deals": 240,
+              "exact": 153,
+              "under": 18,
+              "over": 69
+            },
+            "3": {
+              "deals": 240,
+              "exact": 127,
+              "under": 27,
+              "over": 86
+            },
+            "4": {
+              "deals": 240,
+              "exact": 95,
+              "under": 42,
+              "over": 103
+            },
+            "5": {
+              "deals": 240,
+              "exact": 86,
+              "under": 50,
+              "over": 104
+            },
+            "6": {
+              "deals": 240,
+              "exact": 69,
+              "under": 65,
+              "over": 106
+            },
+            "7": {
+              "deals": 240,
+              "exact": 46,
+              "under": 71,
+              "over": 123
+            },
+            "8": {
+              "deals": 240,
+              "exact": 65,
+              "under": 61,
+              "over": 114
+            },
+            "9": {
+              "deals": 960,
+              "exact": 227,
+              "under": 262,
+              "over": 471
+            }
+          },
+          "penalties": 161,
+          "penaltyPoints": 32200,
+          "jokerModes": {
+            "COMPETE": 654,
+            "HIGHER_SUIT": 302,
+            "FROM_BELOW": 4
+          },
+          "jokerTricksWon": 625,
+          "jokerTricksLost": 335,
+          "premiaAwards": 0,
+          "premiaBonusPoints": 0,
+          "premiaRemovedPoints": 0,
+          "decisionLatency": {
+            "p50": 0.016500000027008355,
+            "p95": 4.872114999976473,
+            "p99": 7.099120000003604
+          }
+        },
+        "probability-simulation-v1": {
+          "starts": 240,
+          "participations": 240,
+          "outrightWins": 63,
+          "tiedWins": 0,
+          "winShare": 63,
+          "meanScore": 819.0416666666666,
+          "medianScore": 820,
+          "exactByDealSize": {
+            "1": {
+              "deals": 480,
+              "exact": 360,
+              "under": 30,
+              "over": 90
+            },
+            "2": {
+              "deals": 480,
+              "exact": 310,
+              "under": 37,
+              "over": 133
+            },
+            "3": {
+              "deals": 480,
+              "exact": 248,
+              "under": 67,
+              "over": 165
+            },
+            "4": {
+              "deals": 480,
+              "exact": 197,
+              "under": 94,
+              "over": 189
+            },
+            "5": {
+              "deals": 480,
+              "exact": 159,
+              "under": 109,
+              "over": 212
+            },
+            "6": {
+              "deals": 480,
+              "exact": 133,
+              "under": 150,
+              "over": 197
+            },
+            "7": {
+              "deals": 480,
+              "exact": 125,
+              "under": 133,
+              "over": 222
+            },
+            "8": {
+              "deals": 480,
+              "exact": 114,
+              "under": 132,
+              "over": 234
+            },
+            "9": {
+              "deals": 1920,
+              "exact": 496,
+              "under": 582,
+              "over": 842
+            }
+          },
+          "penalties": 334,
+          "penaltyPoints": 66800,
+          "jokerModes": {
+            "COMPETE": 1341,
+            "HIGHER_SUIT": 552,
+            "FROM_BELOW": 21,
+            "SUIT_WINS": 6
+          },
+          "jokerTricksWon": 1274,
+          "jokerTricksLost": 646,
+          "premiaAwards": 1,
+          "premiaBonusPoints": 200,
+          "premiaRemovedPoints": 0,
+          "decisionLatency": {
+            "p50": 0.05099999997764826,
+            "p95": 13.687875000014895,
+            "p99": 19.65856200001666
+          }
+        }
+      },
+      "candidateStats": {
+        "strong-basic-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 2,
+          "tiedWins": 0,
+          "winShare": 2,
+          "meanScore": 720,
+          "medianScore": 750,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 178,
+              "under": 17,
+              "over": 45
+            },
+            "2": {
+              "deals": 240,
+              "exact": 153,
+              "under": 22,
+              "over": 65
+            },
+            "3": {
+              "deals": 240,
+              "exact": 117,
+              "under": 31,
+              "over": 92
+            },
+            "4": {
+              "deals": 240,
+              "exact": 88,
+              "under": 46,
+              "over": 106
+            },
+            "5": {
+              "deals": 240,
+              "exact": 88,
+              "under": 54,
+              "over": 98
+            },
+            "6": {
+              "deals": 240,
+              "exact": 61,
+              "under": 74,
+              "over": 105
+            },
+            "7": {
+              "deals": 240,
+              "exact": 65,
+              "under": 67,
+              "over": 108
+            },
+            "8": {
+              "deals": 240,
+              "exact": 55,
+              "under": 78,
+              "over": 107
+            },
+            "9": {
+              "deals": 960,
+              "exact": 222,
+              "under": 289,
+              "over": 449
+            }
+          },
+          "penalties": 187,
+          "penaltyPoints": 37400,
+          "jokerModes": {
+            "COMPETE": 655,
+            "HIGHER_SUIT": 302,
+            "FROM_BELOW": 3
+          },
+          "jokerTricksWon": 630,
+          "jokerTricksLost": 330,
+          "premiaAwards": 1,
+          "premiaBonusPoints": 200,
+          "premiaRemovedPoints": 2650,
+          "decisionLatency": {
+            "p50": 0.0023999999975785613,
+            "p95": 1.4881349999603113,
+            "p99": 2.1589099999913013
+          }
+        },
+        "memory-inference-v1": {
+          "starts": 120,
+          "participations": 120,
+          "outrightWins": 4,
+          "tiedWins": 0,
+          "winShare": 4,
+          "meanScore": 807.6666666666666,
+          "medianScore": 800,
+          "exactByDealSize": {
+            "1": {
+              "deals": 240,
+              "exact": 179,
+              "under": 15,
+              "over": 46
+            },
+            "2": {
+              "deals": 240,
+              "exact": 149,
+              "under": 17,
+              "over": 74
+            },
+            "3": {
+              "deals": 240,
+              "exact": 128,
+              "under": 29,
+              "over": 83
+            },
+            "4": {
+              "deals": 240,
+              "exact": 94,
+              "under": 41,
+              "over": 105
+            },
+            "5": {
+              "deals": 240,
+              "exact": 86,
+              "under": 50,
+              "over": 104
+            },
+            "6": {
+              "deals": 240,
+              "exact": 75,
+              "under": 67,
+              "over": 98
+            },
+            "7": {
+              "deals": 240,
+              "exact": 53,
+              "under": 67,
+              "over": 120
+            },
+            "8": {
+              "deals": 240,
+              "exact": 65,
+              "under": 65,
+              "over": 110
+            },
+            "9": {
+              "deals": 960,
+              "exact": 221,
+              "under": 259,
+              "over": 480
+            }
+          },
+          "penalties": 170,
+          "penaltyPoints": 34000,
+          "jokerModes": {
+            "COMPETE": 654,
+            "HIGHER_SUIT": 302,
+            "FROM_BELOW": 4
+          },
+          "jokerTricksWon": 651,
+          "jokerTricksLost": 309,
+          "premiaAwards": 0,
+          "premiaBonusPoints": 0,
+          "premiaRemovedPoints": 150,
+          "decisionLatency": {
+            "p50": 0.020400000037625432,
+            "p95": 4.791459999990183,
+            "p99": 7.008703999968711
+          }
+        },
+        "probability-simulation-v1": {
+          "starts": 240,
+          "participations": 240,
+          "outrightWins": 114,
+          "tiedWins": 0,
+          "winShare": 114,
+          "meanScore": 1298.3333333333333,
+          "medianScore": 1195,
+          "exactByDealSize": {
+            "1": {
+              "deals": 480,
+              "exact": 363,
+              "under": 30,
+              "over": 87
+            },
+            "2": {
+              "deals": 480,
+              "exact": 316,
+              "under": 41,
+              "over": 123
+            },
+            "3": {
+              "deals": 480,
+              "exact": 284,
+              "under": 66,
+              "over": 130
+            },
+            "4": {
+              "deals": 480,
+              "exact": 245,
+              "under": 80,
+              "over": 155
+            },
+            "5": {
+              "deals": 480,
+              "exact": 220,
+              "under": 90,
+              "over": 170
+            },
+            "6": {
+              "deals": 480,
+              "exact": 198,
+              "under": 119,
+              "over": 163
+            },
+            "7": {
+              "deals": 480,
+              "exact": 195,
+              "under": 119,
+              "over": 166
+            },
+            "8": {
+              "deals": 480,
+              "exact": 191,
+              "under": 105,
+              "over": 184
+            },
+            "9": {
+              "deals": 1920,
+              "exact": 830,
+              "under": 488,
+              "over": 602
+            }
+          },
+          "penalties": 262,
+          "penaltyPoints": 52400,
+          "jokerModes": {
+            "COMPETE": 1398,
+            "HIGHER_SUIT": 397,
+            "FROM_BELOW": 95,
+            "SUIT_WINS": 30
+          },
+          "jokerTricksWon": 1451,
+          "jokerTricksLost": 469,
+          "premiaAwards": 37,
+          "premiaBonusPoints": 7950,
+          "premiaRemovedPoints": 0,
+          "decisionLatency": {
+            "p50": 0.7849499999720138,
+            "p95": 18.110679999954286,
+            "p99": 34.48064699997308
+          }
+        }
+      }
+    }
+  ]
+}
