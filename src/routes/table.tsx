@@ -257,7 +257,7 @@ function TablePage() {
   const refreshEmojis = useCallback(async () => {
     if (!gameId || !roomRef.current) return;
     const result = await listEmojiReactions({ data: { gameId } });
-    if (mounted.current && result.ok) setEmojiReactions(result.reactions);
+    if (mounted.current && result?.ok) setEmojiReactions(result.reactions);
   }, [gameId]);
 
   const sendEmoji = useCallback(async (slug: string) => {
@@ -267,7 +267,7 @@ function TablePage() {
     setEmojiBusy(true);
     try {
       const result = await sendEmojiReaction({ data: { gameId, emoji: slug } });
-      if (result.ok && mounted.current) {
+      if (result?.ok && mounted.current) {
         setEmojiReactions(previous => [...previous.filter(r => r.seat !== result.reaction.seat), result.reaction]);
         setEmojiNow(Date.now());
       }
