@@ -233,7 +233,10 @@ function TablePage() {
       if (message.replyDepth !== 0) continue;
       const bucket = stableReplyBucket(`${message.id}:${currentRoom.botSettings.intensity}`) % 100;
       const threshold = currentRoom.botSettings.intensity === "chaos" ? 55 : 20;
-      if (bucket >= threshold) continue;
+      // The approved photocopy exchange needs exactly one response attempt,
+      // even when ordinary conversational replies are sampled sparingly.
+      const approvedExchange = message.text === "Μήπως βγάζετε φωτοτυπίες;";
+      if (!approvedExchange && bucket >= threshold) continue;
       const responder = bots.find((bot) => bot.id !== message.speakerBotId);
       if (!responder) continue;
       void requestBotDialogueReply({ data: { gameId, sourceMessageId: message.id, responderBotId: responder.id } }).catch(() => undefined);

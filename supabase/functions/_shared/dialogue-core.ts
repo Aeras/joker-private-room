@@ -253,7 +253,7 @@ function curatedCandidates(context: DialogueGenerationContext): string[] {
     result.push("Ελάτε να γαμήσουμε τον Παναγιώτη!");
   }
   if (context.profanityEnabled) {
-    if (["TRICK_WON", "PLAYER_GOT_MINUS_200", "BOT_GOT_MINUS_200", "GAME_END"].includes(type)) {
+    if (["TRICK_WON", "JOKER_PLAYED", "PLAYER_HIT_EXACT_BID", "BOT_HIT_EXACT_BID", "OVERTRICK", "UNDERTRICK", "PLAYER_GOT_MINUS_200", "BOT_GOT_MINUS_200", "GAME_END"].includes(type)) {
       result.push(SPECIAL_SPICY_LINES.shared);
       if (context.botId === "archimandritis") result.push(SPECIAL_SPICY_LINES.archimandritis);
       if ((context.tableParticipants?.filter((p) => p.kind === "bot").length ?? 0) >= 2)
@@ -262,6 +262,8 @@ function curatedCandidates(context: DialogueGenerationContext): string[] {
     const indexes: Record<string, readonly number[]> = {
       TRICK_WON: [3,4,7,9,12,15,16,19],
       JOKER_PLAYED: [6,18],
+      PLAYER_HIT_EXACT_BID: [4,10,16],
+      BOT_HIT_EXACT_BID: [4,10,16],
       PLAYER_GOT_MINUS_200: [1,8,13],
       BOT_GOT_MINUS_200: [0,2,5,8,11,14,17],
       OVERTRICK: [7,12,13],
@@ -271,7 +273,7 @@ function curatedCandidates(context: DialogueGenerationContext): string[] {
     result.push(...(indexes[type] ?? []).map((i) => APPROVED_SPICY_LINES[i]!));
     const target = context.tableParticipants?.find((p) =>
       p.kind === "human" && p.seat === context.event.targetSeat);
-    if (target && ["TRICK_WON", "PLAYER_GOT_MINUS_200"].includes(type))
+    if (target && ["TRICK_WON", "PLAYER_GOT_MINUS_200", "PLAYER_HIT_EXACT_BID", "OVERTRICK", "UNDERTRICK"].includes(type))
       result.push(SPECIAL_SPICY_LINES.named);
   }
   return result;
@@ -353,13 +355,22 @@ export function pickOccasionalCuratedLine(context: DialogueGenerationContext): s
   if (!candidates.length) return null;
   const key = `${context.event.id}|${context.botId}`;
   let hash = 2166136261;
-  for (let i = 0; i < key.length; i++) {
-    hash = Math.imul(hash ^ key.charCodeAt(i), 16777619);
-  }
+  for (let i = 0; i < key.length; i++) hash = Math.imul(hash ^ key.charCodeAt(i), 16777619);
   const unsigned = hash >>> 0;
-  // Approximately one eligible event in eight. Not a per-deal quota.
-  if (unsigned % 8 !== 0) return null;
-  return candidates[Math.floor(unsigned / 8) % candidates.length] ?? null;
+  // Preserve room for spontaneous Grok dialogue, with stable retry behavior.
+  if (unsigned % 2 !== 0) return null;
+  const approved = context.profanityEnabled
+    ? candidates.filter((line) =>
+        (APPROVED_SPICY_LINES as readonly string[]).includes(line) ||
+        line === SPECIAL_SPICY_LINES.shared ||
+        line === SPECIAL_SPICY_LINES.archimandritis ||
+        line.startsWith("Γαμήστε τον ") ||
+        line === SPECIAL_SPICY_LINES.photocopyQuestion)
+    : [];
+  // In profanity-enabled rooms use the newly approved pool when eligible,
+  // instead of burying it behind dozens of generic older candidates.
+  const pool = approved.length > 0 && unsigned % 10 !== 0 ? approved : candidates;
+  return pool[Math.floor(unsigned / 2) % pool.length] ?? null;
 }
 
 export function pickApprovedBotReply(context: DialogueGenerationContext): string | null {
