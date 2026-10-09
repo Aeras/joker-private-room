@@ -228,6 +228,9 @@ Deno.serve(async (req: Request) => {
 
     const { data, error } = await admin.rpc(rpcName, args);
     if (error) {
+      if (error.code === "23505" && error.message === "ACTIVE_GAME_EXISTS") {
+        return json({ ok: false, code: "ACTIVE_GAME_EXISTS" }, 409);
+      }
       console.error("room-command-rpc-failed", { action, code: error.code });
       return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
     }
