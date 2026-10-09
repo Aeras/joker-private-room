@@ -414,14 +414,29 @@ function TablePage() {
   useEffect(() => {
     mounted.current = true;
     void refreshAll();
-    const gameTimer = window.setInterval(() => void refreshAll(), 1500);
     const dialogueTimer = window.setInterval(() => void refreshDialogue(), 1000);
     return () => {
       mounted.current = false;
-      window.clearInterval(gameTimer);
       window.clearInterval(dialogueTimer);
     };
   }, [refreshAll, refreshDialogue, returnSync, updateConnectionStatus]);
+
+  // A bot decision is calculated by the server on a projected-state request.
+  // Poll faster only while a bot owns the next move; retain the original 1.5s
+  // fallback when waiting for a human or a long presentation.
+  const automaticActorSeat = projection?.progression.currentActorSeat;
+  const automaticActorPending =
+    projection?.lifecycle === "active" &&
+    automaticActorSeat != null &&
+    projection.seats[automaticActorSeat]?.controller !== "human" &&
+    !projection.timing?.turnPresentation;
+  useEffect(() => {
+    const interval = automaticActorPending ? 500 : 1500;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshAll();
+    }, interval);
+    return () => window.clearInterval(timer);
+  }, [automaticActorPending, refreshAll]);
 
   useEffect(() => {
     if (projection?.lifecycle !== "starting") return;
