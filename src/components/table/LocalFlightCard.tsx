@@ -1,4 +1,4 @@
-import { TRICK_CARD_ROTATION } from "./trickPresentationModel";
+import { NORMAL_FROM_BELOW_FLIGHT_MS, TRICK_CARD_ROTATION } from "./trickPresentationModel";
 import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlayingCard } from "../joker/PlayingCard";
@@ -23,7 +23,8 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const finished = useRef(false);
   const callback = useRef(onSettled); callback.current = onSettled;
   const landingCallback = useRef(onLanded); landingCallback.current = onLanded;
-  const duration = reducedMotion ? REDUCED_LOCAL_FLIGHT_MS : LOCAL_FLIGHT_MS;
+  const fromBelow = presentation.jokerSemantic?.context === "OPEN_TRICK" && presentation.jokerSemantic.mode === "FROM_BELOW";
+  const duration = reducedMotion ? REDUCED_LOCAL_FLIGHT_MS : fromBelow ? NORMAL_FROM_BELOW_FLIGHT_MS : LOCAL_FLIGHT_MS;
   const rejected = presentation.status === "rejected";
   const motionCompleted = useRef(new Set<string>());
   const completeMotion = useCallback(() => { const stage = rejected ? "returned" : "landed"; if (motionCompleted.current.has(stage)) return; motionCompleted.current.add(stage); recordTimingDiagnostic("local_flight_" + stage, { cardId: presentation.cardId, durationMs: duration }); if (rejected) setReturned(true); else { landingCallback.current?.(); setLanded(true); } }, [rejected, duration, presentation.cardId]);
@@ -47,7 +48,6 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const pos = (presentation.actorSeat - frozen.viewerSeat + 4) % 4;
   const target = frozen.geometry.trickSlots[pos as 0 | 1 | 2 | 3];
   const atTarget = launched && !rejected;
-  const fromBelow = presentation.jokerSemantic?.context === "OPEN_TRICK" && presentation.jokerSemantic.mode === "FROM_BELOW";
   const width = frozen.release.cardWidth ?? frozen.release.width;
   // The DOM surface keeps 5:7 aspect; AABB height includes drag rotation.
   const height = width * 7 / 5;
@@ -57,6 +57,7 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const y = atTarget ? frozen.geometry.feltRect.top + target.y : frozen.release.top + frozen.release.height / 2;
   return <div className="fixed left-0 top-0 z-40 transition-transform ease-out" style={{
     "--card-w": `${width}px`, transitionDuration: `${duration}ms`,
+    ...(fromBelow ? { transitionTimingFunction: "ease-in-out" } : {}),
     ...(fromBelow && atTarget ? { zIndex: 0, animation: `joker-under-layer ${duration}ms linear both` } : {}),
     transform: `translate(${x - width / 2}px, ${y - height / 2}px) rotate(${atTarget ? rotation : frozen.release.rotation ?? 0}deg) scale(${atTarget ? targetWidth / width : 1})`,
   } as React.CSSProperties} data-local-flight-card={presentation.cardId} data-local-flight-status={presentation.status}

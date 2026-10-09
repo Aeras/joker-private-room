@@ -14,7 +14,7 @@ import { UnderJokerFace } from "./UnderJokerFace";
 import { LocalFlightCard, MOTION_FALLBACK_SLACK_MS } from "./LocalFlightCard";
 import type { LocalPlayPresentation } from "./localPlayPresentation";
 import { pinnedStackPose, stackRotation, trickExitPoint } from "./trickCollectionMotion";
-import { TRICK_CARD_ROTATION, trickPresentationTiming } from "./trickPresentationModel";
+import { NORMAL_FROM_BELOW_FLIGHT_MS, TRICK_CARD_ROTATION, trickPresentationTiming } from "./trickPresentationModel";
 import type { Point, TableGeometry, VisualSeat } from "./useTableGeometry";
 
 type Pos = VisualSeat;
@@ -80,7 +80,8 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
   }
   const collectTarget = exitTarget.current ?? (winnerPos == null ? landing : trickExitPoint(stackTarget, winnerPos, motionGeometry));
   const timing = trickPresentationTiming(reducedMotion);
-  const duration = departingStage === "stacking" ? timing.stackMs : departingStage === "collecting" ? timing.collectMs : timing.settleMs;
+  const fromBelowJoker = isFromBelowJoker(play);
+  const duration = departingStage === "stacking" ? timing.stackMs : departingStage === "collecting" ? timing.collectMs : fromBelowJoker && !reducedMotion ? NORMAL_FROM_BELOW_FLIGHT_MS : timing.settleMs;
   const completionRef = useRef(onMotionComplete); completionRef.current = onMotionComplete;
   const playRef = useRef(play); playRef.current = play;
   useEffect(() => {
@@ -90,7 +91,6 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
   }, [arrived, departingStage, duration, play.card.id, completionGeneration, paused, settled]);
   const collecting = departingStage === "collecting";
   const stacking = departingStage === "stacking";
-  const fromBelowJoker = isFromBelowJoker(play);
   const faceDown = fromBelowJoker || collecting;
   const settledPoint = fromBelowJoker ? underStackPoint(landing, center) : landing;
   const alignedRotation = winnerPos == null ? TRICK_CARD_ROTATION[pos] : stackRotation(pos, winnerPos);
@@ -103,7 +103,7 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
     const pose = pinnedStackPose(settledPoint, stackTarget, pos, winnerPos, motionGeometry?.trickCardSize.height ?? 100, t);
     return `${index / 16 * 100}%{transform:${relativeTransform(pose.point, center, pose.rotation)}}`;
   }).join("") : "";
-  const easing = collecting ? "linear" : "cubic-bezier(0.22, 1, 0.36, 1)";
+  const easing = collecting ? "linear" : fromBelowJoker && !departingStage ? "ease-in-out" : "cubic-bezier(0.22, 1, 0.36, 1)";
   return <div data-joker-from-below={fromBelowJoker ? "true" : undefined} data-trick-seat={play.seatIndex} data-trick-collecting={collecting ? "true" : undefined} className={cn("fixed transition-[transform,opacity]", fromBelowJoker ? "z-0" : "z-10")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms`, transitionTimingFunction: easing, animationName: frames ? animationId : "none", animationDuration: `${duration}ms`, animationTimingFunction: "linear", animationPlayState: paused ? "paused" : "running", opacity: collecting ? 0 : 1, transitionDelay: collecting ? `0ms, ${Math.max(0, duration - 120)}ms` : "0ms", ...(collecting ? { transitionDuration: `${duration}ms, 120ms` } : {}) } as React.CSSProperties} onAnimationEnd={(event) => { if (event.target === event.currentTarget && event.animationName === animationId && stacking) completionRef.current(play, "stacking"); }} onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform" && !stacking) completionRef.current(play, departingStage ?? "landing"); }}>
     {frames && <style>{`@keyframes ${animationId}{${frames}}`}</style>}
     {fromBelowJoker ? <UnderJokerFace card={play.card} flipped={arrived} duration={duration} /> : <div className="relative">

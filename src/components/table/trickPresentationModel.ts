@@ -8,6 +8,8 @@ export const TRICK_CARD_ROTATION = [2, 83, 178, -83] as const;
 // not merely from when its animation started. This keeps bot/remote presentation
 // independent from raw computation or reconciliation speed.
 export const NORMAL_TRICK_SETTLE_MS = 340;
+// Only FROM_BELOW travels and turns more slowly; all other card pacing stays intact.
+export const NORMAL_FROM_BELOW_FLIGHT_MS = 550;
 export const NORMAL_TRICK_INTER_PLAY_BEAT_MS = 300;
 export const NORMAL_TRICK_PLAY_SPACING_MS = NORMAL_TRICK_SETTLE_MS + NORMAL_TRICK_INTER_PLAY_BEAT_MS;
 export const REDUCED_TRICK_SETTLE_MS = 80;
