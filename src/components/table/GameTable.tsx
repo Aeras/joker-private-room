@@ -58,6 +58,17 @@ function phaseMessage(projection: PlayerGameProjection): string {
   }
 }
 
+function formatSeatChatBubble(messages: LiveTableMessage[], senderSeat: number, room: Room): string | undefined {
+  const message = messages.filter(m => m.fromSeat === senderSeat).at(-1);
+  if (!message) return undefined;
+  if (message.to === "all") return message.text;
+  const occupant = room.seats[message.to]?.occupant;
+  const recipient = occupant?.type === "human" ? occupant.player.displayName
+    : occupant?.type === "bot" ? occupant.bot.displayName
+    : `θέση ${message.to + 1}`;
+  return `Προς ${recipient}: ${message.text}`;
+}
+
 export function GameTable({ room, projection, busy, error, onCommand, onReclaim, onEndGame, onNineCardPresentationComplete, onTurnPresentationComplete, emojiBySeat, onEmojiSend, emojiBusy, chatMessages = [] }: {
   room: Room;
   projection: PlayerGameProjection;
@@ -311,7 +322,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     const publicDeadline = projection.timing?.currentHumanDeadline ?? projection.local.humanDeadline;
     const isActor = !interactionPresentationActive && projection.progression.currentActorSeat === seat;
     return <TableSeat seat={roomSeat} reactionEmoji={emojiBySeat?.[seat]}
-      chatMessage={(() => { const message = chatMessages.filter(m => m.fromSeat === seat).at(-1); return message ? (message.to === "all" ? message.text : `Προς ${room.seats[message.to]?.occupant.type === "human" ? room.seats[message.to].occupant.player.displayName : room.seats[message.to]?.occupant.type === "bot" ? room.seats[message.to].occupant.bot.displayName : `θέση ${message.to + 1}`}: ${message.text}`) : undefined; })()}
+      chatMessage={formatSeatChatBubble(chatMessages, seat, room)}
       chatSide={pos === 3 ? "left" : pos === 2 ? "above" : "right"}
       orientation={orientation} infoLayout={pos === 2 ? "left" : "below"} showCards={false} local={pos === 0} stats={{ totalScore: displayedScore.cumulativeTotals[seat], declaration: displayedScore.dealNumber !== projection.progression.dealNumber ? displayedScore.declarations[seat] ?? null : startupPresentationActive ? null : pos === 0 ? pendingDeclarationValue ?? displayedScore.declarations[seat] ?? null : displayedScore.declarations[seat] ?? null, tricksTaken: displayedScore.tricksTaken[seat], isDealer: !dealerIntroActive && projection.progression.dealerSeat === seat, isActive: isActor, cardCount: startupPresentationActive ? 0 : publicCardCount(projection, seat), humanDeadline: isActor && countdownPhase ? publicDeadline : null, isTemporarilyControlled: projection.seats[seat].owner.type === "human" && projection.seats[seat].controller === "temporary_bot" }} />;
   };
