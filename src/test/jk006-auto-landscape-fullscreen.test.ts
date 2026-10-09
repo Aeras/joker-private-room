@@ -24,7 +24,8 @@ describe("JK-006 automatic fullscreen landscape entry", () => {
   it("joins the room lobby before entering the table environment", () => {
     // Wiring contract: joining a room is not the host's Start gesture.
     const join = read("src/routes/join.tsx");
-    expect(join.indexOf("await realIdentityService.verifyPin")).toBeLessThan(join.indexOf("await joinProductionRoom"));
+    expect(join).toContain("<PlayerSessionGate>");
+    expect(join).toContain("await joinProductionRoom");
     expect(join).toContain('navigate({ to: "/lobby", search: { code: result.room.code } })');
     expect(join).not.toContain("enterGameDisplayMode");
   });
