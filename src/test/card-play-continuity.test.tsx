@@ -125,6 +125,26 @@ it.each([0, 1, 2, 3])("keeps remote seat %i at its landing through geometry revi
     el.style.getPropertyValue("--card-w"),
   ]).toEqual(pose);
 });
+
+it.each([0, 1, 2, 3] as const)("FROM_BELOW seat %i keeps the normal slot, smoothly flips, and survives polling without remount", seat => {
+  const g = geom(), props = { geometry: g, localPlayPresentation: null, onLocalFlightSettled: vi.fn() };
+  const joker = { id: "joker-1", kind: "joker" } as const;
+  const view = render(<TrickPresentation {...props} projection={snap()} />);
+  const projection = snap([{ seatIndex: seat, card: joker, joker: { context: "OPEN_TRICK", mode: "FROM_BELOW" } }]);
+  view.rerender(<TrickPresentation {...props} projection={projection} />);
+  tick(0);
+  const surface = view.container.querySelector<HTMLElement>("[data-trick-seat]")!;
+  expect(view.container.querySelector('[data-joker-under-flip="face"]')).not.toBeNull();
+  tick(16);
+  expect(view.container.querySelector('[data-joker-under-flip="back"]')).not.toBeNull();
+  const slot = g.trickSlots[seat];
+  expect(surface.style.transform).toContain(`${slot.x - g.usableCenter.x}px`);
+  expect(surface.style.transform).toContain(`${slot.y - g.usableCenter.y}px`);
+  expect(surface.className).toContain("z-0");
+  view.rerender(<TrickPresentation {...props} geometry={geom(1100, 560)} projection={{ ...projection }} />);
+  expect(view.container.querySelector("[data-trick-seat]")).toBe(surface);
+  expect(surface.style.transform).toContain(`${slot.x - g.usableCenter.x}px`);
+});
 it("uses the latest geometry on a new trick after collection", () => {
   const g = geom(),
     g2 = geom(1100, 560),

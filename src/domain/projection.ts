@@ -19,7 +19,7 @@ import type {
 export type LocalLegalAction =
   | { type: "declare"; values: number[] }
   | { type: "choose_trump"; suits: Array<Suit | null> }
-  | { type: "play_card"; cardIds: string[] }
+  | { type: "play_card"; cardIds: string[]; jokerOptions?: JokerSemantic[] }
   | { type: "choose_joker_semantic"; options: JokerSemantic[] }
   | { type: "reclaim_control" };
 
@@ -211,7 +211,8 @@ function localLegalActions(state: CanonicalGameState, seat: SeatIndex, visibleHa
     actions.push({ type: "choose_trump", suits: [...SUITS, null] });
   }
   if (state.progression.phase === "CARD_PLAY" && state.progression.currentActorSeat === seat && visibleHand.length > 0) {
-    actions.push({ type: "play_card", cardIds: legalMoves(playerView(state, seat, visibleHand)).map((card) => card.id) });
+    const legal = legalMoves(playerView(state, seat, visibleHand));
+    actions.push({ type: "play_card", cardIds: legal.map((card) => card.id), ...(legal.some(card => card.kind === "joker") ? { jokerOptions: jokerOptions(state) } : {}) });
   }
   if (state.progression.phase === "JOKER_DECISION" && state.joker.pendingForSeat === seat) {
     actions.push({ type: "choose_joker_semantic", options: jokerOptions(state) });

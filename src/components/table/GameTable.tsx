@@ -208,16 +208,24 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     });
   }, [projection, uncertainPlay]);
 
-  const commitCard = async (cardId: string, releaseRect: CardReleaseRect) => {
+  const [jokerIntent, setJokerIntent] = useState<{ cardId: string; releaseRect: CardReleaseRect; options: NonNullable<Extract<LocalLegalAction, { type: "play_card" }>["jokerOptions"]>; gameId: string; dealNumber: number; stateVersion: number } | null>(null);
+  useEffect(() => {
+    if (jokerIntent && (projection.gameId !== jokerIntent.gameId || projection.progression.dealNumber !== jokerIntent.dealNumber || projection.stateVersion !== jokerIntent.stateVersion)) setJokerIntent(null);
+  }, [jokerIntent, projection.gameId, projection.progression.dealNumber, projection.stateVersion]);
+  const commitCard = async (cardId: string, releaseRect: CardReleaseRect, jokerSemantic?: Extract<GameplayCommand, { type: "choose_joker_semantic" }>["semantic"]) => {
     if (!playAction?.cardIds.includes(cardId) || busy || interactionPresentationActive || localPlayPresentation || playSubmissionLock.current) return;
     const card = projection.cards.ownHand.find((candidate) => candidate.id === cardId); if (!card) return;
+    if (card.kind === "joker" && !jokerSemantic) {
+      if (playAction.jokerOptions?.length) setJokerIntent({ cardId, releaseRect, options: playAction.jokerOptions, gameId: projection.gameId, dealNumber: projection.progression.dealNumber, stateVersion: projection.stateVersion });
+      return;
+    }
     playSubmissionLock.current = true; setSubmittingCardId(cardId);
     const geometryEpoch = tableGeometry.geometry?.epoch ?? 0;
-    const presentation: LocalPlayPresentation | null = tableGeometry.geometry ? { gameId: projection.gameId, dealNumber: projection.progression.dealNumber, card, cardId, actorSeat: localSeat, sourceStateVersion: projection.stateVersion, acceptedStateVersion: null, geometryEpoch, releaseRect, status: "submitted" } : null;
+    const presentation: LocalPlayPresentation | null = tableGeometry.geometry ? { gameId: projection.gameId, dealNumber: projection.progression.dealNumber, card, cardId, actorSeat: localSeat, sourceStateVersion: projection.stateVersion, acceptedStateVersion: null, geometryEpoch, releaseRect, status: "submitted", ...(jokerSemantic ? { jokerSemantic } : {}) } : null;
     setUncertainPlay(null);
     setLocalPlayPresentation(presentation);
     try {
-      const response = await onCommand({ type: "play_card", cardId });
+      const response = jokerSemantic ? await onCommand({ type: "play_card", cardId, jokerSemantic }) : await onCommand({ type: "play_card", cardId });
       const polled = latestProjection.current;
       const authoritative = response && response.stateVersion >= polled.stateVersion ? response : polled;
       if (!authoritative || !presentation || authoritative.gameId !== presentation.gameId || authoritative.progression.dealNumber < presentation.dealNumber || authoritative.stateVersion <= presentation.sourceStateVersion || !projectionContainsPendingCard(presentation, authoritative.progression.dealNumber === presentation.dealNumber ? authoritative.cards.currentTrick : [], [...(authoritative.progression.dealNumber === presentation.dealNumber ? authoritative.cards.completedTricks : []), ...(authoritative.cards.presentationTail ?? []).filter(trick => trick.dealNumber === presentation.dealNumber)])) {
@@ -231,6 +239,21 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const [pendingJokerChoice, setPendingJokerChoice] = useState<{ cardId: string; semantic: Extract<GameplayCommand, { type: "choose_joker_semantic" }>["semantic"] } | null>(null);
   const jokerChoiceLock = useRef(false);
   const submitJokerChoice = async (semantic: Extract<GameplayCommand, { type: "choose_joker_semantic" }>["semantic"]) => {
+    if (jokerIntent) {
+      if (busy || jokerChoiceLock.current) return;
+      const intent = jokerIntent;
+      jokerChoiceLock.current = true;
+      setJokerIntent(null);
+      setPendingJokerChoice({ cardId: intent.cardId, semantic });
+      // The drag has returned to the hand while the chooser was open. Measure
+      // that current surface rather than launching from the old release point.
+      const handCard = Array.from(document.querySelectorAll<HTMLElement>("[data-hand-layout-card]")).find(element => element.dataset["handLayoutCard"] === intent.cardId);
+      const rect = handCard?.getBoundingClientRect();
+      const release = rect && rect.width > 0 ? { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height, cardWidth: handCard!.offsetWidth || rect.width, rotation: 0 } : intent.releaseRect;
+      try { await commitCard(intent.cardId, release, semantic); }
+      finally { jokerChoiceLock.current = false; setPendingJokerChoice(null); }
+      return;
+    }
     if (busy || jokerChoiceLock.current || !jokerAction) return;
     const play = projection.cards.currentTrick.find(play => play.seatIndex === localSeat && play.card.kind === "joker");
     if (!play) return;
@@ -305,9 +328,9 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     <footer className="absolute inset-x-0 bottom-[max(.15rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center">
       {error && <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>}
       {!interactionPresentationActive && declarationAction && pendingDeclarationValue == null && <div className="relative top-5 animate-in slide-in-from-bottom-2 fade-in duration-200"><DeclarationPicker values={declarationValues} legalValues={declarationAction.values} busy={busy} onSelect={(value) => void submitDeclaration(value)} /></div>}
-      {!startupPresentationActive && !handRevealActive && ownArtworkSettled && jokerAction && !pendingJokerChoice && <JokerChoicePicker options={jokerAction.options} busy={busy} trumpSuit={projection.trump.status === "resolved" ? projection.trump.suit : null} onSelect={(semantic) => void submitJokerChoice(semantic)} />}
+      {!startupPresentationActive && !handRevealActive && ownArtworkSettled && (jokerIntent || jokerAction) && !pendingJokerChoice && <JokerChoicePicker options={jokerIntent?.options ?? jokerAction!.options} busy={busy} trumpSuit={projection.trump.status === "resolved" ? projection.trump.suit : null} onSelect={(semantic) => void submitJokerChoice(semantic)} />}
       {reclaimAvailable && <JButton className="mb-2" variant="outlineGold" size="sm" disabled={busy} onClick={onReclaim}>Πάρε ξανά τον έλεγχο</JButton>}
-      <LocalHandRow cards={handPresented ? projection.cards.ownHand : []} visible={handPresented && projection.cards.ownHandVisible && ownArtworkSettled} legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []} blocked={interactionPresentationActive || busy || Boolean(submittingCardId)} pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null} authorityKey={handAuthorityKey} geometry={tableGeometry.geometry} revealing={handRevealActive} onCommit={commitCard} />
+      <LocalHandRow cards={handPresented ? projection.cards.ownHand : []} visible={handPresented && projection.cards.ownHandVisible && ownArtworkSettled} legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []} blocked={interactionPresentationActive || busy || Boolean(submittingCardId) || Boolean(jokerIntent)} pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null} authorityKey={handAuthorityKey} geometry={tableGeometry.geometry} revealing={handRevealActive} onCommit={commitCard} />
       <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
     </footer>
     {projection.lifecycle === "complete" && (forcedEnd || !trickPresentationBusy) && <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl border border-primary/40 bg-card/95 p-6 text-center shadow-2xl"><h2 className="font-display text-2xl text-primary">{forcedEnd ? "Η παρτίδα τερματίστηκε" : "Τελικό αποτέλεσμα"}</h2>{forcedEnd ? <p className="mt-3 text-sm text-white/70">Ο host τερμάτισε την παρτίδα. Όλοι οι παίκτες έχουν αποδεσμευτεί.</p> : <div className="mt-4 space-y-2">{finalRows.map((row) => <div key={row.seat} className="flex items-center justify-between rounded-xl bg-secondary/70 px-4 py-2"><span>{row.placement}η θέση · {nameAt(row.seat)}</span><strong className="tabular-nums">{row.score}</strong></div>)}</div>}<div className="mt-5 flex justify-center gap-2">{!forcedEnd && <JButton variant="outlineGold" onClick={() => setScoreOpen(true)}>Αναλυτικό σκορ</JButton>}<Link to="/" className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground">Αρχική</Link></div></div></div>}

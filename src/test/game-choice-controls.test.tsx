@@ -36,24 +36,27 @@ describe("responsive game choices", () => {
   });
 });
 describe("Joker semantic updates keep one visual identity", () => {
-  it.each(["COMPETE", "FROM_BELOW", "HIGHER_SUIT", "SUIT_WINS"] as const)("applies %s immediately, recovers rejection, and accepts without remount", mode => {
+  it.each(["COMPETE", "FROM_BELOW", "HIGHER_SUIT", "SUIT_WINS"] as const)("holds unresolved %s in the hand and presents only the committed semantic", mode => {
     const projection = projectGameForSeat(reconciliationFixture(), 0); projection.gameId = `choice-${mode}`; projection.progression.phase = "JOKER_DECISION"; projection.cards.completedTricks = []; projection.cards.presentationTail = [];
     projection.cards.currentTrick = [{ seatIndex: 0, card: { id: "joker-test", kind: "joker" } }];
     const semantic: JokerSemantic = mode === "COMPETE" || mode === "FROM_BELOW" ? { context: "OPEN_TRICK", mode } : { context: "LEAD", mode, requestedSuit: "spades" };
     const props = { geometry, localPlayPresentation: null, onLocalFlightSettled: vi.fn() };
     const view = render(<TrickPresentation {...props} projection={projection} />);
     act(() => vi.advanceTimersByTime(20));
-    const surface = view.container.querySelector(".fixed"); expect(surface).not.toBeNull();
+    expect(view.container.querySelector(".fixed")).toBeNull();
     view.rerender(<TrickPresentation {...props} projection={projection} pendingJokerChoice={{ cardId: "joker-test", semantic }} />);
-    expect(view.container.querySelector(".fixed")).toBe(surface);
-    expect(surface?.getAttribute("data-joker-from-below")).toBe(mode === "FROM_BELOW" ? "true" : null);
+    expect(view.container.querySelector(".fixed")).toBeNull();
     expect(Boolean(view.container.querySelector("[data-joker-announcement]"))).toBe(semantic.context === "LEAD");
     view.rerender(<TrickPresentation {...props} projection={projection} />);
-    expect(surface?.getAttribute("data-joker-from-below")).toBeNull();
+    expect(view.container.querySelector(".fixed")).toBeNull();
     const accepted = { ...projection, stateVersion: projection.stateVersion + 1, cards: { ...projection.cards, currentTrick: [{ ...projection.cards.currentTrick[0]!, joker: semantic }] } };
     view.rerender(<TrickPresentation {...props} projection={accepted} />);
-    expect(view.container.querySelector(".fixed")).toBe(surface);
+    act(() => vi.advanceTimersByTime(20));
+    const surface = view.container.querySelector(".fixed");
+    expect(surface).not.toBeNull();
     expect(surface?.getAttribute("data-joker-from-below")).toBe(mode === "FROM_BELOW" ? "true" : null);
     expect(Boolean(view.container.querySelector("[data-joker-announcement]"))).toBe(semantic.context === "LEAD");
+    view.rerender(<TrickPresentation {...props} projection={{ ...accepted }} />);
+    expect(view.container.querySelector(".fixed")).toBe(surface);
   });
 });

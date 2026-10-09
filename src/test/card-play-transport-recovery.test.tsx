@@ -1,4 +1,4 @@
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, render, fireEvent } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { GameTable } from "@/components/table/GameTable";
 import { projectGameForSeat } from "@/domain/projection";
@@ -158,5 +158,36 @@ it("transport retries are bounded", async () => {
   const send = vi.fn().mockRejectedValue(new Error("offline"));
   await expect(retryCommandDelivery(send, {})).rejects.toThrow("offline");
   expect(send).toHaveBeenCalledTimes(2);
+});
+
+it.each([false, true])("opens contextual Joker choices while the card stays in hand, open trick=%s", async open => {
+  const state = reconciliationFixture();
+  state.progression.phase = "CARD_PLAY";
+  state.progression.currentActorSeat = 0;
+  state.cards.hands[0] = [{ id: "choice-joker", kind: "joker" }];
+  state.cards.currentTrick = open ? [{ seatIndex: 3, card: { id: "lead", kind: "standard", suit: "clubs", rank: "A" } }] : [];
+  delete state.timing.turnPresentation;
+  const projection = projectGameForSeat(state, 0);
+  projection.initialDealerSelection = { status: "pending" } as typeof projection.initialDealerSelection;
+  const room = { code: "TEST", seats: state.seats.map((_, index) => ({ index, occupant: { type: "bot", bot: { id: String(index), displayName: `Seat ${index}` } } })) } as Room;
+  let resolve: (value: typeof projection | null) => void;
+  const onCommand = vi.fn(() => new Promise<typeof projection | null>(done => { resolve = done; }));
+  const view = render(<GameTable room={room} projection={projection} busy={false} error={null} onCommand={onCommand} onReclaim={vi.fn()} onEndGame={vi.fn()} onNineCardPresentationComplete={vi.fn()} />);
+  act(() => vi.advanceTimersByTime(1500));
+  await act(async () => { await callback.commit!("choice-joker", { left: 300, top: 500, right: 370, bottom: 598, width: 70, height: 98 }); });
+  expect(onCommand).not.toHaveBeenCalled();
+  expect(view.container.querySelector("[data-local-flight-card]")).toBeNull();
+  const choice = open ? view.getByText("Τζόκερ από κάτω") : view.getByLabelText("Θέλω μεγαλύτερο μπαστούνια");
+  fireEvent.click(choice);
+  expect(view.container.querySelector("[data-joker-choice-position]")).toBeNull();
+  expect(view.container.querySelector("[data-local-flight-card]")).not.toBeNull();
+  expect(onCommand).toHaveBeenCalledExactlyOnceWith({ type: "play_card", cardId: "choice-joker", jokerSemantic: open ? { context: "OPEN_TRICK", mode: "FROM_BELOW" } : { context: "LEAD", mode: "HIGHER_SUIT", requestedSuit: "spades" } });
+  if (open) {
+    expect(view.container.querySelector('[data-joker-under-flip="face"]')).not.toBeNull();
+    act(() => vi.advanceTimersByTime(16));
+    expect(view.container.querySelector('[data-joker-under-flip="back"]')).not.toBeNull();
+  }
+  await act(async () => resolve!(null));
+  expect(view.container.querySelector('[data-local-flight-status="rejected"]')).not.toBeNull();
 });
 

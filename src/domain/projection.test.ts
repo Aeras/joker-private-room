@@ -163,7 +163,7 @@ describe("projectGameForSeat", () => {
     const projection = projectGameForSeat(state, 0);
     const play = projection.local.legalActions.find((action) => action.type === "play_card");
 
-    expect(play).toEqual({ type: "play_card", cardIds: ["LEGAL-HEART", "LEGAL-JOKER"] });
+    expect(play).toEqual({ type: "play_card", cardIds: ["LEGAL-HEART", "LEGAL-JOKER"], jokerOptions: [{ context: "OPEN_TRICK", mode: "COMPETE" }, { context: "OPEN_TRICK", mode: "FROM_BELOW" }] });
   });
 
   it("exposes declaration, trump, Joker and reclaim actions only to the local authorized seat", () => {

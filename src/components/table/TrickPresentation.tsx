@@ -10,6 +10,7 @@ import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
 import { cn } from "@/lib/utils";
 import { PlayingCard } from "../joker/PlayingCard";
+import { UnderJokerFace } from "./UnderJokerFace";
 import { LocalFlightCard, MOTION_FALLBACK_SLACK_MS } from "./LocalFlightCard";
 import type { LocalPlayPresentation } from "./localPlayPresentation";
 import { pinnedStackPose, stackRotation, trickExitPoint } from "./trickCollectionMotion";
@@ -46,10 +47,8 @@ function isFromBelowJoker(play: PlayedCard): boolean {
   return play.card.kind === "joker" && play.joker?.context === "OPEN_TRICK" && play.joker.mode === "FROM_BELOW";
 }
 function underStackPoint(landing: Point, center: Point): Point {
-  return {
-    x: center.x + (landing.x - center.x) * 0.28,
-    y: center.y + (landing.y - center.y) * 0.28,
-  };
+  // Under means overlap order, not displacement towards the pile's centre.
+  return landing;
 }
 
 function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geometry, settled = false, reducedMotion, onMotionComplete, completionGeneration, paused }: {
@@ -98,19 +97,19 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
   const transform = collecting
     ? relativeTransform(collectTarget, center, alignedRotation)
     : stacking ? relativeTransform(stackTarget, center, alignedRotation)
-    : departedTransform(arrived, fromBelowJoker, settledPoint, origin, center, pos);
+    : departedTransform(arrived, false, settledPoint, origin, center, pos);
   const frames = stacking && !winner && winnerPos != null ? Array.from({ length: 17 }, (_, index) => {
     const t = (1 - Math.cos(index / 16 * Math.PI)) / 2;
     const pose = pinnedStackPose(settledPoint, stackTarget, pos, winnerPos, motionGeometry?.trickCardSize.height ?? 100, t);
-    return `${index / 16 * 100}%{transform:${relativeTransform(pose.point, center, pose.rotation, fromBelowJoker ? 0.96 + t * 0.04 : 1)}}`;
+    return `${index / 16 * 100}%{transform:${relativeTransform(pose.point, center, pose.rotation)}}`;
   }).join("") : "";
   const easing = collecting ? "linear" : "cubic-bezier(0.22, 1, 0.36, 1)";
   return <div data-joker-from-below={fromBelowJoker ? "true" : undefined} data-trick-seat={play.seatIndex} data-trick-collecting={collecting ? "true" : undefined} className={cn("fixed transition-[transform,opacity]", fromBelowJoker ? "z-0" : "z-10")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms`, transitionTimingFunction: easing, animationName: frames ? animationId : "none", animationDuration: `${duration}ms`, animationTimingFunction: "linear", animationPlayState: paused ? "paused" : "running", opacity: collecting ? 0 : 1, transitionDelay: collecting ? `0ms, ${Math.max(0, duration - 120)}ms` : "0ms", ...(collecting ? { transitionDuration: `${duration}ms, 120ms` } : {}) } as React.CSSProperties} onAnimationEnd={(event) => { if (event.target === event.currentTarget && event.animationName === animationId && stacking) completionRef.current(play, "stacking"); }} onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "transform" && !stacking) completionRef.current(play, departingStage ?? "landing"); }}>
     {frames && <style>{`@keyframes ${animationId}{${frames}}`}</style>}
-    <div className="relative">
+    {fromBelowJoker ? <UnderJokerFace card={play.card} flipped={arrived} duration={duration} /> : <div className="relative">
       <div style={{ opacity: faceDown ? 0 : 1, transition: collecting ? "opacity 120ms linear" : undefined }}><PlayingCard card={play.card} /></div>
       <div className="absolute inset-0" style={{ opacity: faceDown ? 1 : 0, transition: collecting ? "opacity 120ms linear" : undefined }}><PlayingCard faceDown /></div>
-    </div>
+    </div>}
   </div>;
 }
 
@@ -162,7 +161,10 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   // Settled hydration skips historical replay; live partial tricks remain latched
   // even between card flights when the input-busy flag is temporarily false.
   useLayoutEffect(() => {
-    if (journal.current.ingest(projection)) revise(n => n + 1);
+    // Legacy bots/clients can still use the existing two-command protocol.
+    // An unresolved Joker is public metadata, not a card that has flown yet.
+    const presentationProjection = { ...projection, cards: { ...projection.cards, currentTrick: projection.cards.currentTrick.filter(play => play.card.kind !== "joker" || play.joker != null) } };
+    if (journal.current.ingest(presentationProjection)) revise(n => n + 1);
     const current = journal.current.active;
     onScorePresentationActiveChange?.(Boolean(current && (!current.hydrated || current.winnerSeat != null)));
   }, [projection, revision, onScorePresentationActiveChange]);

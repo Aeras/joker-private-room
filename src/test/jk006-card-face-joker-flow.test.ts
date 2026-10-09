@@ -148,11 +148,8 @@ describe("JK-006 card artwork, Joker decision, and trick pacing", () => {
     expect(source).not.toContain('semantic.mode === "COMPETE" ? "Τζόκερ από πάνω" : "Τζόκερ από κάτω"');
   });
 
-  it("shows authoritative Joker choices without waiting for trick presentation to finish", () => {
-    const source = read("src/components/table/GameTable.tsx");
-    expect(source).toContain("!startupPresentationActive && !handRevealActive && ownArtworkSettled && jokerAction");
-    expect(source).not.toContain("!interactionPresentationActive && jokerAction");
-  });
+  // Choice-before-flight and submission behavior are exercised by the mounted
+  // GameTable tests in card-play-transport-recovery.test.tsx.
 
   it("paces live trick plays so the previous card can settle before the next one appears", () => {
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBeGreaterThanOrEqual(600);
