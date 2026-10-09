@@ -3,7 +3,7 @@ on:
   workflow_call:
   pull_request:
     branches: [main]
-    paths: ['supabase/migrations/**', 'tests/integration/rulesets*', '.github/workflows/jk003-db-integration.yml']
+    paths: ['supabase/migrations/*jk003*', 'tests/integration/rulesets*', '.github/workflows/jk003-db-integration.yml']
 jobs:
   rulesets:
     runs-on: ubuntu-latest
