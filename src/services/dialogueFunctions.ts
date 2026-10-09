@@ -110,3 +110,28 @@ export const sendHumanMessageToBot = createServerFn({ method: "POST" })
       text: data.text,
     }),
   );
+
+export interface EmojiReaction {
+  seat: number;
+  emoji: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export const sendEmojiReaction = createServerFn({ method: "POST" })
+  .validator(z.object({ gameId, emoji: z.string().min(1).max(64).regex(/^[a-z0-9_-]+$/) }))
+  .handler(async ({ data }): Promise<
+    { ok: true; reaction: EmojiReaction } | { ok: false; code: string }
+  > => {
+    const result = await callDialogueEdge({ action: "emoji-send", gameId: data.gameId, emoji: data.emoji });
+    return result as { ok: true; reaction: EmojiReaction } | { ok: false; code: string };
+  });
+
+export const listEmojiReactions = createServerFn({ method: "GET" })
+  .validator(z.object({ gameId }))
+  .handler(async ({ data }): Promise<
+    { ok: true; reactions: EmojiReaction[] } | { ok: false; code: string }
+  > => {
+    const result = await callDialogueEdge({ action: "emoji-list", gameId: data.gameId });
+    return result as { ok: true; reactions: EmojiReaction[] } | { ok: false; code: string };
+  });
