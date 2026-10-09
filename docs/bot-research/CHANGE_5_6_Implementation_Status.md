@@ -1,0 +1,48 @@
+# Changes 5 and 6 — verified implementation increments
+
+## Phase 1: canonical headless benchmark foundation
+
+Base: `ed5085985d4ec5ef8314054a15e7893533ed96e7`. The three mandatory research/design documents were read before this phase. Changes 1–4 remain untouched.
+
+This increment implements a real full-game runner, not the administrator laboratory or the new strategy. It directly invokes the canonical dealer bootstrap, gameplay command dispatcher, lifecycle settlement, ruleset scoring and premia. Synthetic simulation identities never enter the database, live room/game tables, statistics or Realtime streams. No live-game state or presentation delay is altered.
+
+The runner has independent seeded streams for dealer selection, the first gameplay deck and subsequent decks. Each four-game group uses the same deck seed and lineup, rotating the lineup through all physical seats. Opponent policies receive only their own `PlayerGameProjection`. Cancellation is checked between canonical transitions, and a 5,000-transition ceiling terminates faulty runs. Illegal commands fail through the real dispatcher instead of producing invented results.
+
+### Actual baseline measurement
+
+Command: `bun scripts/bot-benchmark.ts 100 20261009 popular`.
+
+- Existing strategies from the base main; **no strategic improvement claim**.
+- 100 completed full games, 25 independent seeds, all four lineup rotations per seed.
+- 24 deals per game, using canonical scoring and round premia.
+- Runtime: 49,234.96 ms on this local Windows/Bun run. This is not a production-worker capacity estimate.
+- No simulation rejection/error occurred in this successful batch. The CLI aborts on a failure; failed starts are not included in its successful-game aggregates.
+
+| Existing tier profile | Participations | Outright wins | Tied wins | Mean score | Median | Decision p50 / p95 / p99 (ms) |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| strong-basic-v1 | 148 | 41 | 0 | 725.74 | 790 | 0.0009 / 1.4826 / 2.2943 |
+| memory-inference-v1 | 144 | 38 | 1 | 777.71 | 815 | 0.0132 / 5.0581 / 7.1153 |
+| probability-simulation-v1 | 108 | 20 | 1 | 731.30 | 715 | 0.0426 / 14.5400 / 19.9438 |
+
+Random mixes create unequal tier participation; these numbers do not establish a tier-strength ordering. The comparator matches seed, ruleset, lineup, rotation and dealer and clusters deltas by seed. It deliberately omits a confidence interval for fewer than 30 independent seeds. Matched candidate-versus-baseline comparisons have not yet been run.
+
+Metrics include exact/under/over-bid counts by hand size, negative-score penalties, committed Joker modes and their authoritative trick outcomes, actual premia transfers and latency quantiles. Raw results and decision records are generated in `.test-tmp/`; they are local artifacts, not live-game logs.
+
+### Verification
+
+- 11 new behavioral tests; all four rulesets complete their entire schedules.
+- Existing three full-game simulation tests also pass: 14 tests total.
+- Every completed deal score is cross-checked against its canonical ruleset scorer. Final totals equal all deal scores plus canonical premia adjustments.
+- Deterministic decisions/results, four-seat rotation, cancellation, illegal-command rejection, seat-safe projection on every decision, aggregate denominators and matched-comparison input validation are covered.
+- Changed-file ESLint, strict TypeScript and production build passed locally.
+
+### Explicit limitations / next increments
+
+1. No advanced policy is enabled by this increment. Public observations, legal constraint sampling, score/premia-aware joint card/Joker search, opponent models, plans and bounded endgames still require implementation and matched benchmarking.
+2. This is an operator CLI, not a durable browser job service. There is no Bot Lab route, admin entry point, job schema, lease/recovery worker or cancellation RPC yet. Do not advertise Change 6 as available.
+3. Panagiotis simulations use the existing canonical all-bot path: no human reserved target exists. Testing its human-target distribution needs a separate canonical fixture; no target or rule was invented.
+4. The runner currently supports the existing baseline strategy only; the strategy-version label must not be treated as a selector for an unimplemented historical policy.
+5. A 10-game CLI pilot has two incomplete rotations in its last group, explicitly reported. Balanced comparison batches should use 100/1,000/5,000 or explicit complete four-game groups.
+6. Cancellation is cooperative within one process. Durable cancellation/recovery and failed-start accounting must be added at the job layer.
+
+No migrations, database writes or deployments were performed in this increment. The external JOKER project was verified by read-only discovery; the administrator's existing player UUID was identified for the later authorization phase. Display names must never authorize the Lab.
