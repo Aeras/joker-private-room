@@ -219,3 +219,49 @@ export const getAvailableRulesets = createServerFn({ method: "GET" }).handler(as
   return await response.json();
  } catch { return { ok: false, code: "SERVICE_UNAVAILABLE" }; }
 });
+
+export type WaitingRoomSummary = { code: string; hostName: string; rulesetId: string; occupied: number; humans: number };
+export type RoomMembership = { code: string; lifecycle: "lobby" | "playing"; gameId: string | null };
+type LobbyLookupResult = { ok: true; rooms: WaitingRoomSummary[] } | { ok: false; code: string };
+type MembershipResult = { ok: true; membership: RoomMembership | null } | { ok: false; code: string };
+type LeaveWaitingResult = { ok: true; cancelled: boolean } | { ok: false; code: string };
+
+async function callLobbyQuery(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const sessionToken = getCookie(SESSION_COOKIE);
+  if (!sessionToken) return { ok: false, code: "NOT_AUTHENTICATED" };
+  try {
+    const response = await fetch(EXTERNAL_SUPABASE_URL + "/functions/v1/room-commands", {
+      method: "POST",
+      headers: { apikey: EXTERNAL_SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, sessionToken }),
+    });
+    const value: unknown = await response.json();
+    if (value && typeof value === "object" && "ok" in value) return value as Record<string, unknown>;
+  } catch { /* Normalized below. */ }
+  return { ok: false, code: "SERVICE_UNAVAILABLE" };
+}
+
+export const listWaitingRooms = createServerFn({ method: "GET" }).handler(
+  async (): Promise<LobbyLookupResult> => {
+    const r = await callLobbyQuery({ action: "list_waiting" });
+    return r.ok === true && Array.isArray(r.rooms)
+      ? { ok: true, rooms: r.rooms as WaitingRoomSummary[] }
+      : { ok: false, code: String(r.code ?? "SERVICE_UNAVAILABLE") };
+  },
+);
+export const getCurrentRoomMembership = createServerFn({ method: "GET" }).handler(
+  async (): Promise<MembershipResult> => {
+    const r = await callLobbyQuery({ action: "membership" });
+    return r.ok === true
+      ? { ok: true, membership: (r.membership ?? null) as RoomMembership | null }
+      : { ok: false, code: String(r.code ?? "SERVICE_UNAVAILABLE") };
+  },
+);
+export const leaveWaitingRoom = createServerFn({ method: "POST" })
+  .validator(z.object({ code: roomCode }))
+  .handler(async ({ data }): Promise<LeaveWaitingResult> => {
+    const r = await callLobbyQuery({ action: "leave_waiting", code: data.code });
+    return r.ok === true
+      ? { ok: true, cancelled: r.cancelled === true }
+      : { ok: false, code: String(r.code ?? "SERVICE_UNAVAILABLE") };
+  });
