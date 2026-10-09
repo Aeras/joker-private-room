@@ -32,14 +32,18 @@ export function selectCompetitiveCommand(projection: PlayerGameProjection) {
     id === "probability-simulation-v1" ? 3 : id === "memory-inference-v1" ? 2 : 1;
   try {
     const report = analyzeCompetitive(projection, tier, fallback.command);
-    // V3 applies to late tricks after a confirmed declaration; all other
+    // V3 applies only to last-seat late tricks with an exact or must-win bid;
+    // its deterministic winner is available to the canonical resolver. All other
     // phases retain the proven V2 search. The canonical engine still validates
     // every card and Joker meaning. A failed V3 evaluation falls back to V2.
     const observation = observeBot(projection);
     const ownBid = observation.declarations[observation.identity.seat];
     if (projection.progression.phase === "CARD_PLAY" &&
         ownBid !== null && ownBid !== undefined &&
-        observation.ownHand.length > 0 && observation.ownHand.length <= 2) {
+        observation.ownHand.length > 0 && observation.ownHand.length <= 2 &&
+        observation.committedTrick.length === 3 &&
+        (ownBid === observation.tricksTaken[observation.identity.seat] ||
+         ownBid - observation.tricksTaken[observation.identity.seat]! >= observation.ownHand.length)) {
       try {
         const choice = chooseExactProtectionPlay({
           hand: observation.ownHand,
