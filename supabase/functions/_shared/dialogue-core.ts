@@ -292,6 +292,28 @@ export function dialogueLineTooSimilar(candidate: string, recent: readonly strin
   });
 }
 
+/**
+ * Deterministic occasional delivery of approved lines even when the AI provider is active.
+ * Each event has a retry-stable chance, independent of random generator and provider uptime.
+ * Only an event from the trusted server resolver can reach this path.
+ */
+export function pickOccasionalCuratedLine(context: DialogueGenerationContext): string | null {
+  if (context.event.type === "HUMAN_MESSAGE_TO_BOT" || context.event.type === "BOT_MESSAGE_TO_BOT") return null;
+  const candidates = curatedCandidates(context)
+    .map((line) => renderPreset(line, context.event))
+    .filter((line) => !dialogueLineTooSimilar(line, context.recentBanter));
+  if (!candidates.length) return null;
+  const key = `${context.event.id}|${context.botId}`;
+  let hash = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    hash = Math.imul(hash ^ key.charCodeAt(i), 16777619);
+  }
+  const unsigned = hash >>> 0;
+  // Approximately one eligible event in eight. Not a per-deal quota.
+  if (unsigned % 8 !== 0) return null;
+  return candidates[Math.floor(unsigned / 8) % candidates.length] ?? null;
+}
+
 export function pickDialoguePreset(
   context: DialogueGenerationContext,
   random: () => number = Math.random,
