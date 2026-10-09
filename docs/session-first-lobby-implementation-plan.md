@@ -7,7 +7,7 @@
 - Join shows server-authorized **not-yet-started** available rooms (owner, variant, occupied seats). Join requires no room code input; opaque room code may remain internal as a backend locator.
 - Exactly one room/game participation per human, enforced transactionally on server, not just by disabled buttons or session storage.
 - Once joined, use existing four-seat lobby with human/bot seats; joining user cannot browse rooms until explicit pre-start leave.
-- Pre-start non-host Leave atomically releases their seat and returns to available games. **Confirmed host Leave:** atomically cancel the entire unstarted room, release ALL waiting participants, and return every connected player to the authenticated home/game-selection screen. Do not transfer host. Notify clients/realtime and prevent late join/start of cancelled room.
+- Pre-start non-host Leave atomically releases their seat and returns to available games. **Confirmed host Leave:** atomically cancel the entire unstarted room, release ALL waiting participants, and redirect every waiting participant directly to the authenticated Join / available-rooms list (NOT the main Create/Join home screen). Do not transfer host. Notify clients/realtime and prevent late join/start of cancelled room.
 - Host starts: room instantly disappears from joinable list and existing gameplay proceeds.
 - Restart/reopen: Return goes to existing lobby if unstarted, and to *current authoritative game projection* if started.
 - With other humans, existing 30s timeout and temporary bot ownership preserved. One-human + bots remains paused on disconnect, resumes at frozen authoritative state.
@@ -19,7 +19,7 @@
 4. Add atomic pre-start leave and enforce one open participation per player across concurrently created/joined rooms. Keep idempotent command ledger and action IDs. Existing started-game membership must remain supported.
 5. Replace /join code/PIN with room discovery; /create consumes authenticated player and no extra PIN. Keep compatibility during rollout.
 6. Return button routes by authoritative lifecycle. Optimize critical rendering path, instrument p50/p95 time from tap to first table frame; avoid stale local snapshot or second game controller.
-7. Targeted unit/integration concurrency tests: simultaneous join, two tabs/devices, room start versus join, leave versus start, app restart, session expiry, bot pause/reclaim, host change decision.
+7. Targeted unit/integration concurrency tests: simultaneous join, two tabs/devices, room start versus join, leave versus start, app restart, session expiry, bot pause/reclaim, host cancellation and join-list redirect.
 
 ## Critical discoveries from current main
 - get_current_active_game_internal currently checks only game_participants, not room_seats in lobby. Current Return always routes /table, thus cannot restore waiting rooms.
@@ -28,7 +28,7 @@
 - /create currently repeats PIN prompt; this PR reuses validated session when possible, but legacy form remains as fallback until new flow is deployed.
 - Database create_room_internal currently checks active_game_for_player_internal, which excludes pre-start lobby membership, so race-safe uniqueness must be addressed before enabling public room list.
 - Existing room-commands endpoint accepts session token only through trusted server-side cookie proxy; preserve this boundary.
-- Host departure before starting is CONFIRMED: cancel the room for everyone and release their membership. If host merely closes the browser or loses connection, do not interpret that as a deliberate Exit; preserve resume behavior.
+- Host deliberate Exit before starting is CONFIRMED: cancel the room, release all members, and navigate affected clients to the Join / available-rooms list, where they can join another room or navigate back to the Create/Join home. Simply closing the browser/app, rebooting, or losing connectivity MUST NOT cancel the room; the host can resume into the same waiting lobby.
 
 ## Release policy
 Do not merge phase 1 alone into production just because TS tests pass. Login, lobby discovery, membership protection and return must be validated together before replacing the current user journey. Keep gameplay rules, private deck and bot authority unchanged.
