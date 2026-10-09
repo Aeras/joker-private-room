@@ -5,9 +5,9 @@ describe("table authoritative refresh single-flight", () => {
   it("shares pending refresh across bot polling, command recovery and foreground events", () => {
     const route = readFileSync("src/routes/table.tsx", "utf8");
     expect(route).toContain("const refreshInFlight = useRef<Promise<void> | null>(null)");
-    expect(route).toContain("if (refreshInFlight.current) return refreshInFlight.current");
+    expect(route).toContain("return refreshInFlight.current");
     expect(route).toContain("refreshInFlight.current = guarded");
-    expect(route).toContain("if (refreshInFlight.current === guarded) refreshInFlight.current = null");
+    expect(route).toContain("if (refreshInFlight.current === guarded)");
     expect(route).toContain('automaticActorPending ? 500 : 1500');
     expect(route).toContain("await refreshAll()");
   });

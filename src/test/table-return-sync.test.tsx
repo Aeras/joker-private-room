@@ -31,6 +31,66 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 const flush = () => act(async () => { await Promise.resolve(); await Promise.resolve(); });
+it("delivers a game update before slow room metadata and keeps the newer command on late metadata", async () => {
+ const initial = projection(); initial.seats[0].controller = "human"; initial.progression.currentActorSeat = 0;
+ mocks.state.mockResolvedValue({ok:true,projection:initial});
+ render(<Component />); await flush();
+ const roomResult = await mocks.room.mock.results[0]!.value;
+ const slowRoom = deferred<unknown>(); mocks.room.mockReturnValueOnce(slowRoom.promise);
+ const next = structuredClone(initial); next.stateVersion = 11;
+ mocks.state.mockResolvedValue({ok:true,projection:next});
+ await act(async () => { vi.advanceTimersByTime(1500); });
+ expect(screen.getByTestId("table")).toHaveTextContent("Version 11");
+ const command = structuredClone(next); command.stateVersion = 12;
+ mocks.submit.mockResolvedValue({ok:true,projection:command});
+ fireEvent.click(screen.getByRole("button", {name:"Test command"})); await flush();
+ await act(async () => { slowRoom.resolve(roomResult); });
+ expect(screen.getByTestId("table")).toHaveTextContent("Version 12");
+});
+it("queues one fresh bot read after an in-flight older poll instead of waiting for the interval", async () => {
+ const initial = projection(); initial.seats[0].controller = "human"; initial.progression.currentActorSeat = 0;
+ mocks.state.mockResolvedValue({ok:true,projection:initial});
+ render(<Component />); await flush();
+ const oldPoll = deferred<unknown>(); mocks.state.mockReturnValueOnce(oldPoll.promise);
+ await act(async () => { vi.advanceTimersByTime(1500); });
+ const command = structuredClone(initial); command.stateVersion = 12; command.seats[0].controller = "temporary_bot";
+ const next = structuredClone(initial); next.stateVersion = 13;
+ mocks.state.mockResolvedValue({ok:true,projection:next});
+ mocks.submit.mockResolvedValue({ok:true,projection:command});
+ fireEvent.click(screen.getByRole("button", {name:"Test command"})); await flush();
+ expect(mocks.state).toHaveBeenCalledTimes(2);
+ await act(async () => { oldPoll.resolve({ok:true,projection:initial}); }); await flush();
+ expect(mocks.state).toHaveBeenCalledTimes(3);
+ expect(screen.getByTestId("table")).toHaveTextContent("Version 13");
+});
+it("does not bypass fresh room validation on reconnect", async () => {
+ const initial = projection(); initial.seats[0].controller = "human"; initial.progression.currentActorSeat = 0;
+ mocks.state.mockResolvedValue({ok:true,projection:initial});
+ render(<Component />); await flush();
+ const roomResult = await mocks.room.mock.results[0]!.value;
+ const slowRoom = deferred<unknown>(); mocks.room.mockReturnValueOnce(slowRoom.promise);
+ mocks.state.mockResolvedValue({ok:true,projection:projection(60)});
+ fireEvent.blur(window); fireEvent.focus(window); await flush();
+ expect(screen.queryByTestId("table")).toBeNull();
+ await act(async () => { slowRoom.resolve(roomResult); });
+ expect(screen.getByTestId("table")).toHaveTextContent("Version 60");
+});
+it("coalesces slow metadata reads while fresh game polls continue", async () => {
+ const initial = projection(); initial.seats[0].controller = "human"; initial.progression.currentActorSeat = 0;
+ mocks.state.mockResolvedValue({ok:true,projection:initial});
+ render(<Component />); await flush();
+ const roomResult = await mocks.room.mock.results[0]!.value;
+ const slowRoom = deferred<unknown>(); mocks.room.mockReturnValueOnce(slowRoom.promise);
+ for (const version of [11, 12]) {
+   const next = structuredClone(initial); next.stateVersion = version;
+   mocks.state.mockResolvedValue({ok:true,projection:next});
+   await act(async () => { vi.advanceTimersByTime(1500); });
+   expect(screen.getByTestId("table")).toHaveTextContent(`Version ${version}`);
+ }
+ expect(mocks.room).toHaveBeenCalledTimes(2);
+ await act(async () => { slowRoom.resolve(roomResult); });
+ expect(screen.getByTestId("table")).toHaveTextContent("Version 12");
+});
 it("shows only a fresh table on return and discards a poll started before absence", async () => {
  render(<Component />); await flush(); expect(screen.getByTestId("table")).toHaveTextContent("Version 10");
  const oldPoll = deferred<unknown>(); mocks.state.mockReturnValueOnce(oldPoll.promise);

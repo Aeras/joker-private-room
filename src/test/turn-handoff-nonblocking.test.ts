@@ -13,9 +13,9 @@ describe("nonblocking human-to-bot turn handoff", () => {
   });
 
   it("starts bot reconciliation immediately for a new authoritative actor version", () => {
-    expect(route).toContain('if (automaticActorPending && document.visibilityState === "visible") void refreshAll()');
+    expect(route).toContain('if (automaticActorPending && document.visibilityState === "visible") void refreshAll(true)');
     expect(route).toContain("[automaticActorPending, projection?.stateVersion, refreshAll]");
-    expect(route).toContain("if (refreshInFlight.current) return refreshInFlight.current");
+    expect(route).toContain("return refreshInFlight.current");
     expect(route).toContain("automaticActorPending ? 500 : 1500");
   });
 });
