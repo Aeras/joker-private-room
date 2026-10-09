@@ -165,7 +165,6 @@ export interface CanonicalGameState {
   rulesetId: RulesetId;
   rulesVersion: RulesVersion;
   stateSchemaVersion: 3 | typeof GAME_STATE_SCHEMA_VERSION;
-  privateRulesetState?: { targetPlayerId: string | null };
   stateVersion: number;
   lifecycle: GameLifecycle;
   termination?: CanonicalGameTermination;

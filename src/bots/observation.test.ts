@@ -168,7 +168,7 @@ describe("public bot observation and constrained worlds", () => {
   });
   it("observes every active decision through all rulesets, including partial nines and pending Jokers", () => {
     const phases = new Set<string>();
-    for (const ruleset of ["popular", "classic", "minus", "panagiotis"] as const) {
+    for (const ruleset of ["popular", "classic", "minus"] as const) {
       simulateFullGame(
         { seed: 56, ruleset, lineup: [...LAB_TIERS, LAB_TIERS[0]], strategyVersion: "baseline" },
         {

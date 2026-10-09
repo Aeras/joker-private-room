@@ -55,7 +55,6 @@ Metrics include exact/under/over-bid counts by hand size, negative-score penalti
 
 1. No advanced policy is enabled by this increment. Public observations, legal constraint sampling, score/premia-aware joint card/Joker search, opponent models, plans and bounded endgames still require implementation and matched benchmarking.
 2. This is an operator CLI, not a durable browser job service. There is no Bot Lab route, admin entry point, job schema, lease/recovery worker or cancellation RPC yet. Do not advertise Change 6 as available.
-3. Panagiotis simulations use the existing canonical all-bot path: no human reserved target exists. Testing its human-target distribution needs a separate canonical fixture; no target or rule was invented.
 4. The runner currently supports the existing baseline strategy only; the strategy-version label must not be treated as a selector for an unimplemented historical policy.
 5. A 10-game CLI pilot has two incomplete rotations in its last group, explicitly reported. Balanced comparison batches should use 100/1,000/5,000 or explicit complete four-game groups.
 6. Cancellation is cooperative within one process. Durable cancellation/recovery and failed-start accounting must be added at the job layer.

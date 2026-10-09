@@ -296,17 +296,7 @@ Description:
 
 
 
-Panagiotis Special 😈
 
-
-
-
-Description:
-
-
-
-
-Ειδική χιουμοριστική παραλλαγή.
 
 
 

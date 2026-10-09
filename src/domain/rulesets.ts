@@ -4,8 +4,8 @@ import { scoreDeal, type DealResultInput } from "./scoring";
 import type { SpecialRowKind } from "./scoreSheet";
 import type { DeckProfile } from "./cards";
 
-export type RulesetId = "popular" | "classic" | "minus" | "panagiotis";
-export type RulesVersion = "popular-v1" | "classic-v1" | "minus-v1" | "panagiotis-v1";
+export type RulesetId = "popular" | "classic" | "minus";
+export type RulesVersion = "popular-v1" | "classic-v1" | "minus-v1";
 export interface PhaseBonusEntry {
   kind: SpecialRowKind;
   values: (number | null)[];
@@ -22,7 +22,6 @@ export interface Ruleset {
   deckProfile: DeckProfile;
   deckSize: 36 | 38;
   nineCardTrump: "chooser" | "reveal";
-  allocation: "uniform" | "reserved_lowest";
   scoreDeal: (input: DealResultInput) => number;
   calculatePhaseBonus: PhaseBonusCalculator;
   resolvePremia: typeof resolvePremia;
@@ -40,7 +39,6 @@ const base = {
   deckProfile: "popular36",
   deckSize: 36,
   nineCardTrump: "chooser",
-  allocation: "uniform",
   scoreDeal,
   calculatePhaseBonus: popularPremia,
   resolvePremia,
@@ -70,14 +68,6 @@ export const RULESETS: Record<RulesetId, Ruleset> = {
     name: "Minus",
     description: "−100 βαθμοί για κάθε μπάζα που λείπει από τη δήλωση.",
     scoreDeal: scoreMinus,
-  },
-  panagiotis: {
-    ...base,
-    id: "panagiotis",
-    version: "panagiotis-v1",
-    name: "Panagiotis Special 😈",
-    description: "Ειδική παραλλαγή.",
-    allocation: "reserved_lowest",
   },
 };
 /** Resolve the exact immutable policy pair; unknown persisted rules never fall back. */

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, RANK_VALUE } from "@/domain/cards";
+import { createDeck } from "@/domain/cards";
+import { prepareGameplayDeck } from "@/domain/deckPolicy";
 import { assets } from "@/assets/registry";
 import {
   dealCards,
@@ -8,14 +9,12 @@ import {
   dealWithTrumpReveal,
   type SeatIndex,
 } from "@/domain/dealing";
-import { prepareGameplayDeck } from "@/domain/deckPolicy";
 import { getRuleset, RULESETS, scoreMinus, type RulesetId } from "@/domain/rulesets";
 import { assertRulesetState } from "@/domain/rulesetValidation";
 import { scoreDeal } from "@/domain/scoring";
 import { projectGameForSeat } from "@/domain/projection";
 import { applyGameplayCommand } from "@/domain/gameplayCommands";
 import { settleCanonicalLifecycle } from "@/domain/gameLifecycle";
-import { applyReclaimControl } from "@/domain/controller";
 import { derivePublicInference, fairUnknownCards, strongBasicStrategy, memoryInferenceStrategy, probabilitySimulationStrategy } from "@/bots/strategy";
 import { reconciliationFixture } from "./fixtures/reconciliationGame";
 import { existsSync } from "node:fs";
@@ -29,10 +28,9 @@ function rng(seed: number) {
   };
 }
 const now = "2026-10-04T19:00:00.000Z";
-const targetId = "12302475-c4da-491c-9081-08c039384ac1";
 
 function nextNine(id: RulesetId) {
-  const state = reconciliationFixture(id, id === "panagiotis");
+  const state = reconciliationFixture(id);
   state.progression = {
     ...state.progression,
     round: 2,
@@ -51,14 +49,14 @@ function nextNine(id: RulesetId) {
 }
 
 describe("JK-003 exact versioned policies", () => {
-  it("has exactly four supported immutable identity/version pairs and rejects every mismatch", () => {
-    expect(Object.keys(RULESETS)).toEqual(["popular", "classic", "minus", "panagiotis"]);
+  it("has exactly three supported immutable identity/version pairs and rejects every mismatch", () => {
+    expect(Object.keys(RULESETS)).toEqual(["popular", "classic", "minus"]);
     for (const id of Object.keys(RULESETS) as RulesetId[]) {
       expect(getRuleset(id, id + "-v1")).toBe(RULESETS[id]);
       for (const other of Object.keys(RULESETS))
         if (other !== id) expect(() => getRuleset(id, other + "-v1")).toThrow();
     }
-    for (const id of [undefined, null, "future", "__proto__", "constructor"])
+    for (const id of [undefined, null, "future", "panagiotis", "__proto__", "constructor"])
       expect(() => getRuleset(id, "popular-v1")).toThrow();
   });
   it("reuses the existing six assets and preserves the Popular 34+2 deck", () => {
@@ -106,7 +104,7 @@ describe("JK-003 Classic 38-card dealing and privacy", () => {
     it("deals cyclically and exposes the next card for N=" + n, () => {
       for (const dealer of [0, 1, 2, 3] as SeatIndex[]) {
         const state = reconciliationFixture("classic");
-        const deck = prepareGameplayDeck(state, dealer, n, rng(312 + n));
+        const deck = prepareGameplayDeck(state, rng(312 + n));
         const result = dealWithTrumpReveal(deck, dealer, n);
         expect(result.hands.map((hand) => hand.length)).toEqual([n, n, n, n]);
         expect(result.revealedTrumpCard).toEqual(deck[n * 4]);
@@ -172,88 +170,6 @@ describe("JK-003 Classic 38-card dealing and privacy", () => {
   });
 });
 
-describe("JK-003 private Panagiotis cyclic allocation", () => {
-  for (let n = 1; n <= 9; n++)
-    it(
-      "reserves lowest " + n + " normals on every target recipient turn, across all dealers",
-      () => {
-        for (const dealer of [0, 1, 2, 3] as SeatIndex[])
-          for (const seed of [1, 47, 999]) {
-            const state = reconciliationFixture("panagiotis", true);
-            const deck = prepareGameplayDeck(state, dealer, n, rng(seed));
-            const full = dealCards(deck, dealer, n);
-            const target = full.hands[1];
-            const expected = createDeck()
-              .filter((c) => c.kind === "standard")
-              .map((c) => (c.kind === "standard" ? RANK_VALUE[c.rank] : -1))
-              .sort((a, b) => a - b)
-              .slice(0, n);
-            expect(
-              target
-                .map((c) => (c.kind === "standard" ? RANK_VALUE[c.rank] : -1))
-                .sort((a, b) => a - b),
-            ).toEqual(expected);
-            expect(new Set(deck.map((c) => c.id)).size).toBe(36);
-            expect(deck).toEqual(prepareGameplayDeck(state, dealer, n, rng(seed)));
-            if (n === 9) {
-              const initial = dealNineCardInitial(deck, dealer);
-              expect(initial.hands.every((h) => h.length === 3)).toBe(true);
-              expect(completeNineCardDeal(deck, dealer, initial).hands).toEqual(full.hands);
-            } else expect(full.hands.flat().some((c) => c.id === deck[4 * n]!.id)).toBe(false);
-          }
-      },
-    );
-  it("randomizes equal-rank suit ties using authoritative shuffle entropy", () => {
-    const state = reconciliationFixture("panagiotis", true);
-    const sixes = new Set<string>();
-    const sevens = new Set<string>();
-    for (let seed = 1; seed <= 80; seed++) {
-      sixes.add(dealCards(prepareGameplayDeck(state, 3, 1, rng(seed)), 3, 1).hands[1][0]!.id);
-      const hand = dealCards(prepareGameplayDeck(state, 3, 3, rng(seed)), 3, 3).hands[1];
-      sevens.add(hand[2]!.id);
-    }
-    expect(sixes.size).toBe(2);
-    expect(sevens.size).toBe(4);
-  });
-  it("freezes the target by immutable player ID and never substitutes an absent Git", () => {
-    const absent = reconciliationFixture("panagiotis");
-    expect(absent.privateRulesetState?.targetPlayerId).toBeNull();
-    const popular = reconciliationFixture("popular");
-    expect(prepareGameplayDeck(absent, 2, 9, rng(41))).toEqual(
-      prepareGameplayDeck(popular, 2, 9, rng(41)),
-    );
-    const moved = reconciliationFixture("panagiotis", true);
-    [moved.seats[0].owner, moved.seats[1].owner] = [moved.seats[1].owner, moved.seats[0].owner];
-    expect(
-      dealCards(prepareGameplayDeck(moved, 3, 2, rng(22)), 3, 2).hands[0].map((c) =>
-        c.kind === "standard" ? c.rank : "joker",
-      ),
-    ).toEqual(["6", "6"]);
-    expect(moved.privateRulesetState?.targetPlayerId).toBe(targetId);
-  });
-  it("hides real identity and allocation metadata from every ordinary participant, bots and reconnect", () => {
-    const state = nextNine("panagiotis");
-    const chooser = state.trump.status === "chooser_pending" ? state.trump.chooserSeat : -1;
-    for (const seat of [0, 1, 2, 3] as SeatIndex[]) {
-      const projection = projectGameForSeat(state, seat);
-      expect(projection.rulesetId).toBe("popular");
-      expect(projection.rulesVersion).toBe("popular-v1");
-      expect(projection.cards.ownHand).toHaveLength(seat === chooser ? 3 : 0);
-      expect(JSON.stringify(projection)).not.toMatch(
-        /panagiotis|privateRuleset|targetPlayerId|reserved_lowest|serverEntropySeed/,
-      );
-    }
-    expect(projectGameForSeat(state, 0, true).rulesetId).toBe("panagiotis");
-    const reclaimed = applyReclaimControl(state, 1, now);
-    expect(reclaimed.ok).toBe(true);
-    if (reclaimed.ok) {
-      expect(reclaimed.state.rulesetId).toBe("panagiotis");
-      expect(reclaimed.state.privateRulesetState).toEqual(state.privateRulesetState);
-      expect(projectGameForSeat(reclaimed.state, 1).rulesetId).toBe("popular");
-    }
-  });
-});
-
 describe("JK-003 safe persisted compatibility", () => {
   it("preserves all three Popular bot strategies when public ruleset context is added", () => {
     const deck = createDeck();
@@ -281,7 +197,7 @@ describe("JK-003 safe persisted compatibility", () => {
     });
     expect(command.ok && command.state.stateSchemaVersion).toBe(3);
   });
-  it("rejects malformed decks, policy versions, Classic chooser state and missing target snapshots", () => {
+  it("rejects malformed decks, policy versions, Classic chooser state", () => {
     const state = reconciliationFixture("classic");
     for (const mutate of [
       (s: typeof state) => {
@@ -308,9 +224,6 @@ describe("JK-003 safe persisted compatibility", () => {
     const wrongReveal = structuredClone(classicNine);
     wrongReveal.cards.exposedTrumpCard = wrongReveal.cards.deck[37]!;
     expect(() => assertRulesetState(wrongReveal)).toThrow("Classic must reveal card 37");
-    const pan = reconciliationFixture("panagiotis", true);
-    delete pan.privateRulesetState;
-    expect(() => assertRulesetState(pan)).toThrow();
     const bad = structuredClone(state);
     bad.rulesVersion = "popular-v1";
     expect(settleCanonicalLifecycle({ state: bad, serverNow: now })).toEqual({

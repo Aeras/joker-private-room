@@ -1,4 +1,3 @@
-import { RESTRICTED_HOST_ID } from "@/server/rulesetIdentity";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -91,8 +90,6 @@ function projected(loaded: Extract<LoadGameStateResult, { ok: true }>): PlayerGa
   return projectGameForSeat(
     loaded.canonicalState,
     loaded.viewerSeat,
-    loaded.canonicalState.seats[loaded.viewerSeat].owner.type === "human" &&
-      (loaded.canonicalState.seats[loaded.viewerSeat].owner as { playerId: string }).playerId === RESTRICTED_HOST_ID,
   );
 }
 
@@ -227,7 +224,6 @@ export const terminateProjectedGame = createServerFn({ method: "POST" })
     const projection = projectGameForSeat(
       terminal.canonicalState,
       terminal.viewerSeat,
-      owner?.type === "human" && owner.playerId === RESTRICTED_HOST_ID,
     );
     return { ok: true, replayed: result.replayed, projection };
   });

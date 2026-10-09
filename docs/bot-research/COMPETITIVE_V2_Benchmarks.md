@@ -16,7 +16,7 @@ These results support improvement against this baseline opponent population in P
 
 An earlier exploratory batch, `30 740000 popular`, also completed 720 games with positive score/win deltas for all tiers. It predates retained common seeding through the separate Joker-semantic command and is not the release validation. No parameter tuning or failed-run removal was used to select the held-out validation seeds.
 
-Three additional pilots (`2 760000 classic`, `minus`, `panagiotis`) completed 48 games each, all with positive target score/win deltas. Two independent seeds per mode do not establish statistical strength; their confidence intervals are deliberately absent. Panagiotis is the canonical all-bot path, without a human reserved target. Release aggregate JSON and all three pilot aggregate JSON files are retained in `benchmarks/`. The CLI aborts rather than silently discarding a rejected canonical command.
+Two additional retained pilots (`2 760000 classic`, `minus`) completed 48 games each, all with positive target score/win deltas. Two independent seeds per mode do not establish statistical strength; their confidence intervals are deliberately absent. Release aggregate JSON and both pilot aggregate JSON files are retained in `benchmarks/`. The CLI aborts rather than silently discarding a rejected canonical command.
 
 The JSON tier aggregates combine same-profile baseline seats with the upgraded target where a profile appears twice. They must not be mistaken for target-only performance. The paired-score and win-share deltas above explicitly select rotated lineup slot 0 and are the appropriate comparison.
 

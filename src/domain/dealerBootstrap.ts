@@ -22,7 +22,6 @@ export interface CreateDealerBootstrapStateArgs {
   roomId: string;
   rulesetId?: RulesetId;
   rulesVersion?: RulesVersion;
-  targetPlayerId?: string;
   bootstrapActionId: string;
   serverEntropySeed: string;
   seats: [InitialSeatInput, InitialSeatInput, InitialSeatInput, InitialSeatInput];
@@ -74,9 +73,7 @@ export function createInitialDealerBootstrapState(
   }
 
   const policy = getRuleset(args.rulesetId ?? "popular", args.rulesVersion ?? "popular-v1");
-  const presentTarget = args.seats.some(seat => seat.owner.type === "human" && seat.owner.playerId === args.targetPlayerId);
   return {
-    ...(policy.allocation === "reserved_lowest" ? { privateRulesetState: { targetPlayerId: presentTarget ? args.targetPlayerId! : null } } : {}),
     gameId: args.gameId,
     roomId: args.roomId,
     rulesetId: policy.id,
@@ -170,7 +167,7 @@ export function resolveDealerBootstrapAndInitializeDealOne(
 
   const dealerSeat = selection.dealerSeat;
   const firstDeclarerSeat = nextSeat(dealerSeat);
-  const gameplayDeck = prepareGameplayDeck(state, dealerSeat, 1, args.dealOneShuffleRandom);
+  const gameplayDeck = prepareGameplayDeck(state, args.dealOneShuffleRandom);
   const firstDeal = dealWithTrumpReveal(gameplayDeck, dealerSeat, 1);
   const declarations: Declarations = [null, null, null, null];
   const nextStateVersion = state.stateVersion + 1;

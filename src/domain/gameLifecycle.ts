@@ -106,7 +106,7 @@ function nextDealState(
   const firstDeclarerSeat = nextSeat(dealerSeat);
   const firstLeaderSeat = firstDeclarerSeat;
   const policy = getRuleset(state.rulesetId, state.rulesVersion);
-  const deck = prepareGameplayDeck(state, dealerSeat, nextInfo.cardsPerPlayer, random);
+  const deck = prepareGameplayDeck(state, random);
   const actorController = state.seats[firstDeclarerSeat].controller;
   const timing = {
     currentHumanDeadline:

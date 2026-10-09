@@ -2,7 +2,7 @@ import { CANONICAL_BOTS } from '../../../supabase/functions/_shared/bot-catalog'
 import { activateDealOneAfterPresentation, createInitialDealerBootstrapState, resolveDealerBootstrapAndInitializeDealOne } from '@/domain/dealerBootstrap';
 import type { CanonicalGameState } from '@/domain/gameState';
 
-export function reconciliationFixture(rulesetId: import("@/domain/rulesets").RulesetId = "popular", targetPresent = false): CanonicalGameState {
+export function reconciliationFixture(rulesetId: import("@/domain/rulesets").RulesetId = "popular", humanPresent = false): CanonicalGameState {
   const bots = [CANONICAL_BOTS[0]!, CANONICAL_BOTS[2]!, CANONICAL_BOTS[4]!, CANONICAL_BOTS[5]!];
   const barrier = resolveDealerBootstrapAndInitializeDealOne({
     state: createInitialDealerBootstrapState({
@@ -10,12 +10,11 @@ export function reconciliationFixture(rulesetId: import("@/domain/rulesets").Rul
       roomId: '00000000-0000-4000-8000-000000000202',
       rulesetId,
       rulesVersion: rulesetId + '-v1' as import("@/domain/rulesets").RulesVersion,
-      targetPlayerId: '12302475-c4da-491c-9081-08c039384ac1',
       bootstrapActionId: '00000000-0000-5000-8000-000000000203',
       serverEntropySeed: 'ab'.repeat(32),
       seats: bots.map((bot, seatIndex) => ({
         seatIndex, connected: false,
-        owner: targetPresent && seatIndex === 1 ? { type: 'human', playerId: '12302475-c4da-491c-9081-08c039384ac1' } : { type: 'bot', botId: bot.id, displayName: bot.displayName, personalityId: bot.personalityId, strategyProfileId: bot.strategyProfileId, catalogVersion: bot.catalogVersion },
+        owner: humanPresent && seatIndex === 1 ? { type: 'human', playerId: '12302475-c4da-491c-9081-08c039384ac1' } : { type: 'bot', botId: bot.id, displayName: bot.displayName, personalityId: bot.personalityId, strategyProfileId: bot.strategyProfileId, catalogVersion: bot.catalogVersion },
       })) as Parameters<typeof createInitialDealerBootstrapState>[0]['seats'],
     }),
     firstRecipientRandom: () => 0.125,
@@ -24,6 +23,6 @@ export function reconciliationFixture(rulesetId: import("@/domain/rulesets").Rul
     serverNow: new Date().toISOString(),
   });
   const state = activateDealOneAfterPresentation(barrier, new Date().toISOString());
-  if (targetPresent) { state.seats[1].controller = 'temporary_bot'; state.seats[1].reclaimable = true; state.timing.currentHumanDeadline = null; }
+  if (humanPresent) { state.seats[1].controller = 'temporary_bot'; state.seats[1].reclaimable = true; state.timing.currentHumanDeadline = null; }
   return state;
 }
