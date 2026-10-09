@@ -30,6 +30,8 @@ export function DialogueOverlay({
   const [text, setText] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
   const [sentPreview, setSentPreview] = useState<{ botId: string; text: string } | null>(null);
+  const [visibleMessages, setVisibleMessages] = useState<DialogueMessage[]>([]);
+  const messageDeadlines = useRef(new Map<string, number>());
   const playedAudioIds = useRef(new Set<string>());
   const audioQueue = useRef<DialogueMessage[]>([]);
   const audioPlaying = useRef(false);
@@ -39,6 +41,28 @@ export function DialogueOverlay({
     const timer = window.setTimeout(() => setSentPreview(null), 5_000);
     return () => window.clearTimeout(timer);
   }, [sentPreview]);
+
+  useEffect(() => {
+    const deadlines = messageDeadlines.current;
+    for (const message of messages) {
+      // Polling must never restart the four-second display window.
+      if (!deadlines.has(message.id)) deadlines.set(message.id, Date.now() + 4_000);
+    }
+    // Retain recent expired IDs so an unchanged poll cannot replay a bubble.
+    while (deadlines.size > 512) deadlines.delete(deadlines.keys().next().value!);
+    let timer: number | undefined;
+    const refresh = () => {
+      const now = Date.now();
+      const live = messages.filter(message => (deadlines.get(message.id) ?? 0) > now);
+      setVisibleMessages(live);
+      if (live.length) {
+        const nextExpiry = Math.min(...live.map(message => deadlines.get(message.id)!));
+        timer = window.setTimeout(refresh, nextExpiry - now);
+      }
+    };
+    refresh();
+    return () => window.clearTimeout(timer);
+  }, [messages]);
 
   useEffect(() => {
     if (!room.botSettings.ttsEnabled) return;
@@ -87,7 +111,7 @@ export function DialogueOverlay({
             {sentPreview.text}
           </div>
         )}
-        {room.botSettings.showDialogueText !== false && messages.slice(-3).map((message) => {
+        {room.botSettings.showDialogueText !== false && visibleMessages.slice(-3).map((message) => {
           const speaker = bots.find((bot) => bot.id === message.speakerBotId)?.name ?? "Bot";
           return (
             <div
