@@ -86,6 +86,7 @@ export function BotLabPanel({ initial, api }: { initial: LabListView; api: LabAp
   const [stats, setStats] = useState<Stats | null>(null),
     [inspection, setInspection] = useState<unknown[]>([]);
   const [offset, setOffset] = useState(0);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const generation = useRef(0),
     detailGeneration = useRef(0),
     polling = useRef(false),
@@ -145,6 +146,7 @@ export function BotLabPanel({ initial, api }: { initial: LabListView; api: LabAp
     setStats(null);
     setInspection([]);
     setOffset(0);
+    setCopyStatus("idle");
   }, [selected]);
   const mutate = async (action: "create" | "cancel") => {
     if (mutation.current) return;
@@ -212,12 +214,21 @@ export function BotLabPanel({ initial, api }: { initial: LabListView; api: LabAp
         setStats(s as Stats);
         setInspection((r as { results: unknown[] }).results);
         setOffset(nextOffset);
+        setCopyStatus("idle");
       }
     } catch (e) {
       if (mounted.current && ticket === detailGeneration.current)
         setError(e instanceof Error ? e.message : "SERVICE_UNAVAILABLE");
     } finally {
       if (mounted.current) setBusy(false);
+    }
+  };
+  const copyInspectionJson = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(inspection, null, 2));
+      if (mounted.current) setCopyStatus("copied");
+    } catch {
+      if (mounted.current) setCopyStatus("error");
     }
   };
   const input = "min-h-11 w-full rounded-lg border border-border bg-secondary px-3 text-foreground";
@@ -516,6 +527,13 @@ export function BotLabPanel({ initial, api }: { initial: LabListView; api: LabAp
               Περιορισμένο δείγμα αποφάσεων ανά παιχνίδι, όχι πλήρες replay. Δεν περιλαμβάνει
               πραγματικά παιχνίδια ή κρυφά χέρια.
             </p>
+            <div className="my-2 flex flex-wrap items-center gap-3">
+              <JButton variant="secondary" onClick={() => void copyInspectionJson()}>
+                Αντιγραφή JSON
+              </JButton>
+              {copyStatus === "copied" && <span role="status" className="text-sm">Το JSON αντιγράφηκε.</span>}
+              {copyStatus === "error" && <span role="alert" className="text-sm">Η αντιγραφή απέτυχε. Έλεγξε την άδεια του browser.</span>}
+            </div>
             <pre className="max-h-80 overflow-auto rounded-lg bg-black/30 p-3 text-xs">
               {JSON.stringify(inspection, null, 2)}
             </pre>
