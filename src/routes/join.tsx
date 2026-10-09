@@ -9,7 +9,8 @@ import { authFailureMessage } from "@/lib/auth-feedback";
 import { roomFailureMessage } from "@/lib/room-feedback";
 import { cn } from "@/lib/utils";
 import { realIdentityService } from "@/services/realIdentity";
-import { joinProductionRoom } from "@/services/roomFunctions";
+import { joinProductionRoom, listWaitingRooms, type WaitingRoomSummary } from "@/services/roomFunctions";
+import { getCurrentPlayer } from "@/services/authFunctions";
 
 export const Route = createFileRoute("/join")({
   validateSearch: (s: Record<string, unknown>) => ({ code: typeof s["code"] === "string" ? s["code"] : undefined }),
@@ -24,6 +25,8 @@ function JoinGame() {
   const navigate = useNavigate();
   const activeLookup = useCurrentActiveGame();
   const [code, setCode] = useState(initialCode ?? "");
+  const [signedIn, setSignedIn] = useState(false);
+  const [available, setAvailable] = useState<WaitingRoomSummary[]>([]);
   const [players, setPlayers] = useState<PublicPlayer[]>([]);
   const [playerId, setPlayerId] = useState("");
   const [pin, setPin] = useState("");
@@ -31,6 +34,27 @@ function JoinGame() {
   const [loading, setLoading] = useState(true);
   const [authBusy, setAuthBusy] = useState(false);
   const joinActionId = useRef<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    void getCurrentPlayer().then(p => { if (mounted) setSignedIn(Boolean(p)); });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!signedIn || activeLookup.status === "active") return;
+    let running = true;
+    const refreshRooms = async () => {
+      const r = await listWaitingRooms();
+      if (running) {
+        if (r.ok) setAvailable(r.rooms);
+        else setError("Αδυναμία φόρτωσης διαθέσιμων παιχνιδιών.");
+      }
+    };
+    void refreshRooms();
+    const id = window.setInterval(() => void refreshRooms(), 2500);
+    return () => { running = false; window.clearInterval(id); };
+  }, [signedIn, activeLookup.status]);
 
   useEffect(() => {
     realIdentityService.listPlayers().then((list) => {
@@ -47,6 +71,24 @@ function JoinGame() {
       search: { code: activeLookup.activeGame.roomCode, gameId: activeLookup.activeGame.gameId },
     });
   }, [activeLookup.activeGame, activeLookup.status, navigate]);
+
+  const joinSelected = async (selectedCode: string) => {
+    if (authBusy) return;
+    setAuthBusy(true); setError(null);
+    try {
+      const current = await activeLookup.refresh();
+      if (!current.ok) { setError("Δεν ήταν δυνατός ο έλεγχος ενεργής συμμετοχής."); return; }
+      if (current.activeGame) {
+        void navigate({ to: "/table", search: { code: current.activeGame.roomCode, gameId: current.activeGame.gameId } });
+        return;
+      }
+      joinActionId.current = crypto.randomUUID();
+      const result = await joinProductionRoom({ data: { actionId: joinActionId.current, code: selectedCode } });
+      if (result.ok) { void navigate({ to: "/lobby", search: { code: result.room.code } }); return; }
+      setError(roomFailureMessage(result));
+    } catch { setError("Η συμμετοχή απέτυχε."); }
+    finally { setAuthBusy(false); }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,6 +153,23 @@ function JoinGame() {
       </ScreenShell>
     );
   }
+
+  if (signedIn) return (
+    <ScreenShell title="Συμμετοχή σε παιχνίδι" variant="pregame" contentClassName="pregame-centered-content">
+      <div className="panel w-full max-w-2xl space-y-3 p-4">
+        <h2 className="text-xl font-semibold">Διαθέσιμα παιχνίδια</h2>
+        {available.length === 0 && <p role="status">Δεν υπάρχουν διαθέσιμα παιχνίδια αυτή τη στιγμή.</p>}
+        {available.map(room => <div key={room.code} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+          <div><strong>Παιχνίδι του {room.hostName}</strong>
+            <p className="text-sm text-muted-foreground">{room.rulesetId} · {room.occupied}/4 θέσεις</p>
+          </div>
+          <JButton disabled={authBusy} onClick={() => void joinSelected(room.code)}>Συμμετοχή</JButton>
+        </div>)}
+        {error && <p role="alert" className="text-negative">{error}</p>}
+        <JButton variant="outlineGold" onClick={() => void navigate({ to: "/" })}>Αρχική οθόνη</JButton>
+      </div>
+    </ScreenShell>
+  );
 
   return (
     <ScreenShell title={t.joinGame} variant="pregame" contentClassName="pregame-centered-content">
