@@ -46,3 +46,17 @@ Metrics include exact/under/over-bid counts by hand size, negative-score penalti
 6. Cancellation is cooperative within one process. Durable cancellation/recovery and failed-start accounting must be added at the job layer.
 
 No migrations, database writes or deployments were performed in this increment. The external JOKER project was verified by read-only discovery; the administrator's existing player UUID was identified for the later authorization phase. Display names must never authorize the Lab.
+
+## Phase 2: public observations and legal hypothetical holdings
+
+Phase 1 merged as PR #154, main `e36b95b13483bcc19f4af29ad10416c7933297d4`, with successful Targeted PR Verification run 37884683020.
+
+`src/bots/observation.ts` adds a deliberately separate, projection-only observation contract containing own cards, public plays, public score/premia history, round progression, bid intentions, remaining hand sizes, unknown inventory and hard holding constraints. It does not accept canonical state. It normalizes a pending Joker separately without inventing its semantic choice. It distinguishes three-card trump choice from full nine-card hands.
+
+Normal off-suit responses establish a requested-suit void and, when applicable, a trump void. A normal HIGHER_SUIT response establishes a maximum remaining rank for that requested suit. Voluntary Jokers establish neither fact. SUIT_WINS does not create a highest-rank constraint. Facts use only current-deal history; cross-deal presentation tails and the independent dealer-selection deck are ignored.
+
+The sampler shuffles the entire unknown inventory and rejects allocations that violate hard public facts. Accepted allocations are uniform conditional on those hard facts; excess unknown cards explicitly remain stock. It has a 128-attempt default / 512-attempt maximum and returns null on exhaustion, without greedy repairs or weakening facts. Strong constraints can have a low acceptance rate; rollout policies must track this and retain a legal fallback. This foundation does not yet supply declaration-based soft likelihoods or endgame search.
+
+Ten additional behavioral tests cover forced highest, trump fallback, voluntary/competing Jokers, SUIT_WINS, duplicate/inconsistent inventory, unknown second Joker, reproducibility, impossible-world exhaustion, public score copies, partial nines, pending semantics and every active decision across four full-ruleset simulations. Combined targeted verification: 24 passing tests, changed-file lint, strict TypeScript and production build.
+
+These modules are not enabled in the production decision path yet. No claim of stronger play follows from observation/sampler correctness alone. Advanced strategic policies, matched benchmark tuning and the secure durable admin laboratory remain open.
