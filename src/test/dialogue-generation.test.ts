@@ -5,6 +5,7 @@ import {
   buildDialoguePrompt,
   dialogueLineTooSimilar,
   pickDialoguePreset,
+  pickApprovedBotReply,
   serializeProviderContext,
   validateDialogueOutput,
   type DialogueGenerationContext,
@@ -167,6 +168,15 @@ describe("AI banter provider boundary", () => {
     expect(result.text).toBeTruthy();
     expect(result.providerAttempted).toBe(false);
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("gates approved cross-bot response by profanity, speaker and roster", () => {
+    const base = { ...context, botId: "thomoulis" as const, profanityEnabled: true,
+      recentBanter: [], event: { ...context.event, type: "BOT_MESSAGE_TO_BOT" as const,
+        publicSummary: "ka-monika: Μήπως βγάζετε φωτοτυπίες;", replyDepth: 1 as const } };
+    expect(pickApprovedBotReply(base)).toBeTruthy();
+    expect(pickApprovedBotReply({ ...base, profanityEnabled: false })).toBeNull();
+    expect(pickApprovedBotReply({ ...base, botId: "ka-monika" })).toBeNull();
   });
 
   it("rejects unusable provider output", () => {
