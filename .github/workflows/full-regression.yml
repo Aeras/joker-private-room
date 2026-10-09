@@ -2,6 +2,37 @@ name: Full Regression
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - 'supabase/migrations/**'
+      - 'supabase/functions/verify-player-pin/**'
+      - 'supabase/functions/game-state/**'
+      - 'src/services/authFunctions.ts'
+      - 'src/services/identity.ts'
+      - 'src/services/realIdentity.ts'
+      - 'src/services/gameProjectionFunctions.ts'
+      - 'src/domain/cards.ts'
+      - 'src/domain/controller.ts'
+      - 'src/domain/dealerBootstrap.ts'
+      - 'src/domain/dealing.ts'
+      - 'src/domain/declarations.ts'
+      - 'src/domain/engine.ts'
+      - 'src/domain/gameConfig.ts'
+      - 'src/domain/gameLifecycle.ts'
+      - 'src/domain/gameplayCommands.ts'
+      - 'src/domain/gameState.ts'
+      - 'src/domain/premia.ts'
+      - 'src/domain/ranking.ts'
+      - 'src/domain/rulesets.ts'
+      - 'src/domain/scoring.ts'
+      - 'src/integrations/supabase/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bun.lockb'
+      - 'tsconfig*.json'
+      - 'vite.config.*'
 
 jobs:
   phase1:
