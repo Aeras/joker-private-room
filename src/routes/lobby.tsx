@@ -18,6 +18,7 @@ import {
   getProductionRoom,
   replaceProductionBot,
   startProductionRoom,
+  leaveWaitingRoom,
 } from "@/services/roomFunctions";
 import { roomInviteUrl } from "@/services/rooms";
 
@@ -59,6 +60,7 @@ function Lobby() {
     ]);
     setLocalPlayer(player);
     if (!result.ok) {
+      if (result.code === "ROOM_NOT_FOUND") { void navigate({ to: "/join", search: { code: undefined } }); return; }
       setError(roomFailureMessage(result));
       setLoading(false);
       return;
@@ -66,7 +68,7 @@ function Lobby() {
     setRoom(result.room);
     setError(null);
     setLoading(false);
-  }, [code]);
+  }, [code, navigate]);
 
   useEffect(() => {
     void refresh();
@@ -181,6 +183,13 @@ function Lobby() {
     }
   };
 
+  const leave = async () => {
+    if (!code || starting || botBusy) return;
+    const result = await leaveWaitingRoom({ data: { code } });
+    if (!result.ok) { setError("Δεν ήταν δυνατή η έξοδος."); return; }
+    void navigate({ to: "/join", search: { code: undefined } });
+  };
+
   const invite = async () => {
     const url = roomInviteUrl(room.code);
     if (navigator.share) {
@@ -203,6 +212,7 @@ function Lobby() {
         <div className="pregame-lobby-footer">
           {error && <p className="text-sm text-negative">{error}</p>}
           <div className="flex items-center gap-2">
+            {room.status === "lobby" && <JButton variant="outlineGold" onClick={() => void leave()}>Έξοδος</JButton>}
             <JButton variant="outlineGold" className="pregame-secondary-button" onClick={invite}>
               <Share2 className="h-4 w-4" />
               {t.inviteFriends}
