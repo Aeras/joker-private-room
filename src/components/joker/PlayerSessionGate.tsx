@@ -6,7 +6,7 @@ import { authFailureMessage } from "@/lib/auth-feedback";
 import { JButton } from "./JButton";
 
 /** Login once using the existing httpOnly server session; no PIN is persisted client-side. */
-export function PlayerSessionGate({ children }: { children: (player: PublicPlayer) => React.ReactNode }) {
+export function PlayerSessionGate({ children, onAuthenticated }: { children: (player: PublicPlayer) => React.ReactNode; onAuthenticated?: () => void }) {
   const [player, setPlayer] = useState<PublicPlayer | null>(null);
   const [choices, setChoices] = useState<PublicPlayer[]>([]);
   const [selected, setSelected] = useState("");
@@ -32,7 +32,7 @@ export function PlayerSessionGate({ children }: { children: (player: PublicPlaye
     try {
       const result = await realIdentityService.verifyPin(selected, pin);
       if (!result.ok) { setError(authFailureMessage(result)); return; }
-      setPlayer(result.player); setPin("");
+      setPlayer(result.player); setPin(""); onAuthenticated?.();
     } catch { setError("Αδυναμία σύνδεσης. Δοκίμασε ξανά."); }
     finally { setBusy(false); }
   }
