@@ -41,7 +41,11 @@ function Home() {
 
         <section className="home-menu" aria-label="Κύριο μενού">
           <PlayerSessionGate onAuthenticated={() => { void activeLookup.refresh(); }}>{() => <>
-          {activeLookup.status === "active" ? (
+          {activeLookup.status === "waiting" ? (
+            <Link to="/lobby" search={{ code: activeLookup.roomCode }} className={jButton({ size: "lg", className: "pregame-primary-button home-main-action" })}>
+              Επιστροφή στο παιχνίδι
+            </Link>
+          ) : activeLookup.status === "active" ? (
             <Link
               to="/table"
               search={{ code: activeLookup.activeGame.roomCode, gameId: activeLookup.activeGame.gameId }}
