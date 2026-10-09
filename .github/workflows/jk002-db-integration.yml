@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'supabase/migrations/**'
+      - 'supabase/migrations/*jk002*'
       - 'tests/integration/**'
       - '.github/workflows/jk002-db-integration.yml'
 jobs:
