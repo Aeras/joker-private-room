@@ -1,0 +1,37 @@
+name: JOKER Preset Voice Gate
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/*preset_voice*'
+      - 'supabase/functions/room-commands/**'
+      - 'supabase/tests/preset-voice/**'
+      - 'scripts/preset-voice-db-test.mjs'
+      - 'src/domain/dialoguePolicy*'
+      - 'src/test/preset-bot-voice-controls.test.tsx'
+      - '.github/workflows/joker-preset-voice.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Actual SQL session authorization, preset policy and permissions
+        run: |
+          npm install --prefix "$RUNNER_TEMP/preset-voice" --no-save @electric-sql/pglite@0.5.8
+          export BOT_LAB_PGLITE_ROOT="$RUNNER_TEMP/preset-voice/node_modules/@electric-sql/pglite"
+          node scripts/preset-voice-db-test.mjs
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile
+      - name: Mounted settings and dialogue regression
+        run: bunx vitest run src/domain/dialoguePolicy.test.ts src/test/preset-bot-voice-controls.test.tsx src/test/dialogue-display-duration.test.tsx src/test/dialogue-generation.test.ts src/test/dialogue-release-gates.test.ts
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - name: Room Edge types and dependencies
+        run: |
+          deno check --no-config --node-modules-dir=none supabase/functions/room-commands/index.ts
+          deno test --no-config --node-modules-dir=none --allow-env supabase/functions/room-commands/preset-voice.test.ts

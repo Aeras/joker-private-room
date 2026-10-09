@@ -116,8 +116,8 @@ function CreateGame() {
           botsTalk,
           allowProfanity: botsTalk && allowProfanity,
           aiEnabled: botsTalk && verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && aiEnabled,
-          ttsEnabled: botsTalk && verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && aiEnabled && ttsEnabled,
-          showDialogueText: !(botsTalk && verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && aiEnabled && ttsEnabled) || showDialogueText,
+          ttsEnabled: botsTalk && verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && ttsEnabled,
+          showDialogueText: !(botsTalk && verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && ttsEnabled) || showDialogueText,
           intensity,
         },
       });
@@ -238,34 +238,26 @@ function CreateGame() {
                   <div>
                     <Toggle
                       checked={aiEnabled}
-                      onChange={(value) => {
-                        setAiEnabled(value);
-                        if (!value) {
-                          setTtsEnabled(false);
-                          setShowDialogueText(true);
-                        }
-                      }}
+                      onChange={setAiEnabled}
                       label={t.useAiBanter}
                     />
-                    {aiEnabled && (
-                      <div className="ml-8 space-y-1">
+                    <div className="ml-8 space-y-1">
+                      <Toggle
+                        checked={ttsEnabled}
+                        onChange={(value) => {
+                          setTtsEnabled(value);
+                          if (!value) setShowDialogueText(true);
+                        }}
+                        label={t.botVoice}
+                      />
+                      {ttsEnabled && (
                         <Toggle
-                          checked={ttsEnabled}
-                          onChange={(value) => {
-                            setTtsEnabled(value);
-                            if (!value) setShowDialogueText(true);
-                          }}
-                          label={t.botVoice}
+                          checked={showDialogueText}
+                          onChange={setShowDialogueText}
+                          label={t.showBotMessages}
                         />
-                        {ttsEnabled && (
-                          <Toggle
-                            checked={showDialogueText}
-                            onChange={setShowDialogueText}
-                            label={t.showBotMessages}
-                          />
-                        )}
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
                 <div className="pt-1">

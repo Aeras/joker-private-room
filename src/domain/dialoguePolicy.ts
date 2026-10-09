@@ -11,7 +11,7 @@ export interface DialogueSettings {
   allowProfanity: boolean;
   /** Optional provider path. When false, dialogue is preset-only. */
   aiEnabled: boolean;
-  /** Google Cloud TTS output; only valid when AI is enabled. */
+  /** Google Cloud TTS output; independent of AI text generation. */
   ttsEnabled?: boolean;
   /** Whether dialogue text is shown alongside speech. */
   showDialogueText?: boolean;
@@ -45,8 +45,8 @@ export function toDialogueSettings(input: {
     speechEnabled: true,
     allowProfanity: input.allowProfanity,
     aiEnabled: input.aiEnabled,
-    ttsEnabled: input.aiEnabled && input.ttsEnabled === true,
-    showDialogueText: input.aiEnabled && input.ttsEnabled === true ? input.showDialogueText !== false : true,
+    ttsEnabled: input.ttsEnabled === true,
+    showDialogueText: input.ttsEnabled === true ? input.showDialogueText !== false : true,
     intensity: input.intensity,
   };
 }

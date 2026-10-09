@@ -51,7 +51,7 @@ describe("dialogue policy", () => {
     });
   });
 
-  test("TTS is only effective with AI and hidden text is only valid with TTS", () => {
+  test("TTS works with preset text as well as AI; hidden text still requires TTS", () => {
     expect(
       toDialogueSettings({
         botsTalk: true,
@@ -78,8 +78,8 @@ describe("dialogue policy", () => {
         intensity: "normal",
       }),
     ).toMatchObject({
-      ttsEnabled: false,
-      showDialogueText: true,
+      ttsEnabled: true,
+      showDialogueText: false,
     });
   });
 });
