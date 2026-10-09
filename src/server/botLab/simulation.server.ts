@@ -1,4 +1,6 @@
-import { selectAutomaticGameplayCommand } from "@/bots/runtime";
+import { selectBaselineGameplayCommand } from "@/bots/baselineRuntime";
+import { selectCompetitiveCommand } from "@/bots/competitiveRuntime";
+import { COMPETITIVE_VERSION } from "@/bots/competitive";
 import {
   createInitialDealerBootstrapState,
   resolveDealerBootstrapAndInitializeDealOne,
@@ -31,6 +33,7 @@ export interface SimulationConfig {
   /** Physical seat occupied by lineup[0]; rotate 0..3 for matched comparisons. */
   rotation?: SeatIndex;
   strategyVersion: string;
+  seatVersions?: [string, string, string, string];
 }
 export interface DecisionRecord {
   version: number;
@@ -85,7 +88,16 @@ export function seededRandom(seed: number): () => number {
 export function validateSimulationConfig(config: SimulationConfig): void {
   if (!Number.isInteger(config.seed) || config.seed < 0 || config.seed > 0xffffffff)
     throw new Error("Invalid seed");
-  if (!config.strategyVersion || config.strategyVersion.length > 100)
+  if (
+    ![BASELINE_STRATEGY_VERSION, "baseline", COMPETITIVE_VERSION].includes(
+      config.strategyVersion,
+    ) ||
+    (config.seatVersions &&
+      (config.seatVersions.length !== 4 ||
+        config.seatVersions.some(
+          (v) => ![BASELINE_STRATEGY_VERSION, COMPETITIVE_VERSION].includes(v),
+        )))
+  )
     throw new Error("Invalid strategy version");
   if (!Object.hasOwn(RULESETS, config.ruleset)) throw new Error("Invalid ruleset");
   if (config.lineup.length !== 4 || config.lineup.some((tier) => !LAB_TIERS.includes(tier)))
@@ -171,7 +183,10 @@ export function simulateFullGame(
     const started = now();
     const command = control.select
       ? control.select(projection)
-      : selectAutomaticGameplayCommand(projection)?.command;
+      : (config.seatVersions?.[(seat - rotation + 4) % 4] ?? config.strategyVersion) ===
+          COMPETITIVE_VERSION
+        ? selectCompetitiveCommand(projection)?.command
+        : selectBaselineGameplayCommand(projection)?.command;
     const latencyMs = Math.max(0, now() - started);
     if (!command)
       throw new SimulationFailure("NO_ACTION", `No action at ${state.progression.phase}`);

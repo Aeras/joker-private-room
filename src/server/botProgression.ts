@@ -10,10 +10,7 @@ import {
 import { settleGameLifecycle, type LifecycleSettlementResult } from "@/server/gameLifecycle";
 import { stableInternalActionId } from "@/server/internalDeterminism";
 
-export type AutomaticProgressionStopReason =
-  | AutomaticStepStopReason
-  | "STEP_BOUND"
-  | "STALE_RACE";
+export type AutomaticProgressionStopReason = AutomaticStepStopReason | "STEP_BOUND" | "STALE_RACE";
 
 export type AutomaticProgressionResult =
   | {
@@ -94,6 +91,7 @@ export async function progressAutomaticGameplayWithDependencies(
         String(plan.actorSeat),
         plan.controller,
         plan.strategyId,
+        plan.strategyVersion ?? "baseline",
       ].join(":"),
     );
 
@@ -107,6 +105,7 @@ export async function progressAutomaticGameplayWithDependencies(
         actorSeat: plan.actorSeat,
         controller: plan.controller,
         strategyId: plan.strategyId,
+        strategyVersion: plan.strategyVersion,
         command: plan.command,
       },
       newState: plan.nextState,

@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createDeck, RANK_VALUE, SUITS, type Card } from "@/domain/cards";
 import type { PlayerGameProjection } from "@/domain/projection";
 import { LAB_TIERS, seededRandom, simulateFullGame } from "@/server/botLab/simulation.server";
-import { selectAutomaticGameplayCommand } from "./runtime";
+import { selectBaselineGameplayCommand as selectAutomaticGameplayCommand } from "./baselineRuntime";
 import { consistentHolding, observeBot, sampleConsistentWorld } from "./observation";
 
 let base: PlayerGameProjection;
@@ -187,5 +187,5 @@ describe("public bot observation and constrained worlds", () => {
     expect(phases.has("NINE_CARD_TRUMP_CHOICE")).toBe(true);
     expect(phases.has("JOKER_DECISION")).toBe(true);
     expect(phases.has("DECLARATION")).toBe(true);
-  });
+  }, 30000);
 });

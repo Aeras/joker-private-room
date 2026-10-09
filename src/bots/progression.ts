@@ -16,6 +16,7 @@ export type AutomaticStepPlan =
       ok: true;
       command: GameplayCommand;
       strategyId: string;
+      strategyVersion?: string;
       controller: "permanent_bot" | "temporary_bot";
       actorSeat: 0 | 1 | 2 | 3;
       nextState: CanonicalGameState;
@@ -58,6 +59,7 @@ export function planAutomaticGameplayStep(
     ok: true,
     command: selected.command,
     strategyId: selected.strategyId,
+    strategyVersion: selected.strategyVersion ?? "baseline",
     controller,
     actorSeat: actor,
     nextState: transition.state,

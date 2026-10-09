@@ -268,13 +268,13 @@ export async function advanceGameUntilBlockedWithDependencies(
       return { ok: true, stateVersion: loaded.stateVersion, steps: committedSteps, stopReason: plan.stopReason };
     }
 
-    const actionId = await dependencies.actionId(gameId, ["automatic-gameplay-v1", String(loaded.stateVersion), String(plan.actorSeat), plan.controller, plan.strategyId].join(":"));
+    const actionId = await dependencies.actionId(gameId, ["automatic-gameplay-v1", String(loaded.stateVersion), String(plan.actorSeat), plan.controller, plan.strategyId, plan.strategyVersion ?? "baseline"].join(":"));
     const persisted = await dependencies.persist({
       gameId,
       actionId,
       commandType: `bot_${plan.command.type}`,
       expectedStateVersion: loaded.stateVersion,
-      commandPayload: { source: "automatic_controller", actorSeat: plan.actorSeat, controller: plan.controller, strategyId: plan.strategyId, command: plan.command },
+      commandPayload: { source: "automatic_controller", actorSeat: plan.actorSeat, controller: plan.controller, strategyId: plan.strategyId, strategyVersion: plan.strategyVersion, command: plan.command },
       newState: plan.nextState,
     });
 
