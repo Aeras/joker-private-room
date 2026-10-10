@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as JokerRouteImport } from './routes/joker'
+import { Route as DurakRouteImport } from './routes/durak'
 import { Route as BotLabRouteImport } from './routes/bot-lab'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -27,6 +28,11 @@ const IndexRoute = IndexRouteImport.update({
 const JokerRoute = JokerRouteImport.update({
   id: '/joker',
   path: '/joker',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DurakRoute = DurakRouteImport.update({
+  id: '/durak',
+  path: '/durak',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BotLabRoute = BotLabRouteImport.update({
@@ -67,6 +73,7 @@ const TableRoute = TableRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/joker': typeof JokerRoute
+  '/durak': typeof DurakRoute
   '/': typeof IndexRoute
   '/bot-lab': typeof BotLabRoute
   '/create': typeof CreateRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/joker': typeof JokerRoute
+  '/durak': typeof DurakRoute
   '/': typeof IndexRoute
   '/bot-lab': typeof BotLabRoute
   '/create': typeof CreateRoute
@@ -89,6 +97,7 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   '/joker': typeof JokerRoute
+  '/durak': typeof DurakRoute
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/bot-lab': typeof BotLabRoute
@@ -104,6 +113,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/joker'
+    | '/durak'
+    | '/durak'
     | '/bot-lab'
     | '/create'
     | '/history'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   JokerRoute: typeof JokerRoute
+  DurakRoute: typeof DurakRoute
   BotLabRoute: typeof BotLabRoute
   CreateRoute: typeof CreateRoute
   HistoryRoute: typeof HistoryRoute
@@ -159,6 +171,13 @@ declare module '@tanstack/react-router' {
       path: '/joker'
       fullPath: '/joker'
       preLoaderRoute: typeof JokerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/durak': {
+      id: '/durak'
+      path: '/durak'
+      fullPath: '/durak'
+      preLoaderRoute: typeof DurakRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bot-lab': {
@@ -216,6 +235,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   JokerRoute: JokerRoute,
+  DurakRoute: DurakRoute,
   BotLabRoute: BotLabRoute,
   CreateRoute: CreateRoute,
   HistoryRoute: HistoryRoute,
