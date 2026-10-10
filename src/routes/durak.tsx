@@ -13,6 +13,22 @@ export const Route = createFileRoute("/durak")({
   component: DurakHome,
 });
 
+function DurakMemberAutoResume({ onRoom }: { onRoom: (room: DurakRoomView) => void }) {
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const membership = await durakRoomCommand({data:{action:"membership"}});
+        if (!active || !membership.ok || !("membership" in membership) || !membership.membership) return;
+        const result = await durakRoomCommand({data:{action:"get",code:membership.membership.code}});
+        if (active && result.ok && "room" in result) onRoom(result.room);
+      } catch { /* Keep manual return option available. */ }
+    })();
+    return () => { active=false; };
+  }, []);
+  return null;
+}
+
 function DurakHome() {
   const [variant, setVariant] = useState<DurakVariant>("podkidnoy");
   const [playerCount, setPlayerCount] = useState<number>(4);
@@ -32,18 +48,6 @@ function DurakHome() {
     NOT_A_MEMBER: "Δεν συμμετέχεις σε αυτό το δωμάτιο.",
     SERVICE_UNAVAILABLE: "Το DURAK δεν είναι προσωρινά διαθέσιμο. Δοκίμασε ξανά.",
   };
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const membership = await durakRoomCommand({data:{action:"membership"}});
-        if (!active || !membership.ok || !("membership" in membership) || !membership.membership) return;
-        const result = await durakRoomCommand({data:{action:"get",code:membership.membership.code}});
-        if (active && result.ok && "room" in result) setRoom(result.room);
-      } catch { /* Keep manual return option available. */ }
-    })();
-    return () => { active=false; };
-  }, []);
   async function run(action: "create" | "list" | "join" | "get" | "leave", code?: string) {
     setBusy(true); setError("");
     try {
@@ -69,6 +73,7 @@ function DurakHome() {
         </div>
         <PlayerSessionGate allowLogout={false}>
           {(player) => <section className="panel space-y-4 p-4" aria-label="DURAK">
+            <DurakMemberAutoResume onRoom={setRoom} />
             <p className="text-center text-sm text-muted-foreground">Παίκτης: {player.displayName}</p>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" aria-pressed={mode === "create"} onClick={() => { setMode("create"); setPreview(false); }} className={`rounded-lg border p-3 font-semibold ${mode === "create" ? "border-primary bg-secondary" : "border-border"}`}>Δημιουργία</button>
