@@ -114,7 +114,6 @@ export interface FileRouteTypes {
     | '/'
     | '/joker'
     | '/durak'
-    | '/durak'
     | '/bot-lab'
     | '/create'
     | '/history'
@@ -125,6 +124,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/durak'
     | '/bot-lab'
     | '/create'
     | '/history'
@@ -134,6 +134,7 @@ export interface FileRouteTypes {
     | '/table'
   id:
     | '__root__'
+    | '/durak'
     | '/'
     | '/bot-lab'
     | '/create'
