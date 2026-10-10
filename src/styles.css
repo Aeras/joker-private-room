@@ -142,9 +142,9 @@
 
 
 /* Summaries stay beside the closed rows rather than following their changing length. */
-[data-visual-seat] .joker-seat-info{position:absolute;margin-top:0;text-align:left}
+[data-visual-seat] .joker-seat-info{position:absolute;display:flex;flex-direction:column;align-items:center;margin-top:0;text-align:left}
 [data-visual-seat] .joker-seat-name-score{justify-content:flex-start}
 [data-visual-seat="1"] .joker-seat-info{top:calc(var(--remote-avatar-height) + 12px);left:calc(-4.1vw + var(--remote-hand-card-w)*.84 + 10px);width:max-content}
 [data-visual-seat="3"] .joker-seat-info{top:calc(var(--remote-avatar-height) + 12px);right:calc(-4.1vw + var(--remote-hand-card-w)*.84 + 10px);width:max-content}
-[data-visual-seat="2"] .joker-seat-info{left:calc(100% + 8px);top:calc(-4.33vh + var(--remote-hand-card-w)*.84 + 6px);width:calc(var(--remote-hand-card-w)*1.8);max-width:none}
+[data-visual-seat="2"] .joker-seat-info{left:calc(100% + 8px);top:calc(-4.33vh + var(--remote-hand-card-w)*.84 + 6px);width:max-content;max-width:calc(var(--remote-hand-card-w)*1.8)}
 [data-visual-seat="2"] .joker-seat-name{max-width:calc(var(--remote-hand-card-w)*1.35)}
