@@ -1,6 +1,6 @@
--- Preserve login sessions when a host ends a game. Only release active game control.
+-- Preserve login sessions when a host ends a game. Release game participation while keeping login sessions valid.
 -- This replaces the prior JK-006 termination function without altering authoritative termination.
--- JK-006: preserve the terminal canonical response, release active control without revoking login.
+-- JK-006: preserve the terminal canonical response, complete game without revoking player login.
 
 create or replace function public.terminate_game_by_host_internal(
   p_session_token text,
@@ -111,18 +111,9 @@ begin
       next_wakeup_at = null
   where id = v_game.id;
 
-  update private.player_sessions ps
-  set active_control = false,
-      last_seen_at = v_now
-  where ps.player_id in (
-    select gp.player_id
-    from public.game_participants gp
-    where gp.game_id = v_game.id
-      and gp.owner_type = 'human'
-      and gp.player_id is not null
-  )
-    and ps.active_control = true
-    and ps.revoked_at is null;
+  -- Login sessions are device identity, not game membership. Keep both
+  -- active_control and revoked_at unchanged; completed participants below
+  -- release the game association without forcing PIN reauthentication.
 
   update public.game_participants
   set status = 'completed',
