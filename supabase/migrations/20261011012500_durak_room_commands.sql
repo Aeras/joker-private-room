@@ -14,7 +14,7 @@ declare
 begin
   select id into v_player from public.validate_player_session_internal(p_session_token) limit 1;
   if v_player is null then return jsonb_build_object('ok',false,'code','NOT_AUTHENTICATED'); end if;
-  if p_action not in ('create','join','leave','get','list') then
+  if p_action not in ('create','join','leave','get','list','membership') then
     return jsonb_build_object('ok',false,'code','INVALID_ACTION');
   end if;
   if p_action in ('create','join') then
@@ -30,6 +30,17 @@ begin
       select 1 from public.game_participants gp join public.games g on g.id=gp.game_id
       where gp.player_id=v_player and gp.owner_type='human' and gp.status='active'
     ) then return jsonb_build_object('ok',false,'code','ACTIVE_GAME_EXISTS'); end if;
+  end if;
+  if p_action='membership' then
+    select r.* into v_room
+    from public.durak_rooms r
+    join public.durak_room_seats s on s.room_id=r.id
+    where s.player_id=v_player and s.occupant_type='human'
+      and r.lifecycle in ('waiting','playing')
+    order by r.created_at desc limit 1;
+    if not found then return jsonb_build_object('ok',true,'membership',null); end if;
+    return jsonb_build_object('ok',true,'membership',jsonb_build_object(
+      'code',v_room.code,'lifecycle',v_room.lifecycle));
   end if;
   if p_action='create' then
     if p_variant not in ('podkidnoy','perevodnoy') or p_capacity not between 2 and 6 then
