@@ -22,6 +22,8 @@ describe("DURAK online room isolation and authenticated transport",()=>{
     const edge=read("supabase/functions/durak-commands/index.ts");
     expect(edge).toContain("NOT_AUTHENTICATED");
     expect(edge).toContain("durak_room_command_internal");
+    expect(edge).toContain('error.code==="23505"');
+    expect(edge).toContain('code:"ACTIVE_GAME_EXISTS"');
     expect(edge).not.toContain('admin.rpc("create_room_internal"');
   });
 });
