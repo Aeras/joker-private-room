@@ -45,18 +45,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("shared local hand geometry", () => {
-  it("keeps the dealing summary above the floor, outside the moving card surface", () => {
+  it("keeps the summary at the same above-hand anchor through dealing, reveal and empty hands", () => {
     const props = { cards, summary: <span>Player 100 — / 0</span>, legalCardIds: [], blocked: true, pendingCardId: null, authorityKey: "summary", geometry, onCommit: vi.fn() };
     const view = render(<LocalHandRow {...props} visible={false} />);
     const summary = view.container.querySelector<HTMLElement>("[data-local-hand-summary]")!;
-    expect(summary.dataset["summaryPosition"]).toBe("dealing");
+    expect(summary.dataset["summaryPosition"]).toBe("above-hand");
     expect(summary.closest("[data-hand-entrance]")).toBeNull();
+    const anchor = summary.getAttribute("style");
     view.rerender(<LocalHandRow {...props} visible revealing />);
-    expect(summary.dataset["summaryPosition"]).toBe("dealing");
+    expect(summary.dataset["summaryPosition"]).toBe("above-hand");
     view.rerender(<LocalHandRow {...props} visible revealing={false} />);
     expect(summary.dataset["summaryPosition"]).toBe("above-hand");
+    expect(summary.getAttribute("style")).toBe(anchor);
     view.rerender(<LocalHandRow {...props} cards={[]} visible />);
-    expect(summary.dataset["summaryPosition"]).toBe("dealing");
+    expect(summary.dataset["summaryPosition"]).toBe("above-hand");
+    expect(summary.getAttribute("style")).toBe(anchor);
   });
 
   it("starts newly visible cards offscreen even before the parent reveal effect, without restarting", () => {

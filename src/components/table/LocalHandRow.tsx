@@ -64,7 +64,7 @@ export function LocalHandRow({
 
   return (
     <div className="relative w-full" style={{ "--card-w": cardWidth, minHeight: "calc(var(--card-w) * 1.4 + 8px)", transform: `translateX(${offset}px)` } as React.CSSProperties}>
-      {summary && <div data-local-hand-summary data-summary-position={visible && cards.length > 0 && !revealing ? "above-hand" : "dealing"} className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap" style={{ bottom: visible && cards.length > 0 && !revealing ? "calc(100% - var(--card-w) * .52 + .25rem)" : "max(16px, env(safe-area-inset-bottom))" }}>{summary}</div>}
+      {summary && <div data-local-hand-summary data-summary-position="above-hand" className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap" style={{ bottom: "calc(100% - var(--card-w) * .52 + .25rem)" }}>{summary}</div>}
     <div
       ref={handLayoutRef}
       className="absolute inset-x-0 bottom-0 flex w-full items-end justify-center px-3 transition-[transform,opacity]"
