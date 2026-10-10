@@ -12,7 +12,7 @@ Deno.serve(async(req:Request)=>{
   const token=typeof body?.sessionToken==="string"?body.sessionToken:"";
   const action=typeof body?.action==="string"?body.action:"";
   if(!/^[0-9a-f]{64}$/i.test(token)) return respond({ok:false,code:"NOT_AUTHENTICATED"},401);
-  if(!["create","join","leave","get","list"].includes(action)) return respond({ok:false,code:"INVALID_ACTION"},400);
+  if(!["create","join","leave","get","list","membership"].includes(action)) return respond({ok:false,code:"INVALID_ACTION"},400);
   const code=typeof body?.code==="string"?body.code.toUpperCase():"";
   if(["join","leave","get"].includes(action) && !/^[A-Z0-9]{6}$/.test(code))
     return respond({ok:false,code:"INVALID_OPTIONS"},400);
