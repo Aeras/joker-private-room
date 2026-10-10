@@ -25,7 +25,7 @@ function DurakMemberAutoResume({ onRoom }: { onRoom: (room: DurakRoomView) => vo
       } catch { /* Keep manual return option available. */ }
     })();
     return () => { active=false; };
-  }, []);
+  }, [onRoom]);
   return null;
 }
 
