@@ -28,10 +28,11 @@ export function TableUtilityMenu({
   }, []);
 
   const finish = async () => {
-    if (!isHost || ending || disabled) return;
+    if (!isHost || ending || (disabled && !logoutError)) return;
     setEnding(true);
+    const alreadyEnded = logoutError;
     setLogoutError(false);
-    const ok = await onEndGame().catch(() => false);
+    const ok = alreadyEnded || await onEndGame().catch(() => false);
     if (ok) {
       try {
         // Revoke the current player session before entering the home route.
@@ -98,8 +99,8 @@ export function TableUtilityMenu({
               <JButton variant="outlineGold" disabled={ending} onClick={() => setConfirmOpen(false)}>
                 Ακύρωση
               </JButton>
-              <JButton disabled={ending} className="bg-red-700 text-white hover:bg-red-600" onClick={() => void finish()}>
-                {ending ? "Τερματισμός…" : "Τέλος παιχνιδιού"}
+              <JButton disabled={ending || (disabled && !logoutError)} className="bg-red-700 text-white hover:bg-red-600" onClick={() => void finish()}>
+                {ending ? "Παρακαλώ περίμενε…" : logoutError ? "Αποσύνδεση" : "Τέλος παιχνιδιού"}
               </JButton>
             </div>
           </div>
