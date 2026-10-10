@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { RotateCw, Spade } from "lucide-react";
 import { RefreshButton } from "@/components/joker/RefreshButton";
 import { FullscreenButton } from "@/components/joker/FullscreenButton";
@@ -38,11 +38,11 @@ function GameSelection() {
           >
             {() => (
               <div className="home-main-actions">
-                <Link to="/joker" className="home-choice-card" aria-label="Joker — είσοδος στο παιχνίδι">
+                <a href="/joker" className="home-choice-card" aria-label="Joker — είσοδος στο παιχνίδι">
                   <span className="home-choice-card__number">01</span>
                   <strong>JOKER</strong>
                   <small>{inJoker ? "Επιστροφή στην παρτίδα" : "Δημιουργία ή συμμετοχή"}</small>
-                </Link>
+                </a>
                 <div className="home-choice-card cursor-not-allowed opacity-60" aria-disabled="true" aria-label="Durak — προσεχώς">
                   <span className="home-choice-card__number">02</span>
                   <strong><Spade className="inline-block h-5 w-5" aria-hidden="true" /> DURAK</strong>
