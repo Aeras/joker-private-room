@@ -2,7 +2,6 @@ import { MoreHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { exportTimingDiagnosticsFile } from "@/lib/timingDiagnostics";
 import { JButton } from "../joker/JButton";
-import { logoutPlayer } from "@/services/authFunctions";
 
 export function TableUtilityMenu({
   isHost,
@@ -16,7 +15,6 @@ export function TableUtilityMenu({
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [ending, setEnding] = useState(false);
-  const [logoutError, setLogoutError] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,21 +26,13 @@ export function TableUtilityMenu({
   }, []);
 
   const finish = async () => {
-    if (!isHost || ending || (disabled && !logoutError)) return;
+    if (!isHost || ending || disabled) return;
     setEnding(true);
-    const alreadyEnded = logoutError;
-    setLogoutError(false);
-    const ok = alreadyEnded || await onEndGame().catch(() => false);
+    const ok = await onEndGame().catch(() => false);
     if (ok) {
-      try {
-        // Revoke the current player session before entering the home route.
-        // Its session-first gate will then display the player login form.
-        await logoutPlayer();
-        window.location.assign("/");
-        return;
-      } catch {
-        setLogoutError(true);
-      }
+      // Ending a game never revokes the persistent player session.
+      window.location.assign("/");
+      return;
     }
     setEnding(false);
   };
@@ -94,13 +84,12 @@ export function TableUtilityMenu({
           <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#171010] p-5 shadow-2xl">
             <h2 className="text-lg font-semibold text-white">Τέλος παιχνιδιού;</h2>
             <p className="mt-2 text-sm text-white/70">Η παρτίδα θα τερματιστεί για όλους τους παίκτες.</p>
-            {logoutError && <p role="alert" className="mt-3 text-sm text-red-300">Η παρτίδα τερματίστηκε, αλλά η αποσύνδεση δεν επιβεβαιώθηκε. Πάτησε ξανά για αποσύνδεση.</p>}
             <div className="mt-5 flex justify-end gap-2">
               <JButton variant="outlineGold" disabled={ending} onClick={() => setConfirmOpen(false)}>
                 Ακύρωση
               </JButton>
-              <JButton disabled={ending || (disabled && !logoutError)} className="bg-red-700 text-white hover:bg-red-600" onClick={() => void finish()}>
-                {ending ? "Παρακαλώ περίμενε…" : logoutError ? "Αποσύνδεση" : "Τέλος παιχνιδιού"}
+              <JButton disabled={ending} className="bg-red-700 text-white hover:bg-red-600" onClick={() => void finish()}>
+                {ending ? "Τερματισμός…" : "Τέλος παιχνιδιού"}
               </JButton>
             </div>
           </div>
