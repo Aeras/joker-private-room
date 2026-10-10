@@ -23,6 +23,15 @@ function DurakHome() {
   const [room, setRoom] = useState<DurakRoomView | null>(null);
   const [available, setAvailable] = useState<DurakWaitingRoom[]>([]);
   const [returnCode, setReturnCode] = useState("");
+  const errorMessages: Record<string,string> = {
+    ACTIVE_GAME_EXISTS: "Συμμετέχεις ήδη σε άλλο δωμάτιο ή ενεργή παρτίδα. Ολοκλήρωσε ή αποχώρησε πρώτα από εκεί.",
+    NOT_AUTHENTICATED: "Η σύνδεσή σου έληξε. Συνδέσου ξανά.",
+    ROOM_NOT_FOUND: "Το δωμάτιο δεν βρέθηκε ή έχει κλείσει.",
+    ROOM_FULL: "Το δωμάτιο είναι γεμάτο.",
+    ROOM_ALREADY_STARTED: "Η παρτίδα έχει ήδη ξεκινήσει.",
+    NOT_A_MEMBER: "Δεν συμμετέχεις σε αυτό το δωμάτιο.",
+    SERVICE_UNAVAILABLE: "Το DURAK δεν είναι προσωρινά διαθέσιμο. Δοκίμασε ξανά.",
+  };
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -66,7 +75,7 @@ function DurakHome() {
               <button type="button" aria-pressed={mode === "join"} onClick={() => { setMode("join"); setPreview(false); }} className={`rounded-lg border p-3 font-semibold ${mode === "join" ? "border-primary bg-secondary" : "border-border"}`}>Συμμετοχή</button>
             </div>
             {room === null && <div className="flex gap-2 items-center"><input aria-label="Κωδικός δωματίου DURAK για επιστροφή" value={returnCode} maxLength={6} onChange={e => setReturnCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,""))} placeholder="Κωδικός 6 χαρακτήρων" className="min-w-0 flex-1 rounded-lg bg-secondary p-2" /><button disabled={busy || returnCode.length !== 6} onClick={() => void run("get",returnCode)} type="button" className="rounded-lg border p-2">Επιστροφή στο δωμάτιο</button></div>}
-            {error && <p role="alert" className="text-sm text-negative">Σφάλμα: {error}</p>}
+            {error && <p role="alert" className="text-sm text-negative">{errorMessages[error] ?? "Η ενέργεια δεν ολοκληρώθηκε. Δοκίμασε ξανά."}</p>}
             {room ? <div className="space-y-3 rounded-lg border border-primary p-3" aria-label="Δωμάτιο DURAK"><h2 className="font-semibold">Δωμάτιο {room.code}</h2><p className="text-sm">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p><div className="grid grid-cols-3 gap-2">{room.seats.map(seat => <div key={seat.index} className="rounded-lg bg-secondary p-2 text-center text-sm">Θέση {seat.index + 1}<div>{seat.name ?? "Ελεύθερη"}</div></div>)}</div><div className="flex gap-2"><button type="button" disabled={busy} onClick={() => void run("get",room.code)} className="rounded-lg border p-2">Ανανέωση</button><button type="button" disabled={busy} onClick={() => void run("leave",room.code)} className="rounded-lg border p-2">Έξοδος</button></div><p className="text-sm text-muted-foreground">Η έναρξη παρτίδας και η επιλογή bots θα ενεργοποιηθούν σε επόμενο στάδιο.</p></div> : mode === "create" ? <>
               <label className="block space-y-2 text-sm font-semibold">Παραλλαγή
                 <select className="w-full rounded-lg border border-border bg-secondary p-3" value={variant} onChange={e => setVariant(e.target.value as DurakVariant)}>
