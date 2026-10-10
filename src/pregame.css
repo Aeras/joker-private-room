@@ -466,3 +466,56 @@
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+
+/* Game catalogue: discreet single-line heading and expandable card grid. */
+.game-selection-screen .home-landscape__content {
+  justify-content: flex-start;
+  align-content: start;
+  gap: clamp(.7rem, 2vh, 1.1rem);
+  padding-top: clamp(.45rem, 2vh, 1rem);
+  overflow-y: auto;
+}
+.game-selection-heading {
+  text-align: center;
+  flex-shrink: 0;
+}
+.game-selection-heading h1 {
+  margin: 0;
+  font-family: "Commissioner", system-ui, sans-serif;
+  font-size: clamp(1rem, 2.1vw, 1.55rem);
+  font-weight: 600;
+  letter-spacing: .075em;
+  line-height: 1.35;
+  white-space: nowrap;
+  color: #eeddbd;
+}
+.game-selection-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(.55rem, 1.4vw, .95rem);
+}
+.game-selection-grid .home-choice-card {
+  min-height: clamp(5.9rem, 20vh, 8rem);
+  padding: clamp(.7rem, 1.5vw, 1rem);
+  border-radius: .9rem;
+}
+.game-selection-grid .home-choice-card strong {
+  font-family: "Commissioner", system-ui, sans-serif;
+  font-size: clamp(.92rem, 1.7vw, 1.14rem);
+  letter-spacing: .04em;
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+}
+.game-selection-grid .home-choice-card__number { font-size: 1.15rem; top: .55rem; right: .8rem; }
+.game-selection-grid .home-choice-card small { font-size: clamp(.65rem, 1.1vw, .78rem); }
+.game-selection-unavailable { opacity: .55; cursor: not-allowed; }
+.game-selection-unavailable:hover { filter: none; border-color: rgba(214,175,96,.28); }
+.game-selection-unavailable:active { transform: none; }
+@media (orientation: landscape) and (max-height: 520px) {
+  .game-selection-screen .home-landscape__content { gap: .55rem; padding-top: .3rem; }
+  .game-selection-heading h1 { font-size: clamp(.92rem, 2vw, 1.15rem); }
+  .game-selection-grid .home-choice-card { min-height: 5.3rem; padding: .65rem; }
+}
+@media (max-width: 460px) {
+  .game-selection-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
