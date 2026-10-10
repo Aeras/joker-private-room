@@ -20,6 +20,6 @@ describe("DURAK online room isolation and authenticated transport",()=>{
     const edge=read("supabase/functions/durak-commands/index.ts");
     expect(edge).toContain("NOT_AUTHENTICATED");
     expect(edge).toContain("durak_room_command_internal");
-    expect(edge).not.toContain("room_command_internal");
+    expect(edge).not.toContain('admin.rpc("create_room_internal"');
   });
 });
