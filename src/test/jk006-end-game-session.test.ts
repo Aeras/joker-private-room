@@ -16,13 +16,13 @@ describe("end-game preserves player login on every device", () => {
 
   it("routes the host to the signed-in home without logging out", () => {
     const menu = read("src/components/table/TableUtilityMenu.tsx");
-    expect(menu).toContain('window.location.assign("/")');
+    expect(menu).toContain('window.location.assign("/joker")');
     expect(menu).not.toContain("logoutPlayer");
     expect(menu).toContain("const ok = await onEndGame()");
   });
 
-  it("existing session-first home still shows create and join choices", () => {
-    const home = read("src/routes/index.tsx");
+  it("Joker home retains create and join choices", () => {
+    const home = read("src/routes/joker.tsx");
     expect(home).toContain("<PlayerSessionGate");
     expect(home).toContain('to="/create"');
     expect(home).toContain('to="/join"');

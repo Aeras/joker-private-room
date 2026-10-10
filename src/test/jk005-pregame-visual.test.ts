@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("landscape pregame application shell", () => {
   it("draws the Home UI in HTML/CSS instead of loading the old home artwork", () => {
-    const home = read("src/routes/index.tsx");
+    const home = read("src/routes/joker.tsx");
     expect(home).toContain("home-landscape");
     expect(home).toContain("home-choice-card");
     expect(home).toContain("<FullscreenButton");

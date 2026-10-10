@@ -46,7 +46,7 @@ describe("Session-first waiting room protection", () => {
 
   it("uses the same secure server session without storing the player's PIN", () => {
     const gate = read("src/components/joker/PlayerSessionGate.tsx");
-    const home = read("src/routes/index.tsx");
+    const home = read("src/routes/joker.tsx");
     expect(gate).toContain("getCurrentPlayer()");
     expect(gate).toContain("realIdentityService.verifyPin");
     expect(gate).not.toContain("localStorage");

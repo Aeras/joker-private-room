@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as JokerRouteImport } from './routes/joker'
 import { Route as BotLabRouteImport } from './routes/bot-lab'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -21,6 +22,11 @@ import { Route as TableRouteImport } from './routes/table'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JokerRoute = JokerRouteImport.update({
+  id: '/joker',
+  path: '/joker',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BotLabRoute = BotLabRouteImport.update({
@@ -60,6 +66,7 @@ const TableRoute = TableRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/joker': typeof JokerRoute
   '/': typeof IndexRoute
   '/bot-lab': typeof BotLabRoute
   '/create': typeof CreateRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/table': typeof TableRoute
 }
 export interface FileRoutesByTo {
+  '/joker': typeof JokerRoute
   '/': typeof IndexRoute
   '/bot-lab': typeof BotLabRoute
   '/create': typeof CreateRoute
@@ -80,6 +88,7 @@ export interface FileRoutesByTo {
   '/table': typeof TableRoute
 }
 export interface FileRoutesById {
+  '/joker': typeof JokerRoute
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/bot-lab': typeof BotLabRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/joker'
     | '/bot-lab'
     | '/create'
     | '/history'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  JokerRoute: typeof JokerRoute
   BotLabRoute: typeof BotLabRoute
   CreateRoute: typeof CreateRoute
   HistoryRoute: typeof HistoryRoute
@@ -141,6 +152,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/joker': {
+      id: '/joker'
+      path: '/joker'
+      fullPath: '/joker'
+      preLoaderRoute: typeof JokerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bot-lab': {
@@ -197,6 +215,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  JokerRoute: JokerRoute,
   BotLabRoute: BotLabRoute,
   CreateRoute: CreateRoute,
   HistoryRoute: HistoryRoute,

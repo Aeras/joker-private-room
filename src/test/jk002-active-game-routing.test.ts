@@ -26,7 +26,7 @@ describe("JK-002 active-game lookup and routing", () => {
   });
 
   it("fails Home closed on lookup failure and offers direct return when an active game exists", () => {
-    const home = read("src/routes/index.tsx");
+    const home = read("src/routes/joker.tsx");
     expect(home).toContain('activeLookup.status === "error"');
     // Current main already replaced the old error copy with an explicit retry.
     expect(home).toContain("Δοκιμή ξανά");
