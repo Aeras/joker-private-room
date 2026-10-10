@@ -19,13 +19,16 @@ begin
   end if;
   if p_action in ('create','join') then
     -- One participant cannot race two room creations/joins.
-    perform pg_advisory_xact_lock(hashtextextended(v_player::text, 20261011));
+    perform pg_advisory_xact_lock(hashtextextended(v_player::text, 20261009));
     if exists (
       select 1 from public.durak_room_seats s join public.durak_rooms r on r.id=s.room_id
       where s.player_id=v_player and s.occupant_type='human' and r.lifecycle in ('waiting','playing')
     ) or exists (
       select 1 from public.room_seats s join public.rooms r on r.id=s.room_id
       where s.player_id=v_player and s.occupant_type='human' and r.status in ('lobby','playing')
+    ) or exists (
+      select 1 from public.game_participants gp join public.games g on g.id=gp.game_id
+      where gp.player_id=v_player and gp.owner_type='human' and gp.status='active'
     ) then return jsonb_build_object('ok',false,'code','ACTIVE_GAME_EXISTS'); end if;
   end if;
   if p_action='create' then
