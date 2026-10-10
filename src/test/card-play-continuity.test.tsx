@@ -38,6 +38,7 @@ const snap = (
   }) as PlayerGameProjection;
 const tick = (n: number) => act(() => vi.advanceTimersByTime(n));
 const finish = (el: Element) => {
+  if ((el as HTMLElement).style.animationName && (el as HTMLElement).style.animationName !== "none") { const e = new Event("animationend", {bubbles:true}); Object.defineProperty(e,"animationName",{value:(el as HTMLElement).style.animationName});fireEvent(el,e);return; }
   const e = new Event("transitionend", { bubbles: true });
   Object.defineProperty(e, "propertyName", { value: "transform" });
   fireEvent(el, e);

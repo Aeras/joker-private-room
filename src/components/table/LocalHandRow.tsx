@@ -10,6 +10,7 @@ import type { CardReleaseRect, TableGeometry } from "./useTableGeometry";
 
 export function LocalHandRow({
   cards,
+  summary,
   visible,
   legalCardIds,
   blocked,
@@ -19,6 +20,7 @@ export function LocalHandRow({
   revealing = false,
   onCommit,
 }: {
+  summary?: React.ReactNode;
   cards: readonly Card[];
   visible: boolean;
   legalCardIds: readonly string[];
@@ -63,7 +65,7 @@ export function LocalHandRow({
   return (
     <div
       ref={handLayoutRef}
-      className="flex w-full items-end justify-center px-3 transition-[transform,opacity] "
+      className="relative flex w-full items-end justify-center px-3 transition-[transform,opacity] "
       style={{
         "--card-w": cardWidth,
         transform: `translateX(${offset}px) translateY(${entranceSettled ? "calc(var(--card-w) * 0.52 + 0px)" : reduced ? `calc(var(--card-w) * 0.52 + ${REDUCED_MOTION_DISTANCE_PX}px)` : "calc(100% + max(.15rem, env(safe-area-inset-bottom)) + 2px)"})`,
@@ -74,6 +76,7 @@ export function LocalHandRow({
       data-hand-center-offset={offset}
       data-hand-entrance={!entranceSettled ? "entering" : "settled"}
     >
+      {summary && <div data-local-hand-summary className="absolute bottom-[calc(100%+.25rem)] left-1/2 -translate-x-1/2 whitespace-nowrap">{summary}</div>}
       <div
         className="flex justify-center overflow-visible pt-2"
         style={{ "--card-w": cardWidth, "--card-overlap": revealOverlap } as React.CSSProperties}
@@ -87,6 +90,7 @@ export function LocalHandRow({
             <DraggableHandCard
               card={card}
               legal={legal.has(card.id)}
+              showLegality={legalCardIds.length > 0}
               blocked={blocked}
               revealing={revealing}
               faceUpOnReveal

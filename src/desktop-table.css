@@ -27,18 +27,13 @@
     font-size: calc(9.6 * var(--desktop-unit));
   }
   .joker-room .joker-seat-countdown { font-size: calc(9.6 * var(--desktop-unit)); }
-  .joker-room [data-seat-info-layout] {
-    min-width: calc(112 * var(--desktop-unit));
-    max-width: calc(180 * var(--desktop-unit));
-    padding: calc(4 * var(--desktop-unit)) calc(8 * var(--desktop-unit));
-  }
-  .joker-room [data-seat-info-layout] > div:first-child,
-  .joker-room .joker-seat-progress {
-    font-size: calc(12 * var(--desktop-unit));
-  }
-  .joker-room .joker-seat-score {
-    font-size: calc(14 * var(--desktop-unit));
-  }
+  .joker-room { --desktop-remote-card-w: calc(108 * var(--desktop-unit)); }
+  .joker-room .joker-remote-seat { --remote-avatar-height: calc(74 * var(--desktop-unit)); }
+  .joker-room .joker-seat-info {max-width:calc(240 * var(--desktop-unit))}
+  .joker-room .joker-seat-name {max-width:calc(170 * var(--desktop-unit))}
+  .joker-room .joker-seat-name-score,
+  .joker-room .joker-seat-progress {font-size:calc(12 * var(--desktop-unit))}
+  .joker-room .joker-seat-score {font-size:calc(14 * var(--desktop-unit))}
   .joker-room .joker-table-header {
     gap: calc(4 * var(--desktop-unit));
     padding-top: max(calc(4 * var(--desktop-unit)), env(safe-area-inset-top));

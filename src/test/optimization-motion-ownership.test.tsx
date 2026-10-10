@@ -15,7 +15,7 @@ const geometry = { ...computeTableGeometry({ feltRect: rect, viewportWidth: 800,
 const cards: PlayedCard[] = [0, 1, 2, 3].map((seatIndex) => ({ seatIndex: seatIndex as 0 | 1 | 2 | 3, card: { kind: "standard", id: "card" + seatIndex, suit: "hearts", rank: "A" } }));
 const token: LocalPlayPresentation = { gameId: "g", dealNumber: 2, actorSeat: 3, card: cards[3]!.card, cardId: "card3", sourceStateVersion: 1, acceptedStateVersion: null, geometryEpoch: 1, releaseRect: { ...rect, width: 60, height: 88 }, status: "submitted" };
 function finish(element: Element) {
-  if (element.closest('[data-trick-departing-stage="stacking"]') && (element as HTMLElement).style.animationName !== "none") { const animation = new Event("animationend", { bubbles: true }); Object.defineProperty(animation, "animationName", { value: (element as HTMLElement).style.animationName }); fireEvent(element, animation); return; } const event = new Event("transitionend", { bubbles: true });
+  if ((element as HTMLElement).style.animationName && (element as HTMLElement).style.animationName !== "none") { const animation = new Event("animationend", { bubbles: true }); Object.defineProperty(animation, "animationName", { value: (element as HTMLElement).style.animationName }); fireEvent(element, animation); return; } const event = new Event("transitionend", { bubbles: true });
   Object.defineProperty(event, "propertyName", { value: "transform" });
   fireEvent(element, event);
 }

@@ -80,8 +80,8 @@ describe("card play readability deadlines", () => {
     tick(0);
     tick(16);
     const first = v.container.querySelector("[data-trick-seat]")!;
-    const landed = new Event("transitionend", { bubbles: true });
-    Object.defineProperty(landed, "propertyName", { value: "transform" });
+    const landed = new Event("animationend", { bubbles: true });
+    Object.defineProperty(landed, "animationName", { value: (first as HTMLElement).style.animationName });
     expect(v.container.querySelectorAll("[data-trick-seat]")).toHaveLength(1);
     fireEvent(first, landed);
     tick(100);
@@ -101,8 +101,8 @@ describe("card play readability deadlines", () => {
     tick(0); tick(16);
     expect(busy).toHaveBeenLastCalledWith(true);
     const first = v.container.querySelector("[data-trick-seat]")!;
-    const landed = new Event("transitionend", { bubbles: true });
-    Object.defineProperty(landed, "propertyName", { value: "transform" }); fireEvent(first, landed);
+    const landed = new Event("animationend", { bubbles: true });
+    Object.defineProperty(landed, "animationName", { value: (first as HTMLElement).style.animationName }); fireEvent(first, landed);
     expect(busy).toHaveBeenLastCalledWith(false);
     tick(80);
     v.rerender(<TrickPresentation {...props} onBusyChange={busy} projection={structuredClone(next)} geometry={{ ...geometry, epoch: 8 }} />);

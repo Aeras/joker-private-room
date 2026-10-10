@@ -107,7 +107,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     const trump = read("src/components/table/TrumpIndicator.tsx");
     const trick = read("src/components/table/TrickPresentation.tsx");
 
-    expect(table).toContain('showCards={false}');
+    expect(table).toContain('showCards={!startupPresentationActive && !handRevealActive && projection.progression.phase !== "NINE_CARD_TRUMP_CHOICE"}');
     expect(table).toContain('projection.progression.phase === "DEAL_PRESENTATION"');
     expect(table).toContain('projection.progression.phase === "NINE_CARD_INITIAL_DEAL_ALL_SEATS"');
     expect(table).toContain('projection.progression.phase === "NINE_CARD_REMAINING_DEAL"');

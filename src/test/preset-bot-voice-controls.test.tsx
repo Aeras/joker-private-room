@@ -8,6 +8,7 @@ vi.mock("@/components/joker/ScreenShell", () => ({ ScreenShell: ({ children, foo
 vi.mock("@/hooks/useCurrentActiveGame", () => ({ useCurrentActiveGame: () => ({ status: "none", activeGame: null, refresh: mocks.refresh }) }));
 vi.mock("@/services/realIdentity", () => ({ realIdentityService: { listPlayers: async () => [mocks.actor], verifyPin: async () => ({ ok: true, player: mocks.actor }) } }));
 vi.mock("@/services/roomFunctions", () => ({ createProductionRoom: mocks.create, getAvailableRulesets: async () => ({ ok: true, options: [{ id: "popular", name: "Popular", description: "Default" }] }) }));
+vi.mock("@/services/authFunctions", () => ({ getCurrentPlayer: async () => null }));
 import { Route } from "@/routes/create";
 const Create = Route.options.component!;
 afterEach(() => { cleanup(); vi.clearAllMocks(); });

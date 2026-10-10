@@ -18,7 +18,7 @@ export function TableSurface() {
                 <stop offset="100%" stopColor="rgba(196, 171, 88, 0.12)" />
               </linearGradient>
             </defs>
-            <ellipse cx="800" cy="360" rx="685" ry="285" fill="none" stroke="url(#joker-felt-line)" strokeWidth="2.2" />
+            <rect x="115" y="75" width="1370" height="570" rx="160" fill="none" stroke="url(#joker-felt-line)" strokeWidth="2.2" />
             <ellipse cx="800" cy="360" rx="210" ry="106" fill="none" stroke="rgba(196,171,88,.19)" strokeWidth="2" />
             <circle cx="800" cy="360" r="66" fill="none" stroke="rgba(196,171,88,.14)" strokeWidth="2" />
             <path d="M800 318c-14 19-45 35-45 60 0 22 18 37 39 37 11 0 20-4 27-10-5 18-13 31-25 41h49c-12-10-20-23-25-41 7 6 16 10 27 10 21 0 39-15 39-37 0-25-31-41-45-60-14-19-21-31-21-31s-7 12-20 31Z" fill="rgba(196,171,88,.10)" />

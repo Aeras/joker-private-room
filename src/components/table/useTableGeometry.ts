@@ -48,6 +48,9 @@ interface GeometryInput {
   leftSeatRect?: RectLike | null | undefined;
   rightSeatRect?: RectLike | null | undefined;
   localSeatRect?: RectLike | null | undefined;
+  topHandRect?: RectLike | null | undefined;
+  leftHandRect?: RectLike | null | undefined;
+  rightHandRect?: RectLike | null | undefined;
   viewportWidth: number;
   viewportHeight: number;
   desktopPointer?: boolean;
@@ -122,9 +125,9 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
 
   const seatOrigins: Record<VisualSeat, Point> = {
     0: input.localSeatRect ? centerOf(input.localSeatRect, feltRect) : fallback[0],
-    1: input.leftSeatRect ? centerOf(input.leftSeatRect, feltRect) : fallback[1],
-    2: input.topSeatRect ? centerOf(input.topSeatRect, feltRect) : fallback[2],
-    3: input.rightSeatRect ? centerOf(input.rightSeatRect, feltRect) : fallback[3],
+    1: input.leftHandRect ? centerOf(input.leftHandRect, feltRect) : input.leftSeatRect ? centerOf(input.leftSeatRect, feltRect) : fallback[1],
+    2: input.topHandRect ? centerOf(input.topHandRect, feltRect) : input.topSeatRect ? centerOf(input.topSeatRect, feltRect) : fallback[2],
+    3: input.rightHandRect ? centerOf(input.rightHandRect, feltRect) : input.rightSeatRect ? centerOf(input.rightSeatRect, feltRect) : fallback[3],
   };
 
   // Dealing is positioned against the visible table viewport rather than the narrower
@@ -151,14 +154,14 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
   // The local seat occupies the lower left; reserve a measured lane beside it.
   // Bounds use felt-local coordinates, just like the other presentation anchors.
   const handLeft = input.localSeatRect
-    ? clamp(input.localSeatRect.right - feltRect.left + GAP, 0, width * 0.65)
+    ? clamp(input.localSeatRect.right - feltRect.left + GAP, 0, width * 0.4)
     : 0;
   const localHandBounds: RectLike = {
     left: handLeft,
-    right: width,
+    right: width - handLeft,
     top: height,
     bottom: height,
-    width: Math.max(1, width - handLeft),
+    width: Math.max(1, width - 2 * handLeft),
     height: 0,
   };
 
@@ -212,7 +215,7 @@ function geometrySignature(value: Omit<TableGeometry, "epoch">): string {
   ].join(":");
 }
 
-export function useTableGeometry(): {
+export function useTableGeometry(layoutKey?: string): {
   feltRef: RefObject<HTMLDivElement | null>;
   topSeatRef: RefObject<HTMLDivElement | null>;
   leftSeatRef: RefObject<HTMLDivElement | null>;
@@ -235,6 +238,9 @@ export function useTableGeometry(): {
     if (!felt) return;
     const next = computeTableGeometry({
       feltRect: felt.getBoundingClientRect(),
+      topHandRect: topSeatRef.current?.querySelector("[data-remote-hand]")?.getBoundingClientRect(),
+      leftHandRect: leftSeatRef.current?.querySelector("[data-remote-hand]")?.getBoundingClientRect(),
+      rightHandRect: rightSeatRef.current?.querySelector("[data-remote-hand]")?.getBoundingClientRect(),
       topSeatRect: topSeatRef.current?.getBoundingClientRect(),
       leftSeatRect: leftSeatRef.current?.getBoundingClientRect(),
       rightSeatRect: rightSeatRef.current?.getBoundingClientRect(),
@@ -286,6 +292,7 @@ export function useTableGeometry(): {
     };
   }, [scheduleMeasure]);
 
+  useEffect(() => { scheduleMeasure(); }, [layoutKey, scheduleMeasure]);
+
   return { feltRef, topSeatRef, leftSeatRef, rightSeatRef, localSeatRef, geometry };
 }
-

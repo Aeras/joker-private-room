@@ -12,7 +12,7 @@ vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: Reac
 vi.mock("@/components/table/DealerSelectionPresentation", () => ({ DealerSelectionPresentation: () => null }));
 vi.mock("@/components/table/DealPresentation", () => ({ DealPresentation: ({ onPresentationComplete, onSettlingChange }: { onPresentationComplete: (stage: string) => void; onSettlingChange: (value: boolean) => void }) => { useEffect(() => { onSettlingChange(deal.settling); if (!deal.settling) onPresentationComplete("full"); }, [onPresentationComplete, onSettlingChange, deal.settling]); return null; } }));
 vi.mock("@/components/table/TrickPresentation", () => ({ TrickPresentation: () => null }));
-vi.mock("@/components/table/TableSeat", () => ({ TableSeat: ({ local, stats }: { local: boolean; stats: { declaration: number | null } }) => local ? <div data-local-declaration={stats.declaration ?? "none"} /> : null }));
+vi.mock("@/components/table/TableSeat", () => ({ SeatSummary: () => null, TableSeat: ({ local, stats }: { local: boolean; stats: { declaration: number | null } }) => local ? <div data-local-declaration={stats.declaration ?? "none"} /> : null }));
 vi.mock("@/components/table/Scoreboard", () => ({ Scoreboard: () => null }));
 vi.mock("@/components/table/SoundToggle", () => ({ SoundToggle: () => null }));
 vi.mock("@/components/table/TableUtilityMenu", () => ({ TableUtilityMenu: () => null }));

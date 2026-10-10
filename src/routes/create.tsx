@@ -41,9 +41,12 @@ const intensityLabels: Record<DialogueIntensity, string> = {
   chaos: t.banterChaos,
 };
 
-function CreateGame() {
+export function CreateGame() {
   const navigate = useNavigate();
   const activeLookup = useCurrentActiveGame();
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionFailed, setSessionFailed] = useState(false);
+  const [sessionAttempt, setSessionAttempt] = useState(0);
   const [players, setPlayers] = useState<PublicPlayer[]>([]);
   const [host, setHost] = useState<PublicPlayer | null>(null);
   const [verifiedHost, setVerifiedHost] = useState<PublicPlayer | null>(null);
@@ -73,17 +76,19 @@ function CreateGame() {
 
   useEffect(() => {
     let mounted = true;
+    setSessionLoading(true);
+    setSessionFailed(false);
     void (async () => {
       const current = await getCurrentPlayer();
       if (!current || !mounted) return;
-      const available = await getAvailableRulesets();
-      if (!mounted || !available.ok) return;
       setVerifiedHost(current);
       setHost(current);
-      setOptions(available.options);
-    })().catch(() => undefined);
+      const available = await getAvailableRulesets();
+      if (mounted && available.ok) setOptions(available.options);
+    })().catch(() => { if (mounted) setSessionFailed(true); })
+      .finally(() => { if (mounted) setSessionLoading(false); });
     return () => { mounted = false; };
-  }, []);
+  }, [sessionAttempt]);
 
   useEffect(() => {
     if (activeLookup.status !== "waiting") return;
@@ -156,6 +161,12 @@ function CreateGame() {
     } finally { setBusy(false); }
   };
 
+  if (sessionLoading) {
+    return <ScreenShell title={t.createGame} variant="pregame" contentClassName="pregame-centered-content"><p role="status">{t.sessionLoading}</p></ScreenShell>;
+  }
+  if (sessionFailed) {
+    return <ScreenShell title={t.createGame} variant="pregame" contentClassName="pregame-centered-content"><div><p role="alert">{t.sessionLoadFailed}</p><JButton onClick={() => setSessionAttempt(n => n + 1)}>Δοκιμή ξανά</JButton></div></ScreenShell>;
+  }
   if (activeLookup.status === "loading" || activeLookup.status === "active") {
     return <div className="surface-room min-h-dvh" />;
   }
