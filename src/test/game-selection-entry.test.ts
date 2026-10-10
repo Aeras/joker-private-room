@@ -8,7 +8,7 @@ describe("separate game selection after secure player login", () => {
     const home = read("src/routes/index.tsx");
     expect(home).toContain("<PlayerSessionGate");
     expect(home).toContain("Επιλέξτε το παιχνίδι");
-    expect(home).toContain('to="/joker"');
+    expect(home).toContain('href="/joker"');
     expect(home).toContain("DURAK");
     expect(home).toContain("Προσεχώς");
     expect(home).not.toContain('to="/create"');
