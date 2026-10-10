@@ -28,7 +28,12 @@ Deno.serve(async(req:Request)=>{
     p_session_token:token,p_action:action,p_code:code||null,
     p_variant:action==="create"?variant:null,p_capacity:action==="create"?capacity:null
   });
-  if(error){console.error("DURAK RPC failure",error.code);return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);}
+  if(error){
+    if(error.code==="23505" && error.message?.includes("ACTIVE_GAME_EXISTS"))
+      return respond({ok:false,code:"ACTIVE_GAME_EXISTS"},409);
+    console.error("DURAK RPC failure",error.code);
+    return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);
+  }
   const result=data&&typeof data==="object"?data:{ok:false,code:"SERVICE_UNAVAILABLE"};
   const status=result.ok===true?200:result.code==="NOT_AUTHENTICATED"?401:result.code==="NOT_A_MEMBER"?403:
     ["ACTIVE_GAME_EXISTS","ROOM_FULL","ROOM_ALREADY_STARTED"].includes(result.code)?409:400;
