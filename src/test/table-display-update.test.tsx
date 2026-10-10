@@ -66,3 +66,21 @@ it("keeps public backs separate from compact summaries and preserves local ident
   expect(view.container.querySelector(".joker-seat-identity .joker-seat-info")).toBeNull();
   expect(view.container.querySelector("[data-local-hand-summary]")).toHaveTextContent("Αντίπαλος · ΕΣΥ1203 / 2");
 });
+
+it("renders premium reactions outside the avatar circle without clipping the character", () => {
+  const seat = {index:1,occupant:{type:"bot",bot:{id:"bot",displayName:"Αντίπαλος"}}} as Seat;
+  const stats = {totalScore:0,declaration:null,tricksTaken:0,isActive:false,isDealer:false,cardCount:0};
+  const view = render(<TableSeat seat={seat} orientation="vertical" reactionEmoji="wave" stats={stats} />);
+  const reaction = view.container.querySelector('[data-emoji-seat="1"]');
+  expect(reaction).not.toBeNull();
+  expect(reaction).toHaveClass("overflow-visible");
+  expect(reaction).not.toHaveClass("overflow-hidden");
+  const mascot = reaction!.querySelector("img")!;
+  expect(mascot).toHaveAttribute("src", "/emojis/joker/wave.webp");
+  expect(mascot).toHaveClass("h-[165%]");
+  expect(mascot).toHaveClass("w-[165%]");
+  expect(mascot).toHaveClass("max-w-none");
+  view.rerender(<TableSeat seat={seat} orientation="vertical" stats={stats} />);
+  expect(view.container.querySelector("[data-emoji-seat]")).toBeNull();
+  expect(view.container.querySelector(".joker-table-avatar-remote")).not.toBeNull();
+});

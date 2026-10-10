@@ -112,10 +112,14 @@ export function TableSeat({ seat, stats, showCards = true, local = false, reacti
       } : undefined}
       aria-label={showCountdown ? `Ενεργός παίκτης, ${remainingSeconds} δευτερόλεπτα απομένουν` : stats.isActive ? "Ενεργός παίκτης" : undefined}
     >
-      <div className="rounded-full bg-black p-0.5">
+      <div className="relative rounded-full bg-black p-0.5">
         {reactionEmoji && emojiUrl(reactionEmoji) ? (
-          <div data-emoji-seat={seat.index} className={cn(avatarSize, "flex items-center justify-center overflow-hidden rounded-full bg-secondary")} role="img" aria-label="Smiley αντίδραση">
-            <img src={emojiUrl(reactionEmoji)!} alt="" className="h-full w-full object-contain p-0.5" />
+          <div data-emoji-seat={seat.index} className={cn(avatarSize, "relative isolate overflow-visible rounded-full bg-secondary")} role="img" aria-label="Smiley αντίδραση">
+            <img
+              src={emojiUrl(reactionEmoji)!}
+              alt=""
+              className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[165%] w-[165%] max-w-none -translate-x-1/2 -translate-y-1/2 object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
+            />
           </div>
         ) : <PlayerAvatar
           name={name}
