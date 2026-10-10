@@ -31,7 +31,7 @@ function turnRingColor(fraction: number): string {
 function progressPresentation(tricksTaken: number, declaration: number | null) {
   if (declaration === null) {
     return {
-      text: `${tricksTaken} / —`,
+      text: `— / ${tricksTaken}`,
       label: `${tricksTaken} μπάζες, δήλωση σε αναμονή`,
       marker: "",
       className: "text-foreground/80",
@@ -39,7 +39,7 @@ function progressPresentation(tricksTaken: number, declaration: number | null) {
   }
   if (tricksTaken === declaration) {
     return {
-      text: `${tricksTaken} / ${declaration}`,
+      text: `${declaration} / ${tricksTaken}`,
       label: `${tricksTaken} από ${declaration}, ακριβώς στη δήλωση`,
       marker: "✓",
       className: "text-emerald-300",
@@ -47,21 +47,22 @@ function progressPresentation(tricksTaken: number, declaration: number | null) {
   }
   if (tricksTaken > declaration) {
     return {
-      text: `${tricksTaken} / ${declaration}`,
+      text: `${declaration} / ${tricksTaken}`,
       label: `${tricksTaken} από ${declaration}, υπέρβαση δήλωσης`,
       marker: "!",
       className: "text-negative",
     };
   }
   return {
-    text: `${tricksTaken} / ${declaration}`,
+    text: `${declaration} / ${tricksTaken}`,
     label: `${tricksTaken} από ${declaration}, κάτω από τη δήλωση`,
     marker: "",
     className: "text-foreground/85",
   };
 }
 
-export function TableSeat({ seat, stats, orientation, showCards = true, local = false, infoLayout = "below", reactionEmoji, chatMessage, chatSide = "right" }: {
+export function TableSeat({ seat, stats, showCards = true, local = false, reactionEmoji, chatMessage, chatSide = "right", visualSeat = 2 }: {
+  visualSeat?: 0 | 1 | 2 | 3;
   seat: Seat;
   stats: SeatStats;
   orientation: "horizontal" | "vertical";
@@ -77,8 +78,6 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
   const id = o.type === "human" ? o.player.id : o.type === "bot" ? o.bot.id : `empty-${seat.index}`;
   const explicitAvatar = o.type === "human" ? o.player.avatarUrl : o.type === "bot" ? o.bot.avatarUrl : undefined;
   const connected = o.type === "bot" || (o.type === "human" && o.connected);
-  const score = stats.totalScore < 0 ? `−${Math.abs(stats.totalScore)}` : `${stats.totalScore}`;
-  const progress = progressPresentation(stats.tricksTaken, stats.declaration);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -146,8 +145,9 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
   );
 
   const identity = (
-    <div className={cn("relative flex flex-col items-center", stats.isActive && "drop-shadow-[0_0_10px_var(--gold)]")}>
+    <div className={cn("joker-seat-identity relative flex items-center", "flex-col", stats.isActive && "drop-shadow-[0_0_10px_var(--gold)]")}>
       {avatar}
+      {!local && visualSeat !== 2 && showCards && stats.cardCount > 0 && <div className="joker-remote-hand-space" aria-hidden="true" style={{ "--remote-card-count": Math.min(stats.cardCount, 9) } as React.CSSProperties} />}
       {chatMessage && (
         <div role="status" data-chat-seat={seat.index}
           className={cn("pointer-events-none absolute z-[85] w-max max-w-[min(13rem,32vw)] break-words rounded-xl border border-primary/50 bg-black/90 px-2.5 py-1.5 text-center text-xs font-semibold leading-snug text-white shadow-xl",
@@ -157,33 +157,38 @@ export function TableSeat({ seat, stats, orientation, showCards = true, local = 
           {chatMessage}
         </div>
       )}
-      <div data-seat-info-layout={infoLayout} className={cn(infoLayout === "left" ? "absolute right-full top-1/2 mr-2 -translate-y-1/2" : "-mt-1", "min-w-24 max-w-36 rounded-md border border-primary/40 bg-black/85 px-2 py-1 text-center shadow-lg backdrop-blur-sm", local && "min-w-28")}>
-        <div className="truncate text-[10px] font-semibold leading-tight text-foreground sm:text-xs">
-          {name}{local && <span className="text-primary"> · ΕΣΥ</span>}
-        </div>
-        <div className="mt-0.5 flex items-center justify-center gap-2 leading-tight">
-          <span className={cn("joker-seat-score font-display text-xs font-bold tabular-nums sm:text-sm", stats.totalScore < 0 ? "text-negative" : "text-primary")} title="Συνολικό σκορ">
-            {score}
-          </span>
-          <span className="text-white/30">·</span>
-          <span className={cn("joker-seat-progress text-[10px] font-semibold tabular-nums sm:text-xs", progress.className)} aria-label={progress.label} title="Μπάζες / Δήλωση">
-            {progress.text}{progress.marker && <span className="ml-1" aria-hidden="true">{progress.marker}</span>}
-          </span>
-        </div>
-      </div>
+      {!local && <SeatSummary seat={seat} stats={stats} />}
     </div>
   );
 
   if (local) return identity;
 
   return (
-    <div className={cn("flex items-center gap-1", orientation === "vertical" ? "flex-col" : "flex-row")}>
+    <div className="relative" data-visual-seat={visualSeat}>
       {identity}
       {showCards && stats.cardCount > 0 && (
-        <div className="flex -space-x-3 [--card-w:1.05rem] sm:[--card-w:1.35rem] lg:[--card-w:1.55rem]">
-          {Array.from({ length: Math.min(stats.cardCount, 9) }, (_, i) => <PlayingCard key={i} faceDown />)}
+        <div data-remote-hand={visualSeat} aria-label={`${stats.cardCount} κλειστά φύλλα`} className="joker-remote-hand pointer-events-none absolute" style={{ "--remote-card-count": Math.min(stats.cardCount, 9) } as React.CSSProperties}>
+          {Array.from({ length: Math.min(stats.cardCount, 9) }, (_, i) => <div key={i} className="absolute" style={{ transform: visualSeat === 2 ? `translateX(${i * 10}%)` : `translateY(${i * 10 / 1.4}%) rotate(${visualSeat === 1 ? 90 : -90}deg)` }}><PlayingCard faceDown /></div>)}
         </div>
       )}
     </div>
+  );
+}
+
+export function SeatSummary({ seat, stats, local = false }: { seat: Seat; stats: SeatStats; local?: boolean }) {
+  const o = seat.occupant;
+  const name = o.type === "human" ? o.player.displayName : o.type === "bot" ? o.bot.displayName : t.emptySeat;
+  const score = stats.totalScore < 0 ? `−${Math.abs(stats.totalScore)}` : `${stats.totalScore}`;
+  const progress = progressPresentation(stats.tricksTaken, stats.declaration);
+  return (
+      <div data-seat-info-layout="below" className={cn("joker-seat-info text-center", local && "joker-seat-info-local")}>
+        <div className="joker-seat-name-score flex items-baseline justify-center gap-1.5 text-xs font-semibold leading-tight text-white/85">
+          <span className="joker-seat-name truncate" title={name}>{name}{local && <span className="sr-only"> · ΕΣΥ</span>}</span>
+          <span className={cn("joker-seat-score shrink-0 font-bold tabular-nums", stats.totalScore < 0 ? "text-negative" : "text-white/65")} title="Συνολικό σκορ">{score}</span>
+        </div>
+        <span className={cn("joker-seat-progress inline-block rounded-md bg-black/20 px-2 py-0.5 text-xs font-semibold tabular-nums", progress.className)} aria-label={progress.label} title="Δήλωση / Μπάζες">
+          {progress.text}{progress.marker && <span className="ml-1" aria-hidden="true">{progress.marker}</span>}
+        </span>
+      </div>
   );
 }

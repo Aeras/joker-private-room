@@ -152,7 +152,7 @@ describe("shared local hand geometry", () => {
   });
   it("reserves the measured local-seat lane and keeps trick dimensions height-aware", () => {
     expect(geometry.localHandBounds!.left + geometry.feltRect.left).toBeGreaterThan(140);
-    expect(geometry.localHandCenter.x).toBeGreaterThan(geometry.feltRect.width / 2);
+    expect(geometry.localHandCenter.x).toBeCloseTo(geometry.feltRect.width / 2);
     const short = computeTableGeometry({
       feltRect: rect(40, 20, 720, 140),
       topSeatRect: rect(300, 20, 160, 60),

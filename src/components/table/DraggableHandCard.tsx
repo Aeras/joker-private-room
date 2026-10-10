@@ -37,6 +37,7 @@ export function DraggableHandCard({
   overlap,
   revealing = false,
   faceUpOnReveal = false,
+  showLegality = true,
   dropRect,
   onCommit,
 }: {
@@ -49,6 +50,7 @@ export function DraggableHandCard({
   overlap: boolean;
   revealing?: boolean;
   faceUpOnReveal?: boolean;
+  showLegality?: boolean;
   dropRect?: RectLike | null;
   onCommit: (cardId: string, releaseRect: CardReleaseRect) => Promise<void>;
 }) {
@@ -208,6 +210,7 @@ export function DraggableHandCard({
   return (
     <div
       ref={rootRef}
+      data-hand-illegal={showLegality && !legal && !revealing ? "true" : "false"}
       role="button"
       tabIndex={canInteract ? 0 : -1}
       aria-disabled={!canInteract}
@@ -238,12 +241,13 @@ export function DraggableHandCard({
           className="relative transition-transform duration-[340ms] motion-reduce:duration-75 [transform-style:preserve-3d]"
           style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)`, transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)" }}
         >
-          <div className="[backface-visibility:hidden]">
+          <div className="relative [backface-visibility:hidden]">
             <PlayingCard
               card={card}
               selected={commitReady}
-              className={cn(drag && "scale-[1.04]")}
+              className={cn(drag && "scale-[1.04]", showLegality && !legal && !revealing && "grayscale-[0.65]")}
             />
+            {showLegality && !legal && !revealing && <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[inherit] bg-black/30" />}
           </div>
           <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
             <PlayingCard faceDown />

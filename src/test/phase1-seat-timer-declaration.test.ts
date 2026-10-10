@@ -42,10 +42,10 @@ describe("JK-001 Phase 1 — seat, timer and declaration contract", () => {
     // Full behavior is covered by presentation-score-latch.test.tsx.
     expect(gameTable).toContain("declaration: displayedScore.dealNumber !== projection.progression.dealNumber");
     expect(gameTable).toContain("displayedScore.declarations[seat]");
-    expect(tableSeat).toContain("`${tricksTaken} / —`");
+    expect(tableSeat).toContain("`— / ${tricksTaken}`");
     expect(tableSeat).toContain('marker: "✓"');
     expect(tableSeat).toContain('marker: "!"');
-    expect(tableSeat).toContain("Μπάζες / Δήλωση");
+    expect(tableSeat).toContain("Δήλωση / Μπάζες");
   });
 
   it("keeps the local identity as a real avatar and marks it as self", () => {

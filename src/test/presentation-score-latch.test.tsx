@@ -36,7 +36,7 @@ function fixture() {
 }
 function finish(element: Element | undefined) {
   if (!element) throw new Error("Missing trick motion surface");
-  if (element.closest('[data-trick-departing-stage="stacking"]') && (element as HTMLElement).style.animationName !== "none") { const animation = new Event("animationend", { bubbles: true }); Object.defineProperty(animation, "animationName", { value: (element as HTMLElement).style.animationName }); fireEvent(element, animation); return; }
+  if ((element as HTMLElement).style.animationName && (element as HTMLElement).style.animationName !== "none") { const animation = new Event("animationend", { bubbles: true }); Object.defineProperty(animation, "animationName", { value: (element as HTMLElement).style.animationName }); fireEvent(element, animation); return; }
   const event = new Event("transitionend", { bubbles: true });
   Object.defineProperty(event, "propertyName", { value: "transform" });
   fireEvent(element, event);
@@ -51,7 +51,7 @@ describe("real table score presentation integration", () => {
     if (finalDeal) props.projection.score.tricksTaken = [1, 2, 3, 2];
     const view = render(<GameTable {...props} />);
     const info = () => Array.from(view.container.querySelectorAll<HTMLElement>("[data-seat-info-layout]"));
-    const displayedScores = () => info().map(panel => [panel.querySelector("span[title='Συνολικό σκορ']")?.textContent, panel.querySelector("span[title='Μπάζες / Δήλωση']")?.textContent]);
+    const displayedScores = () => info().map(panel => [panel.querySelector("span[title='Συνολικό σκορ']")?.textContent, panel.querySelector("span[title='Δήλωση / Μπάζες']")?.textContent]);
     const before = displayedScores();
     const next = structuredClone(props.projection);
     next.stateVersion++;
@@ -87,18 +87,18 @@ describe("real table score presentation integration", () => {
     expect(displayedScores()).toEqual(before);
     finish(surfaces()[3]);
     const top = info().find(panel => panel.textContent?.includes("Seat 2"));
-    expect(top?.textContent).toContain(finalDeal ? "500" : "1 / 2");
+    expect(top?.textContent).toContain(finalDeal ? "500" : "2 / 1");
     if (finalDeal) {
       for (const panel of info()) {
         const seat = [0, 1, 2, 3].find(index => panel.textContent?.includes(`Seat ${index}`));
         if (seat == null) throw new Error("Missing seat identity");
         expect(panel.textContent).toContain(String(latest.score.cumulativeTotals[seat]));
-        expect(panel.textContent).toContain("0 / —");
+        expect(panel.textContent).toContain("— / 0");
       }
     }
-    expect(top?.getAttribute("data-seat-info-layout")).toBe("left");
-    expect(top?.className).toContain("absolute right-full top-1/2");
-    expect(info().filter(panel => panel.dataset['seatInfoLayout'] === "below")).toHaveLength(3);
+    expect(top?.getAttribute("data-seat-info-layout")).toBe("below");
+    expect(top?.className).toContain("joker-seat-info");
+    expect(info().filter(panel => panel.dataset['seatInfoLayout'] === "below")).toHaveLength(4);
   });
 
   it("initializes settled reconnects, reconciles idle scores, and resets on a new game", () => {
@@ -107,7 +107,7 @@ describe("real table score presentation integration", () => {
     props.projection.score.tricksTaken[2] = 1;
     const view = render(<GameTable {...props} />);
     const top = () => Array.from(view.container.querySelectorAll("[data-seat-info-layout]")).find(panel => panel.textContent?.includes("Seat 2"));
-    expect(top()?.textContent).toContain("1 / 2");
+    expect(top()?.textContent).toContain("2 / 1");
     expect(view.container.querySelector("[data-trick-presentation-id]")).toBeNull();
     const next = structuredClone(props.projection);
     next.score.cumulativeTotals[2] = 700;
@@ -115,7 +115,7 @@ describe("real table score presentation integration", () => {
     expect(top()?.textContent).toContain("700");
     next.gameId = "new-game"; next.score.tricksTaken[2] = 0; next.score.cumulativeTotals[2] = 0;
     view.rerender(<GameTable {...props} projection={{ ...next }} />);
-    expect(top()?.textContent).toContain("0 / 2");
+    expect(top()?.textContent).toContain("2 / 0");
     expect(top()?.textContent).not.toContain("700");
   });
 });
