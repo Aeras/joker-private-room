@@ -139,7 +139,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     const menu = read("src/components/table/TableUtilityMenu.tsx");
     const projectionService = read("src/services/gameProjectionFunctions.ts");
     const migration = read("supabase/migrations/20261005062610_jk006_termination_terminal_payload.sql");
-    expect(menu).toContain('window.location.assign("/")');
+    expect(menu).toContain('window.location.assign("/joker")');
     expect(projectionService).toContain("terminal.canonicalState");
     expect(migration).toContain("'canonicalState', v_new_state");
     expect(migration).toContain("'viewerSeat', v_viewer_seat");
