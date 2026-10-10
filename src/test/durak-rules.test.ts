@@ -32,7 +32,7 @@ describe("isolated DURAK game rules", () => {
   it("keeps the human player at bottom in every layout", () => {
     for (let n=2;n<=6;n++) {
       expect(DURAK_SEAT_POSITIONS[n]).toHaveLength(n);
-      expect(DURAK_SEAT_POSITIONS[n][0]).toBe("bottom");
+      expect(DURAK_SEAT_POSITIONS[n]?.[0]).toBe("bottom");
     }
   });
 });
