@@ -193,7 +193,12 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     trickGeometry.current.set(geometryKey, geometry);
     while (trickGeometry.current.size > 24) trickGeometry.current.delete(trickGeometry.current.keys().next().value!);
   }
-  const presentationGeometry = trickGeometry.current.get(geometryKey) ?? geometry;
+  // Hydrated cards are already on the table: pin them to the latest live viewport,
+  // not to a geometry snapshot captured before Android resumed/reflowed.
+  // Active flights keep their original per-trick snapshot to avoid jumps mid-flight.
+  const presentationGeometry = active?.hydrated && !departing && !localPlayPresentation
+    ? (geometry ?? trickGeometry.current.get(geometryKey) ?? null)
+    : (trickGeometry.current.get(geometryKey) ?? geometry);
   const artworkSettled = useCriticalCardArtwork([assets.cardBack, ...(active?.cards.map(play => assets.cardFace(play.card)) ?? [])]);
   useLayoutEffect(() => {
     if (activeId.current === active?.id) return;

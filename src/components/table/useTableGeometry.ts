@@ -194,6 +194,8 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
 function geometrySignature(value: Omit<TableGeometry, "epoch">): string {
   const p = (number: number) => Math.round(number * 2) / 2;
   return [
+    p(value.feltRect.left),
+    p(value.feltRect.top),
     p(value.feltRect.width),
     p(value.feltRect.height),
     p(value.usableBounds.left),
@@ -205,6 +207,7 @@ function geometrySignature(value: Omit<TableGeometry, "epoch">): string {
     p(value.localHandBounds?.left ?? 0),
     p(value.localHandBounds?.right ?? 0),
     p(value.localDealExit?.y ?? 0),
+    p(value.dealCenter.x),
     p(value.trickCardSize.width),
     ...([0, 1, 2, 3] as VisualSeat[]).flatMap((seat) => [
       p(value.seatOrigins[seat].x),
@@ -235,9 +238,11 @@ export function useTableGeometry(layoutKey?: string): {
 
   const measure = useCallback(() => {
     const felt = feltRef.current;
-    if (!felt) return;
+    if (!felt || document.visibilityState === "hidden") return;
+    const bounds = felt.getBoundingClientRect();
+    if (bounds.width < 100 || bounds.height < 100 || window.innerWidth < 100 || window.innerHeight < 100) return;
     const next = computeTableGeometry({
-      feltRect: felt.getBoundingClientRect(),
+      feltRect: bounds,
       topHandRect: topSeatRef.current?.querySelector("[data-remote-hand]")?.getBoundingClientRect(),
       leftHandRect: leftSeatRef.current?.querySelector("[data-remote-hand]")?.getBoundingClientRect(),
       rightHandRect: rightSeatRef.current?.querySelector("[data-remote-hand]")?.getBoundingClientRect(),
@@ -282,12 +287,28 @@ export function useTableGeometry(layoutKey?: string): {
     window.addEventListener("resize", scheduleMeasure);
     window.addEventListener("orientationchange", scheduleMeasure);
     document.addEventListener("fullscreenchange", scheduleMeasure);
+    // Mobile Chrome/PWA can restore a different visual viewport without firing resize.
+    // Recheck immediately on foreground and once again on the next paint, no timers.
+    const onForeground = () => {
+      if (document.visibilityState === "visible") {
+        measure();
+        scheduleMeasure();
+      }
+    };
+    document.addEventListener("visibilitychange", onForeground);
+    window.addEventListener("pageshow", onForeground);
+    window.addEventListener("focus", onForeground);
+    window.visualViewport?.addEventListener("resize", scheduleMeasure);
     return () => {
       observer?.disconnect();
       desktopMedia.removeEventListener("change", scheduleMeasure);
       window.removeEventListener("resize", scheduleMeasure);
       window.removeEventListener("orientationchange", scheduleMeasure);
       document.removeEventListener("fullscreenchange", scheduleMeasure);
+      document.removeEventListener("visibilitychange", onForeground);
+      window.removeEventListener("pageshow", onForeground);
+      window.removeEventListener("focus", onForeground);
+      window.visualViewport?.removeEventListener("resize", scheduleMeasure);
       if (frameRef.current != null) window.cancelAnimationFrame(frameRef.current);
     };
   }, [scheduleMeasure]);
