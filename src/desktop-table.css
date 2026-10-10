@@ -3,7 +3,7 @@
 @media (min-width: 1200px) and (min-height: 650px) and (hover: hover) and (pointer: fine) {
   .joker-room {
     --desktop-unit: clamp(1px, min(100vw / 1200, 100vh / 650), 2.25px);
-    --desktop-hand-card-w: calc(108 * var(--desktop-unit));
+    --desktop-hand-card-w: calc(102.6 * var(--desktop-unit));
     --desktop-deal-card-w: calc(88 * var(--desktop-unit));
     --desktop-trump-card-w: calc(80 * var(--desktop-unit));
     --desktop-selection-card-w: calc(73.6 * var(--desktop-unit));
@@ -14,8 +14,8 @@
     height: calc(72 * var(--desktop-unit));
   }
   .joker-room .joker-table-avatar-remote {
-    width: calc(64 * var(--desktop-unit));
-    height: calc(64 * var(--desktop-unit));
+    width: calc(61 * var(--desktop-unit));
+    height: calc(61 * var(--desktop-unit));
   }
   .joker-room .joker-seat-connection {
     width: calc(10 * var(--desktop-unit));
@@ -27,8 +27,8 @@
     font-size: calc(9.6 * var(--desktop-unit));
   }
   .joker-room .joker-seat-countdown { font-size: calc(9.6 * var(--desktop-unit)); }
-  .joker-room { --desktop-remote-card-w: calc(108 * var(--desktop-unit)); }
-  .joker-room .joker-remote-seat { --remote-avatar-height: calc(74 * var(--desktop-unit)); }
+  .joker-room { --desktop-remote-card-w: calc(102.6 * var(--desktop-unit)); }
+  .joker-room .joker-remote-seat { --remote-avatar-height: calc(71 * var(--desktop-unit)); }
   .joker-room .joker-seat-info {max-width:calc(240 * var(--desktop-unit))}
   .joker-room .joker-seat-name {max-width:calc(170 * var(--desktop-unit))}
   .joker-room .joker-seat-name-score,

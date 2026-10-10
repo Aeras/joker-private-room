@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { assets } from "@/assets/registry";
 import {
   hasCardAssetFailed,
@@ -78,8 +78,21 @@ function CardArtwork({
   const [failed, setFailed] = useState(() => hasCardAssetFailed(artwork));
   const [retry, setRetry] = useState(0);
   const domLoaded = useRef(false);
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  useLayoutEffect(() => {
+    // A cached DOM surface can already be drawable while shared decode is pending.
+    // Admit it before paint when flight ownership changes to the canonical card.
+    const image = imageRef.current;
+    domLoaded.current = !!image?.complete && image.naturalWidth > 0;
+    if (domLoaded.current) {
+      setLoaded(true);
+      setFailed(false);
+    }
+  }, [artwork, retry]);
 
   useEffect(() => {
+    if (domLoaded.current) return;
     setLoaded(!retry && isCardAssetReady(artwork));
     setFailed(!retry && hasCardAssetFailed(artwork));
     if (!retry && isCardAssetReady(artwork)) return;
@@ -113,6 +126,7 @@ function CardArtwork({
       {failed && fallback}
       {(
         <img
+          ref={imageRef}
           key={retry}
           src={resolvedCardArtwork(artwork)}
           alt={alt}
