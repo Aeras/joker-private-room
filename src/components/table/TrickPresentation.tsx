@@ -140,6 +140,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const [revision, revise] = useState(0);
   const [beatPending, setBeatPending] = useState(false);
   const [displayedCards, setDisplayedCards] = useState<PlayedCard[]>([]);
+  const [landedLocalOwner, setLandedLocalOwner] = useState<LocalPlayPresentation | null>(null);
   const [departing, setDeparting] = useState<Departing | null>(null);
   const [announcementQueue, setAnnouncementQueue] = useState<JokerAnnouncement[]>([]);
   const [paused, setPaused] = useState(document.visibilityState === "hidden");
@@ -250,9 +251,25 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       const key = local.actorSeat + ":" + local.cardId;
       if (lastLandingAt.current == null) lastLandingAt.current = performance.now();
       landedCards.current.add(key);
+      // Landing is not permission to remove the only drawable card. The ordered
+      // journal and critical artwork must admit its replacement first.
+      setLandedLocalOwner(local);
+    } else {
+      onLocalFlightSettled();
     }
-    onLocalFlightSettled(); revise(n => n + 1);
+    revise(n => n + 1);
   }, [onLocalFlightSettled]);
+
+  useLayoutEffect(() => {
+    if (!landedLocalOwner || !localPlayPresentation || !artworkSettled) return;
+    if (landedLocalOwner.gameId !== localPlayPresentation.gameId ||
+        landedLocalOwner.dealNumber !== localPlayPresentation.dealNumber ||
+        landedLocalOwner.sourceStateVersion !== localPlayPresentation.sourceStateVersion ||
+        !isPresentationCard(localPlayPresentation, { seatIndex: landedLocalOwner.actorSeat, card: landedLocalOwner.card })) return;
+    if (!displayedCards.some(play => isPresentationCard(localPlayPresentation, play))) return;
+    setLandedLocalOwner(null);
+    onLocalFlightSettled();
+  }, [landedLocalOwner, localPlayPresentation, artworkSettled, displayedCards, onLocalFlightSettled]);
 
   useEffect(() => {
     if (!artworkSettled || paused || !active || activeId.current !== active.id || departing) return;

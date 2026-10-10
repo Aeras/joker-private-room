@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { LocalFlightCard } from "@/components/table/LocalFlightCard";
@@ -7,8 +8,9 @@ import type { PlayedCard } from "@/domain/engine";
 import type { PlayerGameProjection } from "@/domain/projection";
 import type { LocalPlayPresentation } from "@/components/table/localPlayPresentation";
 vi.mock("@/lib/gameAudio", () => ({ playGameSound: vi.fn() }));
+const readiness = vi.hoisted(() => ({ settled: true }));
 vi.mock("@/components/table/useCriticalCardArtwork", () => ({
-  useCriticalCardArtwork: () => true,
+  useCriticalCardArtwork: () => readiness.settled,
 }));
 const geom = (width = 900, height = 420) => ({
   ...computeTableGeometry({
@@ -44,6 +46,7 @@ const finish = (el: Element) => {
   fireEvent(el, e);
 };
 beforeEach(() => {
+  readiness.settled = true;
   vi.useFakeTimers();
   vi.stubGlobal("requestAnimationFrame", (fn: FrameRequestCallback) =>
     window.setTimeout(() => fn(0), 16),
@@ -200,4 +203,32 @@ it.each(["FROM_BELOW", "COMPETE"] as const)("local %s owns its full travel and f
   } else {
     tick(420); expect(settled).toHaveBeenCalledTimes(1);
   }
+});
+
+it.each(["artwork", "snapshot"])("retains a landed accepted first card while %s delays canonical ownership", cause => {
+  const local: LocalPlayPresentation = { gameId: "continuity", dealNumber: 1, actorSeat: 0, sourceStateVersion: 1, acceptedStateVersion: 2, geometryEpoch: 1, card, cardId: card.id, releaseRect: { left: 300, top: 300, right: 370, bottom: 398, width: 70, height: 98 }, status: "accepted" };
+  const settled = vi.fn();
+  function Harness({ projection }: { projection: PlayerGameProjection }) {
+    const [flight, setFlight] = useState<LocalPlayPresentation | null>(local);
+    return <TrickPresentation projection={projection} geometry={geom()} localPlayPresentation={flight} onLocalFlightSettled={() => { settled(); setFlight(null); }} />;
+  }
+  readiness.settled = cause !== "artwork";
+  const view = render(<Harness projection={snap()} />);
+  if (cause === "artwork") view.rerender(<Harness projection={snap([{seatIndex: 0, card}])} />);
+  tick(16);
+  const flight = view.container.querySelector<HTMLElement>("[data-local-flight-card]")!;
+  finish(flight);
+  expect(settled).not.toHaveBeenCalled();
+  expect(flight.isConnected).toBe(true);
+  expect(view.container.querySelector("[data-trick-seat]")).toBeNull();
+  tick(1000);
+  expect(flight.isConnected).toBe(true);
+  readiness.settled = true;
+  view.rerender(<Harness projection={snap([{seatIndex: 0, card}])} />);
+  expect(settled).toHaveBeenCalledTimes(1);
+  expect(view.container.querySelector("[data-local-flight-card]")).toBeNull();
+  const canonical = view.container.querySelector<HTMLElement>("[data-trick-seat]")!;
+  expect(canonical).not.toBeNull();
+  expect(canonical.style.animationName).toBe("none");
+  expect(canonical.style.transform).toContain("scale(1)");
 });
