@@ -31,7 +31,7 @@ export function TableUtilityMenu({
     const ok = await onEndGame().catch(() => false);
     if (ok) {
       // Ending a game never revokes the persistent player session.
-      window.location.assign("/");
+      window.location.assign("/joker");
       return;
     }
     setEnding(false);
