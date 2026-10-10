@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { RotateCw, Spade } from "lucide-react";
 import { RefreshButton } from "@/components/joker/RefreshButton";
 import { FullscreenButton } from "@/components/joker/FullscreenButton";
-import { jButton } from "@/components/joker/JButton";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
 
