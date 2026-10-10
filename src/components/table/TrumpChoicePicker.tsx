@@ -1,3 +1,4 @@
+import { SuitSymbol } from "../joker/SuitSymbol";
 import type { Suit } from "@/domain/cards";
 const SUITS: readonly Suit[] = ["hearts", "diamonds", "clubs", "spades"];
 const META: Record<Suit, { symbol: string; label: string }> = {
@@ -13,7 +14,7 @@ export function TrumpChoicePicker({ suits, busy, onSelect }: { suits: readonly (
   return <div className="absolute left-1/2 top-[42%] z-[85] w-fit max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-primary/40 bg-black/90 p-4 text-center shadow-2xl backdrop-blur-md [--suit-size:clamp(72px,7vw,96px)] [@media(max-height:400px)]:[--suit-size:72px]" role="dialog" aria-label="Επίλεξε ατού" data-trump-choice>
     <h2 className="mb-3 text-lg font-bold text-primary">Επίλεξε ατού</h2>
     <div className="grid grid-cols-4 gap-2">
-      {SUITS.map(suit => <button key={suit} type="button" disabled={busy || !suits.includes(suit)} aria-label={META[suit].label} onClick={() => onSelect(suit)} className={`${button} h-[var(--suit-size)] w-[var(--suit-size)] text-5xl ${suit === "hearts" || suit === "diamonds" ? "text-red-400" : "text-white"}`}>{META[suit].symbol}</button>)}
+      {SUITS.map(suit => <button key={suit} type="button" disabled={busy || !suits.includes(suit)} aria-label={META[suit].label} onClick={() => onSelect(suit)} className={`${button} flex h-[var(--suit-size)] w-[var(--suit-size)] items-center justify-center ${suit === "hearts" || suit === "diamonds" ? "text-red-400" : "text-white"}`}><SuitSymbol suit={suit} className="h-[62%] w-[62%]" /></button>)}
     </div>
     <div className="mt-3 grid grid-cols-2 gap-2">
       <button type="button" disabled={busy || !suits.length} onClick={() => onSelect(randomTrumpChoice(suits))} className={`${button} min-h-12 px-3 text-sm text-white`}>⚄ Τυχαίο</button>
