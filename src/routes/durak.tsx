@@ -22,6 +22,7 @@ function DurakHome() {
   const [error, setError] = useState("");
   const [room, setRoom] = useState<DurakRoomView | null>(null);
   const [available, setAvailable] = useState<DurakWaitingRoom[]>([]);
+  const [returnCode, setReturnCode] = useState("");
   async function run(action: "create" | "list" | "join" | "get" | "leave", code?: string) {
     setBusy(true); setError("");
     try {
@@ -34,7 +35,7 @@ function DurakHome() {
       if (!result.ok) { setError(result.code); return; }
       if ("room" in result) setRoom(result.room);
       else if ("rooms" in result) setAvailable(result.rooms);
-      else if ("cancelled" in result) { setRoom(null); await run("list"); }
+      else if ("cancelled" in result) { setRoom(null); setReturnCode(""); }
     } catch { setError("Αδυναμία επικοινωνίας με τον διακομιστή."); }
     finally { setBusy(false); }
   }
@@ -52,6 +53,7 @@ function DurakHome() {
               <button type="button" aria-pressed={mode === "create"} onClick={() => { setMode("create"); setPreview(false); }} className={`rounded-lg border p-3 font-semibold ${mode === "create" ? "border-primary bg-secondary" : "border-border"}`}>Δημιουργία</button>
               <button type="button" aria-pressed={mode === "join"} onClick={() => { setMode("join"); setPreview(false); }} className={`rounded-lg border p-3 font-semibold ${mode === "join" ? "border-primary bg-secondary" : "border-border"}`}>Συμμετοχή</button>
             </div>
+            {room === null && <div className="flex gap-2 items-center"><input aria-label="Κωδικός δωματίου DURAK για επιστροφή" value={returnCode} maxLength={6} onChange={e => setReturnCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,""))} placeholder="Κωδικός 6 χαρακτήρων" className="min-w-0 flex-1 rounded-lg bg-secondary p-2" /><button disabled={busy || returnCode.length !== 6} onClick={() => void run("get",returnCode)} type="button" className="rounded-lg border p-2">Επιστροφή στο δωμάτιο</button></div>}
             {error && <p role="alert" className="text-sm text-negative">Σφάλμα: {error}</p>}
             {room ? <div className="space-y-3 rounded-lg border border-primary p-3" aria-label="Δωμάτιο DURAK"><h2 className="font-semibold">Δωμάτιο {room.code}</h2><p className="text-sm">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p><div className="grid grid-cols-3 gap-2">{room.seats.map(seat => <div key={seat.index} className="rounded-lg bg-secondary p-2 text-center text-sm">Θέση {seat.index + 1}<div>{seat.name ?? "Ελεύθερη"}</div></div>)}</div><div className="flex gap-2"><button type="button" disabled={busy} onClick={() => void run("get",room.code)} className="rounded-lg border p-2">Ανανέωση</button><button type="button" disabled={busy} onClick={() => void run("leave",room.code)} className="rounded-lg border p-2">Έξοδος</button></div><p className="text-sm text-muted-foreground">Η έναρξη παρτίδας και η επιλογή bots θα ενεργοποιηθούν σε επόμενο στάδιο.</p></div> : mode === "create" ? <>
               <label className="block space-y-2 text-sm font-semibold">Παραλλαγή
@@ -64,7 +66,7 @@ function DurakHome() {
                   {PLAYER_COUNTS.map(count => <option key={count} value={count}>{count} παίκτες</option>)}
                 </select>
               </label>
-              <p className="text-sm text-muted-foreground">Επιλογή: {VARIANT_NAMES[variant]} · {playerCount} θέσεις. Η δημιουργία online δωματίου θα ενεργοποιηθεί μόλις συνδεθεί ο ανεξάρτητος DURAK server.</p>
+              <p className="text-sm text-muted-foreground">Επιλογή: {VARIANT_NAMES[variant]} · {playerCount} θέσεις. Μπορείς να δημιουργήσεις ανεξάρτητο δωμάτιο DURAK.</p>
               <button type="button" onClick={() => setPreview(value => !value)} className="w-full rounded-lg border border-primary p-3 font-semibold">{preview ? "Κλείσιμο προεπισκόπησης" : "Προεπισκόπηση δωματίου"}</button>
               {preview && <div className="rounded-xl border border-border p-3 space-y-3" aria-label="Προεπισκόπηση δωματίου DURAK">
                 <p className="font-semibold">Προεπισκόπηση · Δεν δημιουργήθηκε online δωμάτιο</p>
