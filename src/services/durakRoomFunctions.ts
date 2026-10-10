@@ -6,6 +6,7 @@ import { EXTERNAL_SUPABASE_URL, EXTERNAL_SUPABASE_PUBLISHABLE_KEY } from "@/inte
 const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("create"), variant: z.enum(["podkidnoy", "perevodnoy"]), capacity: z.number().int().min(2).max(6) }),
   z.object({ action: z.literal("list") }),
+  z.object({ action: z.literal("membership") }),
   z.object({ action: z.literal("join"), code: z.string().regex(/^[A-Za-z0-9]{6}$/) }),
   z.object({ action: z.literal("get"), code: z.string().regex(/^[A-Za-z0-9]{6}$/) }),
   z.object({ action: z.literal("leave"), code: z.string().regex(/^[A-Za-z0-9]{6}$/) }),
@@ -14,7 +15,7 @@ const requestSchema = z.discriminatedUnion("action", [
 export type DurakSeatView = { index: number; occupant: "human" | "bot" | "empty"; name: string | null };
 export type DurakRoomView = { code: string; variant: "podkidnoy" | "perevodnoy"; capacity: number; lifecycle: string; version: number; hostPlayerId: string; seats: DurakSeatView[] };
 export type DurakWaitingRoom = { code: string; variant: "podkidnoy" | "perevodnoy"; capacity: number; hostName: string; occupied: number };
-export type DurakRoomResponse = { ok: true; room: DurakRoomView } | { ok: true; rooms: DurakWaitingRoom[] } | { ok: true; cancelled: boolean } | { ok: false; code: string };
+export type DurakRoomResponse = { ok: true; room: DurakRoomView } | { ok: true; rooms: DurakWaitingRoom[] } | { ok: true; cancelled: boolean } | { ok: true; membership: { code:string; lifecycle:string } | null } | { ok: false; code: string };
 
 export const durakRoomCommand = createServerFn({ method: "POST" })
   .validator(requestSchema)
