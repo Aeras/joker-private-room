@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { durakRoomCommand, type DurakRoomView, type DurakWaitingRoom } from "@/services/durakRoomFunctions";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { FullscreenButton } from "@/components/joker/FullscreenButton";
@@ -23,6 +23,18 @@ function DurakHome() {
   const [room, setRoom] = useState<DurakRoomView | null>(null);
   const [available, setAvailable] = useState<DurakWaitingRoom[]>([]);
   const [returnCode, setReturnCode] = useState("");
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const membership = await durakRoomCommand({data:{action:"membership"}});
+        if (!active || !membership.ok || !("membership" in membership) || !membership.membership) return;
+        const result = await durakRoomCommand({data:{action:"get",code:membership.membership.code}});
+        if (active && result.ok && "room" in result) setRoom(result.room);
+      } catch { /* Keep manual return option available. */ }
+    })();
+    return () => { active=false; };
+  }, []);
   async function run(action: "create" | "list" | "join" | "get" | "leave", code?: string) {
     setBusy(true); setError("");
     try {
