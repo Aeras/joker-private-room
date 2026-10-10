@@ -5,6 +5,8 @@ export const t = {
   landscapeFullscreen: "Πλήρης οθόνη / Landscape",
   appName: "JOKER",
   round: "Γύρος",
+  declarationAnnouncement: "Δήλωση",
+  declarationPass: "Πάσο",
   sessionLoading: "Έλεγχος σύνδεσης…",
   sessionLoadFailed: "Δεν ήταν δυνατός ο έλεγχος σύνδεσης.",
   refreshApp: "Refresh",

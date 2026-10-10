@@ -119,3 +119,20 @@ describe("real table score presentation integration", () => {
     expect(top()?.textContent).not.toContain("700");
   });
 });
+it("real table announces a local declaration before command acceptance and removes it on rejection", async () => {
+  const props = fixture();
+  props.projection.initialDealerSelection = null;
+  props.projection.progression.phase = "DECLARATION";
+  props.projection.cards.ownHandVisible = false;
+  props.projection.declarations.values = [null, null, null, null];
+  props.projection.local.legalActions = [{ type: "declare", values: [0, 1, 2, 3] }];
+  let complete!: (value: null) => void;
+  props.onCommand.mockReturnValue(new Promise<null>(resolve => { complete = resolve; }));
+  const view = render(<GameTable {...props} />);
+  fireEvent.click(view.getByRole("button", { name: "Δήλωση 3" }));
+  expect(props.onCommand).toHaveBeenCalledWith({ type: "declare", value: 3 });
+  expect(view.container.querySelector('[data-declaration-bubble-seat="0"]')).toHaveTextContent("3");
+  expect(view.queryByRole("button", { name: "Δήλωση 3" })).toBeNull();
+  await act(async () => { complete(null); await Promise.resolve(); });
+  expect(view.container.querySelector('[data-declaration-bubble-seat="0"]')).toBeNull();
+});

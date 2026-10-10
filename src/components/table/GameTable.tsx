@@ -12,6 +12,7 @@ import { JButton } from "../joker/JButton";
 import { DealerSelectionPresentation } from "./DealerSelectionPresentation";
 import { DealPresentation, type DealPresentationStage } from "./DealPresentation";
 import { DeclarationPicker } from "./DeclarationPicker";
+import { useDeclarationBubbles } from "./useDeclarationBubbles";
 import { TrumpChoicePicker } from "./TrumpChoicePicker";
 import { JokerChoicePicker } from "./JokerChoicePicker";
 import { LocalHandRow } from "./LocalHandRow";
@@ -113,6 +114,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const [portrait, setPortrait] = useState(false);
   const [submittingCardId, setSubmittingCardId] = useState<string | null>(null);
   const [pendingDeclarationValue, setPendingDeclarationValue] = useState<number | null>(null);
+  const declarationBubbles = useDeclarationBubbles(projection, pendingDeclarationValue);
   const [localPlayPresentation, setLocalPlayPresentation] = useState<LocalPlayPresentation | null>(null);
   const [dealerIntroActive, setDealerIntroActive] = useState(() => dealerSelectionNeedsPresentation(projection));
   const [trickPresentationBusy, setTrickPresentationBusy] = useState(false);
@@ -309,6 +311,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     const stats = { totalScore: displayedScore.cumulativeTotals[seat], declaration: displayedScore.dealNumber !== projection.progression.dealNumber ? displayedScore.declarations[seat] ?? null : startupPresentationActive ? null : pos === 0 ? pendingDeclarationValue ?? displayedScore.declarations[seat] ?? null : displayedScore.declarations[seat] ?? null, tricksTaken: displayedScore.tricksTaken[seat], isDealer: !dealerIntroActive && projection.progression.dealerSeat === seat, isActive: isActor, cardCount: startupPresentationActive ? 0 : publicRemainingCardCount(projection, seat), humanDeadline: isActor && countdownPhase ? publicDeadline : null, isTemporarilyControlled: projection.seats[seat].owner.type === "human" && projection.seats[seat].controller === "temporary_bot" };
     if (summaryOnly) return <SeatSummary seat={roomSeat} stats={stats} local />;
     return <TableSeat seat={roomSeat} reactionEmoji={emojiBySeat?.[seat]}
+      declarationBubble={declarationBubbles[seat]?.value}
       chatMessage={formatSeatChatBubble(chatMessages, seat, room)}
       chatSide={pos === 3 ? "left" : pos === 2 ? "above" : "right"}
       orientation={orientation} infoLayout={pos === 2 ? "left" : "below"} showCards={!startupPresentationActive && !handRevealActive && projection.progression.phase !== "NINE_CARD_TRUMP_CHOICE"} visualSeat={pos} local={pos === 0} stats={stats} />;

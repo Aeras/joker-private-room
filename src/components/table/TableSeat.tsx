@@ -61,7 +61,7 @@ function progressPresentation(tricksTaken: number, declaration: number | null) {
   };
 }
 
-export function TableSeat({ seat, stats, showCards = true, local = false, reactionEmoji, chatMessage, chatSide = "right", visualSeat = 2 }: {
+export function TableSeat({ seat, stats, showCards = true, local = false, reactionEmoji, chatMessage, declarationBubble, chatSide = "right", visualSeat = 2 }: {
   visualSeat?: 0 | 1 | 2 | 3;
   seat: Seat;
   stats: SeatStats;
@@ -71,6 +71,7 @@ export function TableSeat({ seat, stats, showCards = true, local = false, reacti
   infoLayout?: "below" | "left";
   reactionEmoji?: string | null | undefined;
   chatMessage?: string | undefined;
+  declarationBubble?: number | undefined;
   chatSide?: "left" | "right" | "above";
 }) {
   const o = seat.occupant;
@@ -147,6 +148,9 @@ export function TableSeat({ seat, stats, showCards = true, local = false, reacti
   const identity = (
     <div className={cn("joker-seat-identity relative flex items-center", "flex-col", stats.isActive && "drop-shadow-[0_0_10px_var(--gold)]")}>
       {avatar}
+      {declarationBubble != null && <div role="status" data-declaration-bubble-seat={visualSeat} className="joker-declaration-bubble" aria-label={`${t.declarationAnnouncement}: ${declarationBubble === 0 ? t.declarationPass : declarationBubble}`}>
+        <span aria-hidden="true" className={declarationBubble === 0 ? "joker-declaration-pass" : undefined}>{declarationBubble === 0 ? "—" : declarationBubble}</span>
+      </div>}
       {chatMessage && (
         <div role="status" data-chat-seat={seat.index}
           className={cn("pointer-events-none absolute z-[85] w-max max-w-[min(13rem,32vw)] break-words rounded-xl border border-primary/50 bg-black/90 px-2.5 py-1.5 text-center text-xs font-semibold leading-snug text-white shadow-xl",
