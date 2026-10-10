@@ -1,0 +1,63 @@
+name: Optimize JOKER reactions
+on:
+  pull_request:
+    paths:
+      - "public/emojis/joker/original/**"
+      - ".github/workflows/optimize-joker-reactions.yml"
+permissions:
+  contents: write
+jobs:
+  optimize:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "Pillow==11.3.0"
+      - name: Convert full-size originals to compact transparent WebP
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          source = Path("public/emojis/joker/original")
+          destination = Path("public/emojis/joker")
+          targets = sorted(source.glob("*.png")) if source.exists() else []
+          existing = sorted(destination.glob("*.webp")) if destination.exists() else []
+          if not targets:
+              if len(existing) != 20:
+                  raise SystemExit(f"Expected 20 reaction WebPs, found {len(existing)}")
+              print("Already converted; all 20 WebPs present.")
+          else:
+              if len(targets) != 20:
+                  raise SystemExit(f"Expected 20 source PNGs, found {len(targets)}")
+              for png in targets:
+                  with Image.open(png) as img:
+                      img = img.convert("RGBA")
+                      img.thumbnail((480,480), Image.Resampling.LANCZOS)
+                      output = destination / (png.stem + ".webp")
+                      img.save(output, format="WEBP", quality=84, method=6, exact=True)
+                      with Image.open(output) as check:
+                          assert check.format == "WEBP" and check.mode in ("RGBA","RGB")
+                          assert check.size[0] <= 480 and check.size[1] <= 480
+              print("Optimized 20 named WebPs.")
+          PY
+      - name: Retain original images outside the publicly served assets
+        run: |
+          if [ -d public/emojis/joker/original ]; then
+            mkdir -p artwork/joker-emojis
+            mv public/emojis/joker/original artwork/joker-emojis/original
+          fi
+      - name: Commit generated assets back to this pull request
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A public/emojis/joker artwork/joker-emojis
+            git commit -m "Generate 20 compact transparent Joker WebP reactions"
+            git push origin "HEAD:${{ github.head_ref }}"
+          fi
