@@ -38,11 +38,11 @@ function GameSelection() {
                   <strong>JOKER</strong>
                   <small>{inJoker ? "Επιστροφή στην παρτίδα" : "Δημιουργία ή συμμετοχή"}</small>
                 </a>
-                <div className="home-choice-card game-selection-unavailable" aria-disabled="true" aria-label="Durak — προσεχώς">
+                <a href="/durak" className="home-choice-card" aria-label="Durak — είσοδος στο παιχνίδι">
                   <span className="home-choice-card__number">02</span>
                   <strong><Spade className="inline-block h-5 w-5" aria-hidden="true" /> DURAK</strong>
-                  <small>Προσεχώς</small>
-                </div>
+                  <small>Δημιουργία ή συμμετοχή</small>
+                </a>
                 <div className="home-choice-card game-selection-unavailable" aria-disabled="true" aria-label="Ντόμινο — προσεχώς">
                   <span className="home-choice-card__number">03</span>
                   <strong><Dices className="inline-block h-5 w-5" aria-hidden="true" /> ΝΤΟΜΙΝΟ</strong>
