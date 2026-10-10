@@ -53,13 +53,14 @@ it("shades only forbidden cards and still rejects their interaction", () => {
   expect(view.getByRole("button")).toHaveAttribute("data-hand-illegal","false");
 });
 
-it("keeps side-hand space between avatar and compact summary", () => {
+it("keeps public backs separate from compact summaries and preserves local identity", () => {
   const seat = {index:1,occupant:{type:"bot",bot:{id:"bot",displayName:"Αντίπαλος"}}} as Seat;
   const stats = {totalScore:120,declaration:3,tricksTaken:2,isActive:false,isDealer:false,cardCount:9};
   const view = render(<TableSeat seat={seat} orientation="vertical" visualSeat={1} stats={stats} />);
-  const spacer=view.container.querySelector(".joker-remote-hand-space")!;
-  const summary=view.container.querySelector(".joker-seat-info")!;
-  expect(spacer.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(view.container.querySelector(".joker-remote-hand-space")).toBeNull();
+  view.rerender(<TableSeat seat={seat} orientation="vertical" visualSeat={1} stats={{...stats,cardCount:1}} />);
+  expect(view.getByTitle("Δήλωση / Μπάζες")).toHaveTextContent("3 / 2");
+  view.rerender(<TableSeat seat={seat} orientation="vertical" visualSeat={1} stats={stats} />);
   expect(view.getByLabelText("9 κλειστά φύλλα").children).toHaveLength(9);
   view.rerender(<><TableSeat seat={seat} orientation="horizontal" local stats={stats}/><div data-local-hand-summary><SeatSummary seat={seat} stats={stats} local/></div></>);
   expect(view.container.querySelector(".joker-seat-identity .joker-seat-info")).toBeNull();

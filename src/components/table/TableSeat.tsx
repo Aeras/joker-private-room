@@ -147,7 +147,6 @@ export function TableSeat({ seat, stats, showCards = true, local = false, reacti
   const identity = (
     <div className={cn("joker-seat-identity relative flex items-center", "flex-col", stats.isActive && "drop-shadow-[0_0_10px_var(--gold)]")}>
       {avatar}
-      {!local && visualSeat !== 2 && showCards && stats.cardCount > 0 && <div className="joker-remote-hand-space" aria-hidden="true" style={{ "--remote-card-count": Math.min(stats.cardCount, 9) } as React.CSSProperties} />}
       {chatMessage && (
         <div role="status" data-chat-seat={seat.index}
           className={cn("pointer-events-none absolute z-[85] w-max max-w-[min(13rem,32vw)] break-words rounded-xl border border-primary/50 bg-black/90 px-2.5 py-1.5 text-center text-xs font-semibold leading-snug text-white shadow-xl",
