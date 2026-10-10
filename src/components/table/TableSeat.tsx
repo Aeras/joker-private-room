@@ -95,7 +95,7 @@ export function TableSeat({ seat, stats, showCards = true, local = false, reacti
   const showCountdown = stats.isActive && Boolean(stats.humanDeadline) && Number.isFinite(deadlineMs);
   const ringColor = turnRingColor(ringFraction);
   const elapsedDegrees = elapsedFraction * 360;
-  const avatarSize = local ? "h-14 w-14 sm:h-16 sm:w-16 lg:h-[4.5rem] lg:w-[4.5rem]" : "h-11 w-11 sm:h-14 sm:w-14 lg:h-16 lg:w-16";
+  const avatarSize = local ? "h-14 w-14 sm:h-16 sm:w-16 lg:h-[4.5rem] lg:w-[4.5rem]" : "h-[42px] w-[42px] sm:h-[53px] sm:w-[53px] lg:h-[61px] lg:w-[61px]";
 
   const avatar = (
     <div

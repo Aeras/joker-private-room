@@ -54,7 +54,7 @@ export function LocalHandRow({
   }, [visible]);
   const offset = localHandCenterOffset(geometry);
   const laneWidth = geometry?.localHandBounds?.width;
-  const cardWidth = "var(--desktop-hand-card-w, clamp(3.4rem, min(9.6vw, 22vh), 6.75rem))";
+  const cardWidth = "var(--desktop-hand-card-w, clamp(3.23rem, min(9.12vw, 20.9vh), 6.4125rem))";
   // Detach only from presentation immediately; the canonical hand stays server-owned.
   const presentedCards = cards.filter(card => card.id !== pendingCardId);
   const cardOverlap = presentedCards.length <= 3 ? 0.18 : presentedCards.length <= 5 ? 0.28 : presentedCards.length <= 7 ? 0.36 : 0.42;
@@ -63,12 +63,14 @@ export function LocalHandRow({
   const handLayoutRef = useHandReflow(JSON.stringify(presentedCards.map(card => card.id)), visible && entranceSettled && !revealing);
 
   return (
+    <div className="relative w-full" style={{ "--card-w": cardWidth, minHeight: "calc(var(--card-w) * 1.4 + 8px)", transform: `translateX(${offset}px)` } as React.CSSProperties}>
+      {summary && <div data-local-hand-summary data-summary-position={visible && cards.length > 0 && !revealing ? "above-hand" : "dealing"} className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap" style={{ bottom: visible && cards.length > 0 && !revealing ? "calc(100% - var(--card-w) * .52 + .25rem)" : "max(16px, env(safe-area-inset-bottom))" }}>{summary}</div>}
     <div
       ref={handLayoutRef}
-      className="relative flex w-full items-end justify-center px-3 transition-[transform,opacity] "
+      className="absolute inset-x-0 bottom-0 flex w-full items-end justify-center px-3 transition-[transform,opacity]"
       style={{
         "--card-w": cardWidth,
-        transform: `translateX(${offset}px) translateY(${entranceSettled ? "calc(var(--card-w) * 0.52 + 0px)" : reduced ? `calc(var(--card-w) * 0.52 + ${REDUCED_MOTION_DISTANCE_PX}px)` : "calc(100% + max(.15rem, env(safe-area-inset-bottom)) + 2px)"})`,
+        transform: `translateY(${entranceSettled ? "calc(var(--card-w) * 0.52 + 0px)" : reduced ? `calc(var(--card-w) * 0.52 + ${REDUCED_MOTION_DISTANCE_PX}px)` : "calc(100% + max(.15rem, env(safe-area-inset-bottom)) + 2px)"})`,
         opacity: reduced && !entranceSettled ? 0 : 1,
         transitionDuration: `${LOCAL_HAND_ENTRANCE_MS}ms`,
         transitionTimingFunction: "linear",
@@ -76,7 +78,6 @@ export function LocalHandRow({
       data-hand-center-offset={offset}
       data-hand-entrance={!entranceSettled ? "entering" : "settled"}
     >
-      {summary && <div data-local-hand-summary className="absolute bottom-[calc(100%+.25rem)] left-1/2 -translate-x-1/2 whitespace-nowrap">{summary}</div>}
       <div
         className="flex justify-center overflow-visible pt-2"
         style={{ "--card-w": cardWidth, "--card-overlap": revealOverlap } as React.CSSProperties}
@@ -109,6 +110,7 @@ export function LocalHandRow({
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

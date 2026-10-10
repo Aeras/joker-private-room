@@ -45,6 +45,20 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("shared local hand geometry", () => {
+  it("keeps the dealing summary above the floor, outside the moving card surface", () => {
+    const props = { cards, summary: <span>Player 100 — / 0</span>, legalCardIds: [], blocked: true, pendingCardId: null, authorityKey: "summary", geometry, onCommit: vi.fn() };
+    const view = render(<LocalHandRow {...props} visible={false} />);
+    const summary = view.container.querySelector<HTMLElement>("[data-local-hand-summary]")!;
+    expect(summary.dataset["summaryPosition"]).toBe("dealing");
+    expect(summary.closest("[data-hand-entrance]")).toBeNull();
+    view.rerender(<LocalHandRow {...props} visible revealing />);
+    expect(summary.dataset["summaryPosition"]).toBe("dealing");
+    view.rerender(<LocalHandRow {...props} visible revealing={false} />);
+    expect(summary.dataset["summaryPosition"]).toBe("above-hand");
+    view.rerender(<LocalHandRow {...props} cards={[]} visible />);
+    expect(summary.dataset["summaryPosition"]).toBe("dealing");
+  });
+
   it("starts newly visible cards offscreen even before the parent reveal effect, without restarting", () => {
     const props = {cards, legalCardIds:[], blocked:true, pendingCardId:null, authorityKey:"visibility", geometry, onCommit:vi.fn()};
     const view = render(<LocalHandRow {...props} visible={false} />, {wrapper:StrictMode});
@@ -103,7 +117,7 @@ describe("shared local hand geometry", () => {
   it.each([[1, "0.18"], [3, "0.18"], [4, "0.28"], [5, "0.28"], [6, "0.36"], [7, "0.36"], [8, "0.42"], [9, "0.42"]])("keeps a large fixed card width for %i cards and varies only overlap", (count, overlap) => {
     const view = render(<LocalHandRow cards={cards.slice(0, Number(count))} visible legalCardIds={[]} blocked pendingCardId={null} authorityKey="large-hand" geometry={geometry} onCommit={vi.fn()} />);
     const lane = view.container.querySelector<HTMLElement>("[data-hand-lane-width]");
-    expect(lane?.style.getPropertyValue("--card-w")).toBe("var(--desktop-hand-card-w, clamp(3.4rem, min(9.6vw, 22vh), 6.75rem))");
+    expect(lane?.style.getPropertyValue("--card-w")).toBe("var(--desktop-hand-card-w, clamp(3.23rem, min(9.12vw, 20.9vh), 6.4125rem))");
     expect(lane?.style.getPropertyValue("--card-overlap")).toBe(overlap);
     expect(view.container.querySelector<HTMLElement>("[data-hand-entrance]")?.style.transform).toContain("var(--card-w) * 0.52");
     if (Number(count) > 1) expect(view.container.querySelectorAll<HTMLElement>('[data-hand-layout-card]')[1]?.className).toContain("var(--card-overlap)");

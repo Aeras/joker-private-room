@@ -14,6 +14,26 @@ const image = (url: string) => images.filter(item => item.src === url).at(-1)!;
 beforeEach(() => { vi.resetModules(); vi.useFakeTimers(); images = []; FakeImage.cached = true; vi.stubGlobal("Image", FakeImage); localStorage.clear(); });
 afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe("decoded artwork readiness and slow-device recovery", () => {
+  it("keeps a cached canonical surface visible before paint while shared decode is pending", async () => {
+    vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(true);
+    vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(100);
+    const { PlayingCard } = await import("@/components/joker/PlayingCard");
+    const cache = await import("@/assets/cardPreload");
+    const { assets } = await import("@/assets/registry");
+    const card = { kind: "standard" as const, id: "8-clubs", suit: "clubs" as const, rank: "8" as const };
+    const pending = cache.preloadCardAsset(assets.cardFace(card)!);
+    const view = render(<PlayingCard card={card} />);
+    expect(cache.isCardAssetReady(assets.cardFace(card)!)).toBe(false);
+    expect(view.container.querySelector("img")).toHaveAttribute("data-card-artwork-loaded", "true");
+    expect(view.container.querySelector("img")).toHaveClass("opacity-100");
+    view.unmount();
+    const canonical = render(<PlayingCard card={card} />);
+    expect(canonical.container.querySelector("img")).toHaveAttribute("data-card-artwork-loaded", "true");
+    expect(canonical.container.querySelector("[data-card-semantic-fallback]")).toBeNull();
+    image(cache.resolvedCardArtwork(assets.cardFace(card)!)).resolve();
+    await act(async () => { await pending; });
+  });
+
   it("cached load waits for decode and coalesces duplicate requests", async () => {
     const cache = await import("@/assets/cardPreload");
     const first = cache.preloadCardAsset("/test.png");

@@ -118,7 +118,7 @@ export function computeTableGeometry(input: GeometryInput): Omit<TableGeometry, 
     clamp(input.viewportWidth * 0.10625, 70, 135) *
       desktopTableScale(input.viewportWidth, input.viewportHeight, input.desktopPointer ?? false),
     Math.max(36, usableHeight / 2.55),
-  );
+  ) * 0.95;
   const cardHeight = (cardWidth * 7) / 5;
   const horizontalOffset = cardWidth * 0.62;
   const verticalOffset = cardHeight * 0.42;
