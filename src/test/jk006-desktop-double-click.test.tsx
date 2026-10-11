@@ -103,7 +103,7 @@ describe("desktop double-click card play", () => {
     expect(release).toHaveBeenCalledWith(7);
     expect(onCommit).not.toHaveBeenCalled();
     expect(callbacks).toHaveLength(1);
-    callbacks[0](0);
+    callbacks[0]?.(0);
     await waitFor(() => expect(onCommit).toHaveBeenCalledTimes(1));
     window.PointerEvent = originalPointerEvent;
   });
