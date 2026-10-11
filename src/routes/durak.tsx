@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { durakRoomCommand, type DurakRoomView, type DurakWaitingRoom } from "@/services/durakRoomFunctions";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { FullscreenButton } from "@/components/joker/FullscreenButton";
 import { RefreshButton } from "@/components/joker/RefreshButton";
@@ -12,11 +13,57 @@ export const Route = createFileRoute("/durak")({
   component: DurakHome,
 });
 
+function DurakMemberAutoResume({ onRoom }: { onRoom: (room: DurakRoomView) => void }) {
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const membership = await durakRoomCommand({data:{action:"membership"}});
+        if (!active || !membership.ok || !("membership" in membership) || !membership.membership) return;
+        const result = await durakRoomCommand({data:{action:"get",code:membership.membership.code}});
+        if (active && result.ok && "room" in result) onRoom(result.room);
+      } catch { /* Keep manual return option available. */ }
+    })();
+    return () => { active=false; };
+  }, [onRoom]);
+  return null;
+}
+
 function DurakHome() {
   const [variant, setVariant] = useState<DurakVariant>("podkidnoy");
   const [playerCount, setPlayerCount] = useState<number>(4);
   const [mode, setMode] = useState<"create"|"join">("create");
   const [preview, setPreview] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [room, setRoom] = useState<DurakRoomView | null>(null);
+  const [available, setAvailable] = useState<DurakWaitingRoom[]>([]);
+  const [returnCode, setReturnCode] = useState("");
+  const errorMessages: Record<string,string> = {
+    ACTIVE_GAME_EXISTS: "Συμμετέχεις ήδη σε άλλο δωμάτιο ή ενεργή παρτίδα. Ολοκλήρωσε ή αποχώρησε πρώτα από εκεί.",
+    NOT_AUTHENTICATED: "Η σύνδεσή σου έληξε. Συνδέσου ξανά.",
+    ROOM_NOT_FOUND: "Το δωμάτιο δεν βρέθηκε ή έχει κλείσει.",
+    ROOM_FULL: "Το δωμάτιο είναι γεμάτο.",
+    ROOM_ALREADY_STARTED: "Η παρτίδα έχει ήδη ξεκινήσει.",
+    NOT_A_MEMBER: "Δεν συμμετέχεις σε αυτό το δωμάτιο.",
+    SERVICE_UNAVAILABLE: "Το DURAK δεν είναι προσωρινά διαθέσιμο. Δοκίμασε ξανά.",
+  };
+  async function run(action: "create" | "list" | "join" | "get" | "leave", code?: string) {
+    setBusy(true); setError("");
+    try {
+      const result = action === "create"
+        ? await durakRoomCommand({data:{action,variant,capacity:playerCount}})
+        : action === "list" ? await durakRoomCommand({data:{action}})
+        : action === "join" ? await durakRoomCommand({data:{action,code:code ?? ""}})
+        : action === "get" ? await durakRoomCommand({data:{action,code:code ?? ""}})
+        : await durakRoomCommand({data:{action:"leave",code:code ?? ""}});
+      if (!result.ok) { setError(result.code); return; }
+      if ("room" in result) setRoom(result.room);
+      else if ("rooms" in result) setAvailable(result.rooms);
+      else if ("cancelled" in result) { setRoom(null); setReturnCode(""); }
+    } catch { setError("Αδυναμία επικοινωνίας με τον διακομιστή."); }
+    finally { setBusy(false); }
+  }
   return (
     <ScreenShell title="DURAK" variant="pregame" contentClassName="pregame-centered-content">
       <div className="mx-auto w-full max-w-2xl space-y-4">
@@ -26,12 +73,15 @@ function DurakHome() {
         </div>
         <PlayerSessionGate allowLogout={false}>
           {(player) => <section className="panel space-y-4 p-4" aria-label="DURAK">
+            <DurakMemberAutoResume onRoom={setRoom} />
             <p className="text-center text-sm text-muted-foreground">Παίκτης: {player.displayName}</p>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" aria-pressed={mode === "create"} onClick={() => { setMode("create"); setPreview(false); }} className={`rounded-lg border p-3 font-semibold ${mode === "create" ? "border-primary bg-secondary" : "border-border"}`}>Δημιουργία</button>
               <button type="button" aria-pressed={mode === "join"} onClick={() => { setMode("join"); setPreview(false); }} className={`rounded-lg border p-3 font-semibold ${mode === "join" ? "border-primary bg-secondary" : "border-border"}`}>Συμμετοχή</button>
             </div>
-            {mode === "create" ? <>
+            {room === null && <div className="flex gap-2 items-center"><input aria-label="Κωδικός δωματίου DURAK για επιστροφή" value={returnCode} maxLength={6} onChange={e => setReturnCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,""))} placeholder="Κωδικός 6 χαρακτήρων" className="min-w-0 flex-1 rounded-lg bg-secondary p-2" /><button disabled={busy || returnCode.length !== 6} onClick={() => void run("get",returnCode)} type="button" className="rounded-lg border p-2">Επιστροφή στο δωμάτιο</button></div>}
+            {error && <p role="alert" className="text-sm text-negative">{errorMessages[error] ?? "Η ενέργεια δεν ολοκληρώθηκε. Δοκίμασε ξανά."}</p>}
+            {room ? <div className="space-y-3 rounded-lg border border-primary p-3" aria-label="Δωμάτιο DURAK"><h2 className="font-semibold">Δωμάτιο {room.code}</h2><p className="text-sm">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p><div className="grid grid-cols-3 gap-2">{room.seats.map(seat => <div key={seat.index} className="rounded-lg bg-secondary p-2 text-center text-sm">Θέση {seat.index + 1}<div>{seat.name ?? "Ελεύθερη"}</div></div>)}</div><div className="flex gap-2"><button type="button" disabled={busy} onClick={() => void run("get",room.code)} className="rounded-lg border p-2">Ανανέωση</button><button type="button" disabled={busy} onClick={() => void run("leave",room.code)} className="rounded-lg border p-2">Έξοδος</button></div><p className="text-sm text-muted-foreground">Η έναρξη παρτίδας και η επιλογή bots θα ενεργοποιηθούν σε επόμενο στάδιο.</p></div> : mode === "create" ? <>
               <label className="block space-y-2 text-sm font-semibold">Παραλλαγή
                 <select className="w-full rounded-lg border border-border bg-secondary p-3" value={variant} onChange={e => setVariant(e.target.value as DurakVariant)}>
                   {Object.entries(VARIANT_NAMES).map(([id,label]) => <option key={id} value={id}>{label}</option>)}
@@ -42,16 +92,18 @@ function DurakHome() {
                   {PLAYER_COUNTS.map(count => <option key={count} value={count}>{count} παίκτες</option>)}
                 </select>
               </label>
-              <p className="text-sm text-muted-foreground">Επιλογή: {VARIANT_NAMES[variant]} · {playerCount} θέσεις. Η δημιουργία online δωματίου θα ενεργοποιηθεί μόλις συνδεθεί ο ανεξάρτητος DURAK server.</p>
+              <p className="text-sm text-muted-foreground">Επιλογή: {VARIANT_NAMES[variant]} · {playerCount} θέσεις. Μπορείς να δημιουργήσεις ανεξάρτητο δωμάτιο DURAK.</p>
               <button type="button" onClick={() => setPreview(value => !value)} className="w-full rounded-lg border border-primary p-3 font-semibold">{preview ? "Κλείσιμο προεπισκόπησης" : "Προεπισκόπηση δωματίου"}</button>
               {preview && <div className="rounded-xl border border-border p-3 space-y-3" aria-label="Προεπισκόπηση δωματίου DURAK">
                 <p className="font-semibold">Προεπισκόπηση · Δεν δημιουργήθηκε online δωμάτιο</p>
                 <div className="grid grid-cols-3 gap-2">{createDurakLobbyPreview(player.displayName, variant, playerCount).seats.map(seat => <div key={seat.index} className="rounded-lg bg-secondary p-3 text-center text-sm"><span className="block font-semibold">Θέση {seat.index + 1}</span><span>{seat.name ?? "Ελεύθερη · παίκτης ή bot"}</span></div>)}</div>
               </div>}
-              <button type="button" disabled className="w-full cursor-not-allowed rounded-lg bg-secondary p-3 font-semibold opacity-60">Online δημιουργία — σε υλοποίηση</button>
+              <button type="button" disabled={busy} onClick={() => void run("create")} className="w-full rounded-lg border border-primary p-3 font-semibold">Δημιουργία online δωματίου</button>
             </> : <>
               <h2 className="font-semibold">Διαθέσιμα παιχνίδια DURAK</h2>
-              <p className="text-sm text-muted-foreground">Η ξεχωριστή λίστα online δωματίων DURAK δεν έχει ενεργοποιηθεί ακόμη. Δεν εμφανίζουμε δωμάτια JOKER.</p>
+              <button type="button" disabled={busy} onClick={() => void run("list")} className="rounded-lg border p-3">Ανανέωση διαθέσιμων δωματίων</button>
+              {available.length === 0 && <p className="text-sm text-muted-foreground">Δεν εμφανίζονται διαθέσιμα δωμάτια DURAK.</p>}
+              {available.map(item => <div key={item.code} className="flex items-center justify-between gap-2 rounded-lg border p-3"><span>{item.hostName} · {VARIANT_NAMES[item.variant]} · {item.occupied}/{item.capacity}</span><button type="button" disabled={busy} onClick={() => void run("join",item.code)} className="rounded-lg bg-secondary p-2">Συμμετοχή</button></div>)}
             </>}
           </section>}
         </PlayerSessionGate>

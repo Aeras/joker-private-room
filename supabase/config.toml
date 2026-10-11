@@ -21,3 +21,7 @@ verify_jwt = false
 
 [functions.bot-lab-worker]
 verify_jwt = false
+
+# DURAK has a private server-session token and validates it for each RPC.
+[functions.durak-commands]
+verify_jwt = false
