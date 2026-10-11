@@ -77,6 +77,41 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 describe("DURAK confirmed public presentation", () => {
+  it.each([0, 1])("animates a confirmed take for receiver %i while polls wait and discard stays unchanged", receiver => {
+    const { result } = renderHook(() => useDurakPresentation("TAKE"));
+    const start = { ...base, defender: receiver, pairs: [{ attack: defense }], discardCount: 4 };
+    const take = { sequence: 1, kind: "take" as const, round: 1, pairs: start.pairs, discardCount: 4 };
+    const settled = { ...start, revision: 2, defender: (receiver + 1) % 3, pairs: [], round: 2,
+      myHand: receiver === 0 ? [card, defense] : [card], presentationSequence: 1, events: [take] };
+    act(() => result.current.accept(start));
+    act(() => result.current.accept(settled));
+    expect(result.current.collection?.kind).toBe("take");
+    expect(result.current.collection?.receiver).toBe(receiver);
+    expect(result.current.presenting).toBe(true);
+    expect(result.current.game?.myHand).toEqual(settled.myHand);
+    expect(result.current.game?.pairs).toEqual(start.pairs);
+    act(() => result.current.accept({ ...settled, revision: 3 }));
+    expect(result.current.collection?.id).toBe(1);
+    act(() => result.current.landDiscard(1, 0));
+    expect(result.current.game?.discardCount).toBe(4);
+    act(() => result.current.finishDiscard(999));
+    expect(result.current.collection?.id).toBe(1);
+    act(() => result.current.finishDiscard(1));
+    expect(result.current.collection).toBeNull();
+    expect(result.current.game?.pairs).toEqual([]);
+    expect(result.current.game?.revision).toBe(3);
+    expect(result.current.game?.discardCount).toBe(4);
+  });
+  it("does not replay a historical take on reconnect or complete an old-room take", () => {
+    const { result, rerender } = renderHook(({ code }) => useDurakPresentation(code), { initialProps: { code: "OLD" } });
+    const take = { sequence: 1, kind: "take" as const, round: 1, pairs: [{ attack: defense }], discardCount: 0 };
+    const settled = { ...base, revision: 2, presentationSequence: 1, events: [take] };
+    act(() => result.current.accept(settled));
+    expect(result.current.collection).toBeNull();
+    rerender({ code: "NEW" });
+    act(() => result.current.finishDiscard(1));
+    expect(result.current.game).toBeNull();
+  });
   it("reveals the finished result only after all final public flights settle", () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useDurakPresentation("RESULT"));

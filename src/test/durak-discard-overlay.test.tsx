@@ -4,6 +4,42 @@ import { DurakDiscardFlight } from "@/durak/DurakDiscardFlight";
 import type { DurakCollection } from "@/durak/useDurakPresentation";
 vi.mock("@/components/joker/PlayingCard", () => ({ PlayingCard: () => <div data-back /> }));
 const originalAnimate = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "animate");
+it("flies a local take face-up to individual hand slots and keeps snapshots through poll rerenders", async () => {
+  const motions: { resolve: () => void; frames: Keyframe[]; cancel: ReturnType<typeof vi.fn> }[] = [];
+  const flip = vi.fn();
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    return { left: this.hasAttribute("data-durak-card-key") ? 400 : 100, top: this.hasAttribute("data-durak-card-key") ? 260 : 120, width: 80, height: 112 } as DOMRect;
+  });
+  Object.defineProperty(HTMLElement.prototype, "animate", { configurable: true, value: function(this: HTMLElement, frames: Keyframe[]) {
+    let resolve = () => {};
+    const finished = new Promise<void>(r => { resolve = r; });
+    const cancel = vi.fn();
+    if (this.hasAttribute("data-take-flight")) motions.push({ resolve, frames, cancel });
+    else flip();
+    return { finished, cancel };
+  } });
+  const collection: DurakCollection = { id: 5, kind: "take", receiver: 0, localSeat: 0, from: 12, to: 12,
+    cards: [{ suit: "clubs", rank: 6 }, { suit: "clubs", rank: 7 }] };
+  const done = vi.fn();
+  function Fixture({ show }: {show: boolean}) {
+    return <div className="durak-fullscreen">
+      {show && <div data-durak-pair>{collection.cards.map(card => <span key={card.rank} className="durak-played-card"><div>Public {card.rank}</div></span>)}</div>}
+      {collection.cards.map(card => <button key={card.rank} data-durak-card-key={`${card.suit}:${card.rank}`} />)}
+      <DurakDiscardFlight collection={collection} onLand={() => {}} onComplete={done} />
+    </div>;
+  }
+  const rendered = render(<Fixture show />);
+  expect(motions).toHaveLength(2);
+  expect(flip).not.toHaveBeenCalled();
+  expect(String(motions[0]!.frames.at(-1)!["transform"])).toContain("translate(300px, 140px)");
+  rendered.rerender(<Fixture show={false} />);
+  expect(rendered.container.querySelectorAll("[data-take-flight]")).toHaveLength(2);
+  expect(motions.every(motion => motion.cancel.mock.calls.length === 0)).toBe(true);
+  await act(async () => motions[0]!.resolve());
+  expect(done).not.toHaveBeenCalled();
+  await act(async () => motions[1]!.resolve());
+  expect(done).toHaveBeenCalledExactlyOnceWith(5);
+});
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();

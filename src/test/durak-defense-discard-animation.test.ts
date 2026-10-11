@@ -119,6 +119,9 @@ describe("DURAK authoritative discard lifecycle", () => {
         events: [{ sequence: 1, kind: "take", round: 1, pairs: pairs(2), discardCount: 0 }],
       }),
     );
+    expect(result.current.collection?.kind).toBe("take");
+    expect(result.current.game?.discardCount).toBe(0);
+    act(() => result.current.finishDiscard(result.current.collection!.id));
     expect(result.current.collection).toBeNull();
     expect(result.current.game?.discardCount).toBe(0);
   });
