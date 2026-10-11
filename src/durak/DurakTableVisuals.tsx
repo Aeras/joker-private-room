@@ -24,7 +24,7 @@ export function DurakCardBack({className}: {className?:string}) {
 
 export function DurakStock({trump,remaining}: {trump:DurakCard;remaining:number}) {
   if (remaining===0) return <div className="text-xs text-foreground/75">Τράπουλα άδεια</div>;
-  return <div aria-label={`Τράπουλα: ${remaining} φύλλα, κόζι ${trump.suit}`}
+  return <div aria-label={`Τράπουλα: ${remaining} φύλλα, ατού ${trump.suit}`}
     className="relative h-24 w-28 shrink-0 sm:h-32 sm:w-36">
     <div className="absolute left-0 top-3 rotate-90 [--card-w:3.5rem] sm:[--card-w:4rem]">
       <DurakCardFace card={trump}/>

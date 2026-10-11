@@ -175,7 +175,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
                 : "Περιμένεις"}
           </span>
           <span>
-            Κόζι {suitSymbol[game.trump]} · {game.stock} στην τράπουλα
+            Ατού {suitSymbol[game.trump]} · {game.stock} στην τράπουλα
           </span>
         </div>
         <div className="durak-fullscreen-actions">
