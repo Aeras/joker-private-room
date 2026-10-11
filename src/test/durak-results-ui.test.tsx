@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within, act } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DurakOnlineTable } from "@/durak/DurakOnlineTable";
 import { DurakResults } from "@/durak/DurakResults";
@@ -37,6 +37,27 @@ function game(n = 4): DurakGameView {
   };
 }
 describe("DURAK match results", () => {
+  it("keeps results visible on failed creation, prevents duplicate requests and allows retry", async () => {
+    let reject = (_cause: Error) => {};
+    const create = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((_resolve, r) => {
+            reject = r;
+          }),
+      )
+      .mockResolvedValue(undefined);
+    render(<DurakResults game={game()} playerName={name} onNewGame={create} />);
+    fireEvent.click(screen.getByRole("button", { name: "Νέο παιχνίδι" }));
+    expect(screen.getByRole("button", { name: "Δημιουργία…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Κλείσιμο αποτελεσμάτων" })).toBeDisabled();
+    await act(async () => reject(new Error("Δοκίμασε ξανά")));
+    expect(screen.getByRole("alert")).toHaveTextContent("Δοκίμασε ξανά");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Νέο παιχνίδι" })));
+    expect(create).toHaveBeenCalledTimes(2);
+  });
   it.each([2, 4, 6])(
     "automatically opens ordered %i-seat results, loser last; closes and reopens",
     (n) => {

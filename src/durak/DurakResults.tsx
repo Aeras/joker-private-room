@@ -7,11 +7,27 @@ import type { DurakGameView } from "@/services/durakRoomFunctions";
 export function DurakResults({
   game,
   playerName,
+  onNewGame,
 }: {
   game: DurakGameView;
   playerName: (seat: number) => string;
+  onNewGame?: (() => Promise<void>) | undefined;
 }) {
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState("");
+  async function createGame() {
+    if (creating || !onNewGame) return;
+    setCreating(true);
+    setError("");
+    try {
+      await onNewGame();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : text.newGameFailed);
+    } finally {
+      setCreating(false);
+    }
+  }
   useEffect(() => {
     setOpen(game.ended);
   }, [game.ended]);
@@ -25,7 +41,12 @@ export function DurakResults({
     winners.every((seat) => order.includes(seat));
   const rows = [...(known ? order : winners), ...(game.fool === null ? [] : [game.fool])];
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(value) => {
+        if (!creating) setOpen(value);
+      }}
+    >
       <Dialog.Trigger asChild>
         <button type="button" className="durak-results-trigger">
           {text.results}
@@ -56,7 +77,26 @@ export function DurakResults({
               </li>
             ))}
           </ol>
-          <Dialog.Close className="durak-results-close">{text.closeResults}</Dialog.Close>
+          {error && (
+            <p role="alert" className="text-sm text-red-200">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap justify-end gap-2">
+            {onNewGame && (
+              <button
+                type="button"
+                disabled={creating}
+                onClick={() => void createGame()}
+                className="durak-results-close"
+              >
+                {creating ? text.creatingGame : text.newGame}
+              </button>
+            )}
+            <Dialog.Close disabled={creating} className="durak-results-close">
+              {text.closeResults}
+            </Dialog.Close>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
