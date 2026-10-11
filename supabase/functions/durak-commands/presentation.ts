@@ -32,6 +32,7 @@ export function recordDurakPlay(
         attackSeats: durakAttackSeats(roles),
         pairs,
         handSizes,
+        discardCount: after.discard.length,
       },
     ].slice(-DURAK_PUBLIC_HISTORY_LIMIT),
   };
