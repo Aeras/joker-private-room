@@ -1,3 +1,4 @@
+import { durakTapMove, durakDropMove } from "./defenseSelection";
 import { useDurakPresentation } from "./useDurakPresentation";
 import { DurakPlayedCard } from "./DurakPlayedCard";
 import "./durakFullscreen.css";
@@ -23,6 +24,8 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
  const [error,setError]=useState("");
  const [closed,setClosed]=useState(false);
  const [target,setTarget]=useState<number|null>(null);
+ const [dragTarget,setDragTarget]=useState<number|null>(null);
+ useEffect(()=>{setTarget(null);setDragTarget(null);},[game?.revision,game?.round]);
  const fetchState=useCallback(async()=>{
    try{
      const r=await durakRoomCommand({data:{action:"get_game",code}});
@@ -36,7 +39,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
    const id=setInterval(()=>{void fetchState();},1600);
    return ()=>clearInterval(id);
  },[fetchState]);
- const actions=game?.legalMoves??[];
+ const actions=useMemo(()=>game?.legalMoves??[],[game?.legalMoves]);
  const send=async(move:DurakMove)=>{
    if (loading || presenting) return;
    setLoading(true);setError("");
@@ -49,12 +52,9 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
  };
  const playable=useCallback((card:DurakCard)=>actions.filter(m=>"card" in m&&ident(m.card)===ident(card)),[actions]);
  const clickCard=(card:DurakCard)=>{
-   const moves=playable(card);
-   const defenses=moves.filter(m=>m.type==="defend");
-   const selected=defenses.find(m=>m.type==="defend"&&m.pair===target);
-   const action=selected??moves.find(m=>m.type==="transfer")??defenses[0]??moves.find(m=>m.type==="attack");
+   const action=durakTapMove(card,actions,game?.pairs??[],target);
    if(action)void send(action);
-   else if(defenses.length>0)setError("Επίλεξε πρώτα την επίθεση που θέλεις να αποκρούσεις.");
+   else if(target!==null)setError(text.invalidDefense);
  };
  const positions=useMemo(()=>game?DURAK_SEAT_POSITIONS[game.handSizes.length]??[]:[],[game]);
  if(closed)return <div className="durak-fullscreen flex items-center justify-center gap-4"><p>{text.closed}</p><button type="button" onClick={()=>onBack("closed")}>{text.back}</button></div>;
@@ -140,9 +140,11 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
                 <button
                   key={ident(pair.attack)}
                   type="button"
-                  onClick={() => setTarget(i)}
+                  onClick={() => {if(game.defender === game.seat && !loading && !presenting)setTarget(current => current === i ? null : i);}}
                   aria-pressed={target === i}
                   data-durak-pair
+                  data-durak-pair-index={i}
+                  data-durak-drop-target={dragTarget === i || undefined}
                   className={`durak-fullscreen-pair ${target === i ? "border-amber-300 bg-white/20" : "border-white/20 bg-black/10"}`}
                 >
                   <DurakPlayedCard card={pair.attack} flight={flight} localSeat={game.seat} />
@@ -177,6 +179,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
           </span>
         </div>
         <div className="durak-fullscreen-actions">
+          {game.defender === game.seat && actions.some(move=>move.type==="defend") && <span className="durak-defense-help">{text.defenseHelp}</span>}
           {actions
             .filter((x) => !("card" in x))
             .map((move, i) => (
@@ -208,6 +211,9 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
         busy={loading || presenting}
         canPlay={(card) => playable(card).length > 0}
         onPlay={clickCard}
+        onDrop={game.defender === game.seat ? (card,pair)=>{const action=durakDropMove(card,actions,pair);if(action)void send(action);} : undefined}
+        canDrop={(card,pair)=>Boolean(durakDropMove(card,actions,pair))}
+        onDragTarget={setDragTarget}
       />
       {error && (
         <div

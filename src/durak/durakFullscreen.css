@@ -291,3 +291,39 @@
 .durak-turn-summary > span {
   color: white;
 }
+
+.durak-fullscreen-pair[data-durak-drop-target] {
+  outline: 3px solid #76cfff;
+  outline-offset: 2px;
+  background: #479fe733;
+}
+.durak-fullscreen-hand-card[data-dragging] > * {
+  visibility: hidden;
+}
+.durak-drag-card {
+  position: fixed;
+  z-index: 140;
+  pointer-events: none;
+  transform: translate(-50%, -35%);
+  filter: drop-shadow(0 8px 12px #0008);
+}
+.durak-drag-card > span {
+  display: block;
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11px;
+  border-radius: 5px;
+  padding: 2px 5px;
+  background: #081c14;
+  color: white;
+}
+.durak-defense-help {
+  max-width: 300px;
+  text-align: center;
+  font-size: clamp(9px, 2.4vh, 12px);
+  pointer-events: none;
+  color: #a9dfff;
+}
