@@ -6,7 +6,7 @@ import { EXTERNAL_SUPABASE_URL, EXTERNAL_SUPABASE_PUBLISHABLE_KEY } from "@/inte
 const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("create"), variant: z.enum(["podkidnoy", "perevodnoy"]), capacity: z.number().int().min(2).max(6) }),
   z.object({ action: z.literal("list") }),
-  z.object({ action: z.literal("bot_add"),code:z.string().regex(/^[A-Za-z0-9]{6}$/) }),
+  z.object({ action: z.literal("bot_add"),code:z.string().regex(/^[A-Za-z0-9]{6}$/),seat:z.number().int().min(0).max(5).optional(),botId:z.string().max(64).optional() }),
   z.object({ action: z.literal("bot_remove"),code:z.string().regex(/^[A-Za-z0-9]{6}$/),seat:z.number().int().min(0).max(5) }),
   z.object({ action: z.literal("start"),code:z.string().regex(/^[A-Za-z0-9]{6}$/) }),
   z.object({ action: z.literal("end_game"),code:z.string().regex(/^[A-Za-z0-9]{6}$/) }),

@@ -40,8 +40,8 @@ export function createDeck(): DurakCard[] {
 /** Presentation seats only: the local player is always at the bottom. */
 export const DURAK_SEAT_POSITIONS: Record<number, readonly string[]> = {
   2: ["bottom", "top"],
-  3: ["bottom", "top", "right"],
-  4: ["bottom", "top", "right", "left"],
-  5: ["bottom", "top-left", "top-right", "right", "left"],
-  6: ["bottom", "top-left", "top-center", "top-right", "right", "left"],
+  3: ["bottom", "left", "right"],
+  4: ["bottom", "left", "top", "right"],
+  5: ["bottom", "left", "top-left", "top-right", "right"],
+  6: ["bottom", "left", "top-left", "top-center", "top-right", "right"],
 };

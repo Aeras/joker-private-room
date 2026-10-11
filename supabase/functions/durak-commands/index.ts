@@ -4,6 +4,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { beginDurak, applyDurakMove, legalDurakMoves, sameDurakMove, durakAttackSeats, type DurakMatch, type DurakMove } from "./engine.ts";
 import { advanceDurakBot, scheduleDurakBot, startDurakDeal } from "./bot-turn.ts";
+import { CANONICAL_BOTS, deterministicBotOrder } from "../_shared/bot-catalog.ts";
 
 const respond=(data:unknown,status=200)=>new Response(JSON.stringify(data),{
   status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}
@@ -63,7 +64,17 @@ Deno.serve(async(req:Request)=>{
     const result=data&&typeof data==="object"?data:{ok:false,code:"SERVICE_UNAVAILABLE"};
     return respond(result,errors(result));
   }
-  if(action==="bot_add"||action==="bot_remove"){
+  if(action==="bot_add"){
+    if(body.seat!==undefined&&(!Number.isInteger(body.seat)||body.seat<0||body.seat>5))return respond({ok:false,code:"INVALID_BOT"},400);
+    if(body.botId!==undefined&&!CANONICAL_BOTS.some(bot=>bot.id===body.botId))return respond({ok:false,code:"INVALID_BOT"},400);
+    const {data,error}=await admin.rpc("durak_lobby_setup_internal",{
+      p_session_token:token,p_room_code:code,p_action:action,p_catalog:CANONICAL_BOTS,
+      p_seat:body.seat??null,p_bot_id:body.botId??null,p_state:null,
+    });
+    if(error){console.error("DURAK bot selection RPC",error.code);return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);}
+    return respond(data,errors(data));
+  }
+  if(action==="bot_remove"){
     const seat=action==="bot_remove"&&Number.isInteger(body?.seat)?Number(body.seat):undefined;
     const {data,error}=await gameRpc(action,undefined,undefined,seat);
     if(error){console.error("DURAK bot RPC",error.code);return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);}
@@ -72,10 +83,13 @@ Deno.serve(async(req:Request)=>{
   if(action==="start"){
     const {data:roomData,error:roomError}=await roomRpc("get");
     if(roomError||!roomData?.ok||!roomData?.room)return respond({ok:false,code:"ROOM_NOT_FOUND"},400);
-    const view=roomData.room as {variant:"podkidnoy"|"perevodnoy";capacity:number};
+    const view=roomData.room as {variant:"podkidnoy"|"perevodnoy";capacity:number;version:number};
     const secureRandom=()=>crypto.getRandomValues(new Uint32Array(1))[0]!/4294967296;
     const game=startDurakDeal(beginDurak(view.variant,view.capacity,secureRandom),Date.now());
-    const {data,error}=await gameRpc("start",undefined,game);
+    const {data,error}=await admin.rpc("durak_lobby_setup_internal",{
+      p_session_token:token,p_room_code:code,p_action:"start",p_seat:null,p_bot_id:null,p_state:game,
+      p_catalog:deterministicBotOrder({roomCode:code,actionId:"durak-start",expectedRoomVersion:view.version,rulesVersion:"durak-v1"}),
+    });
     if(error){console.error("DURAK start RPC",error.code);return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);}
     return respond(data,errors(data));
   }

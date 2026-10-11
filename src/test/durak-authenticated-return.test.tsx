@@ -89,7 +89,7 @@ describe("DURAK authenticated table navigation", () => {
     render(<Home />);
     fireEvent.click(await screen.findByRole("button", { name: "Επιστροφή στο παιχνίδι μου" }));
     fireEvent.click(await screen.findByRole("button", { name: "New match" }));
-    await screen.findByRole("button", { name: "+ Bot" });
+    await screen.findByRole("button", { name: "Έναρξη παρτίδας" });
     expect(mocks.command).toHaveBeenCalledWith({
       data: { action: "create", variant: "perevodnoy", capacity: 6 },
     });
