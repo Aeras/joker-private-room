@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { JokerChoicePicker } from "@/components/table/JokerChoicePicker";
 import { TrumpChoicePicker, randomTrumpChoice } from "@/components/table/TrumpChoicePicker";
 import { DeclarationPicker } from "@/components/table/DeclarationPicker";
 import { TrickPresentation } from "@/components/table/TrickPresentation";
@@ -33,6 +34,24 @@ describe("responsive game choices", () => {
     screen.getAllByRole("button").forEach(button => { expect(button).toBeDisabled(); fireEvent.click(button); }); expect(select).not.toHaveBeenCalled();
     view.unmount(); render(<DeclarationPicker values={[0, 1, 2]} legalValues={[0, 2]} busy={false} onSelect={select} />);
     fireEvent.click(screen.getByRole("button", { name: "Δήλωση 1" })); expect(select).not.toHaveBeenCalled();
+  });
+});
+describe("Joker first tap selection", () => {
+  it("submits FROM_BELOW or COMPETE on the first click and shows press feedback", () => {
+    const select = vi.fn();
+    const options = [
+      { type: "choose_joker_semantic", context: "OPEN_TRICK", mode: "FROM_BELOW" },
+      { type: "choose_joker_semantic", context: "OPEN_TRICK", mode: "COMPETE" },
+    ] as unknown as React.ComponentProps<typeof JokerChoicePicker>["options"];
+    render(<JokerChoicePicker options={options} busy={false} onSelect={select} />);
+    const below = screen.getByRole("button", { name: "Τζόκερ από κάτω" });
+    const above = screen.getByRole("button", { name: "Τζόκερ από πάνω" });
+    expect(above.className).toContain("active:brightness-90");
+    fireEvent.click(above);
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(select).toHaveBeenCalledWith(options[1]);
+    fireEvent.click(below);
+    expect(select).toHaveBeenCalledTimes(2);
   });
 });
 describe("Joker semantic updates keep one visual identity", () => {
