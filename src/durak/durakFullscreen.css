@@ -1,5 +1,5 @@
 .durak-fullscreen {
-  --durak-hand-card-w: clamp(38px, min(6.65vw, 17.1vh), 76px);
+  --durak-hand-card-w: clamp(42px, min(7.3vw, 18.8vh), 84px);
   --durak-hand-visible-h: calc(var(--durak-hand-card-w) * 1.4 * 0.62);
   position: fixed;
   inset: 0;
@@ -228,6 +228,10 @@
   border: 1px solid #ffffff40;
   border-radius: 50%;
   background: #07150e99;
+}
+.durak-fullscreen-navigation-tools {
+  display: flex;
+  gap: 6px;
 }
 .durak-fullscreen .joker-table-shell {
   top: 0;
