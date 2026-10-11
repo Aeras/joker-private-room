@@ -67,7 +67,7 @@ export function legalDurakMoves(m:DurakMatch,seat:number):DurakMove[]{
   }
   return moves;
 }
-function sameMove(a:DurakMove,b:DurakMove){return a.type===b.type&&("card" in a?"card" in b&&key(a.card)===key(b.card):true)&&("pair" in a?"pair" in b&&a.pair===b.pair:true);}
+export function sameDurakMove(a:DurakMove,b:DurakMove){return a.type===b.type&&("card" in a?"card" in b&&key(a.card)===key(b.card):true)&&("pair" in a?"pair" in b&&a.pair===b.pair:true);}
 function refill(m:DurakMatch){const order=[m.primaryAttacker,...Array.from({length:m.hands.length-1},(_,i)=>(m.primaryAttacker+i+1)%m.hands.length)];for(const seat of order){while(m.hands[seat]!.length<6&&m.deck.length)m.hands[seat]!.push(m.deck.pop()!);}}
 function close(m:DurakMatch){
   const cards=table(m);if(m.taking)m.hands[m.defender]!.push(...cards);else m.discard.push(...cards);
@@ -87,7 +87,7 @@ function mayClose(m:DurakMatch){
 }
 export function applyDurakMove(state:DurakMatch,seat:number,move:DurakMove):DurakMatch{
  const options=legalDurakMoves(state,seat);
- if(!options.some(m=>sameMove(m,move)))throw new Error("ILLEGAL_DURAK_MOVE");
+ if(!options.some(m=>sameDurakMove(m,move)))throw new Error("ILLEGAL_DURAK_MOVE");
  const m=clone(state);
  if(move.type==="attack"){remove(m.hands[seat]!,move.card);m.pairs.push({attack:move.card});m.passes=[];}
  else if(move.type==="defend"){remove(m.hands[seat]!,move.card);m.pairs[move.pair]!.defense=move.card;}
