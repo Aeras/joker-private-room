@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { durakRoomCommand, type DurakRoomView, type DurakWaitingRoom } from "@/services/durakRoomFunctions";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { ScreenShell } from "@/components/joker/ScreenShell";
@@ -37,10 +37,9 @@ function DurakHome() {
   const [room, setRoom] = useState<DurakRoomView | null>(null);
   const [available, setAvailable] = useState<DurakWaitingRoom[]>([]);
   const [membershipCode, setMembershipCode] = useState<string | null>(null);
-  const [membershipReady, setMembershipReady] = useState(false);
   const [loadingMembership, setLoadingMembership] = useState(false);
   const [listLoaded, setListLoaded] = useState(false);
-  function setMembership(code: string | null) { setMembershipCode(code); setMembershipReady(true); }
+  const setMembership = useCallback((code: string | null) => { setMembershipCode(code); }, []);
   async function returnToGame() {
     if (!membershipCode) return;
     setLoadingMembership(true);
@@ -83,7 +82,7 @@ function DurakHome() {
               <button type="button" aria-pressed={mode === "create"} onClick={() => setMode("create")} className={`rounded-lg border p-3 font-semibold ${mode === "create" ? "border-primary bg-secondary" : "border-border"}`}>Δημιουργία</button>
               <button type="button" aria-pressed={mode === "join"} onClick={() => { setMode("join"); if (!listLoaded) void run("list"); }} className={`rounded-lg border p-3 font-semibold ${mode === "join" ? "border-primary bg-secondary" : "border-border"}`}>Συμμετοχή</button>
             </div>
-            {membershipReady && membershipCode && !room && (
+            {membershipCode && !room && (
               <button type="button" disabled={busy || loadingMembership} onClick={() => void returnToGame()}
                 className="w-full rounded-lg border border-primary bg-primary/15 p-3 font-semibold">
                 Επιστροφή στο παιχνίδι μου
