@@ -1,0 +1,227 @@
+.durak-fullscreen {
+  --durak-hand-card-w: clamp(40px, min(7vw, 18vh), 80px);
+  --durak-hand-visible-h: calc(var(--durak-hand-card-w) * 1.4 * 0.58);
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #10261c;
+  color: white;
+}
+.durak-fullscreen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: calc(env(safe-area-inset-top) + 3px) calc(env(safe-area-inset-right) + 8px) 3px
+    calc(env(safe-area-inset-left) + 8px);
+  font-size: 12px;
+  background: #07150ee6;
+}
+.durak-fullscreen-header button {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #ffffff40;
+  border-radius: 8px;
+}
+.durak-fullscreen-field {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.durak-fullscreen-opponent {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: clamp(80px, 12vw, 140px);
+  text-align: center;
+}
+.durak-fullscreen-opponent[data-position="top"],
+.durak-fullscreen-opponent[data-position="top-center"] {
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.durak-fullscreen-opponent[data-position="top-left"] {
+  top: 4px;
+  left: 26%;
+  transform: translateX(-50%);
+}
+.durak-fullscreen-opponent[data-position="top-right"] {
+  top: 4px;
+  left: 74%;
+  transform: translateX(-50%);
+}
+.durak-fullscreen-opponent[data-position="left"] {
+  left: 1%;
+  top: 38%;
+}
+.durak-fullscreen-opponent[data-position="right"] {
+  right: 1%;
+  top: 38%;
+}
+.durak-fullscreen-avatar {
+  width: clamp(28px, 9vh, 48px);
+  height: clamp(28px, 9vh, 48px);
+}
+.durak-fullscreen-opponent-info {
+  width: 100%;
+  font-size: clamp(10px, 2.6vh, 12px);
+  line-height: 1.25;
+}
+.durak-fullscreen-opponent-backs {
+  display: flex;
+  justify-content: center;
+  --card-w: clamp(12px, 3.8vh, 20px);
+}
+.durak-fullscreen-opponent-backs > * + * {
+  margin-left: -10px;
+}
+.durak-fullscreen-center {
+  position: absolute;
+  top: clamp(90px, 30vh, 128px);
+  bottom: calc(var(--durak-hand-visible-h) + 64px);
+  left: clamp(86px, 14vw, 168px);
+  right: clamp(86px, 14vw, 168px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.durak-fullscreen[data-player-count="2"] .durak-fullscreen-center {
+  left: 16px;
+  right: 16px;
+}
+.durak-fullscreen-stock {
+  width: 94px;
+  height: 84px;
+  flex-shrink: 0;
+}
+.durak-fullscreen-stock > * {
+  transform: scale(0.65);
+  transform-origin: left top;
+}
+.durak-fullscreen-pairs {
+  display: grid;
+  gap: 4px;
+  --card-w: clamp(22px, min(4.5vw, 9vh), 56px);
+}
+.durak-fullscreen-pair {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-width: 1px;
+  border-radius: 6px;
+}
+.durak-fullscreen-defense {
+  margin-left: calc(var(--card-w) * -0.42);
+  transform: translateY(3px) rotate(12deg);
+}
+.durak-fullscreen-controls {
+  position: absolute;
+  z-index: 20;
+  left: calc(env(safe-area-inset-left) + 8px);
+  right: calc(env(safe-area-inset-right) + 8px);
+  bottom: calc(var(--durak-hand-visible-h) + 4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.durak-fullscreen-status {
+  display: flex;
+  gap: 12px;
+  max-width: 100%;
+  font-size: clamp(10px, 2.6vh, 12px);
+  white-space: nowrap;
+}
+.durak-fullscreen-status > span:last-child {
+  flex-shrink: 0;
+}
+.durak-fullscreen-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.durak-fullscreen-actions button {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid #e6b95b80;
+  border-radius: 8px;
+  background: #07150ee6;
+}
+.durak-fullscreen-hand {
+  position: absolute;
+  z-index: 30;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--durak-hand-visible-h);
+}
+.durak-fullscreen-hand-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--durak-hand-card-w) * 1.4 * -0.42);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-left: calc(env(safe-area-inset-left) + 12px);
+  padding-right: calc(env(safe-area-inset-right) + 12px);
+}
+.durak-fullscreen-hand-card {
+  --card-w: var(--durak-hand-card-w);
+  width: var(--card-w);
+  aspect-ratio: 5/7;
+  flex-shrink: 0;
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 1;
+  touch-action: manipulation;
+}
+.durak-fullscreen-hand-card:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.durak-fullscreen-hand-card:focus-visible {
+  outline: 2px solid #f4cf74;
+  outline-offset: 2px;
+}
+.durak-fullscreen-hand-card:not(:disabled):active {
+  transform: translateY(-4px);
+}
+@media (hover: hover) {
+  .durak-fullscreen-hand-card:not(:disabled):hover {
+    transform: translateY(-4px);
+  }
+}
+@media (max-height: 360px) {
+  .durak-fullscreen-stock {
+    width: 80px;
+    height: 72px;
+  }
+  .durak-fullscreen-stock > * {
+    transform: scale(0.55);
+  }
+}
+/* Keep unusually dense legal attack rounds inside the center without a scroll panel. */
+.durak-fullscreen-center {
+  container-type: size;
+}
+.durak-fullscreen-pairs {
+  --card-w: min(
+    clamp(22px, min(4.5vw, 9vh), 56px),
+    calc((100cqh - var(--durak-pair-rows) * 10px) / var(--durak-pair-rows) / 1.4),
+    calc((100cqw - 106px - var(--durak-pair-columns) * 10px) / var(--durak-pair-columns) / 1.58)
+  );
+}
