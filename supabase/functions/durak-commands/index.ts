@@ -119,6 +119,7 @@ Deno.serve(async(req:Request)=>{
     pairs:state.pairs,taking:state.taking,ended:state.ended,fool:state.fool,
     handSizes:state.hands.map(h=>h.length),myHand:ownCards,
     legalMoves:legalDurakMoves(state,seat),seat,revision:version,
+    finishOrder:state.finishOrder??[],finishOrderComplete:state.finishOrderComplete??false,
     attackSeats:durakAttackSeats(state),
     presentationSequence:state.presentationSequence??0,events:state.presentationEvents??[]
   };

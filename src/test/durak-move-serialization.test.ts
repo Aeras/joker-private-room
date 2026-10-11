@@ -115,6 +115,23 @@ describe("DURAK move validation after JSONB persistence", () => {
     expect(body.game.pairs[0].attack).toEqual(first);
     expect(body.game.revision).toBe(2);
     expect(body.game).not.toHaveProperty("hands");
+    expect(body.game).not.toHaveProperty("pendingFinishOrder");
+    state.ended = true;
+    state.fool = 1;
+    state.finishOrder = [3, 2, 0];
+    state.finishOrderComplete = true;
+    const finished = await handler(
+      new Request("https://fixture.invalid", {
+        method: "POST",
+        body: JSON.stringify({ sessionToken: "a".repeat(64), action: "get_game", code: "ABC123" }),
+      }),
+    );
+    expect(finished.status).toBe(200);
+    const result = await finished.json();
+    expect(result.game.finishOrder).toEqual([3, 2, 0]);
+    expect(result.game.finishOrderComplete).toBe(true);
+    expect(result.game.fool).toBe(1);
+    expect(result.game).not.toHaveProperty("pendingFinishOrder");
   });
   it.each(["attack", "transfer", "defend"] as const)(
     "accepts %s independent of field order",

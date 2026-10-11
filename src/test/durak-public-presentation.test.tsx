@@ -77,6 +77,26 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 describe("DURAK confirmed public presentation", () => {
+  it("reveals the finished result only after all final public flights settle", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useDurakPresentation("RESULT"));
+    act(() => result.current.accept(base));
+    act(() =>
+      result.current.accept({
+        ...next,
+        ended: true,
+        fool: 2,
+        finishOrder: [0, 1],
+        finishOrderComplete: true,
+      }),
+    );
+    expect(result.current.game?.ended).toBe(false);
+    act(() => vi.advanceTimersByTime(2 * (DURAK_CARD_FLIGHT_MS + DURAK_PLAY_BEAT_MS) - 1));
+    expect(result.current.game?.ended).toBe(false);
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.game?.ended).toBe(true);
+    expect(result.current.game?.finishOrder).toEqual([0, 1]);
+  });
   it("animates from the identified opponent and cancels the effect when removed", () => {
     const cancel = vi.fn();
     const original = HTMLElement.prototype.animate;

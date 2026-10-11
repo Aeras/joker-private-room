@@ -1,3 +1,4 @@
+import { DurakResults } from "./DurakResults";
 import { durakTapMove, durakDropMove } from "./defenseSelection";
 import { useDurakPresentation } from "./useDurakPresentation";
 import { DurakPlayedCard } from "./DurakPlayedCard";
@@ -123,7 +124,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
               </div>
             </div>
           ))}
-          <div className="durak-turn-summary" role="status">{text.roles(playerName(game.attacker), playerName(game.defender))}{flight && <span> · {text.played(playerName(flight.seat), flight.kind)}</span>}</div>
+          <div className="durak-turn-summary" role="status">{game.ended ? text.completed : text.roles(playerName(game.attacker), playerName(game.defender))}{flight && <span> · {text.played(playerName(flight.seat), flight.kind)}</span>}</div>
           <div className="durak-fullscreen-center" data-durak-center>
             <div className="durak-fullscreen-stock">
               <DurakStock trump={game.trumpCard} remaining={game.stock} />
@@ -155,7 +156,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
                   )}
                 </button>
               ))}
-              {game.pairs.length === 0 && (
+              {!game.ended && game.pairs.length === 0 && (
                 <span role="status" className="durak-fullscreen-attack-prompt" data-local-turn={actions.some(move=>move.type==="attack")}>
                   {actions.some(move=>move.type==="attack") ? text.yourAttack : text.waitingAttack(playerName(game.attacker))}
                 </span>
@@ -168,7 +169,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
         <div className="durak-fullscreen-status" data-durak-role={roleFor(game.seat)}>
           <span className="truncate font-semibold">
             {playerName(game.seat)} ·{" "}
-            {game.defender === game.seat
+            {game.ended ? text.completed : game.defender === game.seat
               ? "Αμύνεσαι"
               : attackSeats.includes(game.seat)
                 ? "Επιτίθεσαι"
@@ -206,6 +207,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
           )}
         </div>
       </div>
+      <DurakResults key={code} game={game} playerName={playerName} />
       <DurakFullscreenHand
         cards={game.myHand}
         busy={loading || presenting}
