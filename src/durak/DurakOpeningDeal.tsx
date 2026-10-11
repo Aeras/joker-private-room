@@ -7,7 +7,9 @@ import {
   DURAK_TRUMP_FLIP_MS,
   DURAK_TRUMP_PLACE_MS,
   DURAK_STOCK_PLACE_MS,
+  DURAK_HAND_ENTRANCE_MS,
 } from "./dealTiming";
+import { DURAK_SEAT_POSITIONS } from "./rules";
 import type { DurakGameView } from "@/services/durakRoomFunctions";
 import { durakTableText as text } from "@/i18n/durak.el";
 
@@ -40,22 +42,32 @@ export function DurakOpeningDeal({
       frames: Keyframe[],
       duration: number,
       delay: number,
+      easing = "cubic-bezier(.2,.8,.2,1)",
     ) => {
       if (!element || typeof element.animate !== "function") return;
       const animation = element.animate(frames, {
         duration,
         delay: delay + lead,
         fill: "both",
-        easing: "cubic-bezier(.2,.8,.2,1)",
+        easing,
       });
       animation.currentTime = elapsed;
       animations.push(animation);
     };
-    const source = { x: bounds.width * 0.5, y: bounds.height * 0.43 };
+    // Measure the actual corner anchor, including safe responsive sizing.
+    const origin = layer.querySelector(".durak-deal-origin")!.getBoundingClientRect();
+    const source = {
+      x: origin.left + origin.width / 2 - bounds.left,
+      y: origin.top + origin.height / 2 - bounds.top,
+    };
     layer.querySelectorAll<HTMLElement>("[data-deal-card]").forEach((element) => {
       const beat = Number(element.dataset["dealCard"]);
       const seat = beat % initial.handSizes.length;
       const index = Math.floor(beat / initial.handSizes.length);
+      const position =
+        DURAK_SEAT_POSITIONS[initial.handSizes.length]?.[
+          (seat - initial.seat + initial.handSizes.length) % initial.handSizes.length
+        ] ?? "top";
       const target = table
         ?.querySelector(`[data-durak-opponent-seat="${seat}"] .durak-fullscreen-opponent-backs`)
         ?.getBoundingClientRect();
@@ -63,37 +75,117 @@ export function DurakOpeningDeal({
         seat === initial.seat
           ? bounds.width * 0.5
           : target
-            ? target.left + target.width / 2 - bounds.left
+            ? target.left +
+              target.width / 2 -
+              bounds.left +
+              (position === "left" ? 50 : position === "right" ? -50 : 0)
             : bounds.width * 0.5;
       const y =
-        seat === initial.seat ? bounds.height - 30 : target ? target.top - bounds.top + 20 : 100;
+        seat === initial.seat
+          ? bounds.height - 110
+          : target
+            ? target.top - bounds.top + (position.startsWith("top") ? 45 : 0)
+            : 100;
       const dx = x - source.x + (index - 2.5) * 8;
       const dy = y - source.y;
-      element.style.transform = `translate(${dx}px, ${dy}px)`;
+      const startAt = beat * DURAK_DEAL_STAGGER_MS;
+      const duration = timing.handAt - startAt;
+      const exitX =
+        position === "left"
+          ? -origin.width - source.x
+          : position === "right"
+            ? bounds.width + origin.width - source.x
+            : dx;
+      const exitY =
+        position === "bottom"
+          ? bounds.height + origin.height - source.y
+          : position.startsWith("top")
+            ? -origin.height - source.y
+            : dy;
+      const finalTransform = `translate(${dx}px, ${dy}px) rotate(${(index - 2.5) * 2}deg)`;
       animate(
         element,
         reduced
-          ? [{ opacity: 0 }, { opacity: 1 }]
+          ? [
+              { transform: finalTransform, opacity: 0, offset: 0 },
+              { transform: finalTransform, opacity: 1, offset: DURAK_DEAL_FLIGHT_MS / duration },
+              {
+                transform: finalTransform,
+                opacity: 1,
+                offset: (timing.exitAt - startAt) / duration,
+              },
+              { transform: finalTransform, opacity: 0 },
+            ]
           : [
               { transform: "translate(0, 0) rotate(0deg)", opacity: 0, offset: 0 },
               { transform: "translate(0, 0) rotate(0deg)", opacity: 1, offset: 0.01 },
               {
                 transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 20}px) rotate(5deg)`,
                 opacity: 1,
-                offset: 0.5,
+                offset: (DURAK_DEAL_FLIGHT_MS * 0.5) / duration,
               },
               {
-                transform: `translate(${dx}px, ${dy}px) rotate(${(index - 2.5) * 2}deg)`,
+                transform: finalTransform,
                 opacity: 1,
+                offset: DURAK_DEAL_FLIGHT_MS / duration,
               },
+              {
+                transform: finalTransform,
+                opacity: 1,
+                offset: (timing.exitAt - startAt) / duration,
+                easing: "cubic-bezier(.4,0,.8,1)",
+              },
+              { transform: `translate(${exitX}px, ${exitY}px) rotate(0deg)`, opacity: 1 },
             ],
-        DURAK_DEAL_FLIGHT_MS,
-        beat * DURAK_DEAL_STAGGER_MS,
+        duration,
+        startAt,
+        "linear",
+      );
+    });
+    // Real hand surfaces stay mounted/decoded and enter only after the closed piles leave.
+    const hand = table?.querySelector<HTMLElement>(".durak-fullscreen-hand-row");
+    animate(
+      hand ?? null,
+      [
+        {
+          visibility: "hidden",
+          transform: "translateY(110%)",
+          opacity: reduced ? 0 : 1,
+          offset: 0,
+        },
+        {
+          visibility: "visible",
+          transform: reduced ? "translateY(6px)" : "translateY(110%)",
+          opacity: reduced ? 0 : 1,
+          offset: 0.001,
+        },
+        { visibility: "visible", transform: "translateY(0)", opacity: 1 },
+      ],
+      DURAK_HAND_ENTRANCE_MS,
+      timing.handAt,
+    );
+    table?.querySelectorAll<HTMLElement>(".durak-fullscreen-opponent-backs").forEach((element) => {
+      const position = element.closest("[data-position]")?.getAttribute("data-position") ?? "top";
+      const entrance = reduced
+        ? "translateY(6px)"
+        : position === "left"
+          ? "translateX(-100%)"
+          : position === "right"
+            ? "translateX(100%)"
+            : "translateY(-100%)";
+      animate(
+        element,
+        [
+          { visibility: "hidden", transform: entrance, opacity: 0, offset: 0 },
+          { visibility: "visible", transform: entrance, opacity: 0, offset: 0.001 },
+          { visibility: "visible", transform: "translate(0,0)", opacity: 1 },
+        ],
+        DURAK_HAND_ENTRANCE_MS,
+        timing.handAt,
       );
     });
     const stock = table?.querySelector("[data-durak-stock-trump] > *")?.getBoundingClientRect();
     const back = table?.querySelector("[data-durak-stock-back] > *")?.getBoundingClientRect();
-    const origin = layer.querySelector(".durak-deal-origin")!.getBoundingClientRect();
     const dx = stock ? stock.left + stock.width / 2 - bounds.left - source.x : -80;
     const dy = stock ? stock.top + stock.height / 2 - bounds.top - source.y : 0;
     const scale = stock ? stock.width / origin.height : 0.7;

@@ -1,7 +1,13 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { beginDurak } from "@/durak/engine";
-import { durakDealTiming, DURAK_TRUMP_PLACE_MS, DURAK_STOCK_PLACE_MS } from "@/durak/dealTiming";
+import {
+  durakDealTiming,
+  DURAK_TRUMP_PLACE_MS,
+  DURAK_STOCK_PLACE_MS,
+  DURAK_HAND_EXIT_MS,
+  DURAK_HAND_ENTRANCE_MS,
+} from "@/durak/dealTiming";
 import { DurakOnlineTable } from "@/durak/DurakOnlineTable";
 import { DurakOpeningDeal } from "@/durak/DurakOpeningDeal";
 import {
@@ -52,6 +58,44 @@ function view(): DurakGameView {
   };
 }
 describe("DURAK opening deal", () => {
+  it("moves all four closed piles beyond their screen edge before the real hand entrance", async () => {
+    vi.useFakeTimers();
+    const calls: { element: HTMLElement; frames: Keyframe[]; options: KeyframeAnimationOptions }[] = [];
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const origin = this.className === "durak-deal-origin";
+      const layer = this.className === "durak-opening-deal";
+      return { left: origin ? 50 : 0, top: origin ? 250 : 0, width: layer ? 640 : 50, height: layer ? 360 : 70 } as DOMRect;
+    });
+    Object.defineProperty(HTMLElement.prototype, "animate", {
+      configurable: true,
+      value: function (this: HTMLElement, frames: Keyframe[], options: KeyframeAnimationOptions) {
+        calls.push({ element: this, frames, options });
+        return { cancel: vi.fn(), currentTime: 0 };
+      },
+    });
+    try {
+      command.mockResolvedValue({ ok: true, game: view() });
+      render(<DurakOnlineTable code="EXIT" seats={[]} onBack={() => {}} />);
+      await act(async () => {});
+      for (let seat = 0; seat < 4; seat++) {
+        const card = calls.find(call => call.element.dataset["dealCard"] === String(seat))!;
+        const last = card.frames.at(-1)!;
+        expect(last["opacity"]).toBe(1); // Movement carries the whole card offscreen; no premature fade.
+        const [x, y] = String(last["transform"]).match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+        if (seat === 0) expect(285 + y!).toBeGreaterThan(360);
+        if (seat === 1) expect(75 + x!).toBeLessThan(0);
+        if (seat === 2) expect(285 + y!).toBeLessThan(0);
+        if (seat === 3) expect(75 + x!).toBeGreaterThan(640);
+      }
+      const hand = calls.find(call => call.element.className === "durak-fullscreen-hand-row")!;
+      expect(hand.frames[0]!["visibility"]).toBe("hidden");
+      expect(hand.frames.at(-1)!["visibility"]).toBe("visible");
+      expect(hand.options.delay).toBe(durakDealTiming(4).handAt + view().dealStartedAt!);
+      expect(calls.filter(call => call.element.className === "durak-fullscreen-opponent-backs")).toHaveLength(3);
+    } finally {
+      delete (HTMLElement.prototype as { animate?: unknown }).animate;
+    }
+  });
   it("lands the trump before moving the remaining stock and keeps both mounted until handoff", () => {
     vi.useFakeTimers();
     const calls: { element: HTMLElement; options: KeyframeAnimationOptions }[] = [];
@@ -67,13 +111,15 @@ describe("DURAK opening deal", () => {
       const timing = durakDealTiming(4);
       const done = vi.fn();
       const rendered = render(<DurakOpeningDeal game={game} onComplete={done} />);
-      const trump = calls.find(call => call.element.className === "durak-deal-trump")!;
-      const stock = calls.find(call => call.element.className === "durak-deal-stock")!;
+      const trump = calls.find((call) => call.element.className === "durak-deal-trump")!;
+      const stock = calls.find((call) => call.element.className === "durak-deal-stock")!;
       expect(trump.options.duration).toBe(DURAK_TRUMP_PLACE_MS);
       expect(stock.options.delay).toBe(Number(trump.options.delay) + DURAK_TRUMP_PLACE_MS);
       expect(stock.options.duration).toBe(DURAK_STOCK_PLACE_MS);
       expect(stock.options.fill).toBe("both");
-      expect(timing.duration).toBe(timing.stockAt + DURAK_STOCK_PLACE_MS + 120);
+      expect(timing.exitAt).toBe(timing.stockAt + DURAK_STOCK_PLACE_MS + 120);
+      expect(timing.handAt).toBe(timing.exitAt + DURAK_HAND_EXIT_MS);
+      expect(timing.duration).toBe(timing.handAt + DURAK_HAND_ENTRANCE_MS + 120);
       act(() => vi.advanceTimersByTime(game.dealReadyAt! - 1));
       expect(rendered.container.querySelector(".durak-deal-stock")).not.toBeNull();
       expect(done).not.toHaveBeenCalled();
@@ -116,7 +162,15 @@ describe("DURAK opening deal", () => {
     const rendered = render(<DurakOnlineTable code="OPEN01" seats={[]} onBack={() => {}} />);
     await act(async () => {});
     expect(rendered.container.querySelectorAll("[data-deal-card]")).toHaveLength(24);
-    expect(rendered.container.querySelectorAll("[data-durak-hand-card]")).toHaveLength(0);
+    expect(rendered.container.querySelectorAll("[data-durak-hand-card]")).toHaveLength(6);
+    expect(rendered.container.querySelector("[data-durak-hand]")?.getAttribute("aria-hidden")).toBe(
+      "true",
+    );
+    expect(
+      Array.from(
+        rendered.container.querySelectorAll<HTMLButtonElement>("[data-durak-hand-card]"),
+      ).every((card) => card.disabled),
+    ).toBe(true);
     expect(screen.queryByText("Η σειρά σου — επίλεξε φύλλο για επίθεση")).toBeNull();
     act(() => vi.advanceTimersByTime(game.dealReadyAt! - 1));
     expect(rendered.container.querySelector("[data-durak-opening-deal]")).not.toBeNull();

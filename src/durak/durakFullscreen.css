@@ -355,7 +355,7 @@
 .durak-fullscreen[data-player-count="5"] .durak-discard-pile,.durak-fullscreen[data-player-count="6"] .durak-discard-pile {top:34%;right:19%;}
 /* Opening deal overlay owns only closed backs and the already-public trump. */
 .durak-opening-deal { position:absolute; inset:0; z-index:50; pointer-events:none; --card-w:clamp(38px, 14vh, 70px); perspective:800px; }
-.durak-deal-origin { position:absolute; left:50%; top:43%; width:var(--card-w); height:calc(var(--card-w) * 1.4); margin-left:calc(var(--card-w) * -.5); margin-top:calc(var(--card-w) * -.7); }
+.durak-deal-origin { position:absolute; left:clamp(56px, 12vw, 140px); top:76%; width:var(--card-w); height:calc(var(--card-w) * 1.4); margin-left:calc(var(--card-w) * -.5); margin-top:calc(var(--card-w) * -.7); }
 .durak-deal-card, .durak-deal-trump, .durak-deal-stock { position:absolute; inset:0; }
 .durak-deal-card { z-index:4; will-change:transform; }
 .durak-deal-trump { z-index:5; }
@@ -365,3 +365,7 @@
 .durak-deal-stock { z-index:3; }
 .durak-deal-stock > :first-child { position:absolute; transform:translate(3px,-3px); }
 .durak-deal-caption { position:absolute; bottom:22%; left:50%; transform:translateX(-50%); padding:6px 12px; border-radius:16px; background:#10261cdd; color:#fde68a; white-space:nowrap; }
+
+/* Mounted artwork can decode before entrance; WAAPI reveals these surfaces only after pile exit. */
+.durak-fullscreen[data-durak-dealing] .durak-fullscreen-hand-row,
+.durak-fullscreen[data-durak-dealing] .durak-fullscreen-opponent-backs { visibility:hidden; }

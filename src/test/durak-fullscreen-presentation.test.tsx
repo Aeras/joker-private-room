@@ -4,7 +4,7 @@ import { render, fireEvent, screen, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DurakFullscreenHand } from "@/durak/DurakFullscreenHand";
 import { DurakOnlineTable } from "@/durak/DurakOnlineTable";
-import { createDeck } from "@/durak/rules";
+import { createDeck, DURAK_SEAT_POSITIONS } from "@/durak/rules";
 import { beginDurak, legalDurakMoves } from "@/durak/engine";
 import type { DurakGameView } from "@/services/durakRoomFunctions";
 const command = vi.hoisted(() => vi.fn());
@@ -37,6 +37,23 @@ function fixture(n: number, variant: DurakGameView["variant"] = "podkidnoy"): Du
   };
 }
 describe("DURAK fullscreen presentation", () => {
+  it.each([2, 3, 4, 5, 6].flatMap(n => Array.from({ length: n }, (_, seat) => [n, seat]))) (
+    "rotates the %i-seat table around local seat %i without changing authoritative order",
+    async (n, seat) => {
+      const game = { ...fixture(n), seat };
+      command.mockResolvedValue({ ok: true, game });
+      const { container } = render(<DurakOnlineTable code="ROTATE" seats={[]} onBack={() => {}} />);
+      await screen.findByLabelText("Online τραπέζι DURAK");
+      expect(container.querySelector(`[data-durak-opponent-seat="${seat}"]`)).toBeNull();
+      for (let index = 0; index < n; index++) {
+        if (index === seat) continue;
+        expect(container.querySelector(`[data-durak-opponent-seat="${index}"]`)?.getAttribute("data-position"))
+          .toBe(DURAK_SEAT_POSITIONS[n]?.[(index - seat + n) % n]);
+      }
+      expect(container.querySelectorAll("[data-durak-hand]")).toHaveLength(1);
+      expect(container.querySelector("[data-durak-hand]")?.getAttribute("aria-hidden")).toBe("false");
+    },
+  );
   it.each(["podkidnoy", "perevodnoy"] as const)(
     "keeps the returning human's opening attack playable in %s after another seat exits",
     async (variant) => {

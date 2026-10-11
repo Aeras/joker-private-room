@@ -12,6 +12,7 @@ function durakHandOverlap(count: number) {
 
 export function DurakFullscreenHand({
   cards,
+  concealed = false,
   busy,
   canPlay,
   onPlay,
@@ -20,6 +21,7 @@ export function DurakFullscreenHand({
   onDragTarget,
 }: {
   cards: readonly DurakCard[];
+  concealed?: boolean;
   busy: boolean;
   canPlay: (card: DurakCard) => boolean;
   onPlay: (card: DurakCard) => void;
@@ -105,6 +107,7 @@ export function DurakFullscreenHand({
     <div
       className="durak-fullscreen-hand"
       data-durak-hand
+      aria-hidden={concealed}
       style={{ "--durak-hand-step": step } as CSSProperties}
     >
       <div className="durak-fullscreen-hand-row">
