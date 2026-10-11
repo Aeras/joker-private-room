@@ -1,7 +1,7 @@
 import { endDurakGame } from "./end-game.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { beginDurak, applyDurakMove, legalDurakMoves, type DurakMatch, type DurakMove } from "./engine.ts";
+import { beginDurak, applyDurakMove, legalDurakMoves, sameDurakMove, type DurakMatch, type DurakMove } from "./engine.ts";
 import { chooseDurakBotMove } from "./bot.ts";
 
 const respond=(data:unknown,status=200)=>new Response(JSON.stringify(data),{
@@ -20,7 +20,6 @@ const isMove=(x:unknown):x is DurakMove=>{
  }
  return m.type!=="defend"||(Number.isInteger(m.pair)&&Number(m.pair)>=0);
 };
-const same=(a:DurakMove,b:DurakMove)=>JSON.stringify(a)===JSON.stringify(b);
 
 Deno.serve(async(req:Request)=>{
  if(req.method!=="POST")return respond({ok:false,code:"INVALID_ACTION"},405);
@@ -87,7 +86,7 @@ Deno.serve(async(req:Request)=>{
   if(action==="move"){
     if(!isMove(body?.move))return respond({ok:false,code:"INVALID_MOVE"},400);
     const allowed=legalDurakMoves(state,seat);
-    if(!allowed.some(m=>same(m,body.move)))return respond({ok:false,code:"ILLEGAL_MOVE"},400);
+    if(!allowed.some(m=>sameDurakMove(m,body.move)))return respond({ok:false,code:"ILLEGAL_MOVE"},400);
     state=applyDurakMove(state,seat,body.move);
   }
   // Every bot move is made server-side. Never send nonlocal human hands to the client.
