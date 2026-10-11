@@ -19,8 +19,8 @@ import type { DurakMove } from "./engine";
 const suitSymbol={clubs:"♣",diamonds:"♦",hearts:"♥",spades:"♠"};
 const ident=(c:DurakCard)=>c.suit+":"+c.rank;
 
-export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
- code:string;seats:Array<{index:number;name:string|null;occupant:string}>;onBack:(reason?:"closed")=>void;onEndGame?:(()=>Promise<void>)|undefined;
+export function DurakOnlineTable({code,seats,onBack,onEndGame,onNewGame}:{
+ code:string;seats:Array<{index:number;name:string|null;occupant:string}>;onBack:(reason?:"closed"|"finished")=>void;onEndGame?:(()=>Promise<void>)|undefined;onNewGame?:(()=>Promise<void>)|undefined;
 }) {
  const { game, flight, collection, landDiscard, finishDiscard, accept: setGame, presenting } = useDurakPresentation(code);
  const [loading,setLoading]=useState(false);
@@ -87,7 +87,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
   const pairColumns = Math.max(1, Math.min(game.pairs.length > 12 ? 6 : game.pairs.length > 6 ? 4 : 3, game.pairs.length));
   return (
     <div className="durak-fullscreen" data-player-count={n} aria-label="Online τραπέζι DURAK">
-      <DurakTableMenu onBack={()=>onBack()} onRefresh={()=>void fetchState()} onEndGame={onEndGame} onError={setError}/>
+      <DurakTableMenu onBack={()=>onBack(game.ended?"finished":undefined)} onRefresh={()=>void fetchState()} onEndGame={onEndGame} onError={setError}/>
       <div className="durak-fullscreen-field">
         <DurakTableSurface>
           {others.map((other) => (
@@ -211,7 +211,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
         </div>
       </div>
       <DurakDiscardFlight collection={collection} onLand={landDiscard} onComplete={finishDiscard} />
-      <DurakResults key={code} game={game} playerName={playerName} />
+      <DurakResults key={code} game={game} playerName={playerName} onNewGame={onNewGame} />
       <DurakFullscreenHand
         cards={game.myHand}
         busy={loading || presenting}

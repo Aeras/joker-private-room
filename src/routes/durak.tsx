@@ -5,6 +5,8 @@ import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { ScreenShell } from "@/components/joker/ScreenShell";
 import { PLAYER_COUNTS, VARIANT_NAMES, type DurakVariant } from "@/durak/rules";
 import { DurakOnlineTable } from "@/durak/DurakOnlineTable";
+import type { PublicPlayer } from "@/domain/players";
+import { durakTableText } from "@/i18n/durak.el";
 
 export const Route = createFileRoute("/durak")({
   head: () => ({ meta: [{ title: "DURAK — Επιλογή παιχνιδιού" }] }),
@@ -28,6 +30,13 @@ function DurakMemberAutoResume({ onMembership }: { onMembership: (code: string |
 }
 
 function DurakHome() {
+  // Keep the authenticated gate mounted across lobby/table transitions.
+  return <PlayerSessionGate allowLogout={false}>
+    {(player) => <DurakAuthenticatedHome player={player} />}
+  </PlayerSessionGate>;
+}
+
+function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
   const [variant, setVariant] = useState<DurakVariant>("podkidnoy");
   const [playerCount, setPlayerCount] = useState<number>(4);
   const [mode, setMode] = useState<"create"|"join">("create");
@@ -39,18 +48,20 @@ function DurakHome() {
   const [loadingMembership, setLoadingMembership] = useState(false);
   const [listLoaded, setListLoaded] = useState(false);
   const setMembership = useCallback((code: string | null) => { setMembershipCode(code); }, []);
+  const waitingRoomCode = room?.code;
+  const waitingRoomLifecycle = room?.lifecycle;
   useEffect(() => {
-    if (!room || room.lifecycle !== "waiting") return;
+    if (!waitingRoomCode || waitingRoomLifecycle !== "waiting") return;
     let active = true;
     const poll = async () => {
       try {
-        const response = await durakRoomCommand({data:{action:"get",code:room.code}});
+        const response = await durakRoomCommand({data:{action:"get",code:waitingRoomCode}});
         if(active && response.ok && "room" in response)setRoom(response.room);
       }catch{/* Reconnect on next poll. */}
     };
     const timer = setInterval(()=>void poll(),1800);
     return ()=>{active=false;clearInterval(timer);};
-  },[room?.code,room?.lifecycle]);
+  },[waitingRoomCode,waitingRoomLifecycle]);
   async function gameAction(action:"bot_add"|"bot_remove"|"start",code:string,seat?:number){
     setBusy(true);setError("");
     try{
@@ -102,20 +113,26 @@ function DurakHome() {
     if(!result.ok||!("cancelled" in result)||!result.cancelled)throw new Error("DURAK_END_FAILED");
     setRoom(null);setMembership(null);
   }
+  async function newGame() {
+    if (!room) return;
+    const result = await durakRoomCommand({data:{action:"create",variant:room.variant,capacity:room.capacity}});
+    if (!result.ok || !("room" in result)) {
+      throw new Error(!result.ok ? errorMessages[result.code] ?? durakTableText.newGameFailed : durakTableText.newGameFailed);
+    }
+    setVariant(result.room.variant);setPlayerCount(result.room.capacity);
+    setError("");setMode("create");setMembership(result.room.code);setRoom(result.room);
+  }
   // The active table must not inherit the lobby header's higher stacking context.
   if (room && (room.lifecycle === "playing" || room.lifecycle === "finished")) {
-    return <PlayerSessionGate allowLogout={false}>
-      {(player) => <DurakOnlineTable code={room.code} seats={room.seats}
-        onBack={(reason)=>{setRoom(null);if(reason==="closed")setMembership(null);}}
-        onEndGame={room.hostPlayerId===player.id?()=>endGame(room.code):undefined}/>
-      }
-    </PlayerSessionGate>;
+    return <DurakOnlineTable code={room.code} seats={room.seats}
+        onBack={(reason)=>{setRoom(null);if(reason==="closed"||reason==="finished")setMembership(null);}}
+        onNewGame={newGame}
+        onEndGame={room.hostPlayerId===player.id?()=>endGame(room.code):undefined}/>;
   }
   return (
     <ScreenShell title="DURAK" variant="pregame" contentClassName="!overflow-y-auto !min-h-0 pb-8">
       <div className="mx-auto w-full max-w-2xl space-y-3">
-        <PlayerSessionGate allowLogout={false}>
-          {(player) => <><section className="panel space-y-3 p-3 sm:p-4" aria-label="DURAK">
+          <section className="panel space-y-3 p-3 sm:p-4" aria-label="DURAK">
             <DurakMemberAutoResume onMembership={setMembership} />
 
             <div className="grid grid-cols-2 gap-2">
@@ -158,8 +175,7 @@ function DurakHome() {
               {available.map(item => <div key={item.code} className="flex items-center justify-between gap-2 rounded-lg border p-3"><span>{item.hostName} · {VARIANT_NAMES[item.variant]} · {item.occupied}/{item.capacity}</span><button type="button" disabled={busy} onClick={() => void run("join",item.code)} className="rounded-lg bg-secondary p-2">Συμμετοχή</button></div>)}
             </>}
 
-          </section></>}
-        </PlayerSessionGate>
+          </section>
 
       </div>
     </ScreenShell>
