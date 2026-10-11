@@ -20,7 +20,7 @@ const ident=(c:DurakCard)=>c.suit+":"+c.rank;
 export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
  code:string;seats:Array<{index:number;name:string|null;occupant:string}>;onBack:(reason?:"closed")=>void;onEndGame?:(()=>Promise<void>)|undefined;
 }) {
- const { game, flight, accept: setGame, presenting } = useDurakPresentation(code);
+ const { game, flight, clearing, accept: setGame, presenting } = useDurakPresentation(code);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState("");
  const [closed,setClosed]=useState(false);
@@ -145,13 +145,21 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
                   aria-pressed={target === i}
                   data-durak-pair
                   data-durak-pair-index={i}
+                  data-durak-clearing={clearing || undefined}
+                  style={{
+                    "--durak-clear-x": `${95 + (i % 3) * 24}px`,
+                    "--durak-clear-y": `${(i % 2 === 0 ? -1 : 1) * (10 + i * 5)}px`,
+                    "--durak-clear-angle": `${-28 + (i * 37) % 63}deg`,
+                  } as import("react").CSSProperties}
                   data-durak-drop-target={dragTarget === i || undefined}
                   className={`durak-fullscreen-pair ${target === i ? "border-amber-300 bg-white/20" : "border-white/20 bg-black/10"}`}
                 >
                   <DurakPlayedCard card={pair.attack} flight={flight} localSeat={game.seat} />
+                  {clearing && <span className="durak-clearing-card-back"><DurakCardBack /></span>}
                   {pair.defense && (
                     <span className="durak-fullscreen-defense">
                       <DurakPlayedCard card={pair.defense} flight={flight} localSeat={game.seat} />
+                      {clearing && <span className="durak-clearing-card-back"><DurakCardBack /></span>}
                     </span>
                   )}
                 </button>

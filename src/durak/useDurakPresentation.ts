@@ -4,6 +4,7 @@ import type { DurakPresentationEvent } from "./engine";
 
 export const DURAK_CARD_FLIGHT_MS = 320;
 export const DURAK_PLAY_BEAT_MS = 120;
+export const DURAK_CLEAR_MS = 760;
 const sameCard = (a: { suit: string; rank: number }, b: { suit: string; rank: number }) =>
   a.suit === b.suit && a.rank === b.rank;
 
@@ -11,10 +12,12 @@ const sameCard = (a: { suit: string; rank: number }, b: { suit: string; rank: nu
 export function useDurakPresentation(roomCode: string) {
   const [game, setGame] = useState<DurakGameView | null>(null);
   const [flight, setFlight] = useState<DurakPresentationEvent | null>(null);
+  const [clearing, setClearing] = useState(false);
   const latest = useRef<DurakGameView | null>(null);
   const shown = useRef<DurakGameView | null>(null);
   const queue = useRef<DurakPresentationEvent[]>([]);
   const sequence = useRef(0);
+  const clearedRound = useRef(-1);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const run = useRef(0);
   const room = useRef(roomCode);
@@ -33,8 +36,10 @@ export function useDurakPresentation(roomCode: string) {
     latest.current = null;
     shown.current = null;
     sequence.current = 0;
+    clearedRound.current = -1;
     setGame(null);
     setFlight(null);
+    setClearing(false);
     return () => {
       mounted.current = false;
       stop();
@@ -65,6 +70,7 @@ export function useDurakPresentation(roomCode: string) {
         shown.current = next;
         setGame(next);
         setFlight(null);
+        setClearing(false);
         return;
       }
       sequence.current = incomingSequence;
@@ -73,12 +79,48 @@ export function useDurakPresentation(roomCode: string) {
       const token = run.current;
       const advance = () => {
         if (token !== run.current) return;
+        const upcoming = queue.current[0];
+        const visibleRound = shown.current;
+        // A batched server response can contain the last defense and the next attack.
+        // Animate the completed, defended bout before showing the next round.
+        if (upcoming && visibleRound && upcoming.round > visibleRound.round &&
+            visibleRound.pairs.length > 0 && visibleRound.pairs.every(pair => Boolean(pair.defense)) &&
+            clearedRound.current !== visibleRound.round) {
+          clearedRound.current = visibleRound.round;
+          setFlight(null);
+          setClearing(true);
+          timer.current = setTimeout(() => {
+            if (token !== run.current) return;
+            setClearing(false);
+            advance();
+          }, DURAK_CLEAR_MS);
+          return;
+        }
         const event = queue.current.shift();
         if (!event) {
+          const previous = shown.current;
+          const incoming = latest.current;
+          const boutClosed = previous && incoming && previous.pairs.length > 0 &&
+            previous.pairs.every(pair => Boolean(pair.defense)) && clearedRound.current !== previous.round && incoming.pairs.length === 0 &&
+            (incoming.round > previous.round || incoming.ended);
+          if (boutClosed) {
+            clearedRound.current = previous.round;
+            setFlight(null);
+            setClearing(true);
+            timer.current = setTimeout(() => {
+              if (token !== run.current) return;
+              shown.current = latest.current;
+              setGame(latest.current);
+              setClearing(false);
+              timer.current = null;
+            }, DURAK_CLEAR_MS);
+            return;
+          }
           timer.current = null;
           shown.current = latest.current;
           setGame(latest.current);
           setFlight(null);
+          setClearing(false);
           return;
         }
         const previous = shown.current ?? next;
@@ -106,5 +148,5 @@ export function useDurakPresentation(roomCode: string) {
     },
     [stop, roomCode],
   );
-  return { game, flight, accept, presenting: flight !== null };
+  return { game, flight, clearing, accept, presenting: flight !== null || clearing };
 }
