@@ -336,3 +336,46 @@
 .durak-results-list li[data-loser] { color: #fca5a5; background: #7f1d1d55; }
 .durak-results-close { display: block; margin-left: auto; padding: 8px 12px; border: 1px solid #d7b65e80; border-radius: 10px; color: #ffe5a8; }
 @media (max-height: 430px) { .durak-results-dialog { padding: 10px 14px; } .durak-results-list { margin: 6px 0; gap: 2px; } .durak-results-list li { padding: 3px 8px; line-height: 20px; } .durak-results-close { padding: 6px 10px; } }
+
+/* Successful DURAK defense: flip the defeated cards, then toss them loosely aside. */
+.durak-fullscreen-pair[data-durak-clearing] {
+  pointer-events: none;
+  position: relative;
+  z-index: 35;
+  transform-origin: 50% 55%;
+  animation: durak-bout-discard 760ms cubic-bezier(.24,.74,.25,1) both;
+}
+.durak-fullscreen-pair[data-durak-clearing] .durak-played-card {
+  animation: durak-bout-face-away 760ms ease-in-out both;
+}
+.durak-clearing-card-back {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleX(.05);
+  animation: durak-bout-show-back 760ms ease-in-out both;
+}
+@keyframes durak-bout-face-away {
+  0%, 16% { transform: scaleX(1); opacity: 1; }
+  39%, 100% { transform: scaleX(.05); opacity: 0; }
+}
+@keyframes durak-bout-show-back {
+  0%, 24% { transform: scaleX(.05); opacity: 0; }
+  40% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+@keyframes durak-bout-discard {
+  0%, 28% { transform: translate(0,0) rotate(0); opacity: 1; }
+  55% { transform: translate(calc(var(--durak-clear-x) * .48), calc(var(--durak-clear-y) - 20px)) rotate(calc(var(--durak-clear-angle) * .4)); opacity: 1; }
+  100% { transform: translate(var(--durak-clear-x), var(--durak-clear-y)) rotate(var(--durak-clear-angle)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .durak-fullscreen-pair[data-durak-clearing],
+  .durak-fullscreen-pair[data-durak-clearing] .durak-played-card,
+  .durak-clearing-card-back {
+    animation-duration: 1ms;
+  }
+}
