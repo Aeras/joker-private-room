@@ -73,9 +73,10 @@
   bottom: calc(var(--durak-hand-visible-h) + 64px);
   left: clamp(86px, 14vw, 168px);
   right: clamp(86px, 14vw, 168px);
-  display: flex;
+  /* Fixed stock column: the attack prompt cannot move the landing target. */
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
   gap: 6px;
 }
 .durak-fullscreen[data-player-count="2"] .durak-fullscreen-center {
@@ -93,6 +94,7 @@
 }
 .durak-fullscreen-pairs {
   display: grid;
+  justify-content: center;
   gap: 4px;
   --card-w: clamp(28px, min(6.5vw, 13vh), 84px);
 }

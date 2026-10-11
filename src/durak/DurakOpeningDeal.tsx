@@ -5,6 +5,7 @@ import {
   DURAK_DEAL_STAGGER_MS,
   DURAK_DEAL_FLIGHT_MS,
   DURAK_TRUMP_FLIP_MS,
+  DURAK_TRUMP_PLACE_MS,
   DURAK_STOCK_PLACE_MS,
 } from "./dealTiming";
 import type { DurakGameView } from "@/services/durakRoomFunctions";
@@ -112,7 +113,7 @@ export function DurakOpeningDeal({
         { transform: "translate(0, 0) rotate(0deg)" },
         { transform: `translate(${dx}px, ${dy}px) rotate(90deg) scale(${scale})` },
       ],
-      DURAK_STOCK_PLACE_MS,
+      DURAK_TRUMP_PLACE_MS,
       timing.placeAt,
     );
     animate(
@@ -122,7 +123,7 @@ export function DurakOpeningDeal({
         { transform: `translate(${bx}px, ${by}px) scale(${backScale})`, zIndex: 6 },
       ],
       DURAK_STOCK_PLACE_MS,
-      timing.placeAt,
+      timing.stockAt,
     );
     const timer = setTimeout(
       () => complete.current(id),

@@ -111,6 +111,6 @@ it("starts through one atomic auto-fill transaction with the real engine deal", 
     }),
   );
   expect(setup.p_state!.hands.map((hand) => hand.length)).toEqual([6, 6, 6, 6]);
-  expect(setup.p_state!.dealReadyAt - setup.p_state!.dealStartedAt).toBe(6410);
+  expect(setup.p_state!.dealReadyAt - setup.p_state!.dealStartedAt).toBe(7010);
   expect(calls.filter(([name]) => name === "durak_lobby_setup_internal")).toHaveLength(1);
 });
