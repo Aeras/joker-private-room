@@ -184,8 +184,10 @@ export function DraggableHandCard({
       setDrag(null);
       return;
     }
-    // Preserve the final dragged pose until the parent creates the presentation token.
-    void submitOnce(releasePose(event.currentTarget, Math.max(-8, Math.min(8, (current.currentX - current.startX) / 18))));
+    // Finish the pointer-up/capture lifecycle before mounting a Joker chooser.
+    // Otherwise the chooser can appear during the same touch gesture and its first tap may be swallowed.
+    const finalPose = releasePose(event.currentTarget, Math.max(-8, Math.min(8, (current.currentX - current.startX) / 18)));
+    window.requestAnimationFrame(() => { void submitOnce(finalPose); });
   };
 
   const onDoubleClick = (event: MouseEvent<HTMLDivElement>) => {

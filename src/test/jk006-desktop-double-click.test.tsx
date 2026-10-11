@@ -80,6 +80,34 @@ describe("desktop double-click card play", () => {
     await waitFor(() => expect(space.onCommit).toHaveBeenCalledTimes(1));
   });
 
+  it("defers touch drag commit until after pointer release, unlike desktop double-click", async () => {
+    const { root, onCommit } = view();
+    const callbacks: FrameRequestCallback[] = [];
+    const originalPointerEvent = window.PointerEvent;
+    class MockPointerEvent extends MouseEvent {
+      pointerId: number;
+      pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 0;
+        this.pointerType = init.pointerType ?? "mouse";
+      }
+    }
+    window.PointerEvent = MockPointerEvent as unknown as typeof PointerEvent;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation(callback => { callbacks.push(callback); return 1; });
+    Object.defineProperty(root, "setPointerCapture", { configurable: true, value: vi.fn() });
+    const release = vi.fn();
+    Object.defineProperty(root, "releasePointerCapture", { configurable: true, value: release });
+    fireEvent.pointerDown(root, { pointerId: 7, pointerType: "touch", button: 0, clientX: 50, clientY: 140 });
+    fireEvent.pointerUp(root, { pointerId: 7, pointerType: "touch", button: 0, clientX: 50, clientY: 50 });
+    expect(release).toHaveBeenCalledWith(7);
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(callbacks).toHaveLength(1);
+    callbacks[0]?.(0);
+    await waitFor(() => expect(onCommit).toHaveBeenCalledTimes(1));
+    window.PointerEvent = originalPointerEvent;
+  });
+
   it("retains touch upward drag/flick commit classification", () => {
     expect(shouldCommitCardRelease({
       pointerType: "touch",
