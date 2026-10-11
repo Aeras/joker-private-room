@@ -9,4 +9,6 @@ export const durakTableText = {
   endFailed: "Δεν ήταν δυνατός ο τερματισμός του παιχνιδιού. Δοκίμασε ξανά.",
   fullscreenFailed: "Η πλήρης οθόνη δεν είναι διαθέσιμη σε αυτό το πρόγραμμα περιήγησης.",
   closed: "Το παιχνίδι DURAK τερματίστηκε.",
+  yourAttack: "Η σειρά σου — επίλεξε φύλλο για επίθεση",
+  waitingAttack: (name: string) => `Περιμένουμε επίθεση από ${name}`,
 } as const;

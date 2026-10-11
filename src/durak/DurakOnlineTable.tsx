@@ -150,7 +150,9 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
                 </button>
               ))}
               {game.pairs.length === 0 && (
-                <span className="rounded-xl bg-black/40 px-3 py-2 text-xs">Αναμονή επίθεσης…</span>
+                <span role="status" className="durak-fullscreen-attack-prompt" data-local-turn={actions.some(move=>move.type==="attack")}>
+                  {actions.some(move=>move.type==="attack") ? text.yourAttack : text.waitingAttack(playerName(game.attacker))}
+                </span>
               )}
             </div>
           </div>
