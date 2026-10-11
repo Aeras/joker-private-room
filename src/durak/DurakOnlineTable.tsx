@@ -1,4 +1,5 @@
 import { DurakResults } from "./DurakResults";
+import { DurakDiscardPile } from "./DurakDiscardPile";
 import { durakTapMove, durakDropMove } from "./defenseSelection";
 import { useDurakPresentation } from "./useDurakPresentation";
 import { DurakPlayedCard } from "./DurakPlayedCard";
@@ -7,7 +8,7 @@ import { DurakTableMenu } from "./DurakTableMenu";
 import { durakTableText as text } from "@/i18n/durak.el";
 import { DurakFullscreenHand } from "./DurakFullscreenHand";
 import { CANONICAL_BOTS } from "../../supabase/functions/_shared/bot-catalog";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { assets } from "@/assets/registry";
 import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
 import { durakRoomCommand } from "@/services/durakRoomFunctions";
@@ -21,7 +22,20 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
  code:string;seats:Array<{index:number;name:string|null;occupant:string}>;onBack:(reason?:"closed")=>void;onEndGame?:(()=>Promise<void>)|undefined;
 }) {
  const { game, flight, clearing, accept: setGame, presenting } = useDurakPresentation(code);
+ const fieldRef=useRef<HTMLDivElement>(null);
  const [loading,setLoading]=useState(false);
+ useLayoutEffect(()=>{
+   if(!clearing) return;
+   const field=fieldRef.current;
+   const destination=field?.querySelector("[data-durak-discard-pile] .durak-discard-mound");
+   if(!field||!destination)return;
+   const dest=destination.getBoundingClientRect();
+   field.querySelectorAll<HTMLElement>("[data-durak-pair]").forEach((pair,i)=>{
+     const from=pair.getBoundingClientRect();
+     pair.style.setProperty("--durak-clear-x",`${dest.left+dest.width/2-from.left-from.width/2+(i%3-1)*12}px`);
+     pair.style.setProperty("--durak-clear-y",`${dest.top+dest.height/2-from.top-from.height/2+(i%2?8:-8)}px`);
+   });
+ },[clearing]);
  const [error,setError]=useState("");
  const [closed,setClosed]=useState(false);
  const [target,setTarget]=useState<number|null>(null);
@@ -86,7 +100,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
   return (
     <div className="durak-fullscreen" data-player-count={n} aria-label="Online τραπέζι DURAK">
       <DurakTableMenu onBack={()=>onBack()} onRefresh={()=>void fetchState()} onEndGame={onEndGame} onError={setError}/>
-      <div className="durak-fullscreen-field">
+      <div className="durak-fullscreen-field" ref={fieldRef}>
         <DurakTableSurface>
           {others.map((other) => (
             <div
@@ -124,6 +138,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
               </div>
             </div>
           ))}
+          <DurakDiscardPile count={game.discardCount}/>
           <div className="durak-turn-summary" role="status">{game.ended ? text.completed : text.roles(playerName(game.attacker), playerName(game.defender))}{flight && <span> · {text.played(playerName(flight.seat), flight.kind)}</span>}</div>
           <div className="durak-fullscreen-center" data-durak-center>
             <div className="durak-fullscreen-stock">
@@ -147,8 +162,6 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
                   data-durak-pair-index={i}
                   data-durak-clearing={clearing || undefined}
                   style={{
-                    "--durak-clear-x": `${95 + (i % 3) * 24}px`,
-                    "--durak-clear-y": `${(i % 2 === 0 ? -1 : 1) * (10 + i * 5)}px`,
                     "--durak-clear-angle": `${-28 + (i * 37) % 63}deg`,
                   } as import("react").CSSProperties}
                   data-durak-drop-target={dragTarget === i || undefined}
