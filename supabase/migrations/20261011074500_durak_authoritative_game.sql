@@ -30,7 +30,7 @@ begin
  select seat_index into v_member from public.durak_room_seats where room_id=v_room.id and player_id=v_player and occupant_type='human';
  if v_member is null then return jsonb_build_object('ok',false,'code','NOT_A_MEMBER'); end if;
  if p_action='load' then
-   if v_room.lifecycle<>'playing' then return jsonb_build_object('ok',false,'code','NOT_STARTED'); end if;
+   if v_room.lifecycle not in ('playing','finished') then return jsonb_build_object('ok',false,'code','NOT_STARTED'); end if;
    select * into v_match from public.durak_match_states where room_id=v_room.id;
    if not found then return jsonb_build_object('ok',false,'code','STATE_UNAVAILABLE'); end if;
    return jsonb_build_object('ok',true,'state',v_match.state,'revision',v_match.revision,
