@@ -1,9 +1,18 @@
 /** Stable deterministic heap coordinates, shared by flights and landed cards. */
 export function discardLanding(index: number) {
+  // Independent mixed values avoid the diagonal rows/parallel angles produced by
+  // modular increments. Stable card indices also keep earlier landings unchanged.
+  const scatter = (salt: number, radius: number) => {
+    let value = (index + salt) | 0;
+    value = Math.imul(value ^ (value >>> 16), 0x45d9f3b);
+    value = Math.imul(value ^ (value >>> 16), 0x45d9f3b);
+    value ^= value >>> 16;
+    return Math.round((((value >>> 0) / 4294967296) * 2 - 1) * radius);
+  };
   return {
-    x: ((index * 37) % 19) - 9,
-    y: ((index * 19) % 15) - 7,
-    angle: ((index * 47) % 43) - 21,
+    x: scatter(107, 20),
+    y: scatter(211, 13),
+    angle: scatter(307, 38),
   };
 }
 export type DiscardSnapshot = {
