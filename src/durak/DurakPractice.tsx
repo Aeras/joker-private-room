@@ -2,13 +2,8 @@ import { useEffect, useState } from "react";
 import { applyDurakMove, beginDurak, legalDurakMoves, type DurakMatch, type DurakMove } from "@/durak/engine";
 import { chooseDurakBotMove } from "@/durak/bot";
 import { VARIANT_NAMES, type DurakCard, type DurakVariant } from "@/durak/rules";
+import { DurakCardFace, DurakCardBack, DurakStock, DurakTableSurface } from "@/durak/DurakTableVisuals";
 
-const names: Record<string,string>={clubs:"♣",diamonds:"♦",hearts:"♥",spades:"♠"};
-const ranks: Record<number,string>={11:"J",12:"Q",13:"K",14:"A"};
-function label(card:DurakCard){return String(ranks[card.rank]??card.rank)+(names[card.suit]??"");}
-function CardFace({card,onClick,selected}: {card:DurakCard;onClick?:(()=>void)|undefined;selected?:boolean}){
- return <button type="button" disabled={!onClick} onClick={onClick} className={`min-w-11 rounded-lg border px-2 py-3 text-lg font-bold shadow-sm ${card.suit==="hearts"||card.suit==="diamonds"?"text-red-600":"text-stone-900"} ${selected?"ring-2 ring-amber-400":"border-stone-400"} bg-stone-100 disabled:opacity-90`}>{label(card)}</button>;
-}
 export function DurakPractice({variant,onClose}:{variant:DurakVariant;onClose:()=>void}){
  const [match,setMatch]=useState<DurakMatch>(()=>beginDurak(variant,2));
  const [selectedPair,setSelectedPair]=useState<number|null>(null);
@@ -35,24 +30,60 @@ export function DurakPractice({variant,onClose}:{variant:DurakVariant;onClose:()
   const move=selected??opts.find(m=>m.type==="transfer")??defend[0]??opts.find(m=>m.type==="attack");
   if(move)play(move);else setError("Επίλεξε επιτρεπτό φύλλο ή κάρτα προς άμυνα.");
  };
- return <div className="rounded-xl border border-primary/50 bg-black/20 p-3 space-y-3">
-  <div className="flex items-center justify-between gap-2"><h2 className="font-bold">Δοκιμαστικό DURAK · Εσύ εναντίον bot</h2><button type="button" className="rounded border p-2" onClick={onClose}>Κλείσιμο</button></div>
-  <p className="text-sm">{VARIANT_NAMES[variant]} · Γύρος {match.round} · Κόζι {names[match.trump]} · Τράπουλα {match.deck.length} φύλλα</p>
-  {match.ended?<p className="font-bold">{match.fool===0?"Έχασες — Ντουράκ!":match.fool===1?"Κέρδισες!":"Ισοπαλία"}</p>:<p className="text-sm">{match.defender===0?"Αμύνεσαι":"Επιτίθεσαι"} · {match.taking?"Ο αμυνόμενος παίρνει":""}</p>}
-  <div className="rounded-lg bg-secondary/40 p-3">
-   <div className="flex justify-between"><b>Bot</b><span>{match.hands[1]?.length} φύλλα {match.defender===1?"· Άμυνα":""}</span></div>
-   <div className="flex flex-wrap gap-1 py-2">{match.hands[1]?.map((_,i)=><span key={i} className="inline-block h-11 w-7 rounded border border-amber-600 bg-amber-950 shadow-sm"/>)}</div>
+ return <div className="mx-auto w-full max-w-6xl space-y-2" aria-label="Τραπέζι DURAK">
+  <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="text-sm font-semibold">{VARIANT_NAMES[variant]} · Γύρος {match.round}</div>
+    <button type="button" className="rounded-lg border border-primary/40 px-3 py-1.5 text-sm" onClick={onClose}>← Πίσω</button>
   </div>
-  <div className="min-h-32 rounded-lg border border-primary/25 p-3 space-y-2"><p className="text-sm">Τραπέζι — επίλεξε επιθετική κάρτα για να αμυνθείς</p>
-   <div className="flex flex-wrap gap-3">{match.pairs.map((pair,i)=><button type="button" key={i} onClick={()=>setSelectedPair(i)} aria-pressed={selectedPair===i} className={`relative rounded border p-2 ${selectedPair===i?"border-primary":"border-transparent"}`}>
-    <span className="text-lg font-bold">{label(pair.attack)}</span>{pair.defense&&<span className="ml-2 text-lg font-bold text-primary">↗ {label(pair.defense)}</span>}
-   </button>)}</div>
-  </div>
-  <div className="space-y-2"><b>Τα φύλλα σου ({match.hands[0]?.length})</b>
-   <div className="flex flex-wrap gap-1">{match.hands[0]?.map(card=><CardFace key={card.suit+card.rank} card={card} onClick={options(card).length?()=>cardClick(card):undefined}/>)}</div>
-  </div>
-  {error&&<p role="alert" className="text-red-400">{error}</p>}
-  <div className="flex flex-wrap gap-2">{legal.filter(m=>!("card" in m)).map((move,i)=><button type="button" key={move.type+i} className="rounded-lg border border-primary/50 bg-primary/10 px-3 py-2" onClick={()=>play(move)}>{{take:"Παίρνω",pass:"Δεν προσθέτω",finish:"Τέλος"}[move.type as "take"|"pass"|"finish"]}</button>)}</div>
-  <p className="text-xs text-muted-foreground">Δοκιμαστική παρτίδα στον browser. Δεν δημιουργεί online δωμάτιο ούτε επηρεάζει το JOKER.</p>
+  <DurakTableSurface>
+    <div className="relative z-10 flex items-start justify-center pt-3 sm:pt-5">
+      <div className="flex flex-col items-center gap-1 rounded-xl bg-black/40 px-4 py-2">
+        <span className="text-sm font-semibold text-white">Bot {match.defender===1?"· Αμύνεται":"· Επιτίθεται"}</span>
+        <div className="flex items-center -space-x-5 [--card-w:2.4rem] sm:[--card-w:3rem]">
+          {match.hands[1]?.map((_,i)=><DurakCardBack key={i}/>)}
+        </div>
+        <span className="text-xs text-white/80">{match.hands[1]?.length} φύλλα</span>
+      </div>
+    </div>
+
+    <div className="relative z-10 flex flex-1 flex-col justify-center gap-2 px-3 py-3 sm:px-6">
+      <div className="flex items-center justify-between gap-2 text-sm text-white">
+        <span className="rounded-lg bg-black/45 px-2 py-1">
+          {match.ended?(match.fool===0?"Ντουράκ — έχασες":match.fool===1?"Κέρδισες!":"Ισοπαλία"):(match.defender===0?"Η σειρά σου: άμυνα":"Η σειρά σου: επίθεση")}
+        </span>
+        <span className="rounded-lg bg-black/45 px-2 py-1">Απορρίφθηκαν: {match.discard.length}</span>
+      </div>
+      <div className="flex min-h-28 items-center justify-center gap-2 sm:min-h-44">
+        <DurakStock trump={match.trumpCard} remaining={match.deck.length}/>
+        <div className="flex flex-1 flex-wrap items-center justify-center gap-2 [--card-w:2.75rem] sm:[--card-w:4rem]" aria-label="Επίθεση και άμυνα">
+          {match.pairs.length===0&&<span className="rounded-full bg-black/35 px-4 py-2 text-sm text-white/80">Το τραπέζι είναι άδειο</span>}
+          {match.pairs.map((pair,i)=><button key={i} type="button" aria-pressed={selectedPair===i} onClick={()=>setSelectedPair(i)}
+            className={`relative flex h-24 min-w-16 items-center rounded-lg border p-1 transition-all sm:h-36 ${selectedPair===i?"border-amber-300 bg-amber-400/20":"border-white/15 bg-black/10"}`}>
+            <DurakCardFace card={pair.attack}/>
+            {pair.defense&&<span className="-ml-6 mt-5 rotate-12"><DurakCardFace card={pair.defense}/></span>}
+          </button>)}
+        </div>
+      </div>
+      {selectedPair!==null&&<p className="text-center text-xs text-white/80">Επιλέχθηκε επίθεση {selectedPair+1} · παίξε φύλλο άμυνας</p>}
+    </div>
+
+    <div className="relative z-10 mt-auto space-y-2 rounded-t-2xl bg-black/50 px-3 pb-3 pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-white">
+        <span className="text-sm font-semibold">Εσύ · {match.hands[0]?.length} φύλλα</span>
+        <div className="flex flex-wrap gap-1.5">
+          {legal.filter(m=>!("card" in m)).map((move,i)=><button key={move.type+i} type="button" onClick={()=>play(move)}
+            className="rounded-lg border border-amber-400/60 bg-black/60 px-3 py-1.5 text-sm font-semibold text-white">
+            {{take:"Παίρνω",pass:"Δεν προσθέτω",finish:"Τέλος"}[move.type as "take"|"pass"|"finish"]}
+          </button>)}
+        </div>
+      </div>
+      <div className="flex min-h-24 items-end justify-center -space-x-2 overflow-x-auto pb-1 [--card-w:3rem] sm:-space-x-3 sm:[--card-w:4.5rem]">
+        {match.hands[0]?.map(card=><DurakCardFace key={card.suit+card.rank} card={card} onClick={options(card).length?()=>cardClick(card):undefined}
+          className={options(card).length?"hover:-translate-y-2 focus-visible:-translate-y-2":"opacity-60"}/>)}
+      </div>
+    </div>
+  </DurakTableSurface>
+  {error&&<p role="alert" className="text-sm text-red-400">{error}</p>}
+  <p className="text-xs text-muted-foreground">Τοπική δοκιμή εναντίον bot — δεν συνδέεται με online παρτίδες. Επίλεξε επιθετικό φύλλο στο τραπέζι πριν παίξεις την άμυνά σου.</p>
  </div>;
 }
