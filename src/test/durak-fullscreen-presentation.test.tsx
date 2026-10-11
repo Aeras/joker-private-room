@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DurakFullscreenHand } from "@/durak/DurakFullscreenHand";
 import { DurakOnlineTable } from "@/durak/DurakOnlineTable";
 import { createDeck } from "@/durak/rules";
+import { beginDurak, legalDurakMoves } from "@/durak/engine";
 import type { DurakGameView } from "@/services/durakRoomFunctions";
 const command = vi.hoisted(() => vi.fn());
 vi.mock("@/services/durakRoomFunctions", () => ({ durakRoomCommand: command }));
@@ -36,6 +37,54 @@ function fixture(n: number, variant: DurakGameView["variant"] = "podkidnoy"): Du
   };
 }
 describe("DURAK fullscreen presentation", () => {
+  it.each(["podkidnoy", "perevodnoy"] as const)(
+    "keeps the returning human's opening attack playable in %s after another seat exits",
+    async (variant) => {
+      // Public shape of the reported table; synthetic cards, no live private hands.
+      const state = beginDurak(variant, 4, () => 0.5);
+      state.hands = [hand.slice(0, 18), hand.slice(18, 19), hand.slice(19), []];
+      state.deck = [];
+      state.pairs = [];
+      state.finishes = [];
+      state.passes = [];
+      state.primaryAttacker = 0;
+      state.attacker = 0;
+      state.defender = 1;
+      state.firstAttack = false;
+      state.defenderStartingHand = 1;
+      const game = fixture(4, variant);
+      game.myHand = state.hands[0]!;
+      game.handSizes = state.hands.map((cards) => cards.length);
+      game.stock = 0;
+      game.legalMoves = legalDurakMoves(state, 0);
+      expect(game.legalMoves).toHaveLength(18);
+      command.mockResolvedValue({ ok: true, game });
+      const { container } = render(<DurakOnlineTable code="TEST" seats={[]} onBack={() => {}} />);
+      await screen.findByText("Η σειρά σου — επίλεξε φύλλο για επίθεση");
+      const cards = container.querySelectorAll<HTMLButtonElement>("[data-durak-hand-card]");
+      expect([...cards].every((card) => !card.disabled)).toBe(true);
+      fireEvent.click(cards[0]!);
+      expect(command).toHaveBeenLastCalledWith({
+        data: { action: "move", code: "TEST", move: { type: "attack", card: hand[0] } },
+      });
+    },
+  );
+  it("names the opponent whose opening attack is awaited", async () => {
+    const game = fixture(2);
+    game.attacker = 1;
+    game.defender = 0;
+    game.legalMoves = [];
+    command.mockResolvedValue({ ok: true, game });
+    render(
+      <DurakOnlineTable
+        code="TEST"
+        seats={[{ index: 1, name: "Git", occupant: "human" }]}
+        onBack={() => {}}
+      />,
+    );
+    await screen.findByText("Περιμένουμε επίθεση από Git");
+    expect(screen.queryByText("Η σειρά σου — επίλεξε φύλλο για επίθεση")).toBeNull();
+  });
   it.each([0, 1, 6, 12, 24, 36])("fits a %i-card fan with stable stacking", (count) => {
     const { container } = render(
       <DurakFullscreenHand
