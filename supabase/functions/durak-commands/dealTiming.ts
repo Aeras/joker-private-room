@@ -1,5 +1,5 @@
 /** DURAK opening: six closed cards per seat, then trump flip and stock placement. */
-export const DURAK_DEAL_STAGGER_MS = 90;
+export const DURAK_DEAL_STAGGER_MS = 200;
 export const DURAK_DEAL_FLIGHT_MS = 420;
 export const DURAK_TRUMP_FLIP_MS = 550;
 export const DURAK_STOCK_PLACE_MS = 600;

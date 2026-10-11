@@ -83,12 +83,12 @@
   right: 16px;
 }
 .durak-fullscreen-stock {
-  width: 94px;
-  height: 84px;
+  width: 116px;
+  height: 100px;
   flex-shrink: 0;
 }
 .durak-fullscreen-stock > * {
-  transform: scale(0.65);
+  transform: scale(0.8);
   transform-origin: left top;
 }
 .durak-fullscreen-pairs {
@@ -203,11 +203,11 @@
 }
 @media (max-height: 360px) {
   .durak-fullscreen-stock {
-    width: 80px;
-    height: 72px;
+    width: 96px;
+    height: 84px;
   }
   .durak-fullscreen-stock > * {
-    transform: scale(0.55);
+    transform: scale(0.68);
   }
 }
 /* Keep unusually dense legal attack rounds inside the center without a scroll panel. */
