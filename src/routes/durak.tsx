@@ -97,11 +97,16 @@ function DurakHome() {
     } catch { setError("Αδυναμία επικοινωνίας με τον διακομιστή."); }
     finally { setBusy(false); }
   }
+  async function endGame(code:string) {
+    const result=await durakRoomCommand({data:{action:"end_game",code}});
+    if(!result.ok||!("cancelled" in result)||!result.cancelled)throw new Error("DURAK_END_FAILED");
+    setRoom(null);setMembership(null);
+  }
   return (
     <ScreenShell title="DURAK" variant="pregame" contentClassName="!overflow-y-auto !min-h-0 pb-8">
       <div className="mx-auto w-full max-w-2xl space-y-3">
         <PlayerSessionGate allowLogout={false}>
-          {(player) => <section className="panel space-y-3 p-3 sm:p-4" aria-label="DURAK">
+          {(player) => <><section className="panel space-y-3 p-3 sm:p-4" aria-label="DURAK">
             <DurakMemberAutoResume onMembership={setMembership} />
 
             <div className="grid grid-cols-2 gap-2">
@@ -143,9 +148,10 @@ function DurakHome() {
               {listLoaded && available.length === 0 && <p className="text-sm text-muted-foreground">Δεν εμφανίζονται διαθέσιμα δωμάτια DURAK.</p>}
               {available.map(item => <div key={item.code} className="flex items-center justify-between gap-2 rounded-lg border p-3"><span>{item.hostName} · {VARIANT_NAMES[item.variant]} · {item.occupied}/{item.capacity}</span><button type="button" disabled={busy} onClick={() => void run("join",item.code)} className="rounded-lg bg-secondary p-2">Συμμετοχή</button></div>)}
             </>}
-          </section>}
+
+          </section>{room && (room.lifecycle==="playing"||room.lifecycle==="finished") && <DurakOnlineTable code={room.code} seats={room.seats} onBack={(reason)=>{setRoom(null);if(reason==="closed")setMembership(null);}} onEndGame={room.hostPlayerId===player.id?()=>endGame(room.code):undefined}/> }</>}
         </PlayerSessionGate>
-        {room && (room.lifecycle==="playing"||room.lifecycle==="finished") && <DurakOnlineTable code={room.code} seats={room.seats} onBack={()=>setRoom(null)}/>}
+
       </div>
     </ScreenShell>
   );
