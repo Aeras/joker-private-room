@@ -12,7 +12,19 @@ describe("20 custom premium Joker reactions", () => {
     expect(JSON.parse(list ?? "[]")).toEqual(slugs);
     expect(picker).toContain("/emojis/joker/");
     expect(picker).toContain(".webp");
+    expect(picker).toContain("/emojis/joker/thumbs/");
+    expect(picker).toContain("src={emojiThumbnailUrl(slug)!}");
+    expect(picker).toContain('loading="lazy"');
+    expect(picker).toContain('decoding="async"');
     expect(picker).not.toContain(".svg");
+  });
+  it("uses only single-frame picker thumbnails, preserving animations for selected reactions", () => {
+    const picker = read("src/components/table/EmojiPicker.tsx");
+    const seat = read("src/components/table/TableSeat.tsx");
+    const workflow = read(".github/workflows/joker-emoji-thumbnails.yml");
+    expect(seat).toContain("src={emojiUrl(reactionEmoji)!}");
+    expect(workflow).toContain("assert check.n_frames == 1");
+    expect(workflow).toContain("len(files) != 20");
   });
   it("authoritative SQL validates exactly the new 20 reactions", () => {
     const migration = read("supabase/migrations/20261010180000_joker_20_reactions.sql");
