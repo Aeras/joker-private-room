@@ -1,0 +1,40 @@
+JOKER CUSTOM EMOJI ASSETS
+LICENSE NOTICE — ALL RIGHTS RESERVED
+Version 1.0 | 11 October 2026
+
+Copyright (c) 2026 JOKER Project / the applicable rights holder.
+All rights reserved to the extent permitted by applicable law.
+
+SCOPE
+This notice applies to the original custom JOKER emoji and mascot assets,
+including still images, animated WebP files, videos, and source artwork
+created specifically for the JOKER project, only to the extent that the
+applicable rights holder owns or controls rights in those assets.
+
+PERMITTED USE
+These assets may be displayed and used as part of the official JOKER game
+and its authorized websites, applications, and distributions.
+
+NO THIRD-PARTY LICENSE
+No permission is granted to third parties to copy, redistribute, publish,
+modify, sublicense, sell, commercially exploit, or incorporate these assets
+into other games, applications, products, or collections without prior written
+permission from the applicable rights holder, except as permitted by law.
+
+RESERVATION OF RIGHTS
+Making an asset publicly accessible or including it in a publicly viewable
+repository does not constitute a grant of an open-source, Creative Commons,
+or other general reuse license for that asset.
+
+THIRD-PARTY MATERIALS AND PLATFORM TERMS
+This notice does not replace or restrict any applicable rights of third
+parties, licenses for third-party materials, applicable AI-service terms,
+or rights and exceptions provided by law. In particular, it does not apply
+to the former Microsoft Fluent Emoji assets or their separate MIT license.
+
+CONTACT
+For reuse or licensing requests, contact the JOKER project administrator
+through the project's official communication channel.
+
+This notice states the intended licensing conditions; it does not by itself
+establish ownership or create intellectual property rights where none exist.
