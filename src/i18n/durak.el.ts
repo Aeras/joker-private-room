@@ -1,4 +1,5 @@
 export const durakTableText = {
+  dealing: "Μοίρασμα φύλλων…",
   results: "Αποτελέσματα",
   completed: "Η παρτίδα ολοκληρώθηκε",
   exitOrder: "Σειρά ολοκλήρωσης",

@@ -59,7 +59,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
         if(active && response.ok && "room" in response)setRoom(response.room);
       }catch{/* Reconnect on next poll. */}
     };
-    const timer = setInterval(()=>void poll(),1800);
+    const timer = setInterval(()=>void poll(),600);
     return ()=>{active=false;clearInterval(timer);};
   },[waitingRoomCode,waitingRoomLifecycle]);
   async function gameAction(action:"bot_add"|"bot_remove"|"start",code:string,seat?:number){

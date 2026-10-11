@@ -34,6 +34,8 @@ export type DurakMatch = {
   finishOrderComplete?: boolean;
   /** Server-only persisted pacing; never sent in the public view. */
   nextBotAt?: number;
+  dealStartedAt?: number;
+  dealReadyAt?: number;
   presentationSequence?: number;
   presentationEvents?: DurakPublicEvent[];
 };
