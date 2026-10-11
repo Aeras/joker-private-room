@@ -6,7 +6,8 @@ import { ScreenShell } from "@/components/joker/ScreenShell";
 import { PLAYER_COUNTS, VARIANT_NAMES, type DurakVariant } from "@/durak/rules";
 import { DurakOnlineTable } from "@/durak/DurakOnlineTable";
 import type { PublicPlayer } from "@/domain/players";
-import { durakTableText } from "@/i18n/durak.el";
+import { DurakWaitingSeats } from "@/durak/DurakWaitingSeats";
+import { durakLobbyText, durakTableText } from "@/i18n/durak.el";
 
 export const Route = createFileRoute("/durak")({
   head: () => ({ meta: [{ title: "DURAK — Επιλογή παιχνιδιού" }] }),
@@ -56,19 +57,19 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
     const poll = async () => {
       try {
         const response = await durakRoomCommand({data:{action:"get",code:waitingRoomCode}});
-        if(active && response.ok && "room" in response)setRoom(response.room);
+        if(active && response.ok && "room" in response)setRoom(current=>current?.code===response.room.code && current.version>response.room.version ? current : response.room);
       }catch{/* Reconnect on next poll. */}
     };
     const timer = setInterval(()=>void poll(),600);
     return ()=>{active=false;clearInterval(timer);};
   },[waitingRoomCode,waitingRoomLifecycle]);
-  async function gameAction(action:"bot_add"|"bot_remove"|"start",code:string,seat?:number){
+  async function gameAction(action:"bot_add"|"bot_remove"|"start",code:string,seat?:number,botId?:string){
     setBusy(true);setError("");
     try{
       const result=action==="bot_remove"
         ? await durakRoomCommand({data:{action:"bot_remove",code,seat:seat??0}})
         : action==="bot_add"
-          ? await durakRoomCommand({data:{action:"bot_add",code}})
+          ? await durakRoomCommand({data:{action:"bot_add",code,seat,botId}})
           : await durakRoomCommand({data:{action:"start",code}});
       if(!result.ok){setError(result.code);return;}
       await run("get",code);
@@ -90,6 +91,8 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
     NOT_A_MEMBER: "Δεν συμμετέχεις σε αυτό το δωμάτιο.",
     SERVICE_UNAVAILABLE: "Το DURAK δεν είναι προσωρινά διαθέσιμο. Δοκίμασε ξανά.",
     ROOM_NOT_FULL:"Συμπλήρωσε τις κενές θέσεις με παίκτες ή bots.",
+    BOT_UNAVAILABLE:"Το bot βρίσκεται ήδη σε άλλη θέση. Επίλεξε άλλο.",
+    INVALID_BOT:"Η επιλογή bot δεν είναι διαθέσιμη.",
     HOST_ONLY:"Μόνο ο δημιουργός μπορεί να κάνει αυτή την ενέργεια.",
   };
   async function run(action: "create" | "list" | "join" | "get" | "leave", code?: string) {
@@ -146,13 +149,9 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
               </button>
             )}
             {error && <p role="alert" className="text-sm text-negative">{errorMessages[error] ?? "Η ενέργεια δεν ολοκληρώθηκε. Δοκίμασε ξανά."}</p>}
-            {room ? <div className="space-y-3 rounded-lg border border-primary p-3" aria-label="Δωμάτιο DURAK"><h2 className="font-semibold">Δωμάτιο DURAK</h2><p className="text-sm">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p><div className="grid grid-cols-3 gap-2">{room.seats.map(seat => <div key={seat.index} className="rounded-lg bg-secondary p-2 text-center text-sm">Θέση {seat.index + 1}<div>{seat.name ?? "Ελεύθερη"}</div></div>)}</div><div className="flex flex-wrap gap-2">
-              {room.lifecycle==="waiting" && room.hostPlayerId===player.id && <>
-                <button type="button" disabled={busy || !room.seats.some(s=>s.occupant==="empty")} onClick={()=>void gameAction("bot_add",room.code)} className="rounded-lg border border-primary px-3 py-2">+ Bot</button>
-                {room.seats.filter(s=>s.occupant==="bot").map(s=><button type="button" key={s.index} disabled={busy} onClick={()=>void gameAction("bot_remove",room.code,s.index)} className="rounded-lg border px-3 py-2">− {s.name}</button>)}
-                <button type="button" disabled={busy || room.seats.some(s=>s.occupant==="empty")} onClick={()=>void gameAction("start",room.code)} className="rounded-lg border border-primary bg-primary/20 px-4 py-2 font-bold">Έναρξη παρτίδας</button>
-              </>}
-              <button type="button" disabled={busy} onClick={() => void run("get",room.code)} className="rounded-lg border p-2">Ανανέωση</button><button type="button" disabled={busy} onClick={() => void run("leave",room.code)} className="rounded-lg border p-2">Έξοδος</button></div><p className="text-sm text-muted-foreground">Συμπλήρωσε τις θέσεις με φίλους από τη «Συμμετοχή» ή πρόσθεσε bots. Μόλις γεμίσουν οι θέσεις, ο δημιουργός ξεκινά την παρτίδα.</p></div> : mode === "create" ? <>
+            {room ? <div className="space-y-3 rounded-lg border border-primary p-3" aria-label="Δωμάτιο DURAK"><h2 className="font-semibold">Δωμάτιο DURAK</h2><p className="text-sm">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p><DurakWaitingSeats seats={room.seats} host={room.hostPlayerId===player.id && room.lifecycle==="waiting"} busy={busy} onSelect={(seat,botId)=>gameAction("bot_add",room.code,seat,botId)} onRemove={seat=>gameAction("bot_remove",room.code,seat)} /><div className="flex flex-wrap gap-2">
+              {room.lifecycle==="waiting" && room.hostPlayerId===player.id && <button type="button" disabled={busy} onClick={()=>void gameAction("start",room.code)} className="rounded-lg border border-primary bg-primary/20 px-4 py-2 font-bold">Έναρξη παρτίδας</button>}
+              <button type="button" disabled={busy} onClick={() => void run("get",room.code)} className="rounded-lg border p-2">Ανανέωση</button><button type="button" disabled={busy} onClick={() => void run("leave",room.code)} className="rounded-lg border p-2">Έξοδος</button></div><p className="text-sm text-muted-foreground">{durakLobbyText.help}</p></div> : mode === "create" ? <>
               <label className="block space-y-2 text-sm font-semibold">Παραλλαγή
                 <select className="w-full rounded-lg border border-border bg-secondary p-3" value={variant} onChange={e => setVariant(e.target.value as DurakVariant)}>
                   {Object.entries(VARIANT_NAMES).map(([id,label]) => <option key={id} value={id}>{label}</option>)}

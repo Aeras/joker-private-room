@@ -1,3 +1,12 @@
+export const durakLobbyText = {
+  seats: "Θέσεις παικτών",
+  empty: "Κενή θέση",
+  seat: (number: number) => `Θέση ${number}`,
+  chooseSeat: (number: number) => `Επιλογή bot για τη θέση ${number}`,
+  close: "Κλείσιμο",
+  remove: "Αφαίρεση bot",
+  help: "Περίμενε φίλους από τη «Συμμετοχή» ή επίλεξε bot πατώντας μια κενή θέση. Με την έναρξη οι υπόλοιπες κενές θέσεις συμπληρώνονται αυτόματα με τυχαία bots.",
+} as const;
 export const durakTableText = {
   dealing: "Μοίρασμα φύλλων…",
   results: "Αποτελέσματα",
