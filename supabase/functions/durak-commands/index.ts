@@ -52,7 +52,12 @@ Deno.serve(async(req:Request)=>{
     });
   if(!gameActions.has(action)){
     const {data,error}=await roomRpc(action);
-    if(error){console.error("DURAK lobby RPC",error.code);return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);}
+    if(error){
+      if(error.code==="23505"&&error.message?.includes("ACTIVE_GAME_EXISTS"))
+        return respond({ok:false,code:"ACTIVE_GAME_EXISTS"},409);
+      console.error("DURAK lobby RPC",error.code);
+      return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);
+    }
     const result=data&&typeof data==="object"?data:{ok:false,code:"SERVICE_UNAVAILABLE"};
     return respond(result,errors(result));
   }
