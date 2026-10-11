@@ -24,6 +24,9 @@ export const EMOJI_SLUGS = [
 export function emojiUrl(slug: string): string | null {
   return (EMOJI_SLUGS as readonly string[]).includes(slug) ? `/emojis/joker/${slug}.webp` : null;
 }
+export function emojiThumbnailUrl(slug: string): string | null {
+  return (EMOJI_SLUGS as readonly string[]).includes(slug) ? `/emojis/joker/thumbs/${slug}.webp` : null;
+}
 export function EmojiPicker({ open, onToggle, onSelect, busy }: {
   open: boolean;
   onToggle: () => void;
@@ -39,7 +42,7 @@ export function EmojiPicker({ open, onToggle, onSelect, busy }: {
             {EMOJI_SLUGS.map(slug => (
               <button type="button" key={slug} disabled={busy} aria-label={slug.replaceAll("_"," ").replaceAll("-"," ")} title={slug.replaceAll("_"," ")}
                 onClick={() => onSelect(slug)} className="aspect-square rounded-lg p-1 hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50">
-                <img src={emojiUrl(slug)!} alt="" className="h-full w-full object-contain" />
+                <img src={emojiThumbnailUrl(slug)!} alt="" loading="lazy" decoding="async" width="64" height="64" className="h-full w-full object-contain" />
               </button>
             ))}
           </div>
