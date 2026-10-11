@@ -17,6 +17,7 @@ export function useDurakPresentation(roomCode: string) {
   const shown = useRef<DurakGameView | null>(null);
   const queue = useRef<DurakPresentationEvent[]>([]);
   const sequence = useRef(0);
+  const clearedRound = useRef(-1);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const run = useRef(0);
   const room = useRef(roomCode);
@@ -35,6 +36,7 @@ export function useDurakPresentation(roomCode: string) {
     latest.current = null;
     shown.current = null;
     sequence.current = 0;
+    clearedRound.current = -1;
     setGame(null);
     setFlight(null);
     setClearing(false);
@@ -77,13 +79,32 @@ export function useDurakPresentation(roomCode: string) {
       const token = run.current;
       const advance = () => {
         if (token !== run.current) return;
+        const upcoming = queue.current[0];
+        const visibleRound = shown.current;
+        // A batched server response can contain the last defense and the next attack.
+        // Animate the completed, defended bout before showing the next round.
+        if (upcoming && visibleRound && upcoming.round > visibleRound.round &&
+            visibleRound.pairs.length > 0 && visibleRound.pairs.every(pair => Boolean(pair.defense)) &&
+            clearedRound.current !== visibleRound.round) {
+          clearedRound.current = visibleRound.round;
+          setFlight(null);
+          setClearing(true);
+          timer.current = setTimeout(() => {
+            if (token !== run.current) return;
+            setClearing(false);
+            advance();
+          }, DURAK_CLEAR_MS);
+          return;
+        }
         const event = queue.current.shift();
         if (!event) {
           const previous = shown.current;
           const incoming = latest.current;
-          const boutClosed = previous && incoming && previous.pairs.length > 0 && incoming.pairs.length === 0 &&
+          const boutClosed = previous && incoming && previous.pairs.length > 0 &&
+            previous.pairs.every(pair => Boolean(pair.defense)) && clearedRound.current !== previous.round && incoming.pairs.length === 0 &&
             (incoming.round > previous.round || incoming.ended);
           if (boutClosed) {
+            clearedRound.current = previous.round;
             setFlight(null);
             setClearing(true);
             timer.current = setTimeout(() => {
