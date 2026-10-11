@@ -245,7 +245,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const jokerChoiceLock = useRef(false);
   const submitJokerChoice = async (semantic: Extract<GameplayCommand, { type: "choose_joker_semantic" }>["semantic"]) => {
     if (jokerIntent) {
-      if (busy || jokerChoiceLock.current) return;
+      if (jokerChoiceLock.current) return;
       const intent = jokerIntent;
       jokerChoiceLock.current = true;
       setJokerIntent(null);
@@ -259,7 +259,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       finally { jokerChoiceLock.current = false; setPendingJokerChoice(null); }
       return;
     }
-    if (busy || jokerChoiceLock.current || !jokerAction) return;
+    if (jokerChoiceLock.current || !jokerAction) return;
     const play = projection.cards.currentTrick.find(play => play.seatIndex === localSeat && play.card.kind === "joker");
     if (!play) return;
     jokerChoiceLock.current = true;
