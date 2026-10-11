@@ -54,8 +54,11 @@ function DurakHome() {
   async function gameAction(action:"bot_add"|"bot_remove"|"start",code:string,seat?:number){
     setBusy(true);setError("");
     try{
-      const data=action==="bot_remove"?{action,code,seat:seat??0}:{action,code};
-      const result=await durakRoomCommand({data});
+      const result=action==="bot_remove"
+        ? await durakRoomCommand({data:{action:"bot_remove",code,seat:seat??0}})
+        : action==="bot_add"
+          ? await durakRoomCommand({data:{action:"bot_add",code}})
+          : await durakRoomCommand({data:{action:"start",code}});
       if(!result.ok){setError(result.code);return;}
       await run("get",code);
     }catch{setError("Αδυναμία επικοινωνίας με τον διακομιστή.");}
