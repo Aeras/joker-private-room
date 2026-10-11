@@ -5,8 +5,8 @@ import { VARIANT_NAMES, type DurakCard, type DurakVariant } from "@/durak/rules"
 
 const names: Record<string,string>={clubs:"♣",diamonds:"♦",hearts:"♥",spades:"♠"};
 const ranks: Record<number,string>={11:"J",12:"Q",13:"K",14:"A"};
-function label(card:DurakCard){return (ranks[card.rank]??card.rank)+names[card.suit];}
-function CardFace({card,onClick,selected}: {card:DurakCard;onClick?:()=>void;selected?:boolean}){
+function label(card:DurakCard){return String(ranks[card.rank]??card.rank)+(names[card.suit]??"");}
+function CardFace({card,onClick,selected}: {card:DurakCard;onClick?:(()=>void)|undefined;selected?:boolean}){
  return <button type="button" disabled={!onClick} onClick={onClick} className={`min-w-11 rounded-lg border px-2 py-3 text-lg font-bold shadow-sm ${card.suit==="hearts"||card.suit==="diamonds"?"text-red-600":"text-stone-900"} ${selected?"ring-2 ring-amber-400":"border-stone-400"} bg-stone-100 disabled:opacity-90`}>{label(card)}</button>;
 }
 export function DurakPractice({variant,onClose}:{variant:DurakVariant;onClose:()=>void}){
