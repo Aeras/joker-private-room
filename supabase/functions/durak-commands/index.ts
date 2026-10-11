@@ -85,10 +85,10 @@ Deno.serve(async(req:Request)=>{
   }
   // Every bot move is made server-side. Never send nonlocal human hands to the client.
   if(!state.ended){
+    const {data:roomData,error:roomError}=await roomRpc("get");
+    if(roomError||!roomData?.ok)return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);
+    const seats=roomData.room.seats as Array<{index:number;occupant:string}>;
     for(let step=0;step<220;step++){
-      const {data:roomData,error:roomError}=await roomRpc("get");
-      if(roomError||!roomData?.ok)break;
-      const seats=roomData.room.seats as Array<{index:number;occupant:string}>;
       const bot=seats.find(s=>s.occupant==="bot"&&legalDurakMoves(state,s.index).length>0);
       if(!bot)break;
       const move=chooseDurakBotMove(state,bot.index,"balanced");
