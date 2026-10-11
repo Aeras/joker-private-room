@@ -20,9 +20,10 @@ const key=(c:DurakCard)=>c.suit+":"+c.rank;
 const clockwise=(seat:number,n:number)=>(seat+1)%n;
 function alive(m:DurakMatch,i:number){return m.hands[i]!.length>0 || m.deck.length>0;}
 function nextAlive(m:DurakMatch,from:number){for(let i=1;i<=m.hands.length;i++){const index=(from+i)%m.hands.length;if(alive(m,index))return index;}return from;}
+function previousAlive(m:DurakMatch,from:number){for(let i=1;i<=m.hands.length;i++){const index=(from-i+m.hands.length)%m.hands.length;if(alive(m,index))return index;}return from;}
 function remove(hand:DurakCard[],card:DurakCard){const pos=hand.findIndex(c=>key(c)===key(card));if(pos<0)throw new Error("CARD_NOT_OWNED");hand.splice(pos,1);}
 function clone(m:DurakMatch):DurakMatch{return {...m,hands:m.hands.map(h=>[...h]),deck:[...m.deck],discard:[...m.discard],pairs:m.pairs.map(p=>({...p})),passes:[...m.passes],finishes:[...m.finishes]};}
-function attackers(m:DurakMatch){const previous=(m.defender+m.hands.length-1)%m.hands.length;const following=nextAlive(m,m.defender);return [...new Set([previous,following])].filter(i=>i!==m.defender&&alive(m,i));}
+function attackers(m:DurakMatch){const previous=previousAlive(m,m.defender);const following=nextAlive(m,m.defender);return [...new Set([previous,following])].filter(i=>i!==m.defender&&alive(m,i));}
 function allowedAttackers(m:DurakMatch){return attackers(m).filter(i=>!m.finishes.includes(i));}
 function table(m:DurakMatch){return m.pairs.flatMap(p=>p.defense?[p.attack,p.defense]:[p.attack]);}
 function cap(m:DurakMatch){return maximumAttackCards(m.defenderStartingHand,m.firstAttack);}
@@ -74,7 +75,7 @@ function close(m:DurakMatch){
   const oldDef=m.defender;
   if(!m.deck.length){const players=m.hands.map((h,i)=>({i,n:h.length})).filter(x=>x.n>0);if(players.length<=1){m.ended=true;m.fool=players[0]?.i??null;}}
   if(m.ended){m.pairs=[];return;}
-  m.primaryAttacker=nextAlive(m,m.taking?oldDef:((oldDef+m.hands.length-1)%m.hands.length));
+  m.primaryAttacker=m.taking?nextAlive(m,oldDef):(alive(m,oldDef)?oldDef:nextAlive(m,oldDef));
   m.attacker=m.primaryAttacker;m.defender=nextAlive(m,m.primaryAttacker);
   m.pairs=[];m.passes=[];m.finishes=[];m.taking=false;m.firstAttack=false;
   m.defenderStartingHand=m.hands[m.defender]!.length;m.round++;
