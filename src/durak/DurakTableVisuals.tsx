@@ -26,10 +26,10 @@ export function DurakStock({trump,remaining}: {trump:DurakCard;remaining:number}
 
   return <div aria-label={`Τράπουλα: ${remaining} φύλλα, ατού ${trump.suit}`}
     className="relative h-24 w-28 shrink-0 sm:h-32 sm:w-36">
-    <div data-durak-stock-trump className="absolute left-0 top-3 rotate-90 [--card-w:3.5rem] sm:[--card-w:4rem]">
+    <div data-durak-stock-trump className="absolute left-9 top-3 rotate-90 [--card-w:3.5rem] sm:left-12 sm:[--card-w:4rem]">
       <DurakCardFace card={trump}/>
     </div>
-    {remaining > 0 && <div data-durak-stock-back className="absolute left-9 top-0 [--card-w:3.5rem] sm:left-12 sm:[--card-w:4rem]">
+    {remaining > 0 && <div data-durak-stock-back className="absolute left-0 top-0 z-10 [--card-w:3.5rem] sm:[--card-w:4rem]">
       <DurakCardBack/>
     </div>}
     <span className="absolute bottom-0 right-0 rounded bg-black/75 px-1.5 py-0.5 text-xs text-white">{remaining===0?"Τράπουλα άδεια":remaining}</span>
