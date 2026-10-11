@@ -1,0 +1,58 @@
+name: Generate Joker emoji picker thumbnails
+on:
+  pull_request:
+    paths:
+      - "src/components/table/EmojiPicker.tsx"
+      - "public/emojis/joker/*.webp"
+      - ".github/workflows/joker-emoji-thumbnails.yml"
+permissions:
+  contents: write
+jobs:
+  thumbnails:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "Pillow==11.3.0"
+      - name: Export compact static previews from 20 animated assets
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          root = Path("public/emojis/joker")
+          target = root / "thumbs"
+          target.mkdir(parents=True, exist_ok=True)
+          files = sorted(root.glob("*.webp"))
+          if len(files) != 20:
+              raise SystemExit(f"Expected 20 source assets, found {len(files)}")
+          total = 0
+          for src in files:
+              with Image.open(src) as im:
+                  im.seek(0)
+                  thumb = im.convert("RGBA")
+                  thumb.thumbnail((128, 128), Image.Resampling.LANCZOS)
+                  out = target / src.name
+                  thumb.save(out, "WEBP", quality=82, method=6)
+                  total += out.stat().st_size
+                  with Image.open(out) as check:
+                      assert check.n_frames == 1, src.name
+                      assert check.size[0] <= 128 and check.size[1] <= 128
+          if len(list(target.glob("*.webp"))) != 20:
+              raise SystemExit("Expected 20 generated thumbnails")
+          print(f"20 thumbnails ready: {total} bytes total")
+          PY
+      - name: Commit thumbnails to the feature branch
+        run: |
+          git add -A public/emojis/joker/thumbs
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Generate lightweight Joker emoji picker thumbnails"
+            git push origin "HEAD:${{ github.head_ref }}"
+          fi
