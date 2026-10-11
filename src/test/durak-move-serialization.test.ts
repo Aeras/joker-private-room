@@ -1,4 +1,8 @@
 import {
+  advanceDurakBot,
+  scheduleDurakBot,
+} from "../../supabase/functions/durak-commands/bot-turn";
+import {
   recordDurakPlay,
   publicDurakEvents,
 } from "../../supabase/functions/durak-commands/presentation";
@@ -77,7 +81,8 @@ describe("DURAK move validation after JSONB persistence", () => {
       "applyDurakMove",
       "legalDurakMoves",
       "sameDurakMove",
-      "chooseDurakBotMove",
+      "advanceDurakBot",
+      "scheduleDurakBot",
       "endDurakGame",
       "recordDurakPlay",
       "durakAttackSeats",
@@ -96,7 +101,8 @@ describe("DURAK move validation after JSONB persistence", () => {
       serverApply,
       serverLegal,
       serverSameMove,
-      () => null,
+      advanceDurakBot,
+      scheduleDurakBot,
       () => null,
       recordDurakPlay,
       durakAttackSeats,
@@ -120,6 +126,7 @@ describe("DURAK move validation after JSONB persistence", () => {
     expect(body.game.pairs[0].attack).toEqual(first);
     expect(body.game.revision).toBe(2);
     expect(body.game).not.toHaveProperty("hands");
+    expect(body.game).not.toHaveProperty("nextBotAt");
     expect(body.game).not.toHaveProperty("pendingFinishOrder");
     state.ended = true;
     state.fool = 1;

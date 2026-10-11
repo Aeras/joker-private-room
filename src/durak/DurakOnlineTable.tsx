@@ -9,7 +9,7 @@ import { DurakTableMenu } from "./DurakTableMenu";
 import { durakTableText as text } from "@/i18n/durak.el";
 import { DurakFullscreenHand } from "./DurakFullscreenHand";
 import { CANONICAL_BOTS } from "../../supabase/functions/_shared/bot-catalog";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { assets } from "@/assets/registry";
 import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
 import { durakRoomCommand } from "@/services/durakRoomFunctions";
@@ -29,17 +29,21 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame,onNewGame}:{
  const [target,setTarget]=useState<number|null>(null);
  const [dragTarget,setDragTarget]=useState<number|null>(null);
  useEffect(()=>{setTarget(null);setDragTarget(null);},[game?.revision,game?.round]);
+ const polling=useRef(false);
  const fetchState=useCallback(async()=>{
+   if(polling.current)return;
+   polling.current=true;
    try{
      const r=await durakRoomCommand({data:{action:"get_game",code}});
      if(r.ok&&"game" in r)setGame(r.game);
      else if(!r.ok&&(r.code==="ROOM_NOT_FOUND"||r.code==="NOT_STARTED")){setClosed(true);}
      else if(!r.ok&&r.code!=="STATE_CHANGED")setError("Δεν ήταν δυνατή η ενημέρωση της παρτίδας.");
    }catch{setError("Η σύνδεση διακόπηκε. Περιμένουμε επανασύνδεση.");}
+   finally{polling.current=false;}
  },[code,setGame]);
  useEffect(()=>{
    void fetchState();
-   const id=setInterval(()=>{void fetchState();},1600);
+   const id=setInterval(()=>{void fetchState();},600);
    return ()=>clearInterval(id);
  },[fetchState]);
  const actions=useMemo(()=>game?.legalMoves??[],[game?.legalMoves]);

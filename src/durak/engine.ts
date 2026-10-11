@@ -32,6 +32,8 @@ export type DurakMatch = {
   finishOrder?: number[];
   pendingFinishOrder?: number[];
   finishOrderComplete?: boolean;
+  /** Server-only persisted pacing; never sent in the public view. */
+  nextBotAt?: number;
   presentationSequence?: number;
   presentationEvents?: DurakPublicEvent[];
 };
@@ -43,7 +45,11 @@ function previousAlive(m:DurakMatch,from:number){for(let i=1;i<=m.hands.length;i
 function remove(hand:DurakCard[],card:DurakCard){const pos=hand.findIndex(c=>key(c)===key(card));if(pos<0)throw new Error("CARD_NOT_OWNED");hand.splice(pos,1);}
 function clone(m:DurakMatch):DurakMatch{return {...m,hands:m.hands.map(h=>[...h]),deck:[...m.deck],discard:[...m.discard],pairs:m.pairs.map(p=>({...p})),passes:[...m.passes],finishes:[...m.finishes],finishOrder:[...(m.finishOrder??[])],pendingFinishOrder:[...(m.pendingFinishOrder??[])]};}
 function attackers(m:DurakMatch){const previous=previousAlive(m,m.defender);const following=nextAlive(m,m.defender);return [...new Set([previous,following])].filter(i=>i!==m.defender&&alive(m,i));}
-function allowedAttackers(m:DurakMatch){return attackers(m).filter(i=>!m.finishes.includes(i));}
+function allowedAttackers(m:DurakMatch){
+ const eligible=attackers(m).filter(i=>!m.finishes.includes(i)&&!m.passes.includes(i));
+ // The opening attacker retains priority until explicitly declining additions.
+ return eligible.includes(m.primaryAttacker)?[m.primaryAttacker]:eligible;
+}
 /** Public role eligibility only; never infer opponents' card ranks for presentation. */
 export function durakAttackSeats(m: DurakMatch): number[] {
   if (m.ended) return [];
@@ -112,8 +118,8 @@ function close(m:DurakMatch){
 }
 function mayClose(m:DurakMatch){
  const required=attackers(m);
- if(m.taking){if(required.every(i=>m.finishes.includes(i))||m.pairs.length>=cap(m))close(m);}
- else if(m.pairs.length>0&&m.pairs.every(p=>p.defense)&&required.every(i=>m.finishes.includes(i)))close(m);
+ if(m.taking){if(required.every(i=>m.finishes.includes(i)||m.passes.includes(i))||m.pairs.length>=cap(m))close(m);}
+ else if(m.pairs.length>0&&m.pairs.every(p=>p.defense)&&required.every(i=>m.finishes.includes(i)||m.passes.includes(i)))close(m);
 }
 export function applyDurakMove(state:DurakMatch,seat:number,move:DurakMove):DurakMatch{
  const options=legalDurakMoves(state,seat);
@@ -121,7 +127,7 @@ export function applyDurakMove(state:DurakMatch,seat:number,move:DurakMove):Dura
  const m=clone(state);
  // Legacy games have no historical exit order; never invent their rankings.
  m.finishOrderComplete=state.finishOrderComplete??(!state.deck.length?state.hands.every(h=>h.length>0):true);
- if(move.type==="attack"){remove(m.hands[seat]!,move.card);m.pairs.push({attack:move.card});m.passes=[];}
+ if(move.type==="attack"){remove(m.hands[seat]!,move.card);m.pairs.push({attack:move.card});}
  else if(move.type==="defend"){remove(m.hands[seat]!,move.card);m.pairs[move.pair]!.defense=move.card;}
  else if(move.type==="transfer"){
    remove(m.hands[seat]!,move.card);m.pairs.push({attack:move.card});
