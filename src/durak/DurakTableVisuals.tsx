@@ -37,7 +37,7 @@ export function DurakStock({trump,remaining}: {trump:DurakCard;remaining:number}
 }
 
 export function DurakTableSurface({children}: {children:React.ReactNode}) {
-  return <div className="relative isolate flex min-h-[min(76dvh,670px)] flex-col overflow-hidden rounded-[2.5rem] border-[6px] border-[#79552b] bg-[#14543b] shadow-[inset_0_0_70px_#062c20,0_15px_40px_#0008] sm:border-[10px]">
+  return <div className="relative isolate flex h-full min-h-0 flex-col overflow-hidden rounded-[2.5rem] border-[6px] border-[#79552b] bg-[#14543b] shadow-[inset_0_0_70px_#062c20,0_15px_40px_#0008] sm:border-[10px]">
     <img src={assets.tableArt} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-55"/>
     {children}
   </div>;
