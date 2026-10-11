@@ -1,3 +1,4 @@
+import { endDurakGame } from "./end-game.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { beginDurak, applyDurakMove, legalDurakMoves, type DurakMatch, type DurakMove } from "./engine.ts";
@@ -6,7 +7,7 @@ import { chooseDurakBotMove } from "./bot.ts";
 const respond=(data:unknown,status=200)=>new Response(JSON.stringify(data),{
   status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}
 });
-const gameActions=new Set(["bot_add","bot_remove","start","get_game","move"]);
+const gameActions=new Set(["bot_add","bot_remove","start","get_game","move","end_game"]);
 const errors=(result:{ok?:boolean;code?:string})=>result.ok?200:result.code==="NOT_AUTHENTICATED"?401:result.code==="NOT_A_MEMBER"?403:result.code==="STATE_CHANGED"?409:400;
 const isMove=(x:unknown):x is DurakMove=>{
  if(!x||typeof x!=="object")return false;
@@ -41,6 +42,7 @@ Deno.serve(async(req:Request)=>{
   const key=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if(!url||!key)return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);
   const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+  if(action==="end_game"){const result=await endDurakGame(admin,token,code);return respond(result,result.ok?200:result.code==="HOST_ONLY"?403:result.code==="SERVICE_UNAVAILABLE"?503:errors(result));}
   const roomRpc=async(a:string)=>admin.rpc("durak_room_command_internal",{
     p_session_token:token,p_action:a,p_code:code||null,
     p_variant:a==="create"?variant:null,p_capacity:a==="create"?capacity:null

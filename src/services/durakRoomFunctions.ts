@@ -9,6 +9,7 @@ const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("bot_add"),code:z.string().regex(/^[A-Za-z0-9]{6}$/) }),
   z.object({ action: z.literal("bot_remove"),code:z.string().regex(/^[A-Za-z0-9]{6}$/),seat:z.number().int().min(0).max(5) }),
   z.object({ action: z.literal("start"),code:z.string().regex(/^[A-Za-z0-9]{6}$/) }),
+  z.object({ action: z.literal("end_game"),code:z.string().regex(/^[A-Za-z0-9]{6}$/) }),
   z.object({ action: z.literal("get_game"),code:z.string().regex(/^[A-Za-z0-9]{6}$/) }),
   z.object({ action: z.literal("move"),code:z.string().regex(/^[A-Za-z0-9]{6}$/),move:z.discriminatedUnion("type",[
     z.object({type:z.literal("attack"),card:z.object({suit:z.enum(["clubs","diamonds","hearts","spades"]),rank:z.number().int().min(6).max(14)})}),

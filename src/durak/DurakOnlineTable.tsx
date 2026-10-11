@@ -1,4 +1,6 @@
 import "./durakFullscreen.css";
+import { DurakTableMenu } from "./DurakTableMenu";
+import { durakTableText as text } from "@/i18n/durak.el";
 import { DurakFullscreenHand } from "./DurakFullscreenHand";
 import { CANONICAL_BOTS } from "../../supabase/functions/_shared/bot-catalog";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -6,22 +8,24 @@ import { assets } from "@/assets/registry";
 import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
 import { durakRoomCommand, type DurakGameView } from "@/services/durakRoomFunctions";
 import { DurakCardBack, DurakCardFace, DurakStock, DurakTableSurface } from "./DurakTableVisuals";
-import { DURAK_SEAT_POSITIONS, VARIANT_NAMES, type DurakCard } from "./rules";
+import { DURAK_SEAT_POSITIONS, type DurakCard } from "./rules";
 import type { DurakMove } from "./engine";
 const suitSymbol={clubs:"♣",diamonds:"♦",hearts:"♥",spades:"♠"};
 const ident=(c:DurakCard)=>c.suit+":"+c.rank;
 
-export function DurakOnlineTable({code,seats,onBack}:{
- code:string;seats:Array<{index:number;name:string|null;occupant:string}>;onBack:()=>void;
+export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
+ code:string;seats:Array<{index:number;name:string|null;occupant:string}>;onBack:(reason?:"closed")=>void;onEndGame?:(()=>Promise<void>)|undefined;
 }) {
  const [game,setGame]=useState<DurakGameView|null>(null);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState("");
+ const [closed,setClosed]=useState(false);
  const [target,setTarget]=useState<number|null>(null);
  const fetchState=useCallback(async()=>{
    try{
      const r=await durakRoomCommand({data:{action:"get_game",code}});
      if(r.ok&&"game" in r)setGame(r.game);
+     else if(!r.ok&&(r.code==="ROOM_NOT_FOUND"||r.code==="NOT_STARTED")){setClosed(true);}
      else if(!r.ok&&r.code!=="STATE_CHANGED")setError("Δεν ήταν δυνατή η ενημέρωση της παρτίδας.");
    }catch{setError("Η σύνδεση διακόπηκε. Περιμένουμε επανασύνδεση.");}
  },[code]);
@@ -50,10 +54,11 @@ export function DurakOnlineTable({code,seats,onBack}:{
    else if(defenses.length>0)setError("Επίλεξε πρώτα την επίθεση που θέλεις να αποκρούσεις.");
  };
  const positions=useMemo(()=>game?DURAK_SEAT_POSITIONS[game.handSizes.length]??[]:[],[game]);
+ if(closed)return <div className="durak-fullscreen flex items-center justify-center gap-4"><p>{text.closed}</p><button type="button" onClick={()=>onBack("closed")}>{text.back}</button></div>;
  if(!game)return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#10261c] p-6 text-white">
    <div className="space-y-4 text-center">Φόρτωση παρτίδας DURAK…
      <div><button type="button" onClick={()=>void fetchState()} className="rounded border px-4 py-2">Επανάληψη</button></div>
-     <div><button type="button" onClick={onBack} className="text-sm underline">Πίσω στο δωμάτιο</button></div>
+     <div><button type="button" onClick={()=>onBack()} className="text-sm underline">Πίσω στο δωμάτιο</button></div>
      {error&&<p role="alert">{error}</p>}
    </div>
  </div>;
@@ -73,19 +78,7 @@ export function DurakOnlineTable({code,seats,onBack}:{
   const pairColumns = Math.max(1, Math.min(game.pairs.length > 12 ? 6 : game.pairs.length > 6 ? 4 : 3, game.pairs.length));
   return (
     <div className="durak-fullscreen" data-player-count={n} aria-label="Online τραπέζι DURAK">
-      <header className="durak-fullscreen-header">
-        <span className="min-w-0 truncate font-bold">
-          DURAK · {VARIANT_NAMES[game.variant]} · Γύρος {game.round}
-        </span>
-        <div className="flex shrink-0 gap-2">
-          <button type="button" onClick={() => void fetchState()}>
-            Ανανέωση
-          </button>
-          <button type="button" onClick={onBack}>
-            Πίσω
-          </button>
-        </div>
-      </header>
+      <DurakTableMenu onBack={()=>onBack()} onRefresh={()=>void fetchState()} onEndGame={onEndGame} onError={setError}/>
       <div className="durak-fullscreen-field">
         <DurakTableSurface>
           {others.map((other) => (

@@ -1,6 +1,6 @@
 .durak-fullscreen {
-  --durak-hand-card-w: clamp(40px, min(7vw, 18vh), 80px);
-  --durak-hand-visible-h: calc(var(--durak-hand-card-w) * 1.4 * 0.58);
+  --durak-hand-card-w: clamp(38px, min(6.65vw, 17.1vh), 76px);
+  --durak-hand-visible-h: calc(var(--durak-hand-card-w) * 1.4 * 0.62);
   position: fixed;
   inset: 0;
   z-index: 90;
@@ -9,23 +9,6 @@
   flex-direction: column;
   background: #10261c;
   color: white;
-}
-.durak-fullscreen-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-shrink: 0;
-  padding: calc(env(safe-area-inset-top) + 3px) calc(env(safe-area-inset-right) + 8px) 3px
-    calc(env(safe-area-inset-left) + 8px);
-  font-size: 12px;
-  background: #07150ee6;
-}
-.durak-fullscreen-header button {
-  min-height: 32px;
-  padding: 4px 8px;
-  border: 1px solid #ffffff40;
-  border-radius: 8px;
 }
 .durak-fullscreen-field {
   position: relative;
@@ -44,7 +27,7 @@
 }
 .durak-fullscreen-opponent[data-position="top"],
 .durak-fullscreen-opponent[data-position="top-center"] {
-  top: 4px;
+  top: calc(env(safe-area-inset-top) + 4px);
   left: 50%;
   transform: translateX(-50%);
 }
@@ -85,7 +68,7 @@
 }
 .durak-fullscreen-center {
   position: absolute;
-  top: clamp(90px, 30vh, 128px);
+  top: calc(env(safe-area-inset-top) + clamp(90px, 30vh, 128px));
   bottom: calc(var(--durak-hand-visible-h) + 64px);
   left: clamp(86px, 14vw, 168px);
   right: clamp(86px, 14vw, 168px);
@@ -170,7 +153,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(var(--durak-hand-card-w) * 1.4 * -0.42);
+  bottom: calc(var(--durak-hand-card-w) * 1.4 * -0.38);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -224,4 +207,28 @@
     calc((100cqh - var(--durak-pair-rows) * 10px) / var(--durak-pair-rows) / 1.4),
     calc((100cqw - 106px - var(--durak-pair-columns) * 10px) / var(--durak-pair-columns) / 1.58)
   );
+}
+
+.durak-fullscreen-navigation {
+  position: absolute;
+  z-index: 40;
+  top: calc(env(safe-area-inset-top) + 4px);
+  left: calc(env(safe-area-inset-left) + 6px);
+  right: calc(env(safe-area-inset-right) + 6px);
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.durak-fullscreen-navigation-button {
+  pointer-events: auto;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #ffffff40;
+  border-radius: 50%;
+  background: #07150e99;
+}
+.durak-fullscreen .joker-table-shell {
+  top: 0;
 }

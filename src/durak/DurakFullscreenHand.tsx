@@ -5,7 +5,7 @@ import type { DurakCard } from "./rules";
 
 /** Same horizontal fan pattern as JOKER, fitted to DURAK's up-to-36-card hand. */
 function durakHandOverlap(count: number) {
-  return count <= 3 ? 0.18 : count <= 5 ? 0.28 : count <= 7 ? 0.36 : 0.42;
+  return count <= 3 ? 0.25 : count <= 5 ? 0.36 : count <= 7 ? 0.44 : 0.5;
 }
 
 export function DurakFullscreenHand({

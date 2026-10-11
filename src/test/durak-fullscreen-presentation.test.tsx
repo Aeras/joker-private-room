@@ -152,4 +152,15 @@ describe("DURAK fullscreen presentation", () => {
       data: { action: "move", code: "TEST", move: { type: "transfer", card: hand[0] } },
     });
   });
+  it("replaces a cancelled room's stale hand with the termination notice", async () => {
+    command
+      .mockResolvedValueOnce({ ok: true, game: fixture(2) })
+      .mockResolvedValue({ ok: false, code: "ROOM_NOT_FOUND" });
+    const { container } = render(<DurakOnlineTable code="TEST" seats={[]} onBack={() => {}} />);
+    await screen.findByLabelText("Online τραπέζι DURAK");
+    fireEvent.keyDown(screen.getByRole("button", { name: "Μενού παιχνιδιού" }), { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Ανανέωση" }));
+    await screen.findByText("Το παιχνίδι DURAK τερματίστηκε.");
+    expect(container.querySelector("[data-durak-hand-card]")).toBeNull();
+  });
 });
