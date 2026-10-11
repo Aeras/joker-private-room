@@ -4,6 +4,7 @@ import { durakRoomCommand, type DurakRoomView, type DurakWaitingRoom } from "@/s
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { ScreenShell } from "@/components/joker/ScreenShell";
 import { PLAYER_COUNTS, VARIANT_NAMES, type DurakVariant } from "@/durak/rules";
+import { DurakPractice } from "@/durak/DurakPractice";
 
 export const Route = createFileRoute("/durak")({
   head: () => ({ meta: [{ title: "DURAK — Επιλογή παιχνιδιού" }] }),
@@ -28,6 +29,7 @@ function DurakMemberAutoResume({ onMembership }: { onMembership: (code: string |
 
 function DurakHome() {
   const [variant, setVariant] = useState<DurakVariant>("podkidnoy");
+  const [practice, setPractice] = useState(false);
   const [playerCount, setPlayerCount] = useState<number>(4);
   const [mode, setMode] = useState<"create"|"join">("create");
   const [busy, setBusy] = useState(false);
@@ -87,7 +89,7 @@ function DurakHome() {
               </button>
             )}
             {error && <p role="alert" className="text-sm text-negative">{errorMessages[error] ?? "Η ενέργεια δεν ολοκληρώθηκε. Δοκίμασε ξανά."}</p>}
-            {room ? <div className="space-y-3 rounded-lg border border-primary p-3" aria-label="Δωμάτιο DURAK"><h2 className="font-semibold">Δωμάτιο DURAK</h2><p className="text-sm">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p><div className="grid grid-cols-3 gap-2">{room.seats.map(seat => <div key={seat.index} className="rounded-lg bg-secondary p-2 text-center text-sm">Θέση {seat.index + 1}<div>{seat.name ?? "Ελεύθερη"}</div></div>)}</div><div className="flex gap-2"><button type="button" disabled={busy} onClick={() => void run("get",room.code)} className="rounded-lg border p-2">Ανανέωση</button><button type="button" disabled={busy} onClick={() => void run("leave",room.code)} className="rounded-lg border p-2">Έξοδος</button></div><p className="text-sm text-muted-foreground">Η έναρξη παρτίδας και η επιλογή bots θα ενεργοποιηθούν σε επόμενο στάδιο.</p></div> : mode === "create" ? <>
+            {practice ? <DurakPractice variant={variant} onClose={() => setPractice(false)} /> : room ? <div className="space-y-3 rounded-lg border border-primary p-3" aria-label="Δωμάτιο DURAK"><h2 className="font-semibold">Δωμάτιο DURAK</h2><p className="text-sm">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p><div className="grid grid-cols-3 gap-2">{room.seats.map(seat => <div key={seat.index} className="rounded-lg bg-secondary p-2 text-center text-sm">Θέση {seat.index + 1}<div>{seat.name ?? "Ελεύθερη"}</div></div>)}</div><div className="flex gap-2"><button type="button" disabled={busy} onClick={() => void run("get",room.code)} className="rounded-lg border p-2">Ανανέωση</button><button type="button" disabled={busy} onClick={() => void run("leave",room.code)} className="rounded-lg border p-2">Έξοδος</button></div><p className="text-sm text-muted-foreground">Η έναρξη παρτίδας και η επιλογή bots θα ενεργοποιηθούν σε επόμενο στάδιο.</p></div> : mode === "create" ? <>
               <label className="block space-y-2 text-sm font-semibold">Παραλλαγή
                 <select className="w-full rounded-lg border border-border bg-secondary p-3" value={variant} onChange={e => setVariant(e.target.value as DurakVariant)}>
                   {Object.entries(VARIANT_NAMES).map(([id,label]) => <option key={id} value={id}>{label}</option>)}
@@ -98,6 +100,7 @@ function DurakHome() {
                   {PLAYER_COUNTS.map(count => <option key={count} value={count}>{count} παίκτες</option>)}
                 </select>
               </label>
+              <button type="button" onClick={() => setPractice(true)} className="w-full rounded-lg border border-primary/50 p-3 font-semibold">Δοκιμή παιχνιδιού με bot</button>
               <button type="button" disabled={busy || Boolean(membershipCode)} onClick={() => void run("create")}
                 className="w-full rounded-lg border border-primary bg-primary/15 px-4 py-3 font-semibold">
                 {busy ? "Παρακαλώ περίμενε…" : "Δημιουργία παιχνιδιού"}
