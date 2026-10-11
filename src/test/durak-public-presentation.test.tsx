@@ -218,13 +218,15 @@ describe("DURAK confirmed public presentation", () => {
     expect(history.presentationEvents).toHaveLength(32);
     expect(history.presentationSequence).toBe(42);
   });
-  it("shows only the opening attacker, then both permitted adjacent attackers without hidden-rank deductions", () => {
+  it("shows primary priority, then secondary after decline without hidden-rank deductions", () => {
     const state = beginDurak("podkidnoy", 4, () => 0.5);
     state.primaryAttacker = 0;
     state.defender = 1;
     expect(durakAttackSeats(state)).toEqual([0]);
     state.pairs = [{ attack: card }];
-    expect(durakAttackSeats(state)).toEqual([0, 2]);
+    expect(durakAttackSeats(state)).toEqual([0]);
+    state.passes = [0];
+    expect(durakAttackSeats(state)).toEqual([2]);
     state.finishes = [0];
     expect(durakAttackSeats(state)).toEqual([2]);
     state.ended = true;

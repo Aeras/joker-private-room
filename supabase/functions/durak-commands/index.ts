@@ -3,7 +3,7 @@ import { recordDurakPlay, publicDurakEvents } from "./presentation.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { beginDurak, applyDurakMove, legalDurakMoves, sameDurakMove, durakAttackSeats, type DurakMatch, type DurakMove } from "./engine.ts";
-import { chooseDurakBotMove } from "./bot.ts";
+import { advanceDurakBot, scheduleDurakBot } from "./bot-turn.ts";
 
 const respond=(data:unknown,status=200)=>new Response(JSON.stringify(data),{
   status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}
@@ -74,7 +74,7 @@ Deno.serve(async(req:Request)=>{
     if(roomError||!roomData?.ok||!roomData?.room)return respond({ok:false,code:"ROOM_NOT_FOUND"},400);
     const view=roomData.room as {variant:"podkidnoy"|"perevodnoy";capacity:number};
     const secureRandom=()=>crypto.getRandomValues(new Uint32Array(1))[0]!/4294967296;
-    const game=beginDurak(view.variant,view.capacity,secureRandom);
+    const game=scheduleDurakBot(beginDurak(view.variant,view.capacity,secureRandom),Date.now());
     const {data,error}=await gameRpc("start",undefined,game);
     if(error){console.error("DURAK start RPC",error.code);return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);}
     return respond(data,errors(data));
@@ -88,21 +88,14 @@ Deno.serve(async(req:Request)=>{
     if(!isMove(body?.move))return respond({ok:false,code:"INVALID_MOVE"},400);
     const allowed=legalDurakMoves(state,seat);
     if(!allowed.some(m=>sameDurakMove(m,body.move)))return respond({ok:false,code:"ILLEGAL_MOVE"},400);
-    state=recordDurakPlay(state,applyDurakMove(state,seat,body.move),seat,body.move);
+    state=scheduleDurakBot(recordDurakPlay(state,applyDurakMove(state,seat,body.move),seat,body.move),Date.now());
   }
   // Every bot move is made server-side. Never send nonlocal human hands to the client.
-  if(!state.ended){
+  if(!state.ended&&action==="get_game"&&Date.now()>=(state.nextBotAt??0)){
     const {data:roomData,error:roomError}=await roomRpc("get");
     if(roomError||!roomData?.ok)return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);
     const seats=roomData.room.seats as Array<{index:number;occupant:string}>;
-    for(let step=0;step<220;step++){
-      const bot=seats.find(s=>s.occupant==="bot"&&legalDurakMoves(state,s.index).length>0);
-      if(!bot)break;
-      const move=chooseDurakBotMove(state,bot.index,"balanced");
-      if(!move)break;
-      state=recordDurakPlay(state,applyDurakMove(state,bot.index,move),bot.index,move);
-      if(state.ended)break;
-    }
+    state=advanceDurakBot(state,seats,Date.now());
   }
   const changed=action==="move"||JSON.stringify(state)!==JSON.stringify(loaded.state);
   let version=revision;
