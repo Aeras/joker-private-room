@@ -66,7 +66,7 @@ export function DurakOnlineTable({code,seats,onBack}:{
    "top-center":"top-3 left-1/2 -translate-x-1/2",
    "top-right":"top-3 right-[23%] translate-x-1/2",
   };
-  return names[pos]??names.top;
+  return names[pos]??names["top"];
  };
  return <div className="fixed inset-0 z-[90] flex flex-col overflow-hidden bg-[#081d14] text-white" aria-label="Online τραπέζι DURAK">
   <header className="z-10 flex shrink-0 items-center justify-between gap-2 bg-black/65 px-3 py-1.5 text-xs sm:text-sm">
