@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { assets } from "@/assets/registry";
+import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
 import { durakRoomCommand, type DurakGameView } from "@/services/durakRoomFunctions";
 import { DurakCardBack, DurakCardFace, DurakStock, DurakTableSurface } from "./DurakTableVisuals";
 import { DURAK_SEAT_POSITIONS, VARIANT_NAMES, type DurakCard } from "./rules";
@@ -56,15 +58,21 @@ export function DurakOnlineTable({code,seats,onBack}:{
  const playerName=(index:number)=>seats.find(s=>s.index===index)?.name??"Παίκτης "+(index+1);
  const others=game.handSizes.map((size,index)=>({index,size,name:playerName(index),
    relative:(index-game.seat+n)%n})).filter(x=>x.index!==game.seat);
+ const botImages=["/avatars/bots/tamara.png","/avatars/bots/grisa.png","/avatars/bots/serz.png","/avatars/bots/valeria.png","/avatars/bots/babis.png"];
+ const avatarFor=(index:number,name:string)=>{
+   const s=seats.find(s=>s.index===index);
+   if(s?.occupant==="bot")return botImages[index%botImages.length];
+   return assets.avatar("",name);
+ };
  const position=(relative:number)=>{
   const pos=positions[relative]??"top";
   const names:Record<string,string>={
-   top:"top-3 left-1/2 -translate-x-1/2",
-   left:"top-1/2 left-2 -translate-y-1/2",
-   right:"top-1/2 right-2 -translate-y-1/2",
-   "top-left":"top-3 left-[23%] -translate-x-1/2",
-   "top-center":"top-3 left-1/2 -translate-x-1/2",
-   "top-right":"top-3 right-[23%] translate-x-1/2",
+   top:"top-[5%] left-1/2 -translate-x-1/2",
+   left:"top-1/2 left-[5%] -translate-y-1/2",
+   right:"top-1/2 right-[5%] -translate-y-1/2",
+   "top-left":"top-[5%] left-[23%] -translate-x-1/2",
+   "top-center":"top-[5%] left-1/2 -translate-x-1/2",
+   "top-right":"top-[5%] right-[23%] translate-x-1/2",
   };
   return names[pos]??names["top"];
  };
@@ -75,12 +83,20 @@ export function DurakOnlineTable({code,seats,onBack}:{
   </header>
   <div className="relative min-h-0 flex-1 p-1 sm:p-2">
    <DurakTableSurface>
-    {others.map(other=><div key={other.index} className={`absolute z-10 flex flex-col items-center gap-0.5 rounded-lg bg-black/65 p-1.5 text-center ${position(other.relative)}`}>
-     <div className="max-w-32 truncate text-xs font-semibold">{other.name}{game.defender===other.index?" · Άμυνα":game.attacker===other.index?" · Επίθεση":""}</div>
-     <div className="flex -space-x-4 [--card-w:1.65rem] sm:[--card-w:2.2rem]">
-      {Array.from({length:Math.min(other.size,8)},(_,i)=><DurakCardBack key={i}/>)}
-     </div>
-     <span className="text-[10px]">{other.size} φύλλα</span>
+    {others.map(other=><div key={other.index} data-durak-opponent-seat={other.index}
+      className={`absolute z-10 flex flex-col items-center gap-0.5 text-center ${position(other.relative)}`}>
+      <div className={`rounded-full border border-primary/70 bg-black/75 p-[3px] shadow-xl ${game.defender===other.index||game.attacker===other.index?"ring-2 ring-primary/75":""}`}>
+        <PlayerAvatar name={other.name} isBot={seats.find(s=>s.index===other.index)?.occupant==="bot"}
+          imageUrl={avatarFor(other.index,other.name)} size="sm"
+          className="h-8 w-8 border-0 sm:h-10 sm:w-10"/>
+      </div>
+      <div className="max-w-32 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-white sm:text-xs">
+        <span className="block truncate">{other.name}</span>
+        <span className="text-amber-200">{game.defender===other.index?"Άμυνα":game.attacker===other.index?"Επίθεση":""} {other.size} φύλλα</span>
+      </div>
+      <div className="pointer-events-none flex -space-x-3 [--card-w:1.3rem] sm:[--card-w:1.6rem]">
+        {Array.from({length:Math.min(other.size,7)},(_,i)=><DurakCardBack key={i}/>)}
+      </div>
     </div>)}
     <div className="absolute inset-x-1 top-[23%] bottom-[28%] flex items-center justify-center gap-2 px-1 sm:top-[24%] sm:bottom-[25%] sm:px-4">
       <div className="shrink-0 scale-75 origin-left sm:scale-100"><DurakStock trump={game.trumpCard} remaining={game.stock}/></div>
@@ -93,17 +109,17 @@ export function DurakOnlineTable({code,seats,onBack}:{
        {game.pairs.length===0&&<span className="rounded-xl bg-black/40 px-3 py-2 text-sm">Αναμονή επίθεσης…</span>}
       </div>
     </div>
-    <div className="absolute inset-x-1 bottom-1 z-20 rounded-xl bg-black/65 p-1.5 sm:inset-x-5 sm:bottom-3">
-      <div className="flex items-center justify-between gap-2 text-xs">
+    <div className="absolute inset-x-0 bottom-0 z-20 px-2 pb-0 sm:px-5">
+      <div className="mx-auto mb-1 flex max-w-lg items-center justify-between gap-2 rounded-lg bg-black/80 px-2 py-1 text-xs">
        <span className="truncate font-semibold">{playerName(game.seat)} · {game.defender===game.seat?"Αμύνεσαι":game.attacker===game.seat?"Επιτίθεσαι":"Περιμένεις"}</span>
        <span>Κόζι {suitSymbol[game.trump]} · {game.stock} στην τράπουλα</span>
       </div>
-      <div className="mt-1 flex min-h-16 items-end justify-center -space-x-2 overflow-x-auto px-2 pb-1 [--card-w:2.8rem] sm:-space-x-3 sm:[--card-w:4.2rem]">
+      <div className="flex h-[clamp(45px,10vh,80px)] items-start justify-center overflow-visible px-2 [--card-w:clamp(3rem,9vw,6.4rem)]">
        {game.myHand.map(card=><DurakCardFace key={ident(card)} card={card}
          className={playable(card).length?"hover:-translate-y-2":"opacity-60"}
          onClick={!loading&&playable(card).length?()=>clickCard(card):undefined}/>)}
       </div>
-      <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+      <div className="absolute bottom-[clamp(49px,11vh,84px)] left-1/2 flex -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-lg bg-black/75 px-2 py-1">
        {actions.filter(x=>!("card" in x)).map((move,i)=><button key={move.type+i} disabled={loading} type="button" onClick={()=>void send(move)}
         className="rounded-lg border border-amber-400 bg-[#112c20] px-3 py-1.5 text-xs font-semibold sm:text-sm">
         {move.type==="take"?"Παίρνω":move.type==="pass"?"Δεν προσθέτω":"Τέλος"}
