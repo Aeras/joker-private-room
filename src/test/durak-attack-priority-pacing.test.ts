@@ -43,6 +43,51 @@ function scenario(variant: DurakVariant = "podkidnoy"): DurakMatch {
 }
 const bots = Array.from({ length: 4 }, (_, index) => ({ index, occupant: "bot" }));
 
+describe("DURAK forced human decisions", () => {
+  const humans = bots.map((seat) => ({ ...seat, occupant: "human" }));
+  it.each(["podkidnoy", "perevodnoy"] as const)("takes only when defense and transfer are impossible in %s", (variant) => {
+    const initial = scenario(variant);
+    initial.trump = "spades";
+    initial.hands[1] = [{ suit: "hearts", rank: 8 }, { suit: "diamonds", rank: 9 }];
+    let state = applyDurakMove(initial, 0, { type: "attack", card: { suit: "clubs", rank: 6 } });
+    state = advanceDurakBot(state, humans, 1000);
+    expect(state.taking).toBe(true);
+    expect(state.pairs).toHaveLength(1);
+    expect(state.discard).toHaveLength(0);
+    expect(advanceDurakBot(state, humans, 1001)).toBe(state);
+    state = advanceDurakBot(JSON.parse(JSON.stringify(state)), humans, 1850);
+    expect(state.finishes).toContain(0);
+    // The secondary still has a matching six; do not decline or collect for them.
+    expect(advanceDurakBot(state, humans, 2700)).toBe(state);
+    expect(legalDurakMoves(state, 2).some((move) => move.type === "attack")).toBe(true);
+    state = applyDurakMove(state, 2, { type: "attack", card: { suit: "diamonds", rank: 6 } });
+    state = advanceDurakBot(state, humans, 2700);
+    expect(state.round).toBe(2);
+    expect(state.hands[1]).toContainEqual({ suit: "clubs", rank: 6 });
+    expect(state.hands[1]).toContainEqual({ suit: "diamonds", rank: 6 });
+    expect(state.discard).toHaveLength(0);
+    expect(state.presentationEvents?.at(-1)?.kind).toBe("take");
+  });
+  it("preserves a legal transfer even without a defense", () => {
+    const initial = scenario("perevodnoy");
+    initial.trump = "spades";
+    initial.hands[1] = [{ suit: "diamonds", rank: 6 }];
+    const state = applyDurakMove(initial, 0, { type: "attack", card: { suit: "clubs", rank: 6 } });
+    expect(legalDurakMoves(state, 1).some((move) => move.type === "transfer")).toBe(true);
+    expect(advanceDurakBot(state, humans, 1000)).toBe(state);
+  });
+  it("keeps opening and matching attack choices manual, respecting the opening barrier", () => {
+    const initial = scenario();
+    expect(advanceDurakBot(initial, humans, 1000)).toBe(initial);
+    initial.hands[0]!.push({ suit: "hearts", rank: 6 });
+    let state = applyDurakMove(initial, 0, { type: "attack", card: { suit: "clubs", rank: 6 } });
+    state = applyDurakMove(state, 1, { type: "defend", pair: 0, card: { suit: "clubs", rank: 7 } });
+    expect(advanceDurakBot(state, humans, 1000)).toBe(state);
+    const blocked = { ...state, dealReadyAt: 2000 };
+    expect(advanceDurakBot(blocked, humans, 1000)).toBe(blocked);
+  });
+});
+
 describe("DURAK ordered adjacent attackers", () => {
   it.each(["podkidnoy", "perevodnoy"] as const)("requires primary decline in %s", (variant) => {
     let state = applyDurakMove(scenario(variant), 0, {
@@ -148,7 +193,9 @@ describe("DURAK persisted bot reaction budget", () => {
     let state = applyDurakMove(scenario(), 0, { type: "attack", card: { suit: "clubs", rank: 6 } });
     state = applyDurakMove(state, 1, { type: "defend", card: { suit: "clubs", rank: 7 }, pair: 0 });
     const seats = bots.map((seat) => ({ ...seat, occupant: seat.index === 0 ? "human" : "bot" }));
-    expect(advanceDurakBot(state, seats, 5000)).toBe(state);
+    const after = advanceDurakBot(state, seats, 5000);
+    expect(after.finishes).toContain(0);
+    expect(durakAttackSeats(after)).toEqual([2]);
     expect(state.taking).toBe(false);
   });
 });

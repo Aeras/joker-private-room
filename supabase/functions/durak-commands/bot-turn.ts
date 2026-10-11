@@ -26,11 +26,32 @@ export function advanceDurakBot(
   if (state.ended || now < (state.dealReadyAt ?? 0) || now < (state.nextBotAt ?? 0)) return state;
   const uncovered = state.pairs.some((pair) => !pair.defense) && !state.taking;
   const defender = seats.find((seat) => seat.index === state.defender);
-  // Let the defender respond before bots continue adding attacks.
-  if (uncovered && defender?.occupant !== "bot") return state;
+  // Preserve human choices; only automate a canonical action when no card choice remains.
+  if (uncovered && defender?.occupant !== "bot") {
+    if (defender?.occupant !== "human") return state;
+    const legal = legalDurakMoves(state, defender.index);
+    if (legal.some((move) => move.type === "defend" || move.type === "transfer")) return state;
+    const take = legal.find((move) => move.type === "take");
+    if (!take) return state;
+    return scheduleDurakBot(
+      recordDurakPlay(state, applyDurakMove(state, defender.index, take), defender.index, take),
+      now,
+    );
+  }
   const candidates = uncovered
     ? seats.filter((seat) => seat.index === state.defender)
     : seats.filter((seat) => seat.index !== state.defender);
+  for (const seat of candidates) {
+    if (seat.occupant !== "human") continue;
+    const legal = legalDurakMoves(state, seat.index);
+    if (legal.some((move) => move.type === "attack")) continue;
+    const finish = legal.find((move) => move.type === "finish");
+    if (!finish) continue;
+    return scheduleDurakBot(
+      recordDurakPlay(state, applyDurakMove(state, seat.index, finish), seat.index, finish),
+      now,
+    );
+  }
   const bot = candidates.find(
     (seat) => seat.occupant === "bot" && legalDurakMoves(state, seat.index).length > 0,
   );
