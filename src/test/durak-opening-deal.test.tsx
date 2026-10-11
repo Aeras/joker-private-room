@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { beginDurak } from "@/durak/engine";
-import { durakDealTiming } from "@/durak/dealTiming";
+import { durakDealTiming, DURAK_TRUMP_PLACE_MS, DURAK_STOCK_PLACE_MS } from "@/durak/dealTiming";
 import { DurakOnlineTable } from "@/durak/DurakOnlineTable";
 import { DurakOpeningDeal } from "@/durak/DurakOpeningDeal";
 import {
@@ -52,6 +52,38 @@ function view(): DurakGameView {
   };
 }
 describe("DURAK opening deal", () => {
+  it("lands the trump before moving the remaining stock and keeps both mounted until handoff", () => {
+    vi.useFakeTimers();
+    const calls: { element: HTMLElement; options: KeyframeAnimationOptions }[] = [];
+    Object.defineProperty(HTMLElement.prototype, "animate", {
+      configurable: true,
+      value: function (this: HTMLElement, _frames: Keyframe[], options: KeyframeAnimationOptions) {
+        calls.push({ element: this, options });
+        return { cancel: vi.fn(), currentTime: 0 };
+      },
+    });
+    try {
+      const game = view();
+      const timing = durakDealTiming(4);
+      const done = vi.fn();
+      const rendered = render(<DurakOpeningDeal game={game} onComplete={done} />);
+      const trump = calls.find(call => call.element.className === "durak-deal-trump")!;
+      const stock = calls.find(call => call.element.className === "durak-deal-stock")!;
+      expect(trump.options.duration).toBe(DURAK_TRUMP_PLACE_MS);
+      expect(stock.options.delay).toBe(Number(trump.options.delay) + DURAK_TRUMP_PLACE_MS);
+      expect(stock.options.duration).toBe(DURAK_STOCK_PLACE_MS);
+      expect(stock.options.fill).toBe("both");
+      expect(timing.duration).toBe(timing.stockAt + DURAK_STOCK_PLACE_MS + 120);
+      act(() => vi.advanceTimersByTime(game.dealReadyAt! - 1));
+      expect(rendered.container.querySelector(".durak-deal-stock")).not.toBeNull();
+      expect(done).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(1));
+      expect(done).toHaveBeenCalledOnce();
+      rendered.unmount();
+    } finally {
+      delete (HTMLElement.prototype as { animate?: unknown }).animate;
+    }
+  });
   it.each([2, 3, 4, 5, 6])(
     "keeps the canonical %i-seat deal and lowest trump starter behind the barrier",
     (players) => {
