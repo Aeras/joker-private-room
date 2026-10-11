@@ -22,7 +22,7 @@ function alive(m:DurakMatch,i:number){return m.hands[i]!.length>0 || m.deck.leng
 function nextAlive(m:DurakMatch,from:number){for(let i=1;i<=m.hands.length;i++){const index=(from+i)%m.hands.length;if(alive(m,index))return index;}return from;}
 function remove(hand:DurakCard[],card:DurakCard){const pos=hand.findIndex(c=>key(c)===key(card));if(pos<0)throw new Error("CARD_NOT_OWNED");hand.splice(pos,1);}
 function clone(m:DurakMatch):DurakMatch{return {...m,hands:m.hands.map(h=>[...h]),deck:[...m.deck],discard:[...m.discard],pairs:m.pairs.map(p=>({...p})),passes:[...m.passes],finishes:[...m.finishes]};}
-function attackers(m:DurakMatch){const previous=(m.defender+m.hands.length-1)%m.hands.length;const following=nextAlive(m,m.defender);return [...new Set([m.primaryAttacker,previous,following])].filter(i=>i!==m.defender&&alive(m,i));}
+function attackers(m:DurakMatch){const previous=(m.defender+m.hands.length-1)%m.hands.length;const following=nextAlive(m,m.defender);return [...new Set([previous,following])].filter(i=>i!==m.defender&&alive(m,i));}
 function allowedAttackers(m:DurakMatch){return attackers(m).filter(i=>!m.finishes.includes(i));}
 function table(m:DurakMatch){return m.pairs.flatMap(p=>p.defense?[p.attack,p.defense]:[p.attack]);}
 function cap(m:DurakMatch){return maximumAttackCards(m.defenderStartingHand,m.firstAttack);}
