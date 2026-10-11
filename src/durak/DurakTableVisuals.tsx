@@ -15,11 +15,11 @@ export function cardForArtwork(card: DurakCard): Card {
 export function DurakCardFace({card,onClick,selected,className}: {
   card:DurakCard;onClick?:(()=>void)|undefined;selected?:boolean;className?:string;
 }) {
-  return <PlayingCard card={cardForArtwork(card)} onClick={onClick} selected={selected} className={className}/>;
+  return <PlayingCard card={cardForArtwork(card)} onClick={onClick} {...(selected===undefined?{}:{selected})} {...(className===undefined?{}:{className})}/>;
 }
 
 export function DurakCardBack({className}: {className?:string}) {
-  return <PlayingCard faceDown className={className}/>;
+  return <PlayingCard faceDown {...(className===undefined?{}:{className})}/>;
 }
 
 export function DurakStock({trump,remaining}: {trump:DurakCard;remaining:number}) {
