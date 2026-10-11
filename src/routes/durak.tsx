@@ -102,6 +102,15 @@ function DurakHome() {
     if(!result.ok||!("cancelled" in result)||!result.cancelled)throw new Error("DURAK_END_FAILED");
     setRoom(null);setMembership(null);
   }
+  // The active table must not inherit the lobby header's higher stacking context.
+  if (room && (room.lifecycle === "playing" || room.lifecycle === "finished")) {
+    return <PlayerSessionGate allowLogout={false}>
+      {(player) => <DurakOnlineTable code={room.code} seats={room.seats}
+        onBack={(reason)=>{setRoom(null);if(reason==="closed")setMembership(null);}}
+        onEndGame={room.hostPlayerId===player.id?()=>endGame(room.code):undefined}/>
+      }
+    </PlayerSessionGate>;
+  }
   return (
     <ScreenShell title="DURAK" variant="pregame" contentClassName="!overflow-y-auto !min-h-0 pb-8">
       <div className="mx-auto w-full max-w-2xl space-y-3">
@@ -149,7 +158,7 @@ function DurakHome() {
               {available.map(item => <div key={item.code} className="flex items-center justify-between gap-2 rounded-lg border p-3"><span>{item.hostName} · {VARIANT_NAMES[item.variant]} · {item.occupied}/{item.capacity}</span><button type="button" disabled={busy} onClick={() => void run("join",item.code)} className="rounded-lg bg-secondary p-2">Συμμετοχή</button></div>)}
             </>}
 
-          </section>{room && (room.lifecycle==="playing"||room.lifecycle==="finished") && <DurakOnlineTable code={room.code} seats={room.seats} onBack={(reason)=>{setRoom(null);if(reason==="closed")setMembership(null);}} onEndGame={room.hostPlayerId===player.id?()=>endGame(room.code):undefined}/> }</>}
+          </section></>}
         </PlayerSessionGate>
 
       </div>

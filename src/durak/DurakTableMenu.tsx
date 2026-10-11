@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, MoreVertical } from "lucide-react";
+import { ArrowLeft, Maximize2, Minimize2, MoreVertical } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,38 +57,50 @@ export function DurakTableMenu({
       >
         <ArrowLeft size={20} />
       </button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="durak-fullscreen-navigation-button"
-            aria-label={text.menu}
-            disabled={ending}
-          >
-            <MoreVertical size={20} />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" sideOffset={4} className="z-[110] min-w-44">
-          <DropdownMenuItem onSelect={onRefresh}>{text.refresh}</DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={
-              typeof document === "undefined" || !document.documentElement.requestFullscreen
-            }
-            onSelect={() => void toggleFullscreen()}
-          >
-            {fullscreen ? text.exitFullscreen : text.fullscreen}
-          </DropdownMenuItem>
-          {onEndGame && (
-            <DropdownMenuItem
+      <div className="durak-fullscreen-navigation-tools">
+        <button
+          type="button"
+          className="durak-fullscreen-navigation-button"
+          aria-label={fullscreen ? text.exitFullscreen : text.fullscreen}
+          title={fullscreen ? text.exitFullscreen : text.fullscreen}
+          disabled={typeof document === "undefined" || !document.documentElement.requestFullscreen}
+          onClick={() => void toggleFullscreen()}
+        >
+          {fullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="durak-fullscreen-navigation-button"
+              aria-label={text.menu}
               disabled={ending}
-              className="text-destructive"
-              onSelect={() => void endGame()}
             >
-              {text.endGame}
+              <MoreVertical size={20} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" sideOffset={4} className="z-[110] min-w-44">
+            <DropdownMenuItem onSelect={onRefresh}>{text.refresh}</DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={
+                typeof document === "undefined" || !document.documentElement.requestFullscreen
+              }
+              onSelect={() => void toggleFullscreen()}
+            >
+              {fullscreen ? text.exitFullscreen : text.fullscreen}
             </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {onEndGame && (
+              <DropdownMenuItem
+                disabled={ending}
+                className="text-destructive"
+                onSelect={() => void endGame()}
+              >
+                {text.endGame}
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </nav>
   );
 }

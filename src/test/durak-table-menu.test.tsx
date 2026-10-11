@@ -77,14 +77,16 @@ describe("DURAK compact table menu", () => {
       value: request,
     });
     render(<DurakTableMenu onBack={() => {}} onRefresh={() => {}} onError={() => {}} />);
-    await openMenu();
-    fireEvent.click(screen.getByRole("menuitem", { name: text.fullscreen }));
+    const toggle = screen.getByRole("button", { name: text.fullscreen });
+    expect(toggle.textContent).toBe("");
+    fireEvent.click(toggle);
     expect(request).toHaveBeenCalledOnce();
     Object.defineProperty(document, "fullscreenElement", {
       configurable: true,
       value: document.documentElement,
     });
     fireEvent(document, new Event("fullscreenchange"));
+    expect(screen.getByRole("button", { name: text.exitFullscreen }).textContent).toBe("");
     await openMenu();
     expect(screen.getByRole("menuitem", { name: text.exitFullscreen })).toBeInTheDocument();
     Object.defineProperty(document, "fullscreenElement", { configurable: true, value: null });
