@@ -29,4 +29,6 @@ export const durakTableText = {
   closed: "Το παιχνίδι DURAK τερματίστηκε.",
   yourAttack: "Η σειρά σου — επίλεξε φύλλο για επίθεση",
   waitingAttack: (name: string) => `Περιμένουμε επίθεση από ${name}`,
+  discardLabel: (count: number) => `Απορριμμένα φύλλα: ${count}`,
+  discardCount: (count: number) => `${count} εκτός παιχνιδιού`,
 } as const;

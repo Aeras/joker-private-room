@@ -337,86 +337,17 @@
 .durak-results-close { display: block; margin-left: auto; padding: 8px 12px; border: 1px solid #d7b65e80; border-radius: 10px; color: #ffe5a8; }
 @media (max-height: 430px) { .durak-results-dialog { padding: 10px 14px; } .durak-results-list { margin: 6px 0; gap: 2px; } .durak-results-list li { padding: 3px 8px; line-height: 20px; } .durak-results-close { padding: 6px 10px; } }
 
-/* Successful DURAK defense: flip the defeated cards, then toss them loosely aside. */
-.durak-fullscreen-pair[data-durak-clearing] {
-  pointer-events: none;
-  position: relative;
-  z-index: 35;
-  transform-origin: 50% 55%;
-  animation: durak-bout-discard 760ms cubic-bezier(.24,.74,.25,1) both;
-}
-.durak-fullscreen-pair[data-durak-clearing] .durak-played-card {
-  animation: durak-bout-face-away 760ms ease-in-out both;
-}
-.durak-clearing-card-back {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  opacity: 0;
-  pointer-events: none;
-  transform: scaleX(.05);
-  animation: durak-bout-show-back 760ms ease-in-out both;
-}
-@keyframes durak-bout-face-away {
-  0%, 16% { transform: scaleX(1); opacity: 1; }
-  39%, 100% { transform: scaleX(.05); opacity: 0; }
-}
-@keyframes durak-bout-show-back {
-  0%, 24% { transform: scaleX(.05); opacity: 0; }
-  40% { transform: scaleX(1); opacity: 1; }
-  100% { transform: scaleX(1); opacity: 1; }
-}
-@keyframes durak-bout-discard {
-  0%, 28% { transform: translate(0,0) rotate(0); opacity: 1; }
-  55% { transform: translate(calc(var(--durak-clear-x) * .48), calc(var(--durak-clear-y) - 20px)) rotate(calc(var(--durak-clear-angle) * .4)); opacity: 1; }
-  100% { transform: translate(var(--durak-clear-x), var(--durak-clear-y)) rotate(var(--durak-clear-angle)) scale(.84); opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .durak-fullscreen-pair[data-durak-clearing],
-  .durak-fullscreen-pair[data-durak-clearing] .durak-played-card,
-  .durak-clearing-card-back {
-    animation-duration: 1ms;
-  }
-}
 
-/* The real discard destination: a slightly chaotic mound, visible until the match ends. */
-.durak-discard-pile {
-  position: absolute;
-  z-index: 12;
-  top: clamp(72px, 23%, 168px);
-  right: clamp(60px, 15%, 190px);
-  width: 76px;
-  height: 100px;
-  pointer-events: none;
-  --card-w: clamp(30px, 6.5vh, 43px);
-}
-.durak-discard-mound {
-  position: relative;
-  width: 64px;
-  height: 75px;
-}
-.durak-discard-layer {
-  position: absolute;
-  left: 12px;
-  top: 5px;
-  transform: translate(var(--discard-x), var(--discard-y)) rotate(var(--discard-rotation));
-  z-index: var(--discard-layer);
-  filter: drop-shadow(0 1px 2px #0008);
-}
-.durak-discard-count {
-  position: absolute;
-  top: 82px;
-  left: 50%;
-  white-space: nowrap;
-  transform: translateX(-50%);
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: #07150eb8;
-  color: #fff;
-  font-size: 10px;
-}
-@media (max-height: 420px) {
-  .durak-discard-pile { top: 18%; right: clamp(55px, 13%, 115px); --card-w: 29px; }
-  .durak-discard-count { top: 67px; font-size: 9px; }
-}
+/* Fixed destination and independent full-viewport collection layer. */
+.durak-discard-pile {position:absolute;z-index:12;top:clamp(76px,23%,168px);right:clamp(65px,16%,200px);width:64px;height:78px;pointer-events:none;--card-w:clamp(28px,6.5vh,43px);}
+.durak-discard-mound {position:relative;width:var(--card-w);height:calc(var(--card-w)*1.4);margin:0 auto;}
+.durak-discard-layer {position:absolute;filter:drop-shadow(0 1px 1px #0008);}
+.durak-discard-count {position:absolute;top:calc(var(--card-w)*1.4 + 12px);left:50%;white-space:nowrap;transform:translateX(-50%);padding:2px 5px;border-radius:4px;background:#07150eb8;color:#fff;font-size:10px;}
+.durak-discard-flight-layer {position:fixed;inset:0;z-index:80;pointer-events:none;overflow:visible;}
+.durak-discard-flying-card {position:absolute;transform-origin:center;opacity:1;will-change:transform;}
+.durak-discard-flip {position:relative;width:100%;height:100%;transform-style:preserve-3d;}
+.durak-discard-flight-face,.durak-discard-flight-back {position:absolute;inset:0;backface-visibility:hidden;}
+.durak-discard-flight-back {transform:rotateY(180deg);}
+.durak-discard-flight-face>* {transform:none!important;}
+@media(max-height:420px){.durak-discard-pile {top:24%;right:clamp(60px,17%,130px);--card-w:28px;} .durak-discard-count {font-size:9px;}}
+.durak-fullscreen[data-player-count="5"] .durak-discard-pile,.durak-fullscreen[data-player-count="6"] .durak-discard-pile {top:34%;right:19%;}

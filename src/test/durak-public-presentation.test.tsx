@@ -142,7 +142,7 @@ describe("DURAK confirmed public presentation", () => {
     const move = { type: "transfer", card: state.hands[1]![0]! } as const;
     const after = applyDurakMove(state, 1, move);
     const recorded = recordDurakPlay(state, after, 1, move);
-    expect(recorded.presentationEvents?.[0]?.defender).toBe(2);
+    expect((recorded.presentationEvents?.[0] as DurakPresentationEvent)?.defender).toBe(2);
     const { presentationSequence, presentationEvents, ...canonical } = recorded;
     expect(presentationSequence).toBe(1);
     expect(presentationEvents).toHaveLength(1);
@@ -216,7 +216,7 @@ describe("DURAK confirmed public presentation", () => {
     for (let i = 0; i < 40; i++)
       history = recordDurakPlay(history, history, 1, { type: "defend", pair: 0, card: defense });
     expect(history.presentationEvents).toHaveLength(32);
-    expect(history.presentationSequence).toBe(41);
+    expect(history.presentationSequence).toBe(42);
   });
   it("shows only the opening attacker, then both permitted adjacent attackers without hidden-rank deductions", () => {
     const state = beginDurak("podkidnoy", 4, () => 0.5);

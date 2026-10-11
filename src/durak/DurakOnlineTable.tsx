@@ -1,3 +1,4 @@
+import { DurakDiscardFlight } from "./DurakDiscardFlight";
 import { DurakResults } from "./DurakResults";
 import { DurakDiscardPile } from "./DurakDiscardPile";
 import { durakTapMove, durakDropMove } from "./defenseSelection";
@@ -8,7 +9,7 @@ import { DurakTableMenu } from "./DurakTableMenu";
 import { durakTableText as text } from "@/i18n/durak.el";
 import { DurakFullscreenHand } from "./DurakFullscreenHand";
 import { CANONICAL_BOTS } from "../../supabase/functions/_shared/bot-catalog";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { assets } from "@/assets/registry";
 import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
 import { durakRoomCommand } from "@/services/durakRoomFunctions";
@@ -21,21 +22,8 @@ const ident=(c:DurakCard)=>c.suit+":"+c.rank;
 export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
  code:string;seats:Array<{index:number;name:string|null;occupant:string}>;onBack:(reason?:"closed")=>void;onEndGame?:(()=>Promise<void>)|undefined;
 }) {
- const { game, flight, clearing, accept: setGame, presenting } = useDurakPresentation(code);
- const fieldRef=useRef<HTMLDivElement>(null);
+ const { game, flight, collection, landDiscard, finishDiscard, accept: setGame, presenting } = useDurakPresentation(code);
  const [loading,setLoading]=useState(false);
- useLayoutEffect(()=>{
-   if(!clearing) return;
-   const field=fieldRef.current;
-   const destination=field?.querySelector("[data-durak-discard-pile] .durak-discard-mound");
-   if(!field||!destination)return;
-   const dest=destination.getBoundingClientRect();
-   field.querySelectorAll<HTMLElement>("[data-durak-pair]").forEach((pair,i)=>{
-     const from=pair.getBoundingClientRect();
-     pair.style.setProperty("--durak-clear-x",`${dest.left+dest.width/2-from.left-from.width/2+(i%3-1)*12}px`);
-     pair.style.setProperty("--durak-clear-y",`${dest.top+dest.height/2-from.top-from.height/2+(i%2?8:-8)}px`);
-   });
- },[clearing]);
  const [error,setError]=useState("");
  const [closed,setClosed]=useState(false);
  const [target,setTarget]=useState<number|null>(null);
@@ -100,7 +88,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
   return (
     <div className="durak-fullscreen" data-player-count={n} aria-label="Online τραπέζι DURAK">
       <DurakTableMenu onBack={()=>onBack()} onRefresh={()=>void fetchState()} onEndGame={onEndGame} onError={setError}/>
-      <div className="durak-fullscreen-field" ref={fieldRef}>
+      <div className="durak-fullscreen-field">
         <DurakTableSurface>
           {others.map((other) => (
             <div
@@ -160,19 +148,13 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
                   aria-pressed={target === i}
                   data-durak-pair
                   data-durak-pair-index={i}
-                  data-durak-clearing={clearing || undefined}
-                  style={{
-                    "--durak-clear-angle": `${-28 + (i * 37) % 63}deg`,
-                  } as import("react").CSSProperties}
                   data-durak-drop-target={dragTarget === i || undefined}
                   className={`durak-fullscreen-pair ${target === i ? "border-amber-300 bg-white/20" : "border-white/20 bg-black/10"}`}
                 >
                   <DurakPlayedCard card={pair.attack} flight={flight} localSeat={game.seat} />
-                  {clearing && <span className="durak-clearing-card-back"><DurakCardBack /></span>}
                   {pair.defense && (
                     <span className="durak-fullscreen-defense">
                       <DurakPlayedCard card={pair.defense} flight={flight} localSeat={game.seat} />
-                      {clearing && <span className="durak-clearing-card-back"><DurakCardBack /></span>}
                     </span>
                   )}
                 </button>
@@ -228,6 +210,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
           )}
         </div>
       </div>
+      <DurakDiscardFlight collection={collection} onLand={landDiscard} onComplete={finishDiscard} />
       <DurakResults key={code} game={game} playerName={playerName} />
       <DurakFullscreenHand
         cards={game.myHand}
