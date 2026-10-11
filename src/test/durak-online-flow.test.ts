@@ -14,7 +14,7 @@ describe("DURAK online room isolation and authenticated transport",()=>{
     const route=read("src/routes/durak.tsx");
     expect(service).toContain("sessionToken");
     expect(route).not.toContain("sessionToken");
-    expect(route).toContain("Επιστροφή στο δωμάτιο");
+    expect(route).toContain("Επιστροφή στο παιχνίδι μου");
     expect(route).toContain('action:"membership"');
     expect(service).toContain('z.literal("membership")');
   });
