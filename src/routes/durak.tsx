@@ -10,7 +10,7 @@ export const Route = createFileRoute("/durak")({
   component: DurakHome,
 });
 
-function DurakMemberAutoResume({ onRoom, onMembership }: { onRoom: (room: DurakRoomView) => void; onMembership: (code: string | null) => void }) {
+function DurakMemberAutoResume({ onMembership }: { onMembership: (code: string | null) => void }) {
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -19,12 +19,10 @@ function DurakMemberAutoResume({ onRoom, onMembership }: { onRoom: (room: DurakR
         if (!active || !membership.ok || !("membership" in membership)) return;
         onMembership(membership.membership?.code ?? null);
         if (!membership.membership) return;
-        const result = await durakRoomCommand({data:{action:"get",code:membership.membership.code}});
-        if (active && result.ok && "room" in result) onRoom(result.room);
       } catch { /* Keep manual return option available. */ }
     })();
     return () => { active=false; };
-  }, [onRoom, onMembership]);
+  }, [onMembership]);
   return null;
 }
 
@@ -75,8 +73,8 @@ function DurakHome() {
     <ScreenShell title="DURAK" variant="pregame" contentClassName="!overflow-y-auto !min-h-0 pb-8">
       <div className="mx-auto w-full max-w-2xl space-y-3">
         <PlayerSessionGate allowLogout={false}>
-          {(player) => <section className="panel space-y-3 p-3 sm:p-4" aria-label="DURAK">
-            <DurakMemberAutoResume onRoom={setRoom} onMembership={setMembership} />
+          {() => <section className="panel space-y-3 p-3 sm:p-4" aria-label="DURAK">
+            <DurakMemberAutoResume onMembership={setMembership} />
 
             <div className="grid grid-cols-2 gap-2">
               <button type="button" aria-pressed={mode === "create"} onClick={() => setMode("create")} className={`rounded-lg border p-3 font-semibold ${mode === "create" ? "border-primary bg-secondary" : "border-border"}`}>Δημιουργία</button>
