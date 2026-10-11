@@ -85,6 +85,7 @@ export function useDurakPresentation(roomCode: string) {
         // Animate the completed, defended bout before showing the next round.
         if (upcoming && visibleRound && upcoming.round > visibleRound.round &&
             visibleRound.pairs.length > 0 && visibleRound.pairs.every(pair => Boolean(pair.defense)) &&
+            (upcoming.discardCount ?? latest.current?.discardCount ?? 0) > visibleRound.discardCount &&
             clearedRound.current !== visibleRound.round) {
           clearedRound.current = visibleRound.round;
           setFlight(null);
@@ -101,7 +102,8 @@ export function useDurakPresentation(roomCode: string) {
           const previous = shown.current;
           const incoming = latest.current;
           const boutClosed = previous && incoming && previous.pairs.length > 0 &&
-            previous.pairs.every(pair => Boolean(pair.defense)) && clearedRound.current !== previous.round && incoming.pairs.length === 0 &&
+            previous.pairs.every(pair => Boolean(pair.defense)) && incoming.discardCount > previous.discardCount &&
+            clearedRound.current !== previous.round && incoming.pairs.length === 0 &&
             (incoming.round > previous.round || incoming.ended);
           if (boutClosed) {
             clearedRound.current = previous.round;
@@ -132,6 +134,8 @@ export function useDurakPresentation(roomCode: string) {
           defender: event.defender,
           attackSeats: event.attackSeats,
           handSizes: event.handSizes,
+          // Keep the visible pile in sync with the finished bout, not the next server move.
+          discardCount: event.round > previous.round ? (event.discardCount ?? previous.discardCount) : previous.discardCount,
           ended: false,
           legalMoves: [],
           myHand:

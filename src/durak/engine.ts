@@ -5,6 +5,8 @@ export type DurakPresentationEvent = {
   sequence: number; seat: number; card: DurakCard; kind: "attack" | "defend" | "transfer";
   round: number; attacker: number; defender: number; attackSeats: number[];
   pairs: DurakPair[]; handSizes: number[];
+  /** Server-confirmed discard count after this card; never infer from visual defense alone. */
+  discardCount?: number;
 };
 export type DurakMove =
   | { type: "attack"; card: DurakCard }
