@@ -1,3 +1,5 @@
+import { recordDurakPlay } from "../../supabase/functions/durak-commands/presentation";
+import { durakAttackSeats } from "../../supabase/functions/durak-commands/engine";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
@@ -74,6 +76,8 @@ describe("DURAK move validation after JSONB persistence", () => {
       "sameDurakMove",
       "chooseDurakBotMove",
       "endDurakGame",
+      "recordDurakPlay",
+      "durakAttackSeats",
       js,
     );
     execute(
@@ -90,6 +94,8 @@ describe("DURAK move validation after JSONB persistence", () => {
       serverSameMove,
       () => null,
       () => null,
+      recordDurakPlay,
+      durakAttackSeats,
     );
     const response = await handler(
       new Request("https://fixture.invalid", {

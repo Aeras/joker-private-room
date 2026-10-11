@@ -1,6 +1,11 @@
 import { beats, canThrowIn, canTransfer, createDeck, maximumAttackCards, type DurakCard, type DurakSuit, type DurakVariant } from "./rules.ts";
 
 export type DurakPair = { attack: DurakCard; defense?: DurakCard };
+export type DurakPresentationEvent = {
+  sequence: number; seat: number; card: DurakCard; kind: "attack" | "defend" | "transfer";
+  round: number; attacker: number; defender: number; attackSeats: number[];
+  pairs: DurakPair[]; handSizes: number[];
+};
 export type DurakMove =
   | { type: "attack"; card: DurakCard }
   | { type: "defend"; card: DurakCard; pair: number }
@@ -15,6 +20,8 @@ export type DurakMatch = {
   pairs: DurakPair[]; passes: number[]; finishes: number[];
   taking: boolean; firstAttack: boolean; defenderStartingHand: number;
   ended: boolean; fool: number | null; round: number;
+  presentationSequence?: number;
+  presentationEvents?: DurakPresentationEvent[];
 };
 const key=(c:DurakCard)=>c.suit+":"+c.rank;
 const clockwise=(seat:number,n:number)=>(seat+1)%n;
@@ -25,6 +32,11 @@ function remove(hand:DurakCard[],card:DurakCard){const pos=hand.findIndex(c=>key
 function clone(m:DurakMatch):DurakMatch{return {...m,hands:m.hands.map(h=>[...h]),deck:[...m.deck],discard:[...m.discard],pairs:m.pairs.map(p=>({...p})),passes:[...m.passes],finishes:[...m.finishes]};}
 function attackers(m:DurakMatch){const previous=previousAlive(m,m.defender);const following=nextAlive(m,m.defender);return [...new Set([previous,following])].filter(i=>i!==m.defender&&alive(m,i));}
 function allowedAttackers(m:DurakMatch){return attackers(m).filter(i=>!m.finishes.includes(i));}
+/** Public role eligibility only; never infer opponents' card ranks for presentation. */
+export function durakAttackSeats(m: DurakMatch): number[] {
+  if (m.ended) return [];
+  return m.pairs.length === 0 ? [m.primaryAttacker] : m.pairs.length >= cap(m) ? [] : allowedAttackers(m);
+}
 function table(m:DurakMatch){return m.pairs.flatMap(p=>p.defense?[p.attack,p.defense]:[p.attack]);}
 function cap(m:DurakMatch){return maximumAttackCards(m.defenderStartingHand,m.firstAttack);}
 export function beginDurak(variant:DurakVariant,players:number,random:()=>number=Math.random):DurakMatch{

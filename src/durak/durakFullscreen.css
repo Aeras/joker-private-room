@@ -5,6 +5,7 @@
   inset: 0;
   z-index: 90;
   overflow: hidden;
+  overflow: clip;
   display: flex;
   flex-direction: column;
   background: #10261c;
@@ -93,7 +94,7 @@
 .durak-fullscreen-pairs {
   display: grid;
   gap: 4px;
-  --card-w: clamp(22px, min(4.5vw, 9vh), 56px);
+  --card-w: clamp(28px, min(6.5vw, 13vh), 84px);
 }
 .durak-fullscreen-pair {
   display: flex;
@@ -215,7 +216,7 @@
 }
 .durak-fullscreen-pairs {
   --card-w: min(
-    clamp(22px, min(4.5vw, 9vh), 56px),
+    clamp(28px, min(6.5vw, 13vh), 84px),
     calc((100cqh - var(--durak-pair-rows) * 10px) / var(--durak-pair-rows) / 1.4),
     calc((100cqw - 106px - var(--durak-pair-columns) * 10px) / var(--durak-pair-columns) / 1.58)
   );
@@ -247,4 +248,46 @@
 }
 .durak-fullscreen .joker-table-shell {
   top: 0;
+}
+
+.durak-played-card {
+  display: block;
+  position: relative;
+}
+.durak-played-card[data-durak-flight] {
+  z-index: 25;
+}
+.durak-fullscreen-opponent[data-durak-role="defend"] .durak-opponent-ring {
+  box-shadow:
+    0 0 0 3px #76cfff,
+    0 0 18px #459be980;
+}
+.durak-fullscreen-opponent[data-durak-role="attack"] .durak-opponent-ring {
+  box-shadow:
+    0 0 0 3px #ecc06c,
+    0 0 18px #e3ac4780;
+}
+.durak-fullscreen-opponent[data-durak-role="defend"]
+  .durak-fullscreen-opponent-info
+  > span:last-child {
+  color: #a9dfff;
+}
+.durak-fullscreen-status[data-durak-role="defend"] > span:first-child {
+  color: #a9dfff;
+}
+.durak-fullscreen-status[data-durak-role="attack"] > span:first-child {
+  color: #ffe3a1;
+}
+.durak-turn-summary {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + clamp(92px, 30vh, 146px));
+  left: 18%;
+  right: 18%;
+  text-align: center;
+  font-size: clamp(10px, 2.6vh, 13px);
+  color: #ffe3a1;
+  pointer-events: none;
+}
+.durak-turn-summary > span {
+  color: white;
 }
