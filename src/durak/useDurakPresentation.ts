@@ -4,6 +4,7 @@ import type { DurakPresentationEvent } from "./engine";
 
 export const DURAK_CARD_FLIGHT_MS = 320;
 export const DURAK_PLAY_BEAT_MS = 120;
+export const DURAK_CLEAR_MS = 760;
 const sameCard = (a: { suit: string; rank: number }, b: { suit: string; rank: number }) =>
   a.suit === b.suit && a.rank === b.rank;
 
@@ -11,6 +12,7 @@ const sameCard = (a: { suit: string; rank: number }, b: { suit: string; rank: nu
 export function useDurakPresentation(roomCode: string) {
   const [game, setGame] = useState<DurakGameView | null>(null);
   const [flight, setFlight] = useState<DurakPresentationEvent | null>(null);
+  const [clearing, setClearing] = useState(false);
   const latest = useRef<DurakGameView | null>(null);
   const shown = useRef<DurakGameView | null>(null);
   const queue = useRef<DurakPresentationEvent[]>([]);
@@ -35,6 +37,7 @@ export function useDurakPresentation(roomCode: string) {
     sequence.current = 0;
     setGame(null);
     setFlight(null);
+    setClearing(false);
     return () => {
       mounted.current = false;
       stop();
@@ -65,6 +68,7 @@ export function useDurakPresentation(roomCode: string) {
         shown.current = next;
         setGame(next);
         setFlight(null);
+        setClearing(false);
         return;
       }
       sequence.current = incomingSequence;
@@ -75,10 +79,27 @@ export function useDurakPresentation(roomCode: string) {
         if (token !== run.current) return;
         const event = queue.current.shift();
         if (!event) {
+          const previous = shown.current;
+          const incoming = latest.current;
+          const boutClosed = previous && incoming && previous.pairs.length > 0 && incoming.pairs.length === 0 &&
+            (incoming.round > previous.round || incoming.ended);
+          if (boutClosed) {
+            setFlight(null);
+            setClearing(true);
+            timer.current = setTimeout(() => {
+              if (token !== run.current) return;
+              shown.current = latest.current;
+              setGame(latest.current);
+              setClearing(false);
+              timer.current = null;
+            }, DURAK_CLEAR_MS);
+            return;
+          }
           timer.current = null;
           shown.current = latest.current;
           setGame(latest.current);
           setFlight(null);
+          setClearing(false);
           return;
         }
         const previous = shown.current ?? next;
@@ -106,5 +127,5 @@ export function useDurakPresentation(roomCode: string) {
     },
     [stop, roomCode],
   );
-  return { game, flight, accept, presenting: flight !== null };
+  return { game, flight, clearing, accept, presenting: flight !== null || clearing };
 }
