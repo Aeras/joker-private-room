@@ -179,14 +179,14 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame,onNewGame}:{
         <div className="durak-fullscreen-status" data-durak-role={roleFor(game.seat)}>
           <span className="truncate font-semibold">
             {playerName(game.seat)} ·{" "}
-            {game.ended ? text.completed : game.defender === game.seat
+            {dealing ? text.dealing : game.ended ? text.completed : game.defender === game.seat
               ? "Αμύνεσαι"
               : attackSeats.includes(game.seat)
                 ? "Επιτίθεσαι"
                 : "Περιμένεις"}
           </span>
           <span>
-            Ατού {suitSymbol[game.trump]} · {game.stock} στην τράπουλα
+            {!dealing && <>Ατού {suitSymbol[game.trump]} · {game.stock} στην τράπουλα</>}
           </span>
         </div>
         <div className="durak-fullscreen-actions">
