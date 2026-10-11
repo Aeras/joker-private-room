@@ -1,4 +1,10 @@
 export const durakTableText = {
+  attack: "Επίθεση",
+  defense: "Άμυνα",
+  starts: "Ξεκινά",
+  roles: (attacker: string, defender: string) => `Επίθεση: ${attacker} · Άμυνα: ${defender}`,
+  played: (name: string, kind: "attack" | "defend" | "transfer") =>
+    `${name}: ${kind === "defend" ? "αποκρούει" : kind === "transfer" ? "μεταφέρει" : "ρίχνει"}`,
   back: "Πίσω",
   menu: "Μενού παιχνιδιού",
   refresh: "Ανανέωση",

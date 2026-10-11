@@ -1,3 +1,5 @@
+import { useDurakPresentation } from "./useDurakPresentation";
+import { DurakPlayedCard } from "./DurakPlayedCard";
 import "./durakFullscreen.css";
 import { DurakTableMenu } from "./DurakTableMenu";
 import { durakTableText as text } from "@/i18n/durak.el";
@@ -6,8 +8,8 @@ import { CANONICAL_BOTS } from "../../supabase/functions/_shared/bot-catalog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { assets } from "@/assets/registry";
 import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
-import { durakRoomCommand, type DurakGameView } from "@/services/durakRoomFunctions";
-import { DurakCardBack, DurakCardFace, DurakStock, DurakTableSurface } from "./DurakTableVisuals";
+import { durakRoomCommand } from "@/services/durakRoomFunctions";
+import { DurakCardBack, DurakStock, DurakTableSurface } from "./DurakTableVisuals";
 import { DURAK_SEAT_POSITIONS, type DurakCard } from "./rules";
 import type { DurakMove } from "./engine";
 const suitSymbol={clubs:"♣",diamonds:"♦",hearts:"♥",spades:"♠"};
@@ -16,7 +18,7 @@ const ident=(c:DurakCard)=>c.suit+":"+c.rank;
 export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
  code:string;seats:Array<{index:number;name:string|null;occupant:string}>;onBack:(reason?:"closed")=>void;onEndGame?:(()=>Promise<void>)|undefined;
 }) {
- const [game,setGame]=useState<DurakGameView|null>(null);
+ const { game, flight, accept: setGame, presenting } = useDurakPresentation(code);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState("");
  const [closed,setClosed]=useState(false);
@@ -28,7 +30,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
      else if(!r.ok&&(r.code==="ROOM_NOT_FOUND"||r.code==="NOT_STARTED")){setClosed(true);}
      else if(!r.ok&&r.code!=="STATE_CHANGED")setError("Δεν ήταν δυνατή η ενημέρωση της παρτίδας.");
    }catch{setError("Η σύνδεση διακόπηκε. Περιμένουμε επανασύνδεση.");}
- },[code]);
+ },[code,setGame]);
  useEffect(()=>{
    void fetchState();
    const id=setInterval(()=>{void fetchState();},1600);
@@ -36,6 +38,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
  },[fetchState]);
  const actions=game?.legalMoves??[];
  const send=async(move:DurakMove)=>{
+   if (loading || presenting) return;
    setLoading(true);setError("");
    try{
     const r=await durakRoomCommand({data:{action:"move",code,move}});
@@ -75,6 +78,9 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
     }
     return assets.avatar("", name) ?? knownBot?.avatarUrl;
   };
+  const attackSeats = game.attackSeats ?? [game.attacker];
+  const roleFor = (seat: number) => game.ended ? "idle" : game.defender === seat ? "defend" : attackSeats.includes(seat) ? "attack" : "idle";
+  const roleText = (seat: number) => roleFor(seat) === "defend" ? text.defense : roleFor(seat) === "attack" ? (game.pairs.length === 0 ? text.starts : text.attack) : "";
   const pairColumns = Math.max(1, Math.min(game.pairs.length > 12 ? 6 : game.pairs.length > 6 ? 4 : 3, game.pairs.length));
   return (
     <div className="durak-fullscreen" data-player-count={n} aria-label="Online τραπέζι DURAK">
@@ -85,11 +91,12 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
             <div
               key={other.index}
               data-durak-opponent-seat={other.index}
+              data-durak-role={roleFor(other.index)}
               data-position={positions[other.relative] ?? "top"}
               className="durak-fullscreen-opponent"
             >
               <div
-                className={`rounded-full border border-primary/70 bg-black/75 p-[3px] shadow-xl ${game.defender === other.index || game.attacker === other.index ? "ring-2 ring-primary/75" : ""}`}
+                className="durak-opponent-ring rounded-full border border-primary/70 bg-black/75 p-[3px] shadow-xl"
               >
                 <PlayerAvatar
                   name={other.name}
@@ -105,11 +112,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
                   {other.name}
                 </span>
                 <span className="text-amber-200">
-                  {game.defender === other.index
-                    ? "Άμυνα"
-                    : game.attacker === other.index
-                      ? "Επίθεση"
-                      : ""}{" "}
+                  {roleText(other.index)}{" "}
                   {other.size} φύλλα
                 </span>
               </div>
@@ -120,6 +123,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
               </div>
             </div>
           ))}
+          <div className="durak-turn-summary" role="status">{text.roles(playerName(game.attacker), playerName(game.defender))}{flight && <span> · {text.played(playerName(flight.seat), flight.kind)}</span>}</div>
           <div className="durak-fullscreen-center" data-durak-center>
             <div className="durak-fullscreen-stock">
               <DurakStock trump={game.trumpCard} remaining={game.stock} />
@@ -134,17 +138,17 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
             >
               {game.pairs.map((pair, i) => (
                 <button
-                  key={i}
+                  key={ident(pair.attack)}
                   type="button"
                   onClick={() => setTarget(i)}
                   aria-pressed={target === i}
                   data-durak-pair
                   className={`durak-fullscreen-pair ${target === i ? "border-amber-300 bg-white/20" : "border-white/20 bg-black/10"}`}
                 >
-                  <DurakCardFace card={pair.attack} />
+                  <DurakPlayedCard card={pair.attack} flight={flight} localSeat={game.seat} />
                   {pair.defense && (
                     <span className="durak-fullscreen-defense">
-                      <DurakCardFace card={pair.defense} />
+                      <DurakPlayedCard card={pair.defense} flight={flight} localSeat={game.seat} />
                     </span>
                   )}
                 </button>
@@ -159,12 +163,12 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
         </DurakTableSurface>
       </div>
       <div className="durak-fullscreen-controls">
-        <div className="durak-fullscreen-status">
+        <div className="durak-fullscreen-status" data-durak-role={roleFor(game.seat)}>
           <span className="truncate font-semibold">
             {playerName(game.seat)} ·{" "}
             {game.defender === game.seat
               ? "Αμύνεσαι"
-              : game.attacker === game.seat
+              : attackSeats.includes(game.seat)
                 ? "Επιτίθεσαι"
                 : "Περιμένεις"}
           </span>
@@ -178,7 +182,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
             .map((move, i) => (
               <button
                 key={move.type + i}
-                disabled={loading}
+                disabled={loading || presenting}
                 type="button"
                 onClick={() => void send(move)}
               >
@@ -201,7 +205,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame}:{
       </div>
       <DurakFullscreenHand
         cards={game.myHand}
-        busy={loading}
+        busy={loading || presenting}
         canPlay={(card) => playable(card).length > 0}
         onPlay={clickCard}
       />

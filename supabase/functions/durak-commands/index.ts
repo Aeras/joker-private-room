@@ -1,7 +1,8 @@
 import { endDurakGame } from "./end-game.ts";
+import { recordDurakPlay } from "./presentation.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { beginDurak, applyDurakMove, legalDurakMoves, sameDurakMove, type DurakMatch, type DurakMove } from "./engine.ts";
+import { beginDurak, applyDurakMove, legalDurakMoves, sameDurakMove, durakAttackSeats, type DurakMatch, type DurakMove } from "./engine.ts";
 import { chooseDurakBotMove } from "./bot.ts";
 
 const respond=(data:unknown,status=200)=>new Response(JSON.stringify(data),{
@@ -87,7 +88,7 @@ Deno.serve(async(req:Request)=>{
     if(!isMove(body?.move))return respond({ok:false,code:"INVALID_MOVE"},400);
     const allowed=legalDurakMoves(state,seat);
     if(!allowed.some(m=>sameDurakMove(m,body.move)))return respond({ok:false,code:"ILLEGAL_MOVE"},400);
-    state=applyDurakMove(state,seat,body.move);
+    state=recordDurakPlay(state,applyDurakMove(state,seat,body.move),seat,body.move);
   }
   // Every bot move is made server-side. Never send nonlocal human hands to the client.
   if(!state.ended){
@@ -99,7 +100,7 @@ Deno.serve(async(req:Request)=>{
       if(!bot)break;
       const move=chooseDurakBotMove(state,bot.index,"balanced");
       if(!move)break;
-      state=applyDurakMove(state,bot.index,move);
+      state=recordDurakPlay(state,applyDurakMove(state,bot.index,move),bot.index,move);
       if(state.ended)break;
     }
   }
@@ -117,7 +118,9 @@ Deno.serve(async(req:Request)=>{
     round:state.round,attacker:state.primaryAttacker,defender:state.defender,
     pairs:state.pairs,taking:state.taking,ended:state.ended,fool:state.fool,
     handSizes:state.hands.map(h=>h.length),myHand:ownCards,
-    legalMoves:legalDurakMoves(state,seat),seat,revision:version
+    legalMoves:legalDurakMoves(state,seat),seat,revision:version,
+    attackSeats:durakAttackSeats(state),
+    presentationSequence:state.presentationSequence??0,events:state.presentationEvents??[]
   };
   return respond({ok:true,game:view});
  }catch(err){
