@@ -88,7 +88,7 @@ function DurakHome() {
         : action === "get" ? await durakRoomCommand({data:{action,code:code ?? ""}})
         : await durakRoomCommand({data:{action:"leave",code:code ?? ""}});
       if (!result.ok) { setError(result.code); return; }
-      if ("room" in result) setRoom(result.room);
+      if ("room" in result) { setRoom(result.room); setMembership(result.room.code); }
       else if ("rooms" in result) { setAvailable(result.rooms); setListLoaded(true); }
       else if ("cancelled" in result) { setRoom(null); setMembership(null); }
     } catch { setError("Αδυναμία επικοινωνίας με τον διακομιστή."); }
