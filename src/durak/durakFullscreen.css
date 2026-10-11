@@ -370,7 +370,7 @@
 @keyframes durak-bout-discard {
   0%, 28% { transform: translate(0,0) rotate(0); opacity: 1; }
   55% { transform: translate(calc(var(--durak-clear-x) * .48), calc(var(--durak-clear-y) - 20px)) rotate(calc(var(--durak-clear-angle) * .4)); opacity: 1; }
-  100% { transform: translate(var(--durak-clear-x), var(--durak-clear-y)) rotate(var(--durak-clear-angle)); opacity: 0; }
+  100% { transform: translate(var(--durak-clear-x), var(--durak-clear-y)) rotate(var(--durak-clear-angle)) scale(.84); opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .durak-fullscreen-pair[data-durak-clearing],
@@ -378,4 +378,45 @@
   .durak-clearing-card-back {
     animation-duration: 1ms;
   }
+}
+
+/* The real discard destination: a slightly chaotic mound, visible until the match ends. */
+.durak-discard-pile {
+  position: absolute;
+  z-index: 12;
+  top: clamp(72px, 23%, 168px);
+  right: clamp(60px, 15%, 190px);
+  width: 76px;
+  height: 100px;
+  pointer-events: none;
+  --card-w: clamp(30px, 6.5vh, 43px);
+}
+.durak-discard-mound {
+  position: relative;
+  width: 64px;
+  height: 75px;
+}
+.durak-discard-layer {
+  position: absolute;
+  left: 12px;
+  top: 5px;
+  transform: translate(var(--discard-x), var(--discard-y)) rotate(var(--discard-rotation));
+  z-index: var(--discard-layer);
+  filter: drop-shadow(0 1px 2px #0008);
+}
+.durak-discard-count {
+  position: absolute;
+  top: 82px;
+  left: 50%;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #07150eb8;
+  color: #fff;
+  font-size: 10px;
+}
+@media (max-height: 420px) {
+  .durak-discard-pile { top: 18%; right: clamp(55px, 13%, 115px); --card-w: 29px; }
+  .durak-discard-count { top: 67px; font-size: 9px; }
 }
