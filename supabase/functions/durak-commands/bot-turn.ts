@@ -17,7 +17,9 @@ export function advanceDurakBot(
   const defender = seats.find((seat) => seat.index === state.defender);
   // Let the defender respond before bots continue adding attacks.
   if (uncovered && defender?.occupant !== "bot") return state;
-  const candidates = uncovered ? seats.filter((seat) => seat.index === state.defender) : seats;
+  const candidates = uncovered
+    ? seats.filter((seat) => seat.index === state.defender)
+    : seats.filter((seat) => seat.index !== state.defender);
   const bot = candidates.find(
     (seat) => seat.occupant === "bot" && legalDurakMoves(state, seat.index).length > 0,
   );

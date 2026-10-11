@@ -144,4 +144,11 @@ describe("DURAK persisted bot reaction budget", () => {
     const ended = { ...initial, ended: true };
     expect(advanceDurakBot(ended, bots, 5000)).toBe(ended);
   });
+  it("does not make a bot take already covered cards while the human primary considers additions", () => {
+    let state = applyDurakMove(scenario(), 0, { type: "attack", card: { suit: "clubs", rank: 6 } });
+    state = applyDurakMove(state, 1, { type: "defend", card: { suit: "clubs", rank: 7 }, pair: 0 });
+    const seats = bots.map((seat) => ({ ...seat, occupant: seat.index === 0 ? "human" : "bot" }));
+    expect(advanceDurakBot(state, seats, 5000)).toBe(state);
+    expect(state.taking).toBe(false);
+  });
 });
