@@ -4,6 +4,7 @@ import { durakTableText as text } from "@/i18n/durak.el";
 import { cardLabel } from "@/domain/cards";
 import { cardForArtwork, DurakCardFace } from "./DurakTableVisuals";
 import type { DurakCard } from "./rules";
+import { useHandReflow } from "@/components/table/useHandReflow";
 
 /** Same horizontal fan pattern as JOKER, fitted to DURAK's up-to-36-card hand. */
 function durakHandOverlap(count: number) {
@@ -13,6 +14,7 @@ function durakHandOverlap(count: number) {
 export function DurakFullscreenHand({
   cards,
   concealed = false,
+  arriving = [],
   busy,
   canPlay,
   onPlay,
@@ -22,6 +24,7 @@ export function DurakFullscreenHand({
 }: {
   cards: readonly DurakCard[];
   concealed?: boolean;
+  arriving?: readonly DurakCard[];
   busy: boolean;
   canPlay: (card: DurakCard) => boolean;
   onPlay: (card: DurakCard) => void;
@@ -38,6 +41,7 @@ export function DurakFullscreenHand({
     width: number;
   };
   const gesture = useRef<Gesture | null>(null);
+  const layout = useHandReflow(cards.map(card => card.suit + ":" + card.rank).join("|"), !concealed);
   const suppressClick = useRef(false);
   const [drag, setDrag] = useState<{ card: DurakCard; x: number; y: number; width: number } | null>(
     null,
@@ -110,7 +114,7 @@ export function DurakFullscreenHand({
       aria-hidden={concealed}
       style={{ "--durak-hand-step": step } as CSSProperties}
     >
-      <div className="durak-fullscreen-hand-row">
+      <div ref={layout} className="durak-fullscreen-hand-row">
         {cards.map((card, index) => {
           const allowed = canPlay(card);
           return (
@@ -118,6 +122,9 @@ export function DurakFullscreenHand({
               key={card.suit + ":" + card.rank}
               type="button"
               data-durak-hand-card
+              data-durak-card-key={card.suit + ":" + card.rank}
+              data-hand-layout-card={card.suit + ":" + card.rank}
+              data-durak-arriving={arriving.some(incoming => incoming.suit === card.suit && incoming.rank === card.rank) || undefined}
               aria-label={cardLabel(cardForArtwork(card))}
               disabled={busy || !allowed}
               data-playable={allowed}

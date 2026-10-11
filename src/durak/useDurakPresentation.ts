@@ -5,7 +5,15 @@ import type { DurakCard } from "./rules";
 export const DURAK_CARD_FLIGHT_MS = 320;
 export const DURAK_PLAY_BEAT_MS = 120;
 export const DURAK_CLEAR_MS = 760;
-export type DurakCollection = { id: number; from: number; to: number; cards: DurakCard[] };
+export type DurakCollection = {
+  id: number;
+  from: number;
+  to: number;
+  cards: DurakCard[];
+  kind?: "take";
+  receiver?: number;
+  localSeat?: number;
+};
 const sameCard = (a: DurakCard, b: DurakCard) => a.suit === b.suit && a.rank === b.rank;
 
 /** Queue confirmed public events. A collection completes from actual overlay landings. */
@@ -57,6 +65,7 @@ export function useDurakPresentation(roomCode: string) {
       if (
         !mounted.current ||
         !current ||
+        current.kind === "take" ||
         current.id !== id ||
         index < 0 ||
         index >= current.cards.length
@@ -126,6 +135,41 @@ export function useDurakPresentation(roomCode: string) {
             p.defense ? [p.attack, p.defense] : [p.attack],
           );
           const delta = event.discardCount - previous.discardCount;
+          if (event.kind === "take" && delta === 0 && cards.length > 0) {
+            const receiver = previous.defender;
+            const pendingCollection: DurakCollection = {
+              id: event.sequence,
+              from: previous.discardCount,
+              to: event.discardCount,
+              cards,
+              kind: "take",
+              receiver,
+              localSeat: previous.seat,
+            };
+            // These are already-public, server-confirmed table cards, never a hidden hand/deck.
+            display({
+              ...previous,
+              pairs: event.pairs,
+              legalMoves: [],
+              ended: false,
+              handSizes: previous.handSizes.map(
+                (size, seat) => size + (seat === receiver ? cards.length : 0),
+              ),
+              myHand:
+                receiver === previous.seat
+                  ? [
+                      ...previous.myHand,
+                      ...cards.filter(
+                        (card) => !previous.myHand.some((own) => sameCard(own, card)),
+                      ),
+                    ]
+                  : previous.myHand,
+            });
+            active.current = pendingCollection;
+            resume.current = advance;
+            setCollection(pendingCollection);
+            return;
+          }
           // Never classify a take from the appearance of covered cards. Exact public resolution is mandatory.
           if (
             event.kind === "discard" &&

@@ -369,3 +369,6 @@
 /* Mounted artwork can decode before entrance; WAAPI reveals these surfaces only after pile exit. */
 .durak-fullscreen[data-durak-dealing] .durak-fullscreen-hand-row,
 .durak-fullscreen[data-durak-dealing] .durak-fullscreen-opponent-backs { visibility:hidden; }
+
+/* The measured incoming card owns this slot until its flight lands. */
+.durak-fullscreen-hand-card[data-durak-arriving] { visibility:hidden; }

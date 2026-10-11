@@ -222,6 +222,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame,onNewGame}:{
       <DurakResults key={code} game={game} playerName={playerName} onNewGame={onNewGame} />
       <DurakFullscreenHand
         cards={game.myHand}
+        arriving={collection?.kind === "take" && collection.receiver === game.seat ? collection.cards : []}
         concealed={dealing}
         busy={loading || presenting || dealing}
         canPlay={(card) => playable(card).length > 0}
