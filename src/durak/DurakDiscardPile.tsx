@@ -1,12 +1,13 @@
 import { DurakCardBack } from "./DurakTableVisuals";
 import { discardLanding } from "./discardGeometry";
+import { durakTableText } from "@/i18n/durak.el";
 export function DurakDiscardPile({ count }: { count: number }) {
   return (
     <div
       className="durak-discard-pile"
       data-durak-discard-pile
       data-count={count}
-      aria-label={`Απορριμμένα φύλλα: ${count}`}
+      aria-label={durakTableText.discardLabel(count)}
     >
       <div className="durak-discard-mound" aria-hidden="true">
         {Array.from({ length: Math.min(count, 20) }, (_, i) => {
@@ -24,7 +25,7 @@ export function DurakDiscardPile({ count }: { count: number }) {
           );
         })}
       </div>
-      <span className="durak-discard-count">{count} εκτός παιχνιδιού</span>
+      <span className="durak-discard-count">{durakTableText.discardCount(count)}</span>
     </div>
   );
 }
