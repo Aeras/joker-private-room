@@ -1,3 +1,4 @@
+import { startDurakDeal } from "../../supabase/functions/durak-commands/bot-turn";
 import {
   advanceDurakBot,
   scheduleDurakBot,
@@ -83,6 +84,7 @@ describe("DURAK move validation after JSONB persistence", () => {
       "sameDurakMove",
       "advanceDurakBot",
       "scheduleDurakBot",
+      "startDurakDeal",
       "endDurakGame",
       "recordDurakPlay",
       "durakAttackSeats",
@@ -103,11 +105,36 @@ describe("DURAK move validation after JSONB persistence", () => {
       serverSameMove,
       advanceDurakBot,
       scheduleDurakBot,
+      startDurakDeal,
       () => null,
       recordDurakPlay,
       durakAttackSeats,
       publicDurakEvents,
     );
+    state.dealReadyAt = Date.now() + 10000;
+    const requestBody = {
+      sessionToken: "a".repeat(64),
+      action: "move",
+      code: "ABC123",
+      move: { type: "attack", card: first },
+    };
+    const blocked = await handler(
+      new Request("https://fixture.invalid", { method: "POST", body: JSON.stringify(requestBody) }),
+    );
+    expect(blocked.status).toBe(409);
+    expect((await blocked.json()).code).toBe("DEALING");
+    expect(saved).toBe(false);
+    const dealing = await handler(
+      new Request("https://fixture.invalid", {
+        method: "POST",
+        body: JSON.stringify({ ...requestBody, action: "get_game" }),
+      }),
+    );
+    const dealingView = (await dealing.json()).game;
+    expect(dealingView.legalMoves).toEqual([]);
+    expect(dealingView.attackSeats).toEqual([]);
+    expect(dealingView).not.toHaveProperty("hands");
+    delete state.dealReadyAt;
     const response = await handler(
       new Request("https://fixture.invalid", {
         method: "POST",

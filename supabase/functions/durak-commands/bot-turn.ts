@@ -1,9 +1,20 @@
+import { durakDealTiming } from "./dealTiming.ts";
 import { applyDurakMove, legalDurakMoves, type DurakMatch } from "./engine.ts";
 import { chooseDurakBotMove } from "./bot.ts";
 import { recordDurakPlay } from "./presentation.ts";
 
 /** One visible decision per persisted deadline, regardless of polling clients. */
 export const DURAK_BOT_REACTION_MS = 850;
+export function startDurakDeal(state: DurakMatch, now: number): DurakMatch {
+  const started = now + 1000;
+  const ready = started + durakDealTiming(state.hands.length).duration;
+  return {
+    ...state,
+    dealStartedAt: started,
+    dealReadyAt: ready,
+    nextBotAt: ready + DURAK_BOT_REACTION_MS,
+  };
+}
 export function scheduleDurakBot(state: DurakMatch, now: number): DurakMatch {
   return { ...state, nextBotAt: now + DURAK_BOT_REACTION_MS };
 }
@@ -12,7 +23,7 @@ export function advanceDurakBot(
   seats: ReadonlyArray<{ index: number; occupant: string }>,
   now: number,
 ): DurakMatch {
-  if (state.ended || now < (state.nextBotAt ?? 0)) return state;
+  if (state.ended || now < (state.dealReadyAt ?? 0) || now < (state.nextBotAt ?? 0)) return state;
   const uncovered = state.pairs.some((pair) => !pair.defense) && !state.taking;
   const defender = seats.find((seat) => seat.index === state.defender);
   // Let the defender respond before bots continue adding attacks.
