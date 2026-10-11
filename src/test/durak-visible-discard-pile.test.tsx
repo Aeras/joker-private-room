@@ -18,11 +18,22 @@ describe("DURAK persistent heap", () => {
     const rotations = new Set<number>();
     for (let i = 0; i < 36; i++) {
       const p = discardLanding(i);
-      expect(Math.abs(p.x)).toBeLessThanOrEqual(9);
-      expect(Math.abs(p.y)).toBeLessThanOrEqual(7);
-      expect(Math.abs(p.angle)).toBeLessThanOrEqual(21);
+      expect(Math.abs(p.x)).toBeLessThanOrEqual(20);
+      expect(Math.abs(p.y)).toBeLessThanOrEqual(13);
+      expect(Math.abs(p.angle)).toBeLessThanOrEqual(38);
       rotations.add(p.angle);
     }
     expect(rotations.size).toBeGreaterThan(20);
+    const points = Array.from({ length: 12 }, (_, i) => discardLanding(i));
+    expect(
+      Math.max(...points.map((p) => p.x)) - Math.min(...points.map((p) => p.x)),
+    ).toBeGreaterThan(25);
+    expect(
+      Math.max(...points.map((p) => p.angle)) - Math.min(...points.map((p) => p.angle)),
+    ).toBeGreaterThan(50);
+    const offsets = points.slice(1).map((p, i) => p.x - points[i]!.x);
+    expect(new Set(offsets).size).toBeGreaterThan(6);
+    // New bouts do not relocate cards already in the mound.
+    expect(discardLanding(3)).toEqual(points[3]);
   });
 });
