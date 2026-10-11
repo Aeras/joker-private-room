@@ -1,5 +1,5 @@
 import { endDurakGame } from "./end-game.ts";
-import { recordDurakPlay } from "./presentation.ts";
+import { recordDurakPlay, publicDurakEvents } from "./presentation.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { beginDurak, applyDurakMove, legalDurakMoves, sameDurakMove, durakAttackSeats, type DurakMatch, type DurakMove } from "./engine.ts";
@@ -121,7 +121,7 @@ Deno.serve(async(req:Request)=>{
     legalMoves:legalDurakMoves(state,seat),seat,revision:version,
     finishOrder:state.finishOrder??[],finishOrderComplete:state.finishOrderComplete??false,
     attackSeats:durakAttackSeats(state),
-    presentationSequence:state.presentationSequence??0,events:state.presentationEvents??[]
+    presentationSequence:state.presentationSequence??0,events:publicDurakEvents(state,body.presentationVersion)
   };
   return respond({ok:true,game:view});
  }catch(err){

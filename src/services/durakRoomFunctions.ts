@@ -25,7 +25,7 @@ const requestSchema = z.discriminatedUnion("action", [
 export type DurakSeatView = { index: number; occupant: "human" | "bot" | "empty"; name: string | null };
 export type DurakRoomView = { code: string; variant: "podkidnoy" | "perevodnoy"; capacity: number; lifecycle: string; version: number; hostPlayerId: string; seats: DurakSeatView[] };
 export type DurakWaitingRoom = { code: string; variant: "podkidnoy" | "perevodnoy"; capacity: number; hostName: string; occupied: number };
-export type DurakGameView = {variant:"podkidnoy"|"perevodnoy";trump:"clubs"|"diamonds"|"hearts"|"spades";trumpCard:import("@/durak/rules").DurakCard;stock:number;discardCount:number;round:number;attacker:number;defender:number;pairs:Array<{attack:import("@/durak/rules").DurakCard;defense?:import("@/durak/rules").DurakCard}>;taking:boolean;ended:boolean;fool:number|null;handSizes:number[];myHand:import("@/durak/rules").DurakCard[];legalMoves:import("@/durak/engine").DurakMove[];seat:number;revision:number;finishOrder?:number[];finishOrderComplete?:boolean;attackSeats?:number[];presentationSequence?:number;events?:import("@/durak/engine").DurakPresentationEvent[]};
+export type DurakGameView = {variant:"podkidnoy"|"perevodnoy";trump:"clubs"|"diamonds"|"hearts"|"spades";trumpCard:import("@/durak/rules").DurakCard;stock:number;discardCount:number;round:number;attacker:number;defender:number;pairs:Array<{attack:import("@/durak/rules").DurakCard;defense?:import("@/durak/rules").DurakCard}>;taking:boolean;ended:boolean;fool:number|null;handSizes:number[];myHand:import("@/durak/rules").DurakCard[];legalMoves:import("@/durak/engine").DurakMove[];seat:number;revision:number;finishOrder?:number[];finishOrderComplete?:boolean;attackSeats?:number[];presentationSequence?:number;events?:import("@/durak/engine").DurakPublicEvent[]};
 export type DurakRoomResponse = { ok: true; room: DurakRoomView } | { ok: true; rooms: DurakWaitingRoom[] } | { ok: true; cancelled: boolean } | { ok: true; membership: { code:string; lifecycle:string } | null } | {ok:true;started:boolean} | {ok:true;updated:boolean} | {ok:true;game:DurakGameView} | { ok: false; code: string };
 
 export const durakRoomCommand = createServerFn({ method: "POST" })
@@ -37,7 +37,7 @@ export const durakRoomCommand = createServerFn({ method: "POST" })
       const response = await fetch(`${EXTERNAL_SUPABASE_URL}/functions/v1/durak-commands`, {
         method: "POST",
         headers: { apikey: EXTERNAL_SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, sessionToken }),
+        body: JSON.stringify({ ...data, sessionToken, presentationVersion: 2 }),
       });
       const result = await response.json() as DurakRoomResponse;
       if (result && typeof result === "object" && typeof result.ok === "boolean") return result;

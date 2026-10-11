@@ -8,6 +8,12 @@ export type DurakPresentationEvent = {
   /** Server-confirmed discard count after this card; never infer from visual defense alone. */
   discardCount?: number;
 };
+/** Only cards already exposed on the table; authoritative resolved bout outcome. */
+export type DurakBoutEvent = {
+  sequence: number; kind: "discard" | "take"; round: number;
+  pairs: DurakPair[]; discardCount: number;
+};
+export type DurakPublicEvent = DurakPresentationEvent | DurakBoutEvent;
 export type DurakMove =
   | { type: "attack"; card: DurakCard }
   | { type: "defend"; card: DurakCard; pair: number }
@@ -27,7 +33,7 @@ export type DurakMatch = {
   pendingFinishOrder?: number[];
   finishOrderComplete?: boolean;
   presentationSequence?: number;
-  presentationEvents?: DurakPresentationEvent[];
+  presentationEvents?: DurakPublicEvent[];
 };
 const key=(c:DurakCard)=>c.suit+":"+c.rank;
 const clockwise=(seat:number,n:number)=>(seat+1)%n;

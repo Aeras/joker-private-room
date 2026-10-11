@@ -1,34 +1,41 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DurakGameView } from "@/services/durakRoomFunctions";
-import type { DurakPresentationEvent } from "./engine";
-
+import type { DurakPresentationEvent, DurakPublicEvent } from "./engine";
+import type { DurakCard } from "./rules";
 export const DURAK_CARD_FLIGHT_MS = 320;
 export const DURAK_PLAY_BEAT_MS = 120;
 export const DURAK_CLEAR_MS = 760;
-const sameCard = (a: { suit: string; rank: number }, b: { suit: string; rank: number }) =>
-  a.suit === b.suit && a.rank === b.rank;
+export type DurakCollection = { id: number; from: number; to: number; cards: DurakCard[] };
+const sameCard = (a: DurakCard, b: DurakCard) => a.suit === b.suit && a.rank === b.rank;
 
-/** Animate confirmed public plays; initial/reconnected views always start at the latest state. */
+/** Queue confirmed public events. A collection completes from actual overlay landings. */
 export function useDurakPresentation(roomCode: string) {
   const [game, setGame] = useState<DurakGameView | null>(null);
   const [flight, setFlight] = useState<DurakPresentationEvent | null>(null);
-  const [clearing, setClearing] = useState(false);
+  const [collection, setCollection] = useState<DurakCollection | null>(null);
+  const active = useRef<DurakCollection | null>(null);
+  const landed = useRef(new Set<number>());
+  const resume = useRef<(() => void) | null>(null);
   const latest = useRef<DurakGameView | null>(null);
   const shown = useRef<DurakGameView | null>(null);
-  const queue = useRef<DurakPresentationEvent[]>([]);
+  const queue = useRef<DurakPublicEvent[]>([]);
   const sequence = useRef(0);
-  const clearedRound = useRef(-1);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const run = useRef(0);
   const room = useRef(roomCode);
   room.current = roomCode;
   const mounted = useRef(true);
-
+  const display = useCallback((next: DurakGameView | null) => {
+    shown.current = next;
+    setGame(next);
+  }, []);
   const stop = useCallback(() => {
     run.current++;
     if (timer.current !== null) clearTimeout(timer.current);
     timer.current = null;
     queue.current = [];
+    active.current = null;
+    resume.current = null;
   }, []);
   useEffect(() => {
     mounted.current = true;
@@ -36,16 +43,44 @@ export function useDurakPresentation(roomCode: string) {
     latest.current = null;
     shown.current = null;
     sequence.current = 0;
-    clearedRound.current = -1;
     setGame(null);
     setFlight(null);
-    setClearing(false);
+    setCollection(null);
     return () => {
       mounted.current = false;
       stop();
     };
   }, [roomCode, stop]);
-
+  const landDiscard = useCallback(
+    (id: number, index: number) => {
+      const current = active.current;
+      if (
+        !mounted.current ||
+        !current ||
+        current.id !== id ||
+        index < 0 ||
+        index >= current.cards.length
+      )
+        return;
+      landed.current.add(index);
+      if (shown.current)
+        display({ ...shown.current, discardCount: current.from + landed.current.size });
+    },
+    [display],
+  );
+  const finishDiscard = useCallback(
+    (id: number) => {
+      const current = active.current;
+      if (!mounted.current || !current || current.id !== id) return;
+      if (shown.current) display({ ...shown.current, discardCount: current.to, pairs: [] });
+      active.current = null;
+      setCollection(null);
+      const advance = resume.current;
+      resume.current = null;
+      advance?.();
+    },
+    [display],
+  );
   const accept = useCallback(
     (next: DurakGameView) => {
       if (!mounted.current || room.current !== roomCode) return;
@@ -54,79 +89,68 @@ export function useDurakPresentation(roomCode: string) {
       latest.current = next;
       const incomingSequence = next.presentationSequence ?? 0;
       const pending = (next.events ?? [])
-        .filter((event) => event.sequence > sequence.current)
+        .filter((e) => e.sequence > sequence.current)
         .sort((a, b) => a.sequence - b.sequence);
-      // A bounded history can have a gap after a long absence. Never manufacture plays.
       if (
         !baseline ||
         incomingSequence < sequence.current ||
         (incomingSequence > sequence.current &&
           (pending[0]?.sequence !== sequence.current + 1 ||
             pending.at(-1)?.sequence !== incomingSequence ||
-            pending.some((event, index) => event.sequence !== sequence.current + index + 1)))
+            pending.some((e, i) => e.sequence !== sequence.current + i + 1)))
       ) {
         stop();
         sequence.current = incomingSequence;
-        shown.current = next;
-        setGame(next);
+        display(next);
         setFlight(null);
-        setClearing(false);
+        setCollection(null);
         return;
       }
       sequence.current = incomingSequence;
       queue.current.push(...pending);
-      if (timer.current !== null) return;
+      if (timer.current !== null || active.current) return;
       const token = run.current;
       const advance = () => {
         if (token !== run.current) return;
-        const upcoming = queue.current[0];
-        const visibleRound = shown.current;
-        // A batched server response can contain the last defense and the next attack.
-        // Animate the completed, defended bout before showing the next round.
-        if (upcoming && visibleRound && upcoming.round > visibleRound.round &&
-            visibleRound.pairs.length > 0 && visibleRound.pairs.every(pair => Boolean(pair.defense)) &&
-            (upcoming.discardCount ?? latest.current?.discardCount ?? 0) > visibleRound.discardCount &&
-            clearedRound.current !== visibleRound.round) {
-          clearedRound.current = visibleRound.round;
-          setFlight(null);
-          setClearing(true);
-          timer.current = setTimeout(() => {
-            if (token !== run.current) return;
-            setClearing(false);
-            advance();
-          }, DURAK_CLEAR_MS);
-          return;
-        }
+        timer.current = null;
         const event = queue.current.shift();
         if (!event) {
-          const previous = shown.current;
-          const incoming = latest.current;
-          const boutClosed = previous && incoming && previous.pairs.length > 0 &&
-            previous.pairs.every(pair => Boolean(pair.defense)) && incoming.discardCount > previous.discardCount &&
-            clearedRound.current !== previous.round && incoming.pairs.length === 0 &&
-            (incoming.round > previous.round || incoming.ended);
-          if (boutClosed) {
-            clearedRound.current = previous.round;
-            setFlight(null);
-            setClearing(true);
-            timer.current = setTimeout(() => {
-              if (token !== run.current) return;
-              shown.current = latest.current;
-              setGame(latest.current);
-              setClearing(false);
-              timer.current = null;
-            }, DURAK_CLEAR_MS);
-            return;
-          }
-          timer.current = null;
-          shown.current = latest.current;
-          setGame(latest.current);
+          display(latest.current);
           setFlight(null);
-          setClearing(false);
           return;
         }
         const previous = shown.current ?? next;
-        const visible: DurakGameView = {
+        if (!("card" in event)) {
+          setFlight(null);
+          const cards = event.pairs.flatMap((p) =>
+            p.defense ? [p.attack, p.defense] : [p.attack],
+          );
+          const delta = event.discardCount - previous.discardCount;
+          // Never classify a take from the appearance of covered cards. Exact public resolution is mandatory.
+          if (
+            event.kind === "discard" &&
+            delta === cards.length &&
+            delta > 0 &&
+            event.pairs.every((p) => p.defense)
+          ) {
+            const pendingCollection = {
+              id: event.sequence,
+              from: previous.discardCount,
+              to: event.discardCount,
+              cards,
+            };
+            display({ ...previous, pairs: event.pairs, legalMoves: [], ended: false });
+            landed.current.clear();
+            active.current = pendingCollection;
+            resume.current = advance;
+            setCollection(pendingCollection);
+            return;
+          }
+          display({ ...previous, pairs: [], discardCount: event.discardCount });
+          advance();
+          return;
+        }
+        display({
           ...previous,
           pairs: event.pairs,
           round: event.round,
@@ -134,23 +158,27 @@ export function useDurakPresentation(roomCode: string) {
           defender: event.defender,
           attackSeats: event.attackSeats,
           handSizes: event.handSizes,
-          // Keep the visible pile in sync with the finished bout, not the next server move.
-          discardCount: event.round > previous.round ? (event.discardCount ?? previous.discardCount) : previous.discardCount,
           ended: false,
           legalMoves: [],
           myHand:
             event.seat === previous.seat
-              ? previous.myHand.filter((card) => !sameCard(card, event.card))
+              ? previous.myHand.filter((c) => !sameCard(c, event.card))
               : previous.myHand,
-        };
-        shown.current = visible;
-        setGame(visible);
+        });
         setFlight(event);
         timer.current = setTimeout(advance, DURAK_CARD_FLIGHT_MS + DURAK_PLAY_BEAT_MS);
       };
       advance();
     },
-    [stop, roomCode],
+    [display, roomCode, stop],
   );
-  return { game, flight, clearing, accept, presenting: flight !== null || clearing };
+  return {
+    game,
+    flight,
+    collection,
+    landDiscard,
+    finishDiscard,
+    accept,
+    presenting: flight !== null || collection !== null,
+  };
 }
