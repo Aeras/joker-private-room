@@ -4,6 +4,7 @@ import { DealPresentation, NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS } from "@/com
 import { assets } from "@/assets/registry";
 import { projectGameForSeat } from "@/domain/projection";
 import { reconciliationFixture } from "./fixtures/reconciliationGame";
+import { computeTableGeometry } from "@/components/table/useTableGeometry";
 
 const mocks = vi.hoisted(() => ({ artwork: vi.fn(() => true) }));
 vi.mock("@/components/table/useCriticalCardArtwork", () => ({ useCriticalCardArtwork: mocks.artwork }));
@@ -23,6 +24,28 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe("rendered dealing privacy contract", () => {
+  it("keeps the same measured CSS flight through polling and cancels it with its owner", () => {
+    const projection = projectGameForSeat(reconciliationFixture(), 0);
+    projection.progression.phase = "DEAL_PRESENTATION";
+    projection.progression.cardsPerPlayer = 1;
+    projection.cards.exposedTrumpCard = null;
+    const geometry = { ...computeTableGeometry({ feltRect: { left: 0, top: 0, right: 844, bottom: 390, width: 844, height: 390 }, viewportWidth: 844, viewportHeight: 390 }), epoch: 1 };
+    const complete = vi.fn();
+    const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);
+    act(() => vi.advanceTimersByTime(50));
+    const first = view.container.querySelector<HTMLElement>("[data-deal-traveling-card]")!;
+    const name = first.style.animationName;
+    expect(name).toMatch(/^deal-flight-/);
+    expect(first.style.animationDuration).toBe("308ms");
+    expect(first.style.animationTimingFunction).toBe("linear");
+    expect(first.style.transitionProperty).toBe("opacity");
+    view.rerender(<DealPresentation projection={{ ...projection }} geometry={{ ...geometry, epoch: 2 }} onPresentationComplete={complete} />);
+    expect(view.container.querySelector("[data-deal-traveling-card]")).toBe(first);
+    expect(first.style.animationName).toBe(name);
+    view.unmount();
+    act(() => vi.advanceTimersByTime(10000));
+    expect(complete).not.toHaveBeenCalled();
+  });
   it.each(["DEAL_PRESENTATION", "NINE_CARD_INITIAL_DEAL_ALL_SEATS", "NINE_CARD_REMAINING_DEAL"] as const)(
     "renders traveling backs, while decoding only visible viewer artwork (%s)", phase => {
       const projection = projectGameForSeat(reconciliationFixture(), 0);
