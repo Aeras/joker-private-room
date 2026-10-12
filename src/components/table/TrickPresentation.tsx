@@ -203,6 +203,13 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   // Apply new viewport measurements only to a new trick, never at DOM handoff.
   const trickGeometry = useRef(new Map<string, TableGeometry>());
   const geometryKey = active?.id ?? `${projection.gameId}:${projection.progression.dealNumber}:${projection.cards.completedTricks.length + 1}`;
+  // Re-anchor settled cards when a backgrounded PWA restores its viewport.
+  // In-flight cards keep their original geometry until their motion completes.
+  const reanchorSettled = resumeGeneration > 0 && active && !departing && !localPlayPresentation &&
+    (active.hydrated || active.cards.every(play => landedCards.current.has(playKey(play))));
+  if (geometry && reanchorSettled && trickGeometry.current.get(geometryKey)?.epoch !== geometry.epoch) {
+    trickGeometry.current.set(geometryKey, geometry);
+  }
   if (geometry && (active || localPlayPresentation) && !trickGeometry.current.has(geometryKey)) {
     trickGeometry.current.set(geometryKey, geometry);
     while (trickGeometry.current.size > 24) trickGeometry.current.delete(trickGeometry.current.keys().next().value!);
