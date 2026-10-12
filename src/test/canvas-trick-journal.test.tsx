@@ -132,6 +132,16 @@ it("hydrates settled cards without replay and keeps historical completed tricks 
   );
   expect(callbacks.onCollectionComplete).not.toHaveBeenCalled();
 });
+it("waits for bitmap preparation before choosing a hydrated scene renderer", async () => {
+  const p = projection();
+  p.cards.currentTrick = cards.slice(0, 2);
+  flags.fail = true;
+  const view = render(<TrickPresentation projection={p} {...props()} />);
+  flags.fail = false;
+  await flush();
+  expect(view.container.querySelector("[data-renderer='canvas-trick']")).not.toBeNull();
+  expect(view.container.querySelectorAll("[data-trick-seat]")).toHaveLength(0);
+});
 it("retains DOM fallback for cold assets and every Joker semantic", async () => {
   const p = projection();
   flags.fail = true;

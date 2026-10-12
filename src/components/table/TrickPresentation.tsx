@@ -414,7 +414,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   });
   const visibleCards = cards.filter((play) => !isPresentationCard(localPlayPresentation, play));
   const canvasCards = visibleCards.filter(play => play.card.kind === "standard");
-  if (active && canvasCards.length && canvasChoice.current?.id !== active.id) {
+  if (active && artworkSettled && canvasCards.length && canvasChoice.current?.id !== active.id) {
     canvasChoice.current = {id: active.id, enabled: Boolean(presentationGeometry && canvasFlightAvailable() &&
       !active.cards.some(play => play.card.kind === "joker") && canvasCardAssets.peek(assets.cardBack) &&
       canvasCards.every(play => canvasCardAssets.peek(assets.cardFace(play.card)!)))};
