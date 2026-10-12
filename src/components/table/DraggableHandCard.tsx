@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { PlayingCard } from "../joker/PlayingCard";
 import { shouldCommitCardGesture, shouldCommitCardRelease } from "./cardGesture";
 import type { CardReleaseRect, RectLike } from "./useTableGeometry";
+import type { HandVisual } from "./canvas/handSceneMotion";
 
 type DragState = {
   pointerId: number;
@@ -40,6 +41,9 @@ export function DraggableHandCard({
   showLegality = true,
   dropRect,
   onCommit,
+  canvasOwned = false,
+  onVisualChange,
+  layoutEpoch,
 }: {
   card: Card;
   legal: boolean;
@@ -53,6 +57,9 @@ export function DraggableHandCard({
   showLegality?: boolean;
   dropRect?: RectLike | null;
   onCommit: (cardId: string, releaseRect: CardReleaseRect) => Promise<void>;
+  canvasOwned?:boolean;
+  onVisualChange?: (visual:HandVisual)=>void;
+  layoutEpoch?:string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -210,6 +217,15 @@ export function DraggableHandCard({
 
   const deltaX = drag ? drag.currentX - drag.startX : 0;
   const deltaY = drag ? drag.currentY - drag.startY : 0;
+  useLayoutEffect(()=>{
+    const element=rootRef.current;if(!canvasOwned||!element||!onVisualChange)return;
+    const rect=element.getBoundingClientRect(),style=getComputedStyle(element);
+    const hitTarget=element.parentElement!,hitX=Number(hitTarget.dataset["canvasHitX"]??0),hitY=Number(hitTarget.dataset["canvasHitY"]??0);
+    const logicalCenter={x:rect.left+rect.width/2-hitX,y:rect.top+rect.height/2-hitY};
+    onVisualChange({id:card.id,index:zIndex,faceUp:faceVisible,dragging:Boolean(drag&&!stationary),revealing,hitTarget,logicalCenter,pose:{x:logicalCenter.x+(drag&&!stationary?hitX:0),y:logicalCenter.y+(drag&&!stationary?hitY:0),
+      width:(parseFloat(style.width)||rect.width)*(drag&&!stationary?1.04:1),height:(parseFloat(style.height)||rect.height)*(drag&&!stationary?1.04:1),rotation:drag&&!stationary?Math.max(-8,Math.min(8,deltaX/18)):0,opacity:pending?0:1,flip:faceVisible?0:180,emphasis:commitReady&&!stationary?1:0}});
+  },[canvasOwned,onVisualChange,card.id,zIndex,faceVisible,drag,stationary,deltaX,deltaY,pending,layoutEpoch,commitReady,revealing]);
+  useLayoutEffect(()=>{const target=rootRef.current?.parentElement;return()=>{if(target){target.style.transform="";delete target.dataset["canvasHitX"];delete target.dataset["canvasHitY"];}};},[canvasOwned]);
 
   return (
     <div
@@ -228,6 +244,7 @@ export function DraggableHandCard({
         pending && "pointer-events-none opacity-0",
       )}
       style={{
+        transition:canvasOwned?"none":undefined,
         zIndex: drag && !stationary ? 100 : zIndex,
         transform: drag && !stationary
           ? `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${Math.max(-8, Math.min(8, deltaX / 18))}deg)`
@@ -240,10 +257,10 @@ export function DraggableHandCard({
       onPointerCancel={(event) => finishPointer(event, true)}
       onKeyDown={onKeyDown}
     >
-      <div className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing} data-hand-flip-delay={faceUpOnReveal ? 0 : 190 + zIndex * 22}>
+      <div style={{visibility:canvasOwned?"hidden":undefined}} className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing} data-hand-flip-delay={faceUpOnReveal ? 0 : 190 + zIndex * 22}>
         <div
           className="relative transition-transform duration-[340ms] motion-reduce:duration-75 [transform-style:preserve-3d]"
-          style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)`, transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)" }}
+          style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)`, transitionDuration:canvasOwned?"0ms":undefined,transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)" }}
         >
           <div className="relative [backface-visibility:hidden]">
             <PlayingCard
