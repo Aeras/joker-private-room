@@ -10,12 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as JokerRouteImport } from './routes/joker'
-import { Route as DurakRouteImport } from './routes/durak'
 import { Route as BotLabRouteImport } from './routes/bot-lab'
 import { Route as CreateRouteImport } from './routes/create'
+import { Route as DurakRouteImport } from './routes/durak'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as JoinRouteImport } from './routes/join'
+import { Route as JokerRouteImport } from './routes/joker'
 import { Route as LobbyRouteImport } from './routes/lobby'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TableRouteImport } from './routes/table'
@@ -23,16 +23,6 @@ import { Route as TableRouteImport } from './routes/table'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JokerRoute = JokerRouteImport.update({
-  id: '/joker',
-  path: '/joker',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DurakRoute = DurakRouteImport.update({
-  id: '/durak',
-  path: '/durak',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BotLabRoute = BotLabRouteImport.update({
@@ -45,6 +35,11 @@ const CreateRoute = CreateRouteImport.update({
   path: '/create',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DurakRoute = DurakRouteImport.update({
+  id: '/durak',
+  path: '/durak',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
@@ -53,6 +48,11 @@ const HistoryRoute = HistoryRouteImport.update({
 const JoinRoute = JoinRouteImport.update({
   id: '/join',
   path: '/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JokerRoute = JokerRouteImport.update({
+  id: '/joker',
+  path: '/joker',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LobbyRoute = LobbyRouteImport.update({
@@ -72,38 +72,38 @@ const TableRoute = TableRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/joker': typeof JokerRoute
-  '/durak': typeof DurakRoute
   '/': typeof IndexRoute
   '/bot-lab': typeof BotLabRoute
   '/create': typeof CreateRoute
+  '/durak': typeof DurakRoute
   '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
+  '/joker': typeof JokerRoute
   '/lobby': typeof LobbyRoute
   '/settings': typeof SettingsRoute
   '/table': typeof TableRoute
 }
 export interface FileRoutesByTo {
-  '/joker': typeof JokerRoute
-  '/durak': typeof DurakRoute
   '/': typeof IndexRoute
   '/bot-lab': typeof BotLabRoute
   '/create': typeof CreateRoute
+  '/durak': typeof DurakRoute
   '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
+  '/joker': typeof JokerRoute
   '/lobby': typeof LobbyRoute
   '/settings': typeof SettingsRoute
   '/table': typeof TableRoute
 }
 export interface FileRoutesById {
-  '/joker': typeof JokerRoute
-  '/durak': typeof DurakRoute
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/bot-lab': typeof BotLabRoute
   '/create': typeof CreateRoute
+  '/durak': typeof DurakRoute
   '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
+  '/joker': typeof JokerRoute
   '/lobby': typeof LobbyRoute
   '/settings': typeof SettingsRoute
   '/table': typeof TableRoute
@@ -112,34 +112,36 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/joker'
-    | '/durak'
     | '/bot-lab'
     | '/create'
+    | '/durak'
     | '/history'
     | '/join'
+    | '/joker'
     | '/lobby'
     | '/settings'
     | '/table'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/durak'
     | '/bot-lab'
     | '/create'
+    | '/durak'
     | '/history'
     | '/join'
+    | '/joker'
     | '/lobby'
     | '/settings'
     | '/table'
   id:
     | '__root__'
-    | '/durak'
     | '/'
     | '/bot-lab'
     | '/create'
+    | '/durak'
     | '/history'
     | '/join'
+    | '/joker'
     | '/lobby'
     | '/settings'
     | '/table'
@@ -147,12 +149,12 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  JokerRoute: typeof JokerRoute
-  DurakRoute: typeof DurakRoute
   BotLabRoute: typeof BotLabRoute
   CreateRoute: typeof CreateRoute
+  DurakRoute: typeof DurakRoute
   HistoryRoute: typeof HistoryRoute
   JoinRoute: typeof JoinRoute
+  JokerRoute: typeof JokerRoute
   LobbyRoute: typeof LobbyRoute
   SettingsRoute: typeof SettingsRoute
   TableRoute: typeof TableRoute
@@ -165,20 +167,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/joker': {
-      id: '/joker'
-      path: '/joker'
-      fullPath: '/joker'
-      preLoaderRoute: typeof JokerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/durak': {
-      id: '/durak'
-      path: '/durak'
-      fullPath: '/durak'
-      preLoaderRoute: typeof DurakRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bot-lab': {
@@ -195,6 +183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/durak': {
+      id: '/durak'
+      path: '/durak'
+      fullPath: '/durak'
+      preLoaderRoute: typeof DurakRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/history': {
       id: '/history'
       path: '/history'
@@ -207,6 +202,13 @@ declare module '@tanstack/react-router' {
       path: '/join'
       fullPath: '/join'
       preLoaderRoute: typeof JoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/joker': {
+      id: '/joker'
+      path: '/joker'
+      fullPath: '/joker'
+      preLoaderRoute: typeof JokerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lobby': {
@@ -235,12 +237,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  JokerRoute: JokerRoute,
-  DurakRoute: DurakRoute,
   BotLabRoute: BotLabRoute,
   CreateRoute: CreateRoute,
+  DurakRoute: DurakRoute,
   HistoryRoute: HistoryRoute,
   JoinRoute: JoinRoute,
+  JokerRoute: JokerRoute,
   LobbyRoute: LobbyRoute,
   SettingsRoute: SettingsRoute,
   TableRoute: TableRoute,
