@@ -1,6 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+import { issueRealtimeCapability, signRealtimeJwt } from "../_shared/joker-realtime-capability.ts";
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -95,6 +97,24 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
+
+    if (action === "realtime_capability") {
+      const gameId = typeof body?.gameId === "string" ? body.gameId : "";
+      const keyText = Deno.env.get("JOKER_REALTIME_SIGNING_JWK");
+      const kid = Deno.env.get("JOKER_REALTIME_SIGNING_KID");
+      const issuer = Deno.env.get("JOKER_REALTIME_JWT_ISSUER");
+      const result = await issueRealtimeCapability(sessionToken, gameId, {
+        enabled: Deno.env.get("JOKER_REALTIME_ENABLED") === "true" && Boolean(keyText && kid && issuer),
+        now: Date.now,
+        authorize: async (token, id) => {
+          const { data, error } = await admin.rpc("authorize_joker_realtime_internal", { p_session_token: token, p_game_id: id });
+          if (error) throw error;
+          return data;
+        },
+        sign: claims => signRealtimeJwt(claims, JSON.parse(keyText!), kid!, issuer!),
+      });
+      return json(result, result.ok ? 200 : result.code === "NOT_AUTHENTICATED" ? 401 : result.code === "NOT_MEMBER" ? 403 : 503);
+    }
 
     if (action === "history") {
       const rawLimit = Number.isInteger(body?.limit) ? body.limit : 50;
