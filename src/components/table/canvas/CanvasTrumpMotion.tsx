@@ -6,10 +6,7 @@ import type { Point } from "../useTableGeometry";
 import { TRUMP_FLIP_MS, TRUMP_DECK_MOVE_MS } from "../presentationTiming";
 import { dealProgress } from "../dealtCardMotion";
 import { useReducedMotion } from "../useReducedMotion";
-import {
-  CanvasPresentation,
-  type PresentationSprite,
-} from "./CanvasPresentation";
+import { CanvasPresentation, type PresentationSprite } from "./CanvasPresentation";
 
 export function CanvasTrumpMotion({
   card,
@@ -38,13 +35,7 @@ export function CanvasTrumpMotion({
   const placed = useRef(false),
     callback = useRef(onPlaced);
   callback.current = onPlaced;
-  const angle = (frozen.rotation * Math.PI) / 180;
-  const center = {
-    x:
-      frozen.source.x + (Math.cos(angle) * frozen.width) / 2 - Math.sin(angle) * frozen.width * 0.7,
-    y:
-      frozen.source.y + (Math.sin(angle) * frozen.width) / 2 + Math.cos(angle) * frozen.width * 0.7,
-  };
+  const center = frozen.source;
   const flipComplete = () => {
     const box = targetRef?.current?.getBoundingClientRect();
     const width = box?.width || Math.max(51.2, Math.min(innerWidth * 0.064, 80));

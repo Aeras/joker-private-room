@@ -225,7 +225,7 @@ export function DraggableHandCard({
     onVisualChange({id:card.id,index:zIndex,faceUp:faceVisible,dragging:Boolean(drag&&!stationary),revealing,hitTarget,logicalCenter,pose:{x:logicalCenter.x+(drag&&!stationary?hitX:0),y:logicalCenter.y+(drag&&!stationary?hitY:0),
       width:(parseFloat(style.width)||rect.width)*(drag&&!stationary?1.04:1),height:(parseFloat(style.height)||rect.height)*(drag&&!stationary?1.04:1),rotation:drag&&!stationary?Math.max(-8,Math.min(8,deltaX/18)):0,opacity:pending?0:1,flip:faceVisible?0:180,emphasis:commitReady&&!stationary?1:0}});
   },[canvasOwned,onVisualChange,card.id,zIndex,faceVisible,drag,stationary,deltaX,deltaY,pending,layoutEpoch,commitReady,revealing]);
-  useLayoutEffect(()=>{const target=rootRef.current?.parentElement;return()=>{if(target){target.style.transform="";delete target.dataset["canvasHitX"];delete target.dataset["canvasHitY"];}};},[canvasOwned]);
+  useLayoutEffect(()=>{const target=rootRef.current?.parentElement;return()=>{if(target){target.style.transform="";target.style.zIndex="";delete target.dataset["canvasHitX"];delete target.dataset["canvasHitY"];}};},[canvasOwned]);
 
   return (
     <div

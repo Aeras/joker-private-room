@@ -112,7 +112,7 @@ function TravelingBack({ beat, pos, geometry, dealerPos, settling, landed = fals
 }
 export function DealPresentation({ projection, geometry = null, paused = false, onActiveChange, onSettlingChange, onSequenceComplete, onPresentationComplete, trumpTargetRef, onTrumpPlaced }: { projection: PlayerGameProjection; geometry?: TableGeometry | null; paused?: boolean; onActiveChange?: (active: boolean) => void; onSettlingChange?: (settling: boolean) => void; onSequenceComplete?: () => void; onPresentationComplete?: (stage: DealPresentationStage) => void; trumpTargetRef?: RefObject<HTMLDivElement | null>; onTrumpPlaced?: (key: string | null) => void }) {
   const canvasScope = `${projection.gameId}:${projection.progression.dealNumber}`;
-  const canvasPrepared = useCanvasArtwork([assets.cardBack], canvasScope);
+  const canvasPrepared = useCanvasArtwork([assets.cardBack,projection.cards.exposedTrumpCard?assets.cardFace(projection.cards.exposedTrumpCard):undefined], canvasScope);
   const [canvasFailedScope, failCanvas] = useState<string | null>(null);
   const reducedCanvas = useReducedMotion();
   const [canvasWidth,setCanvasWidth]=useState(54.4);

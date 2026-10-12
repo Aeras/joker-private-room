@@ -41,10 +41,11 @@ export function LocalHandRow({
   onCommit: (cardId: string, releaseRect: CardReleaseRect) => Promise<void>;
 }) {
   const reduced = useReducedMotion();
-  const scope=visible?presentationScope??authorityKey.split(":")[0]??authorityKey:null;
+  const clipSupported=typeof CSS==="undefined"||typeof CSS.supports!=="function"||CSS.supports("overflow","clip");
+  const scope=visible&&clipSupported?presentationScope??authorityKey.split(":")[0]??authorityKey:null;
   const prepared=useCanvasArtwork(visible?[assets.cardBack,...cards.map(card=>assets.cardFace(card))]:[],scope);
   const [failedScope,setFailedScope]=useState<string|null>(null);
-  const canvasOwned=Boolean(visible&&geometry&&prepared===true&&scope!==failedScope);
+  const canvasOwned=Boolean(visible&&clipSupported&&geometry&&prepared===true&&scope!==failedScope);
   const tracks=useRef(new Map<string,HandTrack>());
   const inputTargets=useRef(new Map<string,{element:HTMLElement;center:{x:number;y:number}}>());
   const trackScope=useRef(scope);
@@ -98,7 +99,7 @@ export function LocalHandRow({
       sample:()=>{
         const pose={...handTrackPose(track,performance.now()),shade:legalCardIds.length>0&&!legal.has(card.id)&&!revealing? .3:0};
         const input=inputTargets.current.get(card.id);
-        if(input?.element.isConnected){const x=pose.x-input.center.x,y=pose.y-input.center.y;input.element.style.transform=`translate3d(${x}px,${y}px,0)`;input.element.dataset["canvasHitX"]=String(x);input.element.dataset["canvasHitY"]=String(y);}
+        if(input?.element.isConnected){const x=pose.x-input.center.x,y=pose.y-input.center.y;input.element.style.transform=`translate3d(${x}px,${y}px,0)`;input.element.style.zIndex=track.dragging?"100":String(index);input.element.dataset["canvasHitX"]=String(x);input.element.dataset["canvasHitY"]=String(y);}
         return pose;
       }}];
   }):[];

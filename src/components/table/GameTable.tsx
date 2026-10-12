@@ -323,7 +323,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const handPresented = !startupPresentationActive || (!dealerIntroActive && (dealSettling || (!dealPresentationActive && revealedHands.current.has(`${projection.gameId}:${projection.progression.dealNumber}:${projection.cards.ownHand.length}`))));
   const showTrumpIndicator = (!startupPresentationActive || placedTrumpKey === `${projection.gameId}:${projection.progression.dealNumber}`) && (projection.cards.exposedTrumpCard != null || projection.trump.status === "resolved");
 
-  return <div ref={tableRootRef} className="joker-room relative h-dvh w-full overflow-hidden bg-[#090b09]">
+  return <div ref={tableRootRef} className="joker-room relative h-dvh w-full overflow-hidden supports-[overflow:clip]:overflow-clip bg-[#090b09]">
     <TableSurface />
     <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/15" />
     {portrait && <div className="absolute inset-0 z-[100] flex items-center justify-center bg-background/95 px-8 text-center backdrop-blur-sm"><div className="max-w-sm rounded-3xl border border-primary/35 bg-card/95 p-6 shadow-2xl"><div className="mb-3 text-4xl">↻</div><div className="font-display text-xl text-primary">Γύρισε τη συσκευή οριζόντια</div><p className="mt-2 text-sm text-muted-foreground">Το τραπέζι είναι σχεδιασμένο για landscape προβολή.</p><JButton className="mt-5" variant="outlineGold" onClick={toggleFullscreen}><Maximize className="h-4 w-4" /> Πλήρης οθόνη</JButton></div></div>}

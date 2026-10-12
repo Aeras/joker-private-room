@@ -94,6 +94,8 @@ function DomTrumpDeckMotion({ card, source, rotation, targetRef, onPlaced }: {
 export function TrumpDeckMotion(props: Parameters<typeof DomTrumpDeckMotion>[0]) {
   const prepared=useCanvasArtwork([assets.cardBack,assets.cardFace(props.card)],props.card.id);
   const [failed,setFailed]=useState(false);
-  if(prepared===null)return null;
+  if(prepared===null)return <div aria-hidden="true" data-trump-deck-motion="preparing" className="absolute [--card-w:var(--desktop-deal-card-w,clamp(3.4rem,8vw,5.5rem))]" style={{left:props.source.x,top:props.source.y,zIndex:29,transform:`translate(-50%,-50%) rotate(${props.rotation}deg)`}}>
+    {[2,1].map(layer=><div key={layer} className="absolute inset-0" style={{transform:`translate(${layer*3}px,${layer*-2}px)`}}><PlayingCard faceDown/></div>)}<PlayingCard faceDown/>
+  </div>;
   return prepared&&!failed ? <CanvasTrumpMotion {...props} onFailure={()=>setFailed(true)}/> : <DomTrumpDeckMotion {...props}/>;
 }
