@@ -120,7 +120,7 @@ function TablePage() {
   const [projection, setProjection] = useState<PlayerGameProjection | null>(null);
   const [readiness, setReadiness] = useState<GameReadinessSnapshot | null>(null);
   const [messages, setMessages] = useState<DialogueMessage[]>([]);
-  const [emojiReactions, setEmojiReactions] = useState<EmojiReaction[]>([]);
+  const [emojiReactions, setEmojiReactions] = useState<DisplayedEmojiReaction[]>([]);
   const [emojiBusy, setEmojiBusy] = useState(false);
   const [tableMessages, setTableMessages] = useState<LiveTableMessage[]>([]);
   const [emojiNow, setEmojiNow] = useState(() => Date.now());
@@ -323,7 +323,7 @@ function TablePage() {
   const refreshEmojis = useCallback(async () => {
     if (!gameId || !roomRef.current) return;
     const result = await listEmojiReactions({ data: { gameId } });
-    if (mounted.current && result?.ok) setEmojiReactions(result.reactions);
+    if (mounted.current && result?.ok) setEmojiReactions(previous => mergeEmojiReactions(previous, result.reactions, Date.now()));
   }, [gameId]);
 
   const sendEmoji = useCallback(async (slug: string) => {
@@ -334,7 +334,7 @@ function TablePage() {
     try {
       const result = await sendEmojiReaction({ data: { gameId, emoji: slug } });
       if (result?.ok && mounted.current) {
-        setEmojiReactions(previous => [...previous.filter(r => r.seat !== result.reaction.seat), result.reaction]);
+        setEmojiReactions(previous => mergeEmojiReactions(previous, [result.reaction], Date.now()));
         setEmojiNow(Date.now());
       }
     } finally {
@@ -343,7 +343,11 @@ function TablePage() {
   }, [gameId, emojiBusy]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setEmojiNow(Date.now()), 200);
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      setEmojiNow(now);
+      setEmojiReactions(previous => pruneEmojiReactions(previous, now));
+    }, 200);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -356,7 +360,7 @@ function TablePage() {
 
   const emojiBySeat: Record<number, string> = {};
   for (const reaction of emojiReactions) {
-    if (Date.parse(reaction.expiresAt) > emojiNow && room?.seats[reaction.seat]?.occupant.type === "human") {
+    if (reaction.visibleUntil > emojiNow && room?.seats[reaction.seat]?.occupant.type === "human") {
       emojiBySeat[reaction.seat] = reaction.emoji;
     }
   }
