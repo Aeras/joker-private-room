@@ -8,7 +8,7 @@ describe("table authoritative refresh single-flight", () => {
     expect(route).toContain("return refreshInFlight.current");
     expect(route).toContain("refreshInFlight.current = guarded");
     expect(route).toContain("if (refreshInFlight.current === guarded)");
-    expect(route).toContain('automaticActorPending ? 300 : 1500');
+    expect(route).toContain('automaticActorPending ? 200 : 1500');
     expect(route).toContain("await refreshAll()");
   });
 });

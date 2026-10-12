@@ -8,3 +8,8 @@
 
 - [x] Diagnose and correct played-card motion discontinuities without changing timing, authority, or Joker gestures.
 - [x] Run focused motion/Joker regressions and inspect real browser motion (106 tests; browser endpoint and repeated-poll continuity; automatic build OK). Physical-phone/full multiplayer checks remain unverified.
+
+# JOKER bot pacing and artwork continuity
+
+- [x] Slightly shorten bot-only polling without changing strategy, presentation timing or single-flight protection.
+- [ ] Diagnose and remove the white artwork flash during card play; verify targeted regressions and browser rendering.
