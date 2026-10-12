@@ -1,3 +1,4 @@
+import { useEffect, type ReactNode, type SyntheticEvent } from "react";
 import type { Suit } from "@/domain/cards";
 import type { LocalLegalAction } from "@/domain/projection";
 
@@ -20,12 +21,28 @@ export function JokerChoicePicker({
   busy,
   trumpSuit,
   onSelect,
+  onDismiss,
 }: {
   options: readonly JokerOption[];
   busy: boolean;
   trumpSuit?: Suit | null;
   onSelect: (option: JokerOption) => void;
+  onDismiss?: (() => void) | undefined;
 }) {
+  useEffect(() => {
+    if (!onDismiss) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") { event.preventDefault(); onDismiss(); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onDismiss]);
+  const consume = (event: SyntheticEvent) => { event.preventDefault(); event.stopPropagation(); };
+  // Transparent, undimmed catcher: swallows the whole outside gesture so nothing underneath activates.
+  const wrap = (panel: ReactNode) => !onDismiss ? panel : <>
+    <div aria-hidden="true" data-joker-choice-dismiss className="fixed inset-0 z-[84] pointer-events-auto"
+      onPointerDown={consume} onPointerUp={consume} onMouseDown={consume} onDoubleClick={consume}
+      onClick={(event) => { consume(event); onDismiss(); }} />
+    {panel}
+  </>;
   const leadOptions = options.filter((option) => option.context === "LEAD");
   const openTrickOptions = options.filter((option) => option.context === "OPEN_TRICK");
 
@@ -59,7 +76,7 @@ export function JokerChoicePicker({
       </div>
     );
 
-    return (
+    return wrap(
       <div className={CENTER_PANEL} data-joker-choice-position="table-center">
         <div className="overflow-hidden rounded-2xl border border-primary/35 bg-black/88 shadow-2xl backdrop-blur-md">
           {row("HIGHER_SUIT", "Θέλω μεγαλύτερο")}
@@ -73,7 +90,7 @@ export function JokerChoicePicker({
     const compete = openTrickOptions.find((option) => option.mode === "COMPETE");
     const fromBelow = openTrickOptions.find((option) => option.mode === "FROM_BELOW");
 
-    return (
+    return wrap(
       <div className={CENTER_PANEL} data-joker-choice-position="table-center">
         <div className="rounded-2xl border border-white/15 bg-black/72 p-2.5 shadow-2xl backdrop-blur-md">
           <div className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">

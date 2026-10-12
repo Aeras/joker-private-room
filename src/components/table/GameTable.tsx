@@ -241,6 +241,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       setUncertainPlay(cardId);
     } finally { playSubmissionLock.current = false; setSubmittingCardId(null); }
   };
+  const dismissJokerIntent = useCallback(() => setJokerIntent(null), []);
   const [pendingJokerChoice, setPendingJokerChoice] = useState<{ cardId: string; semantic: Extract<GameplayCommand, { type: "choose_joker_semantic" }>["semantic"] } | null>(null);
   const jokerChoiceLock = useRef(false);
   const submitJokerChoice = async (semantic: Extract<GameplayCommand, { type: "choose_joker_semantic" }>["semantic"]) => {
@@ -339,7 +340,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     <footer className="absolute inset-x-0 bottom-[max(.15rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center">
       {error && <div className="mb-1 rounded-lg bg-black/80 px-3 py-1 text-xs text-negative">{error}</div>}
       {!interactionPresentationActive && declarationAction && pendingDeclarationValue == null && <div className="relative top-5 animate-in slide-in-from-bottom-2 fade-in duration-200"><DeclarationPicker values={declarationValues} legalValues={declarationAction.values} busy={busy} onSelect={(value) => void submitDeclaration(value)} /></div>}
-      {!startupPresentationActive && !handRevealActive && ownArtworkSettled && projection.seats[localSeat].controller === "human" && (jokerIntent || jokerAction) && !pendingJokerChoice && <JokerChoicePicker options={jokerIntent?.options ?? jokerAction!.options} busy={false} trumpSuit={projection.trump.status === "resolved" ? projection.trump.suit : null} onSelect={(semantic) => void submitJokerChoice(semantic)} />}
+      {!startupPresentationActive && !handRevealActive && ownArtworkSettled && projection.seats[localSeat].controller === "human" && (jokerIntent || jokerAction) && !pendingJokerChoice && <JokerChoicePicker options={jokerIntent?.options ?? jokerAction!.options} busy={false} trumpSuit={projection.trump.status === "resolved" ? projection.trump.suit : null} onSelect={(semantic) => void submitJokerChoice(semantic)} onDismiss={jokerIntent ? dismissJokerIntent : undefined} />}
       {reclaimAvailable && <JButton className="mb-2" variant="outlineGold" size="sm" disabled={busy} onClick={onReclaim}>Πάρε ξανά τον έλεγχο</JButton>}
       <LocalHandRow summary={seatBlock(0, "horizontal", true)} cards={handPresented ? projection.cards.ownHand : []} visible={handPresented && projection.cards.ownHandVisible && ownArtworkSettled} legalCardIds={startupPresentationActive ? [] : playAction?.cardIds ?? []} blocked={interactionPresentationActive || busy || Boolean(submittingCardId) || Boolean(jokerIntent)} pendingCardId={startupPresentationActive ? null : localPlayPresentation?.cardId ?? null} authorityKey={handAuthorityKey} geometry={tableGeometry.geometry} revealing={handRevealActive} onCommit={commitCard} />
       <div ref={tableGeometry.localSeatRef} className="absolute bottom-0 left-[max(.65rem,env(safe-area-inset-left))]">{seatBlock(0, "horizontal")}</div>
