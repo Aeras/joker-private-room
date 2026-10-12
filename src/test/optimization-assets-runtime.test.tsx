@@ -34,6 +34,54 @@ describe("decoded artwork readiness and slow-device recovery", () => {
     await act(async () => { await pending; });
   });
 
+  it("paints a decoded face immediately on flight and canonical remount without an opacity fade", async () => {
+    const { PlayingCard } = await import("@/components/joker/PlayingCard");
+    const cache = await import("@/assets/cardPreload");
+    const { assets } = await import("@/assets/registry");
+    const card = { kind: "standard" as const, id: "8-clubs", suit: "clubs" as const, rank: "8" as const };
+    const url = assets.cardFace(card);
+    if (!url) throw new Error("Missing card artwork");
+    const ready = cache.preloadCardAsset(url);
+    image(cache.resolvedCardArtwork(url)).resolve();
+    await ready;
+    for (let owner = 0; owner < 3; owner++) {
+      const view = render(<PlayingCard card={card} />);
+      const node = view.container.querySelector("img");
+      expect(node).toHaveAttribute("decoding", "sync");
+      expect(node).toHaveClass("opacity-100");
+      expect(node).not.toHaveClass("transition-opacity");
+      expect(view.container.querySelector('[aria-hidden="true"]')).toBeNull();
+      view.unmount();
+    }
+  });
+
+  it("reveals a newly loaded image immediately, without fading through a blank white surface", async () => {
+    FakeImage.cached = false;
+    const { PlayingCard } = await import("@/components/joker/PlayingCard");
+    const view = render(<PlayingCard card={{ kind: "standard", id: "8-clubs", suit: "clubs", rank: "8" }} />);
+    const node = view.container.querySelector("img");
+    if (!node) throw new Error("Missing card image");
+    expect(node).toHaveClass("opacity-0");
+    fireEvent.load(node);
+    expect(node).toHaveClass("opacity-100");
+    expect(node).not.toHaveClass("transition-opacity");
+    expect(view.container.querySelector('[aria-hidden="true"]')).toBeNull();
+  });
+
+  it("paints a decoded back immediately when a played trick changes to collection", async () => {
+    const { PlayingCard } = await import("@/components/joker/PlayingCard");
+    const cache = await import("@/assets/cardPreload");
+    const { assets } = await import("@/assets/registry");
+    const ready = cache.preloadCardAsset(assets.cardBack);
+    image(cache.resolvedCardArtwork(assets.cardBack)).resolve();
+    await ready;
+    const view = render(<PlayingCard faceDown />);
+    const node = view.container.querySelector("img");
+    expect(node).toHaveAttribute("decoding", "sync");
+    expect(node).toHaveClass("opacity-100");
+    expect(node).not.toHaveClass("transition-opacity");
+  });
+
   it("cached load waits for decode and coalesces duplicate requests", async () => {
     const cache = await import("@/assets/cardPreload");
     const first = cache.preloadCardAsset("/test.png");
