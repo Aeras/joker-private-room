@@ -19,6 +19,7 @@ import { Route as JokerRouteImport } from './routes/joker'
 import { Route as LobbyRouteImport } from './routes/lobby'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TableRouteImport } from './routes/table'
+import { Route as ZzprobeRouteImport } from './routes/zzprobe'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +71,11 @@ const TableRoute = TableRouteImport.update({
   path: '/table',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ZzprobeRoute = ZzprobeRouteImport.update({
+  id: '/zzprobe',
+  path: '/zzprobe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/lobby': typeof LobbyRoute
   '/settings': typeof SettingsRoute
   '/table': typeof TableRoute
+  '/zzprobe': typeof ZzprobeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/lobby': typeof LobbyRoute
   '/settings': typeof SettingsRoute
   '/table': typeof TableRoute
+  '/zzprobe': typeof ZzprobeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/lobby': typeof LobbyRoute
   '/settings': typeof SettingsRoute
   '/table': typeof TableRoute
+  '/zzprobe': typeof ZzprobeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/lobby'
     | '/settings'
     | '/table'
+    | '/zzprobe'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/lobby'
     | '/settings'
     | '/table'
+    | '/zzprobe'
   id:
     | '__root__'
     | '/'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/lobby'
     | '/settings'
     | '/table'
+    | '/zzprobe'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +170,7 @@ export interface RootRouteChildren {
   LobbyRoute: typeof LobbyRoute
   SettingsRoute: typeof SettingsRoute
   TableRoute: typeof TableRoute
+  ZzprobeRoute: typeof ZzprobeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TableRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/zzprobe': {
+      id: '/zzprobe'
+      path: '/zzprobe'
+      fullPath: '/zzprobe'
+      preLoaderRoute: typeof ZzprobeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -246,6 +266,7 @@ const rootRouteChildren: RootRouteChildren = {
   LobbyRoute: LobbyRoute,
   SettingsRoute: SettingsRoute,
   TableRoute: TableRoute,
+  ZzprobeRoute: ZzprobeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
