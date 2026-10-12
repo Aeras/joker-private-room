@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type SyntheticEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 import { createTapTracker, tapActivationHandlers } from "./tapActivation";
@@ -34,7 +41,12 @@ export function JokerChoicePicker({
 }) {
   useEffect(() => {
     if (!onDismiss) return;
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") { event.preventDefault(); onDismiss(); } };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onDismiss();
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onDismiss]);
@@ -45,31 +57,68 @@ export function JokerChoicePicker({
   useLayoutEffect(() => {
     setPortalTarget(document.getElementById("table-fullscreen-root") ?? document.body);
     recordTimingDiagnostic("joker_choice_open", { dismissible: Boolean(onDismiss) });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const choose = (option: JokerOption | undefined, label: string) =>
-    tapActivationHandlers<HTMLButtonElement>(tracker, () => { if (option) onSelect(option); }, label, { isDisabled: () => busy || !option });
-  const consume = (event: SyntheticEvent) => { event.preventDefault(); event.stopPropagation(); };
-  const dismiss = onDismiss ? tapActivationHandlers<HTMLDivElement>(tracker, onDismiss, "outside", { swallowFollowingClick: true }) : null;
+    tapActivationHandlers<HTMLButtonElement>(
+      tracker,
+      () => {
+        if (option) onSelect(option);
+      },
+      label,
+      { isDisabled: () => busy || !option },
+    );
+  const consume = (event: SyntheticEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const dismiss = onDismiss
+    ? tapActivationHandlers<HTMLDivElement>(tracker, onDismiss, "outside", {
+        swallowFollowingClick: true,
+      })
+    : null;
   // Transparent, undimmed catcher: swallows the whole outside gesture so nothing underneath activates.
   const wrap = (panel: ReactNode) => {
-    const content = !dismiss ? panel : <>
-      <div aria-hidden="true" data-joker-choice-dismiss className="fixed inset-0 z-[84] pointer-events-auto touch-none"
-        onPointerDown={(event) => { consume(event); dismiss.onPointerDown(event); }}
-        onPointerUp={(event) => { consume(event); dismiss.onPointerUp(event); }}
-        onPointerCancel={dismiss.onPointerCancel}
-        onMouseDown={consume} onDoubleClick={consume}
-        onClick={(event) => { consume(event); dismiss.onClick(event); }} />
-      {panel}
-    </>;
-    return portalTarget ? createPortal(<div data-joker-choice-layer>{content}</div>, portalTarget) : null;
+    const content = !dismiss ? (
+      panel
+    ) : (
+      <>
+        <div
+          aria-hidden="true"
+          data-joker-choice-dismiss
+          className="fixed inset-0 z-[84] pointer-events-auto touch-none"
+          onPointerDown={(event) => {
+            consume(event);
+            dismiss.onPointerDown(event);
+          }}
+          onPointerUp={(event) => {
+            consume(event);
+            dismiss.onPointerUp(event);
+          }}
+          onPointerCancel={dismiss.onPointerCancel}
+          onMouseDown={consume}
+          onDoubleClick={consume}
+          onClick={(event) => {
+            consume(event);
+            dismiss.onClick(event);
+          }}
+        />
+        {panel}
+      </>
+    );
+    return portalTarget
+      ? createPortal(<div data-joker-choice-layer>{content}</div>, portalTarget)
+      : null;
   };
   const leadOptions = options.filter((option) => option.context === "LEAD");
   const openTrickOptions = options.filter((option) => option.context === "OPEN_TRICK");
 
   if (leadOptions.length > 0) {
     const findLead = (mode: "HIGHER_SUIT" | "SUIT_WINS", suit: Suit) =>
-      leadOptions.find((option) => option.context === "LEAD" && option.mode === mode && option.requestedSuit === suit);
+      leadOptions.find(
+        (option) =>
+          option.context === "LEAD" && option.mode === mode && option.requestedSuit === suit,
+      );
 
     const row = (mode: "HIGHER_SUIT" | "SUIT_WINS", title: string) => (
       <div className="joker-joker-lead-row grid grid-cols-[7rem_repeat(4,3.6rem)] items-stretch border-t border-white/10 first:border-t-0">
@@ -79,7 +128,12 @@ export function JokerChoicePicker({
         {SUIT_ORDER.map((suit) => {
           const option = findLead(mode, suit);
           const meta = SUIT_META[suit];
-          const actionLabel = mode === "HIGHER_SUIT" && trumpSuit === suit ? "Θέλω μεγαλύτερο ατού" : mode === "HIGHER_SUIT" ? `Θέλω μεγαλύτερο ${meta.label}` : `Παίρνουν ${meta.label}`;
+          const actionLabel =
+            mode === "HIGHER_SUIT" && trumpSuit === suit
+              ? "Θέλω μεγαλύτερο ατού"
+              : mode === "HIGHER_SUIT"
+                ? `Θέλω μεγαλύτερο ${meta.label}`
+                : `Παίρνουν ${meta.label}`;
           return (
             <button
               key={`${mode}-${suit}`}
@@ -103,7 +157,7 @@ export function JokerChoicePicker({
           {row("HIGHER_SUIT", "Θέλω μεγαλύτερο")}
           {row("SUIT_WINS", "Παίρνουν")}
         </div>
-      </div>
+      </div>,
     );
   }
 
@@ -136,7 +190,7 @@ export function JokerChoicePicker({
             </button>
           </div>
         </div>
-      </div>
+      </div>,
     );
   }
 

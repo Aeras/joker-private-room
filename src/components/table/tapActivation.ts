@@ -51,7 +51,11 @@ export function tapActivationHandlers<T extends HTMLElement>(
   const disabled = () => options.isDisabled?.() ?? false;
   return {
     onPointerDown: (event: PointerEvent<T>) => {
-      recordTimingDiagnostic("joker_choice_input", { phase: "pointerdown", pointerType: event.pointerType, target: label });
+      recordTimingDiagnostic("joker_choice_input", {
+        phase: "pointerdown",
+        pointerType: event.pointerType,
+        target: label,
+      });
       if (event.pointerType === "mouse" || !event.isPrimary || disabled()) return;
       tracker.pointerId = event.pointerId;
     },
@@ -59,7 +63,11 @@ export function tapActivationHandlers<T extends HTMLElement>(
       if (tracker.pointerId === event.pointerId) tracker.pointerId = null;
     },
     onPointerUp: (event: PointerEvent<T>) => {
-      recordTimingDiagnostic("joker_choice_input", { phase: "pointerup", pointerType: event.pointerType, target: label });
+      recordTimingDiagnostic("joker_choice_input", {
+        phase: "pointerup",
+        pointerType: event.pointerType,
+        target: label,
+      });
       if (tracker.pointerId !== event.pointerId) return;
       tracker.pointerId = null;
       if (disabled() || !inside(event.currentTarget, event.clientX, event.clientY)) return;

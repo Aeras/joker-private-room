@@ -116,7 +116,8 @@ describe("Joker chooser dismissal and selection", () => {
         <JokerChoicePicker options={open} busy={false} onSelect={onSelect} onDismiss={onDismiss} />
       </div>,
     );
-    const catcher = r.container.querySelector("[data-joker-choice-dismiss]")!;
+    const catcher = document.querySelector("[data-joker-choice-dismiss]")!;
+    void r;
     fireEvent.pointerDown(catcher);
     fireEvent.click(catcher);
     expect(onDismiss).toHaveBeenCalledOnce();
