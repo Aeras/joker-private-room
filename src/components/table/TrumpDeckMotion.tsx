@@ -1,4 +1,7 @@
 import { PresentationRun, presentationTimeout } from "./presentationRun";
+import { CanvasTrumpMotion } from "./canvas/CanvasTrumpMotion";
+import { useCanvasArtwork } from "./canvas/useCanvasArtwork";
+import { assets } from "@/assets/registry";
 import { useReducedMotion } from "./useReducedMotion";
 import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { Card } from "@/domain/cards";
@@ -14,7 +17,7 @@ type Stage = "back" | "flipping" | "moving" | "placed";
 /** One card/deck identity from dealer source to the measured persistent indicator.
  * Transform completion owns each boundary; timers only recover missing DOM events.
  */
-export function TrumpDeckMotion({ card, source, rotation, targetRef, onPlaced }: {
+function DomTrumpDeckMotion({ card, source, rotation, targetRef, onPlaced }: {
   card: Card;
   source: Point;
   rotation: number;
@@ -86,4 +89,11 @@ export function TrumpDeckMotion({ card, source, rotation, targetRef, onPlaced }:
       </div>
     </div>
   </div>;
+}
+
+export function TrumpDeckMotion(props: Parameters<typeof DomTrumpDeckMotion>[0]) {
+  const prepared=useCanvasArtwork([assets.cardBack,assets.cardFace(props.card)],props.card.id);
+  const [failed,setFailed]=useState(false);
+  if(prepared===null)return null;
+  return prepared&&!failed ? <CanvasTrumpMotion {...props} onFailure={()=>setFailed(true)}/> : <DomTrumpDeckMotion {...props}/>;
 }

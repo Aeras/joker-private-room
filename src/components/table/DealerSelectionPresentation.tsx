@@ -1,4 +1,7 @@
+import {useCanvasArtwork,presentationWidth} from "./canvas/useCanvasArtwork";
 import { dealtCardFrames, DEAL_LAUNCH_SCALE } from "./dealtCardMotion";
+import { CanvasPresentation } from "./canvas/CanvasPresentation";
+import { dealSprite } from "./canvas/dealSceneMotion";
 import { useReducedMotion } from "./useReducedMotion";
 import { REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
 import { PresentationRun } from "./presentationRun";
@@ -36,6 +39,8 @@ type FrozenRun = {
   geometry: TableGeometry;
   openingCard: Card;
   beats: RevealedBeat[];
+  cardWidth:number;
+  deckWidth:number;
 };
 
 function visualSeat(viewerSeat: number, seat: number): VisualSeat {
@@ -50,6 +55,12 @@ function stackedTarget(base: Point, pos: VisualSeat, stackIndex: number): Point 
   const offset = stackIndex * 6;
   if (pos === 3) return { x: base.x - offset, y: base.y + stackIndex * 2 };
   return { x: base.x + offset, y: base.y + stackIndex * 2 };
+}
+function CanvasDealerLabel({run,beat}:{run:FrozenRun;beat:RevealedBeat}) {
+  const [arrived,setArrived]=useState(false);
+  useEffect(()=>{const timer=window.setTimeout(()=>setArrived(true),DEALER_SELECTION_CARD_TRAVEL_MS);return()=>window.clearTimeout(timer);},[beat.id]);
+  const target=stackedTarget(run.geometry.dealTargets[visualSeat(run.viewerSeat,beat.seat)],visualSeat(run.viewerSeat,beat.seat),beat.stackIndex);
+  return arrived?<div className="fixed z-40 -translate-x-1/2 rounded-md bg-black/80 px-2 py-1 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-primary" style={{left:run.geometry.feltRect.left+target.x,top:run.geometry.feltRect.top+target.y+run.cardWidth*.7+4}}>Dealer</div>:null;
 }
 
 function RevealedCard({
@@ -130,6 +141,9 @@ export function DealerSelectionPresentation({
   const selectionKey = selection
     ? `${projection.gameId}:${selection.resolvedAtStateVersion}`
     : null;
+  const canvasPrepared = useCanvasArtwork(selection ? [assets.cardBack, ...selection.revealedSelectionCards.map(card=>assets.cardFace(card)), assets.cardFace(selection.openingCard ?? selection.revealedSelectionCards[0]!)] : [], dealerSelectionNeedsPresentation(projection) ? selectionKey : null);
+  const [failedCanvasKey, failCanvas] = useState<string | null>(null);
+  const reducedCanvas = useReducedMotion();
   const openingAssetCard = selection?.openingCard ?? selection?.revealedSelectionCards[0];
   const artworkSettled = useCriticalCardArtwork([assets.cardBack, openingAssetCard ? assets.cardFace(openingAssetCard) : undefined]);
   const geometryReady = geometry != null;
@@ -155,7 +169,7 @@ export function DealerSelectionPresentation({
       return;
     }
     onActiveChangeRef.current(true);
-    if (!artworkSettled || !geometryReady || !geometry || !selection || !selectionKey) {
+    if (!artworkSettled || canvasPrepared === null || !geometryReady || !geometry || !selection || !selectionKey) {
       recordTimingDiagnostic("dealer_waiting_for_geometry");
       return;
     }
@@ -186,6 +200,8 @@ export function DealerSelectionPresentation({
           geometry,
           openingCard: { ...openingCard },
           beats,
+          cardWidth:presentationWidth("var(--desktop-selection-card-w,clamp(2.95rem,5.8vw,4.6rem))",47.2),
+          deckWidth:presentationWidth("var(--desktop-selection-deck-w,clamp(3.15rem,6vw,4.8rem))",50.4),
         };
         setRun(frozenRun);
         setVisibleCount(0);
@@ -236,7 +252,7 @@ export function DealerSelectionPresentation({
       startupFrames.current.push(secondFrame);
     }));
     startupFrames.current.push(firstFrame);
-  }, [geometryReady, needsPresentation, selectionKey, interrupted, resumeGeneration, geometry, projection, selection, artworkSettled]);
+  }, [geometryReady, needsPresentation, selectionKey, interrupted, resumeGeneration, geometry, projection, selection, artworkSettled,canvasPrepared]);
 
   useEffect(() => {
     const interrupt = () => {
@@ -272,6 +288,10 @@ export function DealerSelectionPresentation({
   if (!run || (!openingVisible && visibleCount === 0)) return null;
   const visible = run.beats.slice(0, visibleCount);
   const finalIndex = run.beats.length - 1;
+  const canvasOwnsSelection = canvasPrepared === true && failedCanvasKey !== run.key;
+  const canvasSprites = visible.map(beat => dealSprite(beat,run.geometry,run.viewerSeat,0,run.cardWidth,"selection",false,false,reducedCanvas));
+  if(openingVisible) canvasSprites.unshift({id:"opening",url:assets.cardFace(run.openingCard)!,layer:20,phase:"rest",duration:0,
+    sample:()=>({x:run.geometry.feltRect.left+run.geometry.dealCenter.x,y:run.geometry.feltRect.top+run.geometry.dealCenter.y,width:run.deckWidth,height:run.deckWidth*1.4,rotation:0,opacity:1,flip:0})});
 
   return (
     <div
@@ -279,12 +299,14 @@ export function DealerSelectionPresentation({
       style={{ left: run.geometry.dealCenter.x, top: run.geometry.dealCenter.y }}
       aria-hidden="true"
     >
-      {openingVisible && (
+      {canvasOwnsSelection && <CanvasPresentation key={run.key} name="dealer-selection" sprites={canvasSprites} onFailure={()=>failCanvas(run.key)}/>}
+      {canvasOwnsSelection && visible.at(-1)?.index===finalIndex && <CanvasDealerLabel key={visible.at(-1)!.id} run={run} beat={visible.at(-1)!}/>}
+      {!canvasOwnsSelection && openingVisible && (
         <div className="absolute left-0 top-0 z-20 -translate-x-1/2 -translate-y-1/2 [--card-w:var(--desktop-selection-deck-w,clamp(3.15rem,6vw,4.8rem))] drop-shadow-xl">
           <PlayingCard card={run.openingCard} />
         </div>
       )}
-      {visible.map((beat) => (
+      {!canvasOwnsSelection && visible.map((beat) => (
         <RevealedCard
           key={beat.id}
           beat={beat}
