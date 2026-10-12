@@ -26,7 +26,7 @@ import {
   getDialogueMessages,
   listEmojiReactions,
   sendEmojiReaction,
-  type EmojiReaction,
+  type EmojiReaction as _EmojiReaction,
   requestBotDialogueReply,
   requestDialogueReaction,
   sendHumanMessageToBot,
