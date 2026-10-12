@@ -1,3 +1,5 @@
+import { ensureInitialDealerBootstrapPrepared } from "./dealerBootstrap";
+import { loadReconciledStateWithDependencies } from "./projectedStateReconciliation";
 import {
   finalizeCanonicalGameState,
   loadCanonicalGameState,
@@ -34,4 +36,15 @@ export async function advanceGameUntilBlocked(
   maxSteps = LIVE_REQUEST_AUTOMATIC_STEP_BUDGET,
 ): Promise<AdvanceGameResult> {
   return advanceGameUntilBlockedWithDependencies(gameId, maxSteps, productionDependencies);
+}
+
+/** Project a fresh authenticated snapshot without repeating the same read. */
+export async function loadReconciledGameState(gameId: string) {
+  return loadReconciledStateWithDependencies(gameId, LIVE_REQUEST_AUTOMATIC_STEP_BUDGET, {
+    ...productionDependencies, load: loadCanonicalGameState, bootstrap: async (id) => {
+      const result = await ensureInitialDealerBootstrapPrepared(id);
+      if (result.ok) return { ok: true };
+      return { ok: false, code: result.code === "NOT_HOST" || result.code === "GAME_NOT_ACTIVE" ? "SERVICE_UNAVAILABLE" : result.code };
+    },
+  });
 }
