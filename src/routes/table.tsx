@@ -22,11 +22,11 @@ import type { GameplayCommand } from "@/domain/gameplayCommands";
 import type { Room } from "@/domain/players";
 import type { PlayerGameProjection } from "@/domain/projection";
 import type { GameReadinessSnapshot } from "@/server/gameReadiness";
+import { mergeEmojiReactions, pruneEmojiReactions, type DisplayedEmojiReaction } from "@/lib/emojiReactionDisplay";
 import {
   getDialogueMessages,
   listEmojiReactions,
   sendEmojiReaction,
-  type EmojiReaction as _EmojiReaction,
   requestBotDialogueReply,
   requestDialogueReaction,
   sendHumanMessageToBot,
