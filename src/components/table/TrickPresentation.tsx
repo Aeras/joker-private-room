@@ -1,5 +1,6 @@
 import { canvasCardAssets, canvasFlightAvailable } from "./canvas/assetCache";
 import { ProjectionSceneAdapter } from "./canvas/projectionAdapter";
+import { CanvasTrickScene } from "./canvas/CanvasTrickScene";
 import { cardFlightFrames } from "./cardFlightMotion";
 import { COLLECTION_EXIT_EASING } from "./dealtCardMotion";
 import { useReducedMotion } from "./useReducedMotion";
@@ -228,7 +229,23 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const presentationGeometry = active?.hydrated && !departing && !localPlayPresentation
     ? (geometry ?? trickGeometry.current.get(geometryKey) ?? null)
     : (trickGeometry.current.get(geometryKey) ?? geometry);
-  const artworkSettled = useCriticalCardArtwork([assets.cardBack, ...(active?.cards.map(play => assets.cardFace(play.card)) ?? [])]);
+  const domArtworkSettled = useCriticalCardArtwork([assets.cardBack, ...(active?.cards.map(play => assets.cardFace(play.card)) ?? [])]);
+  const canvasAssetKey = [assets.cardBack, ...(active?.cards.filter(play => play.card.kind === "standard").map(play => assets.cardFace(play.card)!) ?? [])].join("|");
+  const [preparedCanvasKey, setPreparedCanvasKey] = useState("");
+  const [canvasFailureId, setCanvasFailureId] = useState<string | null>(null);
+  const canvasChoice = useRef<{id: string; enabled: boolean} | null>(null);
+  useEffect(() => {
+    if (!canvasFlightAvailable()) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => { if (!cancelled) setPreparedCanvasKey(canvasAssetKey); }, 120);
+    void Promise.all(canvasAssetKey.split("|").map(url => canvasCardAssets.warm(url))).then(() => {
+      window.clearTimeout(timer);
+      if (!cancelled) setPreparedCanvasKey(canvasAssetKey);
+    });
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [canvasAssetKey]);
+  // Public faces only. Slow preparation gets DOM fallback rather than a long decode wait.
+  const artworkSettled = domArtworkSettled && (!canvasFlightAvailable() || preparedCanvasKey === canvasAssetKey);
   useLayoutEffect(() => {
     if (activeId.current === active?.id) return;
     activeId.current = active?.id ?? null;
@@ -396,6 +413,18 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       ? { ...canonical, joker: pendingJokerChoice.semantic } : canonical;
   });
   const visibleCards = cards.filter((play) => !isPresentationCard(localPlayPresentation, play));
+  const canvasCards = visibleCards.filter(play => play.card.kind === "standard");
+  if (active && canvasCards.length && canvasChoice.current?.id !== active.id) {
+    canvasChoice.current = {id: active.id, enabled: Boolean(presentationGeometry && canvasFlightAvailable() &&
+      !active.cards.some(play => play.card.kind === "joker") && canvasCardAssets.peek(assets.cardBack) &&
+      canvasCards.every(play => canvasCardAssets.peek(assets.cardFace(play.card)!)))};
+  }
+  // Joker tricks retain the proven interleaved DOM layers until Phase C. If a
+  // later public Joker arrives, finish the current flight before handing off.
+  if (active && canvasChoice.current?.id === active.id && active.cards.some(play => play.card.kind === "joker") &&
+      visibleCards.every(play => landedCards.current.has(playKey(play)))) canvasChoice.current.enabled = false;
+  const canvasOwnsTrick = Boolean(presentationGeometry && active && canvasChoice.current?.id === active.id &&
+    canvasChoice.current.enabled && canvasFailureId !== active.id);
   const showLocalFlight = Boolean(localPlayPresentation && geometry && !departing);
   const pendingAnnouncementText = pendingJokerChoice ? jokerAnnouncementText(pendingJokerChoice.semantic, resolvedTrumpSuit) : null;
   const announcement = pendingAnnouncementText ? { id: `pending:${pendingJokerChoice!.cardId}`, text: pendingAnnouncementText } : announcementQueue[0] ?? null;
@@ -404,7 +433,11 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   return <div className="pointer-events-none absolute z-20 h-0 w-0 [--card-w:clamp(3rem,6vw,5rem)]" style={rootStyle} data-geometry-epoch={geometry?.epoch ?? 0} data-trick-presentation-id={active?.id ?? "current"} data-trick-departing-stage={departing?.stage ?? "none"} aria-label={departing ? "Ολοκληρωμένη μπάζα" : "Τρέχουσα μπάζα"}>
     <span className="sr-only" aria-live="polite">{departing ? `Η μπάζα κερδήθηκε από τη θέση ${departing.winnerSeat + 1}.` : announcement?.text ?? ""}</span>
     {announcement && <div className="absolute left-0 top-[-4.4rem] z-50 -translate-x-1/2 whitespace-nowrap rounded-xl border border-amber-300/60 bg-black/88 px-4 py-2 text-center text-sm font-semibold text-white shadow-2xl backdrop-blur" data-joker-announcement={announcement.id}>{announcement.text}</div>}
-    {visibleCards.map((play) => <AnimatedTrickCard key={`${active?.id}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={presentationGeometry} settled={landedCards.current.has(playKey(play))} reducedMotion={reducedMotion} onMotionComplete={onMotionComplete} completionGeneration={resumeGeneration} paused={paused} />)}
+    {canvasOwnsTrick && presentationGeometry && active && canvasCards.length > 0 && <CanvasTrickScene key={active.id}
+      cards={canvasCards} viewerSeat={projection.viewerSeat} geometry={presentationGeometry} stage={departing?.stage ?? "landing"}
+      winnerSeat={departing?.winnerSeat ?? null} settled={play => landedCards.current.has(playKey(play))} reducedMotion={reducedMotion}
+      paused={paused} onComplete={onMotionComplete} onFailure={() => setCanvasFailureId(active.id)} />}
+    {visibleCards.filter(play => !canvasOwnsTrick || play.card.kind !== "standard").map((play) => <AnimatedTrickCard key={`${active?.id}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={presentationGeometry} settled={landedCards.current.has(playKey(play))} reducedMotion={reducedMotion} onMotionComplete={onMotionComplete} completionGeneration={resumeGeneration} paused={paused} />)}
     {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.gameId}:${localPlayPresentation.dealNumber}:${localPlayPresentation.actorSeat}:${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} projection={projection} viewerSeat={projection.viewerSeat} geometry={presentationGeometry!} reducedMotion={reducedMotion} onSettled={settleLocalFlight} onLanded={markLocalLanding} />}
   </div>;
 }
