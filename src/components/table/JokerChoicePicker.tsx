@@ -39,7 +39,7 @@ export function JokerChoicePicker({
   // Transparent, undimmed catcher: swallows the whole outside gesture so nothing underneath activates.
   const wrap = (panel: ReactNode) => !onDismiss ? panel : <>
     <div aria-hidden="true" data-joker-choice-dismiss className="fixed inset-0 z-[84] pointer-events-auto"
-      onPointerDown={consume} onPointerUp={consume} onMouseDown={consume} onTouchStart={consume} onDoubleClick={consume}
+      onPointerDown={consume} onPointerUp={consume} onMouseDown={consume} onDoubleClick={consume}
       onClick={(event) => { consume(event); onDismiss(); }} />
     {panel}
   </>;
