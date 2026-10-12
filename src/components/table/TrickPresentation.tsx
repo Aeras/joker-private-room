@@ -382,7 +382,9 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   }, [active?.id, hasActiveTrick, revision, paused, reducedMotion, resumeGeneration]);
   const currentId = projection.gameId + ":" + projection.progression.dealNumber + ":" + (projection.cards.completedTricks.length + 1);
   const busy = beatPending || Boolean(active && (active.id !== currentId || departing || displayedCards.length < active.cards.length || displayedCards.some(play => !landedCards.current.has(playKey(play)))));
-  useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
+  // Hide hand-legality shading before the next presented card lands. A layout
+  // notification prevents a one-frame flash of the authoritative future suit.
+  useLayoutEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
   const hasPresentationGeometry = Boolean(geometry);
   const localMotionPending = Boolean(localPlayPresentation);
