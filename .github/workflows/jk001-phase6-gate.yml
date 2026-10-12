@@ -36,7 +36,10 @@ jobs:
         run: |
           grep -q 'HUMAN_TURN_TIMEOUT_MS = 30_000' src/domain/controller.ts
           grep -q 'applyOverdueTimeout' src/server/reconciliationCore.ts
-          grep -q 'advanceGameUntilBlocked' src/services/gameProjectionFunctions.ts
+          grep -q 'loadReconciledGameState' src/services/gameProjectionFunctions.ts
+          grep -q 'loadReconciledStateWithDependencies' src/server/reconciliation.ts
+          grep -q 'advanceGameUntilBlockedWithDependencies' src/server/projectedStateReconciliation.ts
+          grep -q 'LIVE_REQUEST_AUTOMATIC_STEP_BUDGET = 1' src/server/reconciliation.ts
           ! grep -R -n 'setTimeout.*timeoutTakeover' src || true
       - name: Reclaim identity and CAS guard
         id: reclaim_guard

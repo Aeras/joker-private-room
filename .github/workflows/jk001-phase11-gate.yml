@@ -65,7 +65,10 @@ jobs:
         continue-on-error: true
         run: |
           grep -q 'settleAutomaticState' src/services/gameProjectionFunctions.ts
-          grep -q 'advanceGameUntilBlocked' src/services/gameProjectionFunctions.ts
+          grep -q 'loadReconciledGameState' src/services/gameProjectionFunctions.ts
+          grep -q 'loadReconciledStateWithDependencies' src/server/reconciliation.ts
+          grep -q 'advanceGameUntilBlockedWithDependencies' src/server/projectedStateReconciliation.ts
+          grep -q 'LIVE_REQUEST_AUTOMATIC_STEP_BUDGET = 1' src/server/reconciliation.ts
           ! grep -q 'progressAutomaticGameplay' src/services/gameProjectionFunctions.ts
           ! grep -q 'resolveOverdueTimeoutBeforeRead' src/services/gameProjectionFunctions.ts
           # Lobby Start prepares the shell; PR #84 intentionally blocks gameplay.
