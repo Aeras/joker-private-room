@@ -6,7 +6,7 @@ import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 import { assets } from "@/assets/registry";
 import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 import { TrickPresentationJournal } from "./trickPresentationJournal";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Suit } from "@/domain/cards";
 import type { SeatIndex } from "@/domain/dealing";
 import type { JokerSemantic, PlayedCard } from "@/domain/engine";
@@ -64,6 +64,9 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
   const entryId = animationId + "-entry";
   const winnerPos = winnerSeat == null ? null : posOf(viewerSeat, winnerSeat);
   const [arrived, setArrived] = useState(settled || Boolean(departingStage) || !geometry);
+  // Settled hydration/local handoff must not launch. A live entry, however, keeps
+  // its filled endpoint when the journal marks it landed; no animation removal.
+  const ownsEntry = useRef(!settled && !departingStage && Boolean(geometry)).current;
   const hasGeometry = geometry != null;
   useEffect(() => {
     if (settled || departingStage || !hasGeometry) { setArrived(true); return; }
@@ -110,14 +113,24 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
     ? relativeTransform(reducedMotion ? stackTarget : collectTarget, center, alignedRotation)
     : stacking ? relativeTransform(stackTarget, center, alignedRotation)
     : departedTransform(arrived, false, settledPoint, reducedMotion ? { x: settledPoint.x, y: settledPoint.y + REDUCED_MOTION_DISTANCE_PX } : origin, center, pos);
-  const entryFrames = !reducedMotion && !fromBelowJoker && !departingStage && !settled && arrived && geometry ? cardFlightFrames((point, angle, t) => relativeTransform(point, center, angle, 0.92 + 0.08 * t), origin, landing, TRICK_CARD_ROTATION[pos] - 6, TRICK_CARD_ROTATION[pos]) : "";
+  const { x: originX, y: originY } = origin;
+  const { x: landingX, y: landingY } = landing;
+  const { x: centerX, y: centerY } = center;
+  const entryTrajectory = useMemo(() => cardFlightFrames((point, angle, t) => relativeTransform(point, { x: centerX, y: centerY }, angle, 0.92 + 0.08 * t), { x: originX, y: originY }, { x: landingX, y: landingY }, TRICK_CARD_ROTATION[pos] - 6, TRICK_CARD_ROTATION[pos]),
+    [originX, originY, landingX, landingY, centerX, centerY, pos]);
+  const entryFrames = !reducedMotion && !fromBelowJoker && !departingStage && ownsEntry && arrived ? entryTrajectory : "";
+  // The pre-launch pose must exactly match the first keyframe. Previously the
+  // card jumped six degrees as the animation took over from the seat pose.
+  const entryTransform = ownsEntry && !arrived && !reducedMotion && !fromBelowJoker && !departingStage
+    ? relativeTransform(origin, center, TRICK_CARD_ROTATION[pos] - 6, 0.92)
+    : transform;
   const frames = stacking && !reducedMotion && !winner && winnerPos != null ? Array.from({ length: 17 }, (_, index) => {
     const t = (1 - Math.cos(index / 16 * Math.PI)) / 2;
     const pose = pinnedStackPose(settledPoint, stackTarget, pos, winnerPos, motionGeometry?.trickCardSize.height ?? 100, t);
     return `${index / 16 * 100}%{transform:${relativeTransform(pose.point, center, pose.rotation)}}`;
   }).join("") : "";
   const easing = collecting ? reducedMotion ? "linear" : COLLECTION_EXIT_EASING : fromBelowJoker && !departingStage ? "ease-in-out" : "cubic-bezier(0.22, 1, 0.36, 1)";
-  return <div data-joker-from-below={fromBelowJoker ? "true" : undefined} data-trick-seat={play.seatIndex} data-trick-collecting={collecting ? "true" : undefined} className={cn("fixed transition-[transform,opacity]", fromBelowJoker ? "z-0" : "z-10")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms`, transitionTimingFunction: easing, transitionProperty: entryFrames ? "opacity" : "transform, opacity", animationName: frames ? animationId : entryFrames ? entryId : "none", animationDuration: `${duration}ms`, animationTimingFunction: "linear", animationFillMode: entryFrames ? "both" : undefined, animationPlayState: paused ? "paused" : "running", opacity: collecting || (reducedMotion && !arrived) ? 0 : 1, transitionDelay: collecting ? `0ms, ${reducedMotion ? 0 : Math.max(0, duration - COLLECTION_FADE_MS)}ms` : "0ms", ...(collecting ? { transitionDuration: `${duration}ms, ${COLLECTION_FADE_MS}ms` } : {}) } as React.CSSProperties} onAnimationEnd={runs.current.guard((event) => { if (event.target !== event.currentTarget || paused) return; if (event.animationName === animationId && stacking) completionRef.current(play, "stacking"); else if (event.animationName === entryId && !departingStage && !settled) completionRef.current(play, "landing"); })} onTransitionEnd={runs.current.guard((event) => { if (event.target === event.currentTarget && event.propertyName === "transform" && !stacking && !entryFrames) completionRef.current(play, departingStage ?? "landing"); })}>
+  return <div data-joker-from-below={fromBelowJoker ? "true" : undefined} data-trick-seat={play.seatIndex} data-trick-collecting={collecting ? "true" : undefined} className={cn("fixed transition-[transform,opacity]", fromBelowJoker ? "z-0" : "z-10")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform: entryTransform, transitionDuration: `${duration}ms`, transitionTimingFunction: easing, transitionProperty: entryFrames ? "opacity" : "transform, opacity", animationName: frames ? animationId : entryFrames ? entryId : "none", animationDuration: `${duration}ms`, animationTimingFunction: "linear", animationFillMode: entryFrames ? "both" : undefined, animationPlayState: paused ? "paused" : "running", opacity: collecting || (reducedMotion && !arrived) ? 0 : 1, transitionDelay: collecting ? `0ms, ${reducedMotion ? 0 : Math.max(0, duration - COLLECTION_FADE_MS)}ms` : "0ms", ...(collecting ? { transitionDuration: `${duration}ms, ${COLLECTION_FADE_MS}ms` } : {}) } as React.CSSProperties} onAnimationEnd={runs.current.guard((event) => { if (event.target !== event.currentTarget || paused) return; if (event.animationName === animationId && stacking) completionRef.current(play, "stacking"); else if (event.animationName === entryId && !departingStage && !settled) completionRef.current(play, "landing"); })} onTransitionEnd={runs.current.guard((event) => { if (event.target === event.currentTarget && event.propertyName === "transform" && !stacking && !entryFrames) completionRef.current(play, departingStage ?? "landing"); })}>
     {entryFrames && <style>{`@keyframes ${entryId}{${entryFrames}}`}</style>}
     {frames && <style>{`@keyframes ${animationId}{${frames}}`}</style>}
     {fromBelowJoker ? <UnderJokerFace card={play.card} flipped={arrived} duration={reducedMotion ? timing.settleMs : NORMAL_FROM_BELOW_FLIP_MS} reducedMotion={reducedMotion} /> : <div className="relative">
