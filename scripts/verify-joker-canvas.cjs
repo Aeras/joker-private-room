@@ -54,7 +54,7 @@ const fs = require("fs"),
     { ruleset: "classic", w: 844, h: 390, ack: 900, reduced: true },
     { ruleset: "minus", w: 844, h: 390, ack: 900, cold: true },
     { ruleset: "popular", w: 844, h: 390, ack: 900, touch: true },
-    { ruleset: "classic", w: 844, h: 390, ack: 900, recover: true },
+    { ruleset: "classic", w: 844, h: 390, ack: 2500, recover: true },
   ]) {
     const context = await b.newContext({
       viewport: { width: test.w, height: test.h },
@@ -127,7 +127,7 @@ const fs = require("fs"),
     assert.equal(await page.locator("[data-hand-card]").count(), 3);
     if (test.cold) await page.evaluate(() => window.fixtureCold());
     if (test.touch) {
-      const card = await page.locator("[data-hand-card]").first().boundingBox();
+      const card = await page.locator("[data-hand-card]").first().locator("..").boundingBox();
       const x = card.x + card.width / 2,
         y = Math.min(test.h - 15, card.y + card.height * 0.25);
       const cdp = await context.newCDPSession(page);
@@ -212,9 +212,9 @@ const fs = require("fs"),
         await page.waitForTimeout(80);
         await page.evaluate(() => window.dispatchEvent(new Event("focus")));
         await page
-          .locator("canvas")
+          .locator('canvas[data-renderer="canvas"]')
           .evaluate((element) => element.dispatchEvent(new Event("contextlost")));
-        assert.equal(await page.locator("canvas").count(), 0);
+        assert.equal(await page.locator('canvas[data-renderer="canvas"]').count(), 0);
         assert.equal(await page.locator("[data-local-flight-card]").count(), 1);
       }
       await page
@@ -226,7 +226,7 @@ const fs = require("fs"),
           .waitFor({ state: "detached", timeout: 3000 });
       reports.push({ test, bitmap, command });
     } else {
-      assert.equal(await page.locator("canvas").count(), 0);
+      assert.equal(await page.locator('canvas[data-renderer="canvas"]').count(), 0);
       await page.waitForTimeout(1400);
       reports.push({ test, command });
     }

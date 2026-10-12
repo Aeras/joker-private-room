@@ -5,17 +5,18 @@ export const COLLECTION_EXIT_EASING = "cubic-bezier(0.4, 0, 1, 1)";
 export const DEAL_FLIGHT_EASING = "cubic-bezier(0.2, 0.75, 0.25, 1)";
 export const DEAL_LAUNCH_SCALE = 0.9;
 
-function dealProgress(time: number): number {
+export function bezierProgress(time: number, x1:number,y1:number,x2:number,y2:number): number {
   if (time === 0 || time === 1) return time;
   const curve = (t: number, a: number, b: number) => 3 * (1 - t) ** 2 * t * a + 3 * (1 - t) * t ** 2 * b + t ** 3;
   let low = 0, high = 1;
   for (let i = 0; i < 16; i++) {
     const mid = (low + high) / 2;
-    if (curve(mid, 0.2, 0.25) < time) low = mid;
+    if (curve(mid, x1, x2) < time) low = mid;
     else high = mid;
   }
-  return curve((low + high) / 2, 0.75, 1);
+  return curve((low + high) / 2, y1, y2);
 }
+export function dealProgress(time:number) {return bezierProgress(time,.2,.75,.25,1);}
 
 /** Small table-space arc. Endpoints remain identical to the measured pile positions. */
 export function dealtCardPose(start: Point, end: Point, startRotation: number, endRotation: number, progress: number) {

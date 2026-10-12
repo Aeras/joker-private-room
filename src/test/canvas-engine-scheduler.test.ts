@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { MotionScheduler } from "@/components/table/canvas/scheduler";
+import { MotionScheduler, MAX_CANVAS_MOTIONS } from "@/components/table/canvas/scheduler";
 import { CardCanvasEngine } from "@/components/table/canvas/engine";
 import type { FrameDriver, SpritePose } from "@/components/table/canvas/types";
 function frames() {
@@ -117,7 +117,7 @@ describe("Canvas elapsed-time scheduler", () => {
     const f = frames(),
       clock = new MotionScheduler(f.driver, vi.fn(), vi.fn());
     expect(() => clock.animate("bad", NaN, pose, vi.fn())).toThrow();
-    for (let i = 0; i < 32; i++) clock.animate(String(i), 300, pose, vi.fn());
+    for (let i = 0; i < MAX_CANVAS_MOTIONS; i++) clock.animate(String(i), 300, pose, vi.fn());
     expect(() => clock.animate("overflow", 300, pose, vi.fn())).toThrow();
     clock.dispose();
   });

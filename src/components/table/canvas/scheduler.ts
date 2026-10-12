@@ -1,4 +1,5 @@
 import type { FrameDriver, SpritePose } from "./types";
+export const MAX_CANVAS_MOTIONS = 64;
 type Motion = {
   key: string;
   start: number;
@@ -27,7 +28,7 @@ export class MotionScheduler {
       !Number.isFinite(duration) ||
       duration < 0 ||
       duration > 5000 ||
-      (!this.motions.has(key) && this.motions.size >= 32)
+      (!this.motions.has(key) && this.motions.size >= MAX_CANVAS_MOTIONS)
     )
       throw new Error("INVALID_MOTION_BUDGET");
     this.motions.set(key, {
