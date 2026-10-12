@@ -19,3 +19,4 @@
 - UI strings live in `src/i18n/el.ts` — why: easy future localization.
 - The only backend is the owner's external Supabase via `src/integrations/external-supabase/client.ts`; never import `src/integrations/supabase/*` (Lovable Cloud, auto-generated, unused) — why: owner's explicit choice. Schema changes are SQL files the owner runs himself.
 - Played-card entry keyframes share `cardFlightMotion` and retain their filled endpoint through landing until handoff or collection — why: changing transform owners during authority updates causes visual discontinuities.
+- Ready card artwork paints synchronously without an opacity entrance; cold preload remains asynchronous — why: remounted flight and collection surfaces must not expose a blank card between visual owners.
