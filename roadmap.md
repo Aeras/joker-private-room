@@ -6,5 +6,5 @@
 
 # JOKER played-card smoothness
 
-- [ ] Diagnose and correct played-card motion discontinuities without changing timing, authority, or Joker gestures.
-- [ ] Run focused motion/Joker regressions and inspect real browser motion.
+- [x] Diagnose and correct played-card motion discontinuities without changing timing, authority, or Joker gestures.
+- [x] Run focused motion/Joker regressions and inspect real browser motion (106 tests; browser endpoint and repeated-poll continuity; automatic build OK). Physical-phone/full multiplayer checks remain unverified.
