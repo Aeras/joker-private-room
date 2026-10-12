@@ -23,11 +23,18 @@ export function useHandReflow(identity: string, enabled: boolean) {
   const root = useRef<HTMLDivElement>(null);
   const previous = useRef(new Map<string, number>());
   const previousIdentity = useRef<string | null>(null);
+  const previousEnabled = useRef<boolean | null>(null);
+  const previousReduced = useRef<boolean | null>(null);
   const animations = useRef(new Map<string, Animation>());
 
   useLayoutEffect(() => {
     const container = root.current;
     if (!container) return;
+    // Avoid geometry reads for unrelated table updates; active FLIP animations
+    // already own their transforms until completion.
+    if (previousIdentity.current === identity && previousEnabled.current === enabled && previousReduced.current === reduced) return;
+    previousEnabled.current = enabled;
+    previousReduced.current = reduced;
     const nodes = Array.from(container.querySelectorAll<HTMLElement>("[data-hand-layout-card]"));
     const ids = new Set(nodes.map((node) => node.dataset["handLayoutCard"]!));
     for (const [id, animation] of animations.current) {
