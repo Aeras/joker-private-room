@@ -108,7 +108,9 @@ export class CardCanvasEngine {
     const ctx = this.context;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.width, this.height);
-    for (const sprite of [...this.sprites.values()].sort((a, b) => a.layer - b.layer)) {
+    for (const sprite of [...this.sprites.values()].sort(
+      (a, b) => (a.pose.layer ?? a.layer) - (b.pose.layer ?? b.layer),
+    )) {
       const p = sprite.pose;
       if (!validPose(p)) throw new Error("INVALID_SPRITE_POSE");
       const radius = Math.hypot(p.width, p.height) / 2 + 16;

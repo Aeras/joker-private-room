@@ -19,9 +19,9 @@ import type { TableGeometry } from "./useTableGeometry";
 import { LOCAL_FLIGHT_MS, REDUCED_LOCAL_FLIGHT_MS, MOTION_FALLBACK_SLACK_MS } from "./presentationTiming";
 export { LOCAL_FLIGHT_MS, REDUCED_LOCAL_FLIGHT_MS, MOTION_FALLBACK_SLACK_MS } from "./presentationTiming";
 /** Authority confirmation never restarts this mounted flight. */
-function DomLocalFlightCard({ presentation, geometry, viewerSeat, reducedMotion, onSettled, onLanded }: {
+function DomLocalFlightCard({ presentation, geometry, viewerSeat, reducedMotion, onSettled, onLanded, fallbackPose }: {
   presentation: LocalPlayPresentation; geometry: TableGeometry; viewerSeat: number;
-  reducedMotion: boolean; onSettled: () => void; onLanded?: () => void;
+  reducedMotion: boolean; onSettled: () => void; onLanded?: () => void; fallbackPose?: SpritePose | undefined;
 }) {
   const flightId = "local-flight-" + useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const motionReduced = useRef(reducedMotion).current;
@@ -78,14 +78,14 @@ function DomLocalFlightCard({ presentation, geometry, viewerSeat, reducedMotion,
   return <div className="fixed left-0 top-0 z-40 transition-[transform,opacity] ease-out" style={{
     "--card-w": `${width}px`, opacity: motionReduced && !atTarget ? 0 : 1, transitionDuration: `${duration}ms`,
     ...(curved ? { animationName: flightId, animationDuration: `${duration}ms`, animationTimingFunction: "linear", animationFillMode: "both", transitionProperty: "opacity" } : {}),
-    ...(fromBelow ? { transitionTimingFunction: "ease-in-out" } : {}),
+    ...(fromBelow ? { transitionTimingFunction: "ease-in-out", zIndex: fallbackPose?.layer === 0 ? 0 : 40 } : {}),
     ...(fromBelow && atTarget ? { zIndex: 0, animation: `joker-under-layer ${flipDuration}ms linear both` } : {}),
     transform: `translate(${visualX - width / 2}px, ${visualY - height / 2}px) rotate(${motionReduced || atTarget ? rotation : frozen.release.rotation ?? 0}deg) scale(${motionReduced || atTarget ? targetWidth / width : 1})`,
   } as React.CSSProperties} data-local-flight-card={presentation.cardId} data-local-flight-status={presentation.status}
     onAnimationEnd={(event) => { if (!rejected && event.target === event.currentTarget && event.animationName === flightId) completeMotion(); }}
     onTransitionEnd={(event) => { if (!curved && event.target === event.currentTarget && event.propertyName === "transform") completeMotion(); }}>
     {curved && <style>{`@keyframes ${flightId}{${frames}}`}</style>}
-    {fromBelow ? <UnderJokerFace card={presentation.card} flipped={atTarget} duration={flipDuration} reducedMotion={motionReduced} /> : <PlayingCard card={presentation.card} />}
+    {fromBelow ? <UnderJokerFace card={presentation.card} initialFlip={rejected ? 0 : fallbackPose?.flip ?? 0} flipped={atTarget} duration={flipDuration} reducedMotion={motionReduced} /> : <PlayingCard card={presentation.card} />}
   </div>;
 }
 
@@ -101,7 +101,8 @@ export function LocalFlightCard(props: LocalFlightProps) {
     const instruction = localFlightInstruction(props.projection, props.presentation, props.geometry, props.reducedMotion);
     const url = instruction ? assets.cardFace(instruction.card) : undefined;
     const image = url ? canvasCardAssets.peek(url) : null;
-    return instruction && image ? { instruction, image } : null;
+    const backImage = canvasCardAssets.peek(assets.cardBack);
+    return instruction && image && backImage ? { instruction, image, backImage } : null;
   });
   const [fallback, setFallback] = useState<SpritePose | null>(null);
   if (!selected || fallback) {
@@ -112,7 +113,7 @@ export function LocalFlightCard(props: LocalFlightProps) {
       const height = Math.abs(Math.sin(angle)) * fallback.width + Math.abs(Math.cos(angle)) * fallback.height;
       presentation = { ...presentation, releaseRect: { left: fallback.x - width / 2, top: fallback.y - height / 2, right: fallback.x + width / 2, bottom: fallback.y + height / 2, width, height, cardWidth: fallback.width, rotation: fallback.rotation } };
     }
-    return <DomLocalFlightCard {...props} presentation={presentation} onLanded={landedOnce} onSettled={settledOnce} />;
+    return <DomLocalFlightCard {...props} presentation={presentation} fallbackPose={fallback ?? undefined} onLanded={landedOnce} onSettled={settledOnce} />;
   }
-  return <CanvasLocalFlight {...props} onLanded={landedOnce} onSettled={settledOnce} instruction={selected.instruction} image={selected.image} onFailure={pose => setFallback(pose ?? selected.instruction.initial)} />;
+  return <CanvasLocalFlight {...props} onLanded={landedOnce} onSettled={settledOnce} instruction={selected.instruction} image={selected.image} backImage={selected.backImage} onFailure={pose => setFallback(pose ?? selected.instruction.initial)} />;
 }

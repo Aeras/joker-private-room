@@ -199,7 +199,7 @@ describe("real local Canvas ownership", () => {
     const nullContext = render(<LocalFlightCard {...props()} />);
     expect(nullContext.container.querySelector("canvas")).toBeNull();
   });
-  it("retains Joker behavior on DOM and reduced flight waits for authority", () => {
+  it("renders resolved Joker on Canvas and reduced flight waits for authority", () => {
     const p = props();
     const joker = { kind: "joker" as const, id: "joker-1" };
     p.projection.cards.ownHand = [joker];
@@ -214,7 +214,7 @@ describe("real local Canvas ownership", () => {
         }}
       />,
     );
-    expect(view.container.querySelector("canvas")).toBeNull();
+    expect(view.container.querySelector("canvas")).not.toBeNull();
     view.unmount();
     const reduced = props();
     render(<LocalFlightCard {...reduced} reducedMotion />);
@@ -222,4 +222,35 @@ describe("real local Canvas ownership", () => {
     expect(reduced.onLanded).toHaveBeenCalledOnce();
     expect(reduced.onSettled).not.toHaveBeenCalled();
   });
+});
+
+it.each(["COMPETE", "FROM_BELOW"] as const)(
+  "keeps local %s Joker on Canvas through delayed authority and rejection",
+  (mode) => {
+    const p = props();
+    const card = { kind: "joker" as const, id: "joker-1" };
+    p.projection.cards.ownHand = [card];
+    const token: LocalPlayPresentation = {
+      ...p.presentation,
+      card,
+      cardId: card.id,
+      jokerSemantic: { context: "OPEN_TRICK", mode },
+    };
+    const view = render(<LocalFlightCard {...p} presentation={token} />);
+    tick(500);
+    expect(view.container.querySelector("canvas")).not.toBeNull();
+    expect(p.onLanded).toHaveBeenCalledOnce();
+    expect(p.onSettled).not.toHaveBeenCalled();
+    view.rerender(<LocalFlightCard {...p} presentation={{ ...token, status: "rejected" }} />);
+    tick(500);
+    expect(p.onSettled).toHaveBeenCalledOnce();
+    expect(p.onLanded).toHaveBeenCalledOnce();
+  },
+);
+
+it("keeps a FROM_BELOW Joker visible when context fails and delivers acceptance once",()=>{
+ const p=props(),card={kind:"joker" as const,id:"joker-1"};p.projection.cards.ownHand=[card];
+ const token:LocalPlayPresentation={...p.presentation,card,cardId:card.id,jokerSemantic:{context:"OPEN_TRICK",mode:"FROM_BELOW"}};
+ const view=render(<LocalFlightCard {...p} presentation={token}/>);tick(250);fireEvent(view.container.querySelector("canvas")!,new Event("contextlost"));expect(view.container.querySelector("canvas")).toBeNull();expect(view.container.querySelector("[data-joker-under-flip]")).not.toBeNull();
+ view.rerender(<LocalFlightCard {...p} presentation={{...token,status:"accepted"}}/>);tick(32);tick(1000);expect(p.onLanded).toHaveBeenCalledOnce();expect(p.onSettled).toHaveBeenCalledOnce();
 });

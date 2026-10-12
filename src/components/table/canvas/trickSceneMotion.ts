@@ -5,6 +5,8 @@ import { pinnedStackPose, stackRotation, trickExitPoint } from "../trickCollecti
 import { TRICK_CARD_ROTATION, trickPresentationTiming } from "../trickPresentationModel";
 import { COLLECTION_FADE_MS, REDUCED_MOTION_DISTANCE_PX } from "../presentationTiming";
 import type { TableGeometry, VisualSeat } from "../useTableGeometry";
+import { fromBelow, jokerPose } from "./jokerMotion";
+import { NORMAL_FROM_BELOW_FLIGHT_MS } from "../presentationTiming";
 import type { SpritePose } from "./types";
 
 export type TrickStage = "landing" | "holding" | "stacking" | "collecting";
@@ -40,7 +42,9 @@ export function trickSpriteMotion(
       ? timing.stackMs
       : stage === "collecting"
         ? timing.collectMs
-        : timing.settleMs;
+        : fromBelow(play.joker) && !reduced
+          ? NORMAL_FROM_BELOW_FLIGHT_MS
+          : timing.settleMs;
   const absolute = (
     point: { x: number; y: number },
     angle: number,
@@ -63,7 +67,7 @@ export function trickSpriteMotion(
       y: window.innerHeight / 2 - geometry.feltRect.top,
     },
   });
-  return {
+  const motion = {
     duration,
     resting: absolute(landing, rotation),
     sample: (time: number): SpritePose => {
@@ -119,6 +123,20 @@ export function trickSpriteMotion(
         ),
         backBlend: Math.min(1, (duration * t) / COLLECTION_FADE_MS),
       };
+    },
+  };
+  const resting = fromBelow(play.joker)
+    ? { ...motion.resting, ...jokerPose(play.joker, 1, duration, reduced) }
+    : motion.resting;
+  return {
+    duration,
+    resting,
+    sample(time: number): SpritePose {
+      const pose = motion.sample(time);
+      if (!fromBelow(play.joker)) return pose;
+      if (stage === "landing")
+        return { ...pose, ...jokerPose(play.joker, time, duration, reduced) };
+      return { ...pose, flip: reduced ? 0 : 180, backBlend: reduced ? 1 : 0, layer: 0 };
     },
   };
 }
