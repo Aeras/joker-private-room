@@ -130,11 +130,13 @@ function CardArtwork({
           key={retry}
           src={resolvedCardArtwork(artwork)}
           alt={alt}
-          decoding="async"
+           // Preloaded artwork must join the card's paint, not arrive a frame later.
+           // Cold images still decode asynchronously while the existing gate loads them.
+           decoding={loaded ? "sync" : "async"}
           onLoad={() => { domLoaded.current = true; setLoaded(true); setFailed(false); }}
           onError={() => { domLoaded.current = false; setFailed(true); }}
           className={cn(
-            "absolute inset-0 h-full w-full object-cover transition-opacity duration-75",
+             "absolute inset-0 h-full w-full object-cover",
             loaded && !failed ? "opacity-100" : "opacity-0",
           )}
           data-card-artwork-loaded={loaded ? "true" : "false"}
