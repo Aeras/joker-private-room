@@ -11,6 +11,7 @@ export function CanvasLocalFlight({
   presentation,
   instruction,
   image,
+  backImage,
   onLanded,
   onSettled,
   onFailure,
@@ -18,13 +19,14 @@ export function CanvasLocalFlight({
   presentation: LocalPlayPresentation;
   instruction: LocalFlightInstruction;
   image: HTMLImageElement;
+  backImage?: HTMLImageElement;
   onLanded?: () => void;
   onSettled: () => void;
   onFailure: (pose: SpritePose | null) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const engine = useRef<CardCanvasEngine | null>(null);
-  const frozen = useRef({ instruction, image }).current;
+  const frozen = useRef({ instruction, image, backImage }).current;
   const latest = useRef({ presentation, onLanded, onSettled, onFailure });
   latest.current = { presentation, onLanded, onSettled, onFailure };
   const state = useRef({ landed: false, returning: false, returned: false, finished: false });
@@ -79,6 +81,7 @@ export function CanvasLocalFlight({
       renderer.set({
         id: frozen.instruction.id,
         image: frozen.image,
+        ...(frozen.backImage ? { backImage: frozen.backImage } : {}),
         pose: frozen.instruction.initial,
         layer: 40,
       });
@@ -90,7 +93,11 @@ export function CanvasLocalFlight({
       renderer.animate(
         frozen.instruction.id,
         frozen.instruction.duration,
-        frozen.instruction.sample,
+        (time) => {
+          const pose = frozen.instruction.sample(time);
+          element.style.zIndex = pose.layer === 0 ? "0" : "40";
+          return pose;
+        },
         () => {
           if (
             cancelled ||
@@ -150,6 +157,7 @@ export function CanvasLocalFlight({
       current = renderer?.pose(instruction.id);
     if (!renderer || !current) return;
     state.current.returning = true;
+    if (canvas.current) canvas.current.style.zIndex = "40";
     if (canvas.current) canvas.current.dataset["canvasPhase"] = "returning";
     const end = frozen.instruction.origin;
     renderer.animate(
@@ -164,7 +172,8 @@ export function CanvasLocalFlight({
           height: current.height + (end.height - current.height) * t,
           rotation: current.rotation + (end.rotation - current.rotation) * t,
           opacity: 1,
-          flip: 0,
+          flip: current.flip * (1 - t),
+          backBlend: (current.backBlend ?? 0) * (1 - t),
         };
       },
       () => {

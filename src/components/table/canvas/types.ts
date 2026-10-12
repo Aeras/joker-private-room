@@ -6,6 +6,7 @@ export interface SpritePose {
   rotation: number;
   opacity: number;
   flip: number;
+  layer?: number;
   backBlend?: number;
   shade?: number;
   emphasis?: number;

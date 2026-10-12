@@ -10,6 +10,8 @@ import {
   REDUCED_MOTION_DISTANCE_PX,
 } from "../presentationTiming";
 import type { SpritePose } from "./types";
+import { fromBelow, jokerPose } from "./jokerMotion";
+import { NORMAL_FROM_BELOW_FLIGHT_MS } from "../presentationTiming";
 function copyCard(card: Card): Card {
   return card.kind === "joker"
     ? { kind: "joker", id: card.id }
@@ -60,7 +62,7 @@ export function localFlightInstruction(
   reduced: boolean,
 ) {
   if (
-    token.card.kind !== "standard" ||
+    (token.card.kind === "joker" && !token.jokerSemantic) ||
     token.gameId !== p.gameId ||
     token.dealNumber !== p.progression.dealNumber ||
     token.actorSeat !== p.viewerSeat ||
@@ -89,13 +91,18 @@ export function localFlightInstruction(
     y: geometry.feltRect.top + geometry.trickSlots[pos].y,
   };
   const rotation = TRICK_CARD_ROTATION[pos];
+  const duration = reduced
+    ? REDUCED_LOCAL_FLIGHT_MS
+    : fromBelow(token.jokerSemantic)
+      ? NORMAL_FROM_BELOW_FLIGHT_MS
+      : LOCAL_FLIGHT_MS;
   const origin: SpritePose = {
     ...start,
     width,
     height: (width * 7) / 5,
     rotation: token.releaseRect.rotation ?? 0,
     opacity: 1,
-    flip: 0,
+    ...jokerPose(token.jokerSemantic, 0, duration, reduced),
   };
   return {
     id: [
@@ -118,7 +125,7 @@ export function localFlightInstruction(
           opacity: 0,
         }
       : origin,
-    duration: reduced ? REDUCED_LOCAL_FLIGHT_MS : LOCAL_FLIGHT_MS,
+    duration,
     sample(time: number): SpritePose {
       const t = 1 - (1 - time) ** 2;
       const pose = cardFlightPose(start, end, origin.rotation, rotation, t);
@@ -132,7 +139,7 @@ export function localFlightInstruction(
         height: (currentWidth * 7) / 5,
         rotation: reduced || time === 1 ? rotation : pose.rotation,
         opacity: reduced ? time : 1,
-        flip: 0,
+        ...jokerPose(token.jokerSemantic, time, duration, reduced),
       };
     },
   };

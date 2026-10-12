@@ -230,7 +230,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     ? (geometry ?? trickGeometry.current.get(geometryKey) ?? null)
     : (trickGeometry.current.get(geometryKey) ?? geometry);
   const domArtworkSettled = useCriticalCardArtwork([assets.cardBack, ...(active?.cards.map(play => assets.cardFace(play.card)) ?? [])]);
-  const canvasAssetKey = [assets.cardBack, ...(active?.cards.filter(play => play.card.kind === "standard").map(play => assets.cardFace(play.card)!) ?? [])].join("|");
+  const canvasAssetKey = [assets.cardBack, ...(active?.cards.map(play => assets.cardFace(play.card)!) ?? [])].join("|");
   const [preparedCanvasKey, setPreparedCanvasKey] = useState("");
   const [canvasFailureId, setCanvasFailureId] = useState<string | null>(null);
   const canvasChoice = useRef<{id: string; enabled: boolean} | null>(null);
@@ -413,16 +413,12 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       ? { ...canonical, joker: pendingJokerChoice.semantic } : canonical;
   });
   const visibleCards = cards.filter((play) => !isPresentationCard(localPlayPresentation, play));
-  const canvasCards = visibleCards.filter(play => play.card.kind === "standard");
+  const canvasCards = visibleCards;
   if (active && artworkSettled && canvasCards.length && canvasChoice.current?.id !== active.id) {
     canvasChoice.current = {id: active.id, enabled: Boolean(presentationGeometry && canvasFlightAvailable() &&
-      !active.cards.some(play => play.card.kind === "joker") && canvasCardAssets.peek(assets.cardBack) &&
+      canvasCardAssets.peek(assets.cardBack) &&
       canvasCards.every(play => canvasCardAssets.peek(assets.cardFace(play.card)!)))};
   }
-  // Joker tricks retain the proven interleaved DOM layers until Phase C. If a
-  // later public Joker arrives, finish the current flight before handing off.
-  if (active && canvasChoice.current?.id === active.id && active.cards.some(play => play.card.kind === "joker") &&
-      visibleCards.every(play => landedCards.current.has(playKey(play)))) canvasChoice.current.enabled = false;
   const canvasOwnsTrick = Boolean(presentationGeometry && active && canvasChoice.current?.id === active.id &&
     canvasChoice.current.enabled && canvasFailureId !== active.id);
   const showLocalFlight = Boolean(localPlayPresentation && geometry && !departing);
@@ -437,7 +433,7 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
       cards={canvasCards} viewerSeat={projection.viewerSeat} geometry={presentationGeometry} stage={departing?.stage ?? "landing"}
       winnerSeat={departing?.winnerSeat ?? null} settled={play => landedCards.current.has(playKey(play))} reducedMotion={reducedMotion}
       paused={paused} onComplete={onMotionComplete} onFailure={() => setCanvasFailureId(active.id)} />}
-    {visibleCards.filter(play => !canvasOwnsTrick || play.card.kind !== "standard").map((play) => <AnimatedTrickCard key={`${active?.id}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={presentationGeometry} settled={landedCards.current.has(playKey(play))} reducedMotion={reducedMotion} onMotionComplete={onMotionComplete} completionGeneration={resumeGeneration} paused={paused} />)}
+    {visibleCards.filter(() => !canvasOwnsTrick).map((play) => <AnimatedTrickCard key={`${active?.id}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={presentationGeometry} settled={landedCards.current.has(playKey(play))} reducedMotion={reducedMotion} onMotionComplete={onMotionComplete} completionGeneration={resumeGeneration} paused={paused} />)}
     {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.gameId}:${localPlayPresentation.dealNumber}:${localPlayPresentation.actorSeat}:${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} projection={projection} viewerSeat={projection.viewerSeat} geometry={presentationGeometry!} reducedMotion={reducedMotion} onSettled={settleLocalFlight} onLanded={markLocalLanding} />}
   </div>;
 }

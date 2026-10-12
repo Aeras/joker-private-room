@@ -8,6 +8,7 @@ import type { TableGeometry } from "../useTableGeometry";
 import { canvasCardAssets } from "./assetCache";
 import { CardCanvasEngine } from "./engine";
 import { trickSpriteMotion, type TrickStage } from "./trickSceneMotion";
+import { publicVisualPlay } from "./jokerMotion";
 import type { CardSprite } from "./types";
 
 export function CanvasTrickScene({
@@ -95,7 +96,7 @@ export function CanvasTrickScene({
         owners.current.delete(id);
         sprites.current.delete(id);
       }
-    for (const play of cards) {
+    for (const play of cards.filter(publicVisualPlay)) {
       const id = `${play.seatIndex}:${play.card.id}`;
       const motion = trickSpriteMotion(
         play,

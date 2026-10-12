@@ -94,7 +94,7 @@ describe("authorized Canvas adapter", () => {
     expect(adapter.ingest(p)).not.toBeNull();
     expect(adapter.ingest({ ...p, gameId: "other" })).not.toBeNull();
   });
-  it("rejects other seats/games/future versions, inaccessible faces and all Jokers", () => {
+  it("rejects other seats/games/future versions, inaccessible faces and unresolved Jokers", () => {
     const { p, token } = setup();
     for (const change of [
       { gameId: "other" },

@@ -174,3 +174,23 @@ describe("renderer independent trick geometry", () => {
     expect(motion.sample(1).opacity).toBe(0);
   });
 });
+
+it("flips FROM_BELOW in 300ms, moves in 450ms, preserves position and back through collection", () => {
+  const joker: PlayedCard = {
+    seatIndex: 1,
+    card: { kind: "joker", id: "joker-2" },
+    joker: { context: "OPEN_TRICK", mode: "FROM_BELOW" },
+  };
+  const motion = trickSpriteMotion(joker, 0, geometry, "landing", 2, false);
+  expect(motion.duration).toBe(450);
+  expect(motion.sample(0).flip).toBe(0);
+  expect(motion.sample(1 / 3).flip).toBeCloseTo(90);
+  expect(motion.sample(2 / 3).flip).toBe(180);
+  expect(motion.sample(1).layer).toBe(0);
+  expect(motion.sample(1)).toEqual(motion.resting);
+  for (const stage of ["holding", "stacking", "collecting"] as const)
+    expect(trickSpriteMotion(joker, 0, geometry, stage, 2, false).sample(0.3).flip).toBe(180);
+  const reduced = trickSpriteMotion(joker, 0, geometry, "landing", 2, true);
+  expect(reduced.sample(0.5).flip).toBe(0);
+  expect(reduced.sample(1).backBlend).toBe(1);
+});

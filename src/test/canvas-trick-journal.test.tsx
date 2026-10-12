@@ -142,7 +142,7 @@ it("waits for bitmap preparation before choosing a hydrated scene renderer", asy
   expect(view.container.querySelector("[data-renderer='canvas-trick']")).not.toBeNull();
   expect(view.container.querySelectorAll("[data-trick-seat]")).toHaveLength(0);
 });
-it("retains DOM fallback for cold assets and every Joker semantic", async () => {
+it("retains cold DOM fallback and hydrates a resolved FROM_BELOW Joker on Canvas", async () => {
   const p = projection();
   flags.fail = true;
   p.cards.currentTrick = cards.slice(0, 2);
@@ -161,6 +161,54 @@ it("retains DOM fallback for cold assets and every Joker semantic", async () => 
   ];
   const joker = render(<TrickPresentation projection={p} {...props()} />);
   await flush();
-  expect(joker.container.querySelector("canvas")).toBeNull();
-  expect(joker.container.querySelector('[data-joker-from-below="true"]')).not.toBeNull();
+  expect(joker.container.querySelector("canvas")).not.toBeNull();
+  expect(joker.container.querySelectorAll("[data-trick-seat]")).toHaveLength(0);
 });
+
+it.each(["popular", "classic", "minus"] as const)(
+  "serializes a batched two-Joker mixed trick through Canvas collection in %s",
+  async (ruleset) => {
+    const p = projection(ruleset),
+      callbacks = props(),
+      view = render(<TrickPresentation projection={p} {...callbacks} />);
+    await flush();
+    const mixed: PlayedCard[] = [
+      {
+        seatIndex: 0,
+        card: { kind: "joker", id: "joker-1" },
+        joker: { context: "LEAD", mode: "HIGHER_SUIT", requestedSuit: "spades" },
+      },
+      cards[1]!,
+      {
+        seatIndex: 2,
+        card: { kind: "joker", id: "joker-2" },
+        joker: { context: "OPEN_TRICK", mode: "FROM_BELOW" },
+      },
+      cards[3]!,
+    ];
+    view.rerender(
+      <TrickPresentation
+        projection={{
+          ...p,
+          stateVersion: p.stateVersion + 1,
+          cards: {
+            ...p.cards,
+            currentTrick: [],
+            completedTricks: [{ cards: mixed, winnerSeat: 0 }],
+          },
+        }}
+        {...callbacks}
+      />,
+    );
+    await flush();
+    const lengths = new Set<number>();
+    for (let i = 0; i < 65; i++) {
+      await flush(60);
+      const el = view.container.querySelector<HTMLElement>("[data-canvas-trick-cards]");
+      if (el) lengths.add(el.dataset["canvasTrickCards"]!.split(",").length);
+      expect(view.container.querySelectorAll("[data-trick-seat]")).toHaveLength(0);
+    }
+    expect(lengths).toEqual(new Set([1, 2, 3, 4]));
+    expect(callbacks.onCollectionComplete).toHaveBeenCalledOnce();
+  },
+);
