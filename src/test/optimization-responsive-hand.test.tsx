@@ -103,7 +103,7 @@ describe("shared local hand geometry", () => {
       .style.getPropertyValue("--card-w");
     fireEvent.keyDown(nodes[0]!.parentElement!, { key: "Enter" });
     expect(commit).not.toHaveBeenCalled();
-    expect((nodes[0]!.firstElementChild as HTMLElement).style.transform).toBe("rotateY(0deg)");
+    expect((nodes[0]!.firstElementChild as HTMLElement).style.transform).toBe("rotateY(180deg)");
     act(() => vi.advanceTimersByTime(190));
     expect((nodes[0]!.firstElementChild as HTMLElement).style.transform).toBe("rotateY(0deg)");
     view.rerender(<LocalHandRow {...props} revealing={false} />);
@@ -125,13 +125,13 @@ describe("shared local hand geometry", () => {
     expect(view.container.querySelector<HTMLElement>("[data-hand-entrance]")?.style.transform).toContain("var(--card-w) * 0.52");
     if (Number(count) > 1) expect(view.container.querySelectorAll<HTMLElement>('[data-hand-layout-card]')[1]?.className).toContain("var(--card-overlap)");
   });
-  it("rises face-up while retaining the same mounted cards across polling and resize", () => {
+  it("rises face-down then reveals while retaining the same mounted cards across polling and resize", () => {
     const props = { cards, visible: true, legalCardIds: [], blocked: true, pendingCardId: null, authorityKey: "first", geometry, onCommit: vi.fn() };
     const view = render(<LocalHandRow {...props} revealing />);
     const hand = view.container.querySelector<HTMLElement>("[data-hand-entrance]");
     const faces = Array.from(view.container.querySelectorAll<HTMLElement>("[data-hand-card] > div"));
     expect(hand?.style.transform).toContain("100% + max(.15rem, env(safe-area-inset-bottom)) + 2px");
-    expect(faces.every(face => face.style.transform === "rotateY(0deg)")).toBe(true);
+    expect(faces.every(face => face.style.transform === "rotateY(180deg)")).toBe(true);
     const lane = view.container.querySelector<HTMLElement>("[data-hand-lane-width]");
     expect(lane?.dataset['handCurrentOverlap']).toBe("0.86");
     act(() => vi.advanceTimersByTime(32));
@@ -140,6 +140,8 @@ describe("shared local hand geometry", () => {
     view.rerender(<LocalHandRow {...props} authorityKey="poll" geometry={{...geometry, epoch: 2}} revealing />);
     expect(Array.from(view.container.querySelectorAll<HTMLElement>("[data-hand-card] > div"))).toEqual(faces);
     expect(hand?.getAttribute("data-hand-entrance")).toBe("settled");
+    act(() => vi.advanceTimersByTime(270));
+    expect(Array.from(view.container.querySelectorAll<HTMLElement>("[data-hand-card] > div"))).toEqual(faces);
     expect(faces.every(face => face.style.transform === "rotateY(0deg)")).toBe(true);
   });
   it.each(["blur", "orientationchange", "visibilitychange"])("finishes face reveal safely on %s", event => {

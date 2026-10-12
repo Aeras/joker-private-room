@@ -1,3 +1,9 @@
+import type { PlayerGameProjection } from "@/domain/projection";
+import { assets } from "@/assets/registry";
+import { CanvasLocalFlight } from "./canvas/CanvasLocalFlight";
+import { canvasCardAssets, canvasFlightAvailable } from "./canvas/assetCache";
+import { localFlightInstruction } from "./canvas/projectionAdapter";
+import type { SpritePose } from "./canvas/types";
 import { cardFlightFrames } from "./cardFlightMotion";
 import { PresentationRun, presentationTimeout } from "./presentationRun";
 import { REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
@@ -13,7 +19,7 @@ import type { TableGeometry } from "./useTableGeometry";
 import { LOCAL_FLIGHT_MS, REDUCED_LOCAL_FLIGHT_MS, MOTION_FALLBACK_SLACK_MS } from "./presentationTiming";
 export { LOCAL_FLIGHT_MS, REDUCED_LOCAL_FLIGHT_MS, MOTION_FALLBACK_SLACK_MS } from "./presentationTiming";
 /** Authority confirmation never restarts this mounted flight. */
-export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMotion, onSettled, onLanded }: {
+function DomLocalFlightCard({ presentation, geometry, viewerSeat, reducedMotion, onSettled, onLanded }: {
   presentation: LocalPlayPresentation; geometry: TableGeometry; viewerSeat: number;
   reducedMotion: boolean; onSettled: () => void; onLanded?: () => void;
 }) {
@@ -81,4 +87,32 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
     {curved && <style>{`@keyframes ${flightId}{${frames}}`}</style>}
     {fromBelow ? <UnderJokerFace card={presentation.card} flipped={atTarget} duration={flipDuration} reducedMotion={motionReduced} /> : <PlayingCard card={presentation.card} />}
   </div>;
+}
+
+export type LocalFlightProps = { presentation: LocalPlayPresentation; geometry: TableGeometry; viewerSeat: number; reducedMotion: boolean; onSettled: () => void; onLanded?: () => void; projection?: PlayerGameProjection };
+/** Choose one owner at mount. Cold assets never swap renderers mid-flight. */
+export function LocalFlightCard(props: LocalFlightProps) {
+  const callbacks = useRef(props); callbacks.current = props;
+  const delivered = useRef({ landed: false, settled: false });
+  const landedOnce = useCallback(() => { if (!delivered.current.landed) { delivered.current.landed = true; callbacks.current.onLanded?.(); } }, []);
+  const settledOnce = useCallback(() => { if (!delivered.current.settled) { delivered.current.settled = true; callbacks.current.onSettled(); } }, []);
+  const [selected] = useState(() => {
+    if (!props.projection || !canvasFlightAvailable()) return null;
+    const instruction = localFlightInstruction(props.projection, props.presentation, props.geometry, props.reducedMotion);
+    const url = instruction ? assets.cardFace(instruction.card) : undefined;
+    const image = url ? canvasCardAssets.peek(url) : null;
+    return instruction && image ? { instruction, image } : null;
+  });
+  const [fallback, setFallback] = useState<SpritePose | null>(null);
+  if (!selected || fallback) {
+    let presentation = props.presentation;
+    if (fallback && presentation.status !== "rejected") {
+      const angle = fallback.rotation * Math.PI / 180;
+      const width = Math.abs(Math.cos(angle)) * fallback.width + Math.abs(Math.sin(angle)) * fallback.height;
+      const height = Math.abs(Math.sin(angle)) * fallback.width + Math.abs(Math.cos(angle)) * fallback.height;
+      presentation = { ...presentation, releaseRect: { left: fallback.x - width / 2, top: fallback.y - height / 2, right: fallback.x + width / 2, bottom: fallback.y + height / 2, width, height, cardWidth: fallback.width, rotation: fallback.rotation } };
+    }
+    return <DomLocalFlightCard {...props} presentation={presentation} onLanded={landedOnce} onSettled={settledOnce} />;
+  }
+  return <CanvasLocalFlight {...props} onLanded={landedOnce} onSettled={settledOnce} instruction={selected.instruction} image={selected.image} onFailure={pose => setFallback(pose ?? selected.instruction.initial)} />;
 }
