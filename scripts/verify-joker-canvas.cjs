@@ -36,6 +36,16 @@ const fs = require("fs"),
     headless: true,
   });
   const reports = [];
+  const canonicalCount = async (page, seat) =>
+    page.evaluate((seat) => {
+      const dom = document.querySelectorAll('[data-trick-seat="' + seat + '"]').length;
+      return (
+        dom +
+        [...document.querySelectorAll("[data-canvas-trick-cards]")].filter((el) =>
+          el.dataset.canvasTrickCards.split(",").some((id) => id.startsWith(seat + ":")),
+        ).length
+      );
+    }, seat);
   for (const test of [
     { ruleset: "popular", w: 844, h: 390, ack: 900 },
     { ruleset: "classic", w: 844, h: 390, ack: 900 },
@@ -58,6 +68,15 @@ const fs = require("fs"),
     const page = await context.newPage();
     await page.addInitScript(() => {
       window.canvasOps = [];
+      window.flightPhases = [];
+      document.addEventListener("DOMContentLoaded", () => {
+        const observer = new MutationObserver(() => {
+          for (const el of document.querySelectorAll("[data-canvas-phase]"))
+            if (!window.flightPhases.includes(el.dataset.canvasPhase))
+              window.flightPhases.push(el.dataset.canvasPhase);
+        });
+        observer.observe(document.body, { subtree: true, attributes: true, childList: true });
+      });
       const original = CanvasRenderingContext2D.prototype.drawImage;
       CanvasRenderingContext2D.prototype.drawImage = function (...args) {
         const m = this.getTransform();
@@ -179,15 +198,13 @@ const fs = require("fs"),
         1,
         "landed Canvas must wait for authority",
       );
-      assert.equal(
-        await page.locator('[data-trick-seat="0"]').count(),
-        0,
-        "no duplicate canonical card",
-      );
+      assert.equal(await canonicalCount(page, 0), 0, "no duplicate canonical card");
       if (test.ruleset === "popular" && !test.reject)
         await page.screenshot({ path: ".test-tmp/canvas-game-landed.png" });
       if (test.reject) {
-        await page.locator('[data-canvas-phase="returning"]').waitFor({ state: "attached" });
+        await page.waitForFunction(() => window.flightPhases.includes("returning"), null, {
+          timeout: 3000,
+        });
       }
       if (test.recover) {
         await page.setViewportSize({ width: 800, height: 370 });
@@ -215,19 +232,40 @@ const fs = require("fs"),
     }
     if (test.reject) {
       assert.equal(await page.locator("[data-hand-card]").count(), 3);
-      assert.equal(await page.locator('[data-trick-seat="0"]').count(), 0);
+      assert.equal(await canonicalCount(page, 0), 0);
     } else {
       assert.equal(await page.locator("[data-hand-card]").count(), 2);
-      assert.equal(await page.locator('[data-trick-seat="0"]').count(), 1);
+      assert.equal(await canonicalCount(page, 0), 1);
       if (test.recover) {
         await page.evaluate(() => window.fixtureRemount());
         await page.waitForTimeout(150);
         assert.equal(
-          await page.locator("canvas").count(),
+          await page.locator("[data-local-flight-card]").count(),
           0,
           "remount must not replay historical local flight",
         );
-        assert.equal(await page.locator('[data-trick-seat="0"]').count(), 1);
+        assert.equal(await canonicalCount(page, 0), 1);
+        await page.waitForFunction(
+          () =>
+            document
+              .querySelector("[data-canvas-trick-cards]")
+              ?.getAttribute("data-canvas-trick-cards")
+              .split(",").length >= 2,
+          null,
+          { timeout: 3000 },
+        );
+        await page
+          .locator('[data-renderer="canvas-trick"]')
+          .evaluate((el) => el.dispatchEvent(new Event("contextlost")));
+        assert.equal(
+          await page.locator('[data-renderer="canvas-trick"]').count(),
+          0,
+          "failed shared scene must relinquish ownership",
+        );
+        assert(
+          (await page.locator("[data-trick-seat]").count()) >= 2,
+          "DOM fallback preserves the current trick",
+        );
       }
       await page.waitForTimeout(1600);
       assert.equal(
@@ -253,6 +291,65 @@ const fs = require("fs"),
         (test.reject ? "reject" : test.cold ? "cold" : test.reduced ? "reduced" : "accepted") +
         ".png",
     });
+    if (!test.reject && !test.cold && !test.recover && !test.reduced && !test.touch) {
+      await page.evaluate(() => {
+        window.trickStages = [];
+        const sample = () => {
+          const el = document.querySelector("[data-canvas-trick-stage]");
+          if (el) {
+            const stage = el.dataset.canvasTrickStage;
+            const id = el.closest("[data-trick-presentation-id]").dataset.trickPresentationId;
+            const key = id + ":" + stage;
+            if (!window.trickStages.includes(key)) window.trickStages.push(key);
+          }
+        };
+        sample();
+        window.trickObserver = new MutationObserver(sample);
+        window.trickObserver.observe(document.body, {
+          subtree: true,
+          attributes: true,
+          childList: true,
+        });
+      });
+      for (let i = 0; i < 2; i++) {
+        await page.waitForFunction(
+          () =>
+            [...document.querySelectorAll("[data-hand-card]")].some(
+              (el) => el.closest('[role="button"]').getAttribute("aria-disabled") === "false",
+            ),
+          { timeout: 10000 },
+        );
+        const playable = page
+          .locator('[role="button"][aria-disabled="false"]')
+          .filter({ has: page.locator("[data-hand-card]") })
+          .first();
+        await playable.dblclick();
+        await page.waitForFunction((count) => window.fixtureCommands.length === count, i + 2, {
+          timeout: 5000,
+        });
+        await page.waitForTimeout(1600);
+      }
+      await page.waitForFunction(() => window.fixtureCompleted() === 3, { timeout: 10000 });
+      await page
+        .locator('[data-renderer="canvas-trick"]')
+        .waitFor({ state: "detached", timeout: 10000 });
+      const stages = await page.evaluate(() => window.trickStages);
+      assert(
+        stages.filter((key) => key.endsWith(":stacking")).length >= 2,
+        "consecutive stacks must run on Canvas",
+      );
+      assert(
+        stages.filter((key) => key.endsWith(":collecting")).length >= 2,
+        "consecutive collections must run on Canvas",
+      );
+      const diagnostics = await page.evaluate(() =>
+        JSON.parse(localStorage.getItem("joker:timing-diagnostics:v1") ?? "[]").filter(
+          (e) => e.event === "canvas_trick_motion_complete",
+        ),
+      );
+      reports.push({ ruleset: test.ruleset, consecutiveTricks: 3, stages, diagnostics });
+      await page.screenshot({ path: ".test-tmp/canvas-three-tricks-" + test.ruleset + ".png" });
+    }
     await context.close();
   }
   await b.close();
