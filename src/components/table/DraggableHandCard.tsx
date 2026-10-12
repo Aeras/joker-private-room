@@ -58,6 +58,8 @@ export function DraggableHandCard({
   const [drag, setDrag] = useState<DragState | null>(null);
   const committingRef = useRef(false);
   const canInteract = legal && !blocked && !pending && !revealing;
+  // A Joker gesture only opens the semantic chooser; the card never moves until a choice is made.
+  const stationary = card.kind === "joker";
   const [faceVisible, setFaceVisible] = useState(!revealing || faceUpOnReveal);
   useLayoutEffect(() => {
     if (!revealing || faceUpOnReveal) {
@@ -186,7 +188,7 @@ export function DraggableHandCard({
     }
     // Finish the pointer-up/capture lifecycle before mounting a Joker chooser.
     // Otherwise the chooser can appear during the same touch gesture and its first tap may be swallowed.
-    const finalPose = releasePose(event.currentTarget, Math.max(-8, Math.min(8, (current.currentX - current.startX) / 18)));
+    const finalPose = stationary ? releasePose(event.currentTarget) : releasePose(event.currentTarget, Math.max(-8, Math.min(8, (current.currentX - current.startX) / 18)));
     window.requestAnimationFrame(() => { void submitOnce(finalPose); });
   };
 
@@ -221,13 +223,13 @@ export function DraggableHandCard({
         "relative select-none outline-none transition-[transform,margin-left] duration-[520ms] focus-visible:ring-2 focus-visible:ring-primary",
         overlap && "-ml-[calc(var(--card-w)*var(--card-overlap))]",
         legal && "touch-none cursor-grab",
-        drag && "z-[100] cursor-grabbing transition-none",
-        commitReady && "drop-shadow-[0_0_14px_var(--gold)]",
+        drag && !stationary && "z-[100] cursor-grabbing transition-none",
+        commitReady && !stationary && "drop-shadow-[0_0_14px_var(--gold)]",
         pending && "pointer-events-none opacity-0",
       )}
       style={{
-        zIndex: drag ? 100 : zIndex,
-        transform: drag
+        zIndex: drag && !stationary ? 100 : zIndex,
+        transform: drag && !stationary
           ? `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${Math.max(-8, Math.min(8, deltaX / 18))}deg)`
           : undefined,
       }}
@@ -246,8 +248,8 @@ export function DraggableHandCard({
           <div className="relative [backface-visibility:hidden]">
             <PlayingCard
               card={card}
-              selected={commitReady}
-              className={cn(drag && "scale-[1.04]", showLegality && !legal && !revealing && "grayscale-[0.65]")}
+              selected={commitReady && !stationary}
+              className={cn(drag && !stationary && "scale-[1.04]", showLegality && !legal && !revealing && "grayscale-[0.65]")}
             />
             {showLegality && !legal && !revealing && <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[inherit] bg-black/30" />}
           </div>
