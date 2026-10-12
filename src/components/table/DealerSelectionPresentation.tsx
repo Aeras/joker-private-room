@@ -1,9 +1,10 @@
+import { dealtCardFrames, DEAL_LAUNCH_SCALE } from "./dealtCardMotion";
 import { useReducedMotion } from "./useReducedMotion";
 import { REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
 import { PresentationRun } from "./presentationRun";
 import { assets } from "@/assets/registry";
 import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { Card } from "@/domain/cards";
 import type { PlayerGameProjection } from "@/domain/projection";
 import { playGameSound } from "@/lib/gameAudio";
@@ -65,10 +66,12 @@ function RevealedCard({
   const preference = useReducedMotion();
   const reduced = useRef(preference).current;
   const [arrived, setArrived] = useState(false);
+  const flightId = `dealer-flight-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const pos = visualSeat(viewerSeat, beat.seat);
   const center = geometry.dealCenter;
   const base = geometry.dealTargets[pos];
   const target = stackedTarget(base, pos, beat.stackIndex);
+  const frames = !reduced ? dealtCardFrames(center, target, 0, 0) : null;
 
   useEffect(() => {
     setArrived(false);
@@ -83,9 +86,13 @@ function RevealedCard({
         zIndex: finalAce ? 60 : 30 + beat.stackIndex,
         opacity: reduced && !arrived ? 0 : 1,
         transitionDuration: `${DEALER_SELECTION_CARD_TRAVEL_MS}ms`,
-        transform: relativeTransform(arrived ? target : reduced ? { x: target.x, y: target.y + REDUCED_MOTION_DISTANCE_PX } : center, center, reduced || arrived ? 1 : 0.72),
+        transitionProperty: frames ? "opacity" : "transform, opacity", animationName: frames ? flightId : "none",
+        animationDuration: `${DEALER_SELECTION_CARD_TRAVEL_MS}ms`,
+        animationTimingFunction: "linear",
+        transform: relativeTransform(arrived ? target : reduced ? { x: target.x, y: target.y + REDUCED_MOTION_DISTANCE_PX } : center, center, reduced || arrived ? 1 : DEAL_LAUNCH_SCALE),
       }}
     >
+      {frames && <style>{`@keyframes ${flightId}{${frames}}`}</style>}
       <PlayingCard card={beat.card} />
       {finalAce && arrived && (
         <div className="mt-1 rounded-md bg-black/80 px-2 py-1 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-primary">

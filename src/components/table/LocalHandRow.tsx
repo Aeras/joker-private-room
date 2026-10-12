@@ -1,3 +1,4 @@
+import { HAND_LANDING_EASING } from "./dealtCardMotion";
 import { useReducedMotion } from "./useReducedMotion";
 import { HAND_REVEAL_SPREAD_MS, REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -73,7 +74,7 @@ export function LocalHandRow({
         transform: `translateY(${entranceSettled ? "calc(var(--card-w) * 0.52 + 0px)" : reduced ? `calc(var(--card-w) * 0.52 + ${REDUCED_MOTION_DISTANCE_PX}px)` : "calc(100% + max(.15rem, env(safe-area-inset-bottom)) + 2px)"})`,
         opacity: reduced && !entranceSettled ? 0 : 1,
         transitionDuration: `${LOCAL_HAND_ENTRANCE_MS}ms`,
-        transitionTimingFunction: "linear",
+        transitionTimingFunction: reduced ? "linear" : HAND_LANDING_EASING,
       } as React.CSSProperties}
       data-hand-center-offset={offset}
       data-hand-entrance={!entranceSettled ? "entering" : "settled"}

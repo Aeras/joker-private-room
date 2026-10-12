@@ -80,7 +80,7 @@ describe("shared local hand geometry", () => {
     const view = render(<LocalHandRow cards={cards} visible legalCardIds={[]} blocked pendingCardId={null} authorityKey="timing" geometry={geometry} revealing onCommit={vi.fn()} />);
     const hand = view.container.querySelector<HTMLElement>("[data-hand-entrance]");
     expect(hand?.style.transitionDuration).toBe("600ms");
-    expect(hand?.style.transitionTimingFunction).toBe("linear");
+    expect(hand?.style.transitionTimingFunction).toBe("cubic-bezier(0.22, 1, 0.36, 1)");
     act(() => vi.advanceTimersByTime(32));
     expect(hand?.style.transform).toContain("var(--card-w) * 0.52 + 0px");
   });

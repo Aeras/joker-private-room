@@ -1,4 +1,5 @@
 import { cardFlightFrames } from "./cardFlightMotion";
+import { COLLECTION_EXIT_EASING } from "./dealtCardMotion";
 import { useReducedMotion } from "./useReducedMotion";
 import { PresentationRun, presentationTimeout } from "./presentationRun";
 import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
@@ -115,7 +116,7 @@ function AnimatedTrickCard({ play, viewerSeat, departingStage, winnerSeat, geome
     const pose = pinnedStackPose(settledPoint, stackTarget, pos, winnerPos, motionGeometry?.trickCardSize.height ?? 100, t);
     return `${index / 16 * 100}%{transform:${relativeTransform(pose.point, center, pose.rotation)}}`;
   }).join("") : "";
-  const easing = collecting ? "linear" : fromBelowJoker && !departingStage ? "ease-in-out" : "cubic-bezier(0.22, 1, 0.36, 1)";
+  const easing = collecting ? reducedMotion ? "linear" : COLLECTION_EXIT_EASING : fromBelowJoker && !departingStage ? "ease-in-out" : "cubic-bezier(0.22, 1, 0.36, 1)";
   return <div data-joker-from-below={fromBelowJoker ? "true" : undefined} data-trick-seat={play.seatIndex} data-trick-collecting={collecting ? "true" : undefined} className={cn("fixed transition-[transform,opacity]", fromBelowJoker ? "z-0" : "z-10")} style={{ "--card-w": motionGeometry ? `${motionGeometry.trickCardSize.width}px` : undefined, left: (motionGeometry?.feltRect.left ?? 0) + center.x, top: (motionGeometry?.feltRect.top ?? 0) + center.y, transform, transitionDuration: `${duration}ms`, transitionTimingFunction: easing, transitionProperty: entryFrames ? "opacity" : "transform, opacity", animationName: frames ? animationId : entryFrames ? entryId : "none", animationDuration: `${duration}ms`, animationTimingFunction: "linear", animationFillMode: entryFrames ? "both" : undefined, animationPlayState: paused ? "paused" : "running", opacity: collecting || (reducedMotion && !arrived) ? 0 : 1, transitionDelay: collecting ? `0ms, ${reducedMotion ? 0 : Math.max(0, duration - COLLECTION_FADE_MS)}ms` : "0ms", ...(collecting ? { transitionDuration: `${duration}ms, ${COLLECTION_FADE_MS}ms` } : {}) } as React.CSSProperties} onAnimationEnd={runs.current.guard((event) => { if (event.target !== event.currentTarget || paused) return; if (event.animationName === animationId && stacking) completionRef.current(play, "stacking"); else if (event.animationName === entryId && !departingStage && !settled) completionRef.current(play, "landing"); })} onTransitionEnd={runs.current.guard((event) => { if (event.target === event.currentTarget && event.propertyName === "transform" && !stacking && !entryFrames) completionRef.current(play, departingStage ?? "landing"); })}>
     {entryFrames && <style>{`@keyframes ${entryId}{${entryFrames}}`}</style>}
     {frames && <style>{`@keyframes ${animationId}{${frames}}`}</style>}

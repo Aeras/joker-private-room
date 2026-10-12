@@ -70,7 +70,7 @@ describe("local motion ownership", () => {
     surfaces.slice(0, 3).forEach(finish); expect(root.getAttribute("data-trick-departing-stage")).toBe("stacking");
     finish(surfaces[3]!); expect(root.getAttribute("data-trick-departing-stage")).toBe("collecting");
     expect(surfaces.every(el => (el as HTMLElement).style.transitionDuration === "380ms, 120ms")).toBe(true);
-    expect(surfaces.every(el => (el as HTMLElement).style.transitionTimingFunction === "linear")).toBe(true);
+    expect(surfaces.every(el => (el as HTMLElement).style.transitionTimingFunction === "cubic-bezier(0.4, 0, 1, 1)")).toBe(true);
     surfaces.slice(0, 3).forEach(finish); expect(root.isConnected).toBe(true);
     finish(surfaces[3]!); expect(view.container.querySelector("[data-trick-presentation-id]")).toBeNull();
   });

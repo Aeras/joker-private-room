@@ -221,7 +221,7 @@ describe("presentation interruption and geometry", () => {
       surfaces.forEach(finish); expect(root.getAttribute("data-trick-departing-stage")).toBe("collecting");
       const collectingSurface = root.querySelector<HTMLElement>("[data-trick-collecting='true']");
       expect(collectingSurface?.style.transitionDuration).toBe("380ms, 120ms");
-      expect(collectingSurface?.style.transitionTimingFunction).toBe("linear");
+      expect(collectingSurface?.style.transitionTimingFunction).toBe("cubic-bezier(0.4, 0, 1, 1)");
       view.rerender(<TrickPresentation {...props} geometry={{ ...geometry, epoch: ordinal + 2 }} projection={snapshot(3)} />);
       expect(view.container.querySelector("[data-trick-departing-stage='collecting']")).not.toBeNull();
       surfaces.forEach(finish);
