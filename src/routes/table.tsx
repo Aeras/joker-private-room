@@ -506,7 +506,7 @@ function TablePage() {
   }, [automaticActorPending, projection?.stateVersion, refreshAll]);
 
   useEffect(() => {
-    const interval = automaticActorPending ? 500 : 1500;
+    const interval = automaticActorPending ? 300 : 1500;
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refreshAll();
     }, interval);
