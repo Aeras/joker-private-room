@@ -1,6 +1,6 @@
 # JOKER secure Realtime investigation
 
-Status: architecture investigation only. No production reads of player data, database writes, policies, publications, keys, deployments or migrations were performed. This document is not an implemented Realtime service.
+Status: the original architecture investigation below has been reconciled against main including #244–246. A disabled-by-default broker/client implementation and reviewed SQL candidate now exist: see [secure Realtime implementation report](joker-secure-realtime-report.md). No production database, key, policy, publication or deployment changes were performed. Real authenticated Supabase delivery remains unverified.
 
 Source inspected: the working tree based on GitHub main `22ca49634317f963c61a4d85f65d4efa4779b920`, including merged PR #244. Only the owner's external project `wubrgnzbvtrzbvvqalfw` is applicable. DURAK, Bot Lab records and Lovable's generated integration are outside this proposal.
 

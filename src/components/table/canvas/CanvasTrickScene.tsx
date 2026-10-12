@@ -122,6 +122,7 @@ export function CanvasTrickScene({
         };
         sprites.current.set(id, sprite);
         renderer.set(sprite);
+        recordTimingDiagnostic("remote_canvas_first_surface", { seat: play.seatIndex, stage, cardId: play.card.id });
       }
       const previous = owners.current.get(id);
       if (previous === stage) {

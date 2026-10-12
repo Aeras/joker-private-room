@@ -1,3 +1,7 @@
+import { observeRealtimePerformance } from "@/services/realtime/metrics";
+import { RealtimeLifecycle } from "@/services/realtime/lifecycle";
+import { openReceiveSocket } from "@/services/realtime/socket";
+import { getRealtimeCapability } from "@/services/realtimeFunctions";
 import { tablePollInterval } from "@/components/table/tablePolling";
 import { TableReturnSync, hydrateReturnedPresentation } from "@/components/table/tableReturnSync";
 import { reclaimWithFreshSnapshot } from "@/components/table/reclaimWithFreshSnapshot";
@@ -209,6 +213,7 @@ function TablePage() {
     if (restoring) { hydrateReturnedPresentation(nextProjection); setBusy(false); }
     returnSync.complete();
     roomRef.current = nextRoom;
+    recordTimingDiagnostic("game_projection_admitted", { stateVersion: nextProjection.stateVersion });
     projectionRef.current = nextProjection;
     setRoom(nextRoom);
     setProjection(nextProjection);
@@ -505,6 +510,24 @@ function TablePage() {
   useEffect(() => {
     if (automaticActorPending && document.visibilityState === "visible") void refreshAll(true);
   }, [automaticActorPending, projection?.stateVersion, refreshAll]);
+
+  // Receive-only wakeups preserve the existing authorized single-flight/admission path.
+  const realtimeGameId = projection?.gameId;
+  const realtimeClosed = projection?.lifecycle === "complete";
+  useEffect(() => {
+    if (import.meta.env["VITE_JOKER_REALTIME_ENABLED"] !== "true" || !realtimeGameId || realtimeClosed || !visible) return;
+    const subscription = new RealtimeLifecycle(realtimeGameId, {
+      capability: () => getRealtimeCapability({ data: { gameId: realtimeGameId } }),
+      connect: openReceiveSocket,
+      refresh: async () => { await refreshAll(true); return projectionRef.current?.stateVersion ?? null; },
+      version: () => projectionRef.current?.stateVersion ?? -1,
+      now: () => performance.now() + performance.timeOrigin,
+      metric: recordTimingDiagnostic,
+    });
+    const stopMetrics = observeRealtimePerformance();
+    subscription.start();
+    return () => { subscription.stop(); stopMetrics(); };
+  }, [realtimeGameId, realtimeClosed, visible, refreshAll]);
 
   const projectionPollMs = tablePollInterval(projection);
   useEffect(() => {

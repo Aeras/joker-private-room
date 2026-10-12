@@ -1,3 +1,4 @@
+import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Maximize, Minimize, Trophy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -221,6 +222,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       if (playAction.jokerOptions?.length) setJokerIntent({ cardId, releaseRect, options: playAction.jokerOptions, gameId: projection.gameId, dealNumber: projection.progression.dealNumber, stateVersion: projection.stateVersion });
       return;
     }
+    recordTimingDiagnostic("local_play_input", { stateVersion: projection.stateVersion, cardId, jokerChoice: Boolean(jokerSemantic) });
     playSubmissionLock.current = true; setSubmittingCardId(cardId);
     const geometryEpoch = tableGeometry.geometry?.epoch ?? 0;
     const presentation: LocalPlayPresentation | null = tableGeometry.geometry ? { gameId: projection.gameId, dealNumber: projection.progression.dealNumber, card, cardId, actorSeat: localSeat, sourceStateVersion: projection.stateVersion, acceptedStateVersion: null, geometryEpoch, releaseRect, status: "submitted", ...(jokerSemantic ? { jokerSemantic } : {}) } : null;
