@@ -15,6 +15,7 @@ export class CardCanvasEngine {
   private height = 0;
   private dpr = 1;
   private lastFrame: number | null = null;
+  private paused = false;
   private counters = { frames: 0, maxFrameGapMs: 0, draws: 0, paintMs: 0 };
   constructor(
     private canvas: HTMLCanvasElement,
@@ -64,6 +65,8 @@ export class CardCanvasEngine {
     return pose ? { ...pose } : null;
   }
   animate(id: string, duration: number, sample: (t: number) => SpritePose, complete: () => void) {
+    if (!this.sprites.has(id)) throw new Error("UNKNOWN_SPRITE_OWNER");
+    if (this.scheduler.activeCount === 0) this.lastFrame = null;
     this.scheduler.animate(id, duration, sample, complete);
   }
   remove(id: string) {
@@ -75,10 +78,13 @@ export class CardCanvasEngine {
     return { ...this.counters };
   }
   suspend() {
+    this.paused = true;
     this.lastFrame = null;
     this.scheduler.suspend();
   }
   resume() {
+    if (!this.paused) return;
+    this.paused = false;
     this.lastFrame = null;
     this.scheduler.resume();
   }
@@ -136,6 +142,8 @@ export class CardCanvasEngine {
         ctx.clip();
         ctx.shadowBlur = 0;
         ctx.shadowOffsetY = 0;
+        const blend = sprite.backImage ? (p.backBlend ?? 0) : 0;
+        ctx.globalAlpha = p.opacity * (1 - blend);
         ctx.drawImage(
           side < 0 && sprite.backImage ? sprite.backImage : sprite.image,
           left,
@@ -143,6 +151,10 @@ export class CardCanvasEngine {
           p.width,
           p.height,
         );
+        if (blend > 0 && sprite.backImage) {
+          ctx.globalAlpha = p.opacity * blend;
+          ctx.drawImage(sprite.backImage, left, top, p.width, p.height);
+        }
       } finally {
         ctx.restore();
       }

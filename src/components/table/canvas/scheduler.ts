@@ -18,6 +18,9 @@ export class MotionScheduler {
     private paint: (poses: ReadonlyMap<string, SpritePose>, time: number) => void,
     private fail: (error: unknown) => void,
   ) {}
+  get activeCount() {
+    return this.motions.size;
+  }
   animate(key: string, duration: number, sample: Motion["sample"], complete: () => void) {
     if (this.disposed) return;
     if (

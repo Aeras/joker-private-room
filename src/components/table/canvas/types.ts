@@ -6,6 +6,7 @@ export interface SpritePose {
   rotation: number;
   opacity: number;
   flip: number;
+  backBlend?: number;
 }
 export interface CardSprite {
   id: string;
@@ -30,6 +31,7 @@ export function validPose(p: SpritePose): boolean {
     p.width > 0 &&
     p.height > 0 &&
     p.opacity >= 0 &&
-    p.opacity <= 1
+    p.opacity <= 1 &&
+    (p.backBlend == null || (p.backBlend >= 0 && p.backBlend <= 1))
   );
 }

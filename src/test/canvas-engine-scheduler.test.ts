@@ -193,4 +193,43 @@ describe("Canvas card layer", () => {
     ).toThrow();
     engine.dispose();
   });
+  it("crossfades the existing collection artwork without inventing a 3D flip", () => {
+    const ctx = context(),
+      engine = new CardCanvasEngine(
+        document.createElement("canvas"),
+        ctx,
+        vi.fn(),
+        frames().driver,
+      );
+    const front = {} as CanvasImageSource,
+      back = {} as CanvasImageSource;
+    engine.set({
+      id: "collect",
+      image: front,
+      backImage: back,
+      layer: 0,
+      pose: { ...pose(), backBlend: 0.5 },
+    });
+    expect(vi.mocked(ctx.drawImage).mock.calls.map((call) => call[0])).toEqual([front, back]);
+    expect(() =>
+      engine.set({ id: "collect", image: front, layer: 0, pose: { ...pose(), backBlend: 2 } }),
+    ).toThrow();
+    engine.dispose();
+  });
+  it("does not count deliberate idle holds as active frame gaps or animate an unowned sprite", () => {
+    const f = frames(),
+      engine = new CardCanvasEngine(document.createElement("canvas"), context(), vi.fn(), f.driver);
+    expect(() => engine.animate("missing", 20, pose, vi.fn())).toThrow("UNKNOWN_SPRITE_OWNER");
+    engine.set({ id: "owned", image: {} as CanvasImageSource, layer: 0, pose: pose() });
+    engine.animate("owned", 32, pose, vi.fn());
+    f.tick(16);
+    f.tick(32);
+    f.tick(1000);
+    engine.animate("owned", 32, pose, vi.fn());
+    f.tick(1016);
+    f.tick(1032);
+    expect(engine.metrics().maxFrameGapMs).toBe(16);
+    expect(f.pending.size).toBe(0);
+    engine.dispose();
+  });
 });
