@@ -287,19 +287,33 @@ export function useTableGeometry(layoutKey?: string): {
     window.addEventListener("resize", scheduleMeasure);
     window.addEventListener("orientationchange", scheduleMeasure);
     document.addEventListener("fullscreenchange", scheduleMeasure);
-    // Mobile Chrome/PWA can restore a different visual viewport without firing resize.
-    // Recheck immediately on foreground and once again on the next paint, no timers.
+    // iOS/Android standalone PWAs can restore their visual viewport several paints
+    // after focus. Re-measure through the settling window, not just the first frame.
+    const restoreTimers = new Set<number>();
+    const clearRestoreTimers = () => {
+      for (const id of restoreTimers) window.clearTimeout(id);
+      restoreTimers.clear();
+    };
     const onForeground = () => {
-      if (document.visibilityState === "visible") {
-        measure();
-        scheduleMeasure();
+      if (document.visibilityState !== "visible") { clearRestoreTimers(); return; }
+      clearRestoreTimers();
+      scheduleMeasure();
+      // WebKit may finalize viewport units, safe areas and orientation asynchronously.
+      for (const delay of [100, 300, 700, 1200]) {
+        const id = window.setTimeout(() => {
+          restoreTimers.delete(id);
+          if (document.visibilityState === "visible") scheduleMeasure();
+        }, delay);
+        restoreTimers.add(id);
       }
     };
     document.addEventListener("visibilitychange", onForeground);
     window.addEventListener("pageshow", onForeground);
     window.addEventListener("focus", onForeground);
     window.visualViewport?.addEventListener("resize", scheduleMeasure);
+    window.visualViewport?.addEventListener("scroll", scheduleMeasure);
     return () => {
+      clearRestoreTimers();
       observer?.disconnect();
       desktopMedia.removeEventListener("change", scheduleMeasure);
       window.removeEventListener("resize", scheduleMeasure);
@@ -309,6 +323,7 @@ export function useTableGeometry(layoutKey?: string): {
       window.removeEventListener("pageshow", onForeground);
       window.removeEventListener("focus", onForeground);
       window.visualViewport?.removeEventListener("resize", scheduleMeasure);
+      window.visualViewport?.removeEventListener("scroll", scheduleMeasure);
       if (frameRef.current != null) window.cancelAnimationFrame(frameRef.current);
     };
   }, [scheduleMeasure]);
