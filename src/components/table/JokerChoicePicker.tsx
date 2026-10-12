@@ -1,4 +1,7 @@
-import { useEffect, type ReactNode, type SyntheticEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
+import { createPortal } from "react-dom";
+import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
+import { createTapTracker, tapActivationHandlers } from "./tapActivation";
 import type { Suit } from "@/domain/cards";
 import type { LocalLegalAction } from "@/domain/projection";
 
@@ -35,14 +38,32 @@ export function JokerChoicePicker({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onDismiss]);
+  const tracker = useRef(createTapTracker()).current;
+  // Portal into the fullscreen root (document.body is not rendered while an
+  // element is fullscreen) so no table stacking context can sit above the chooser.
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setPortalTarget(document.getElementById("table-fullscreen-root") ?? document.body);
+    recordTimingDiagnostic("joker_choice_open", { dismissible: Boolean(onDismiss) });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const choose = (option: JokerOption | undefined, label: string) =>
+    tapActivationHandlers<HTMLButtonElement>(tracker, () => { if (option) onSelect(option); }, label, { isDisabled: () => busy || !option });
   const consume = (event: SyntheticEvent) => { event.preventDefault(); event.stopPropagation(); };
+  const dismiss = onDismiss ? tapActivationHandlers<HTMLDivElement>(tracker, onDismiss, "outside", { swallowFollowingClick: true }) : null;
   // Transparent, undimmed catcher: swallows the whole outside gesture so nothing underneath activates.
-  const wrap = (panel: ReactNode) => !onDismiss ? panel : <>
-    <div aria-hidden="true" data-joker-choice-dismiss className="fixed inset-0 z-[84] pointer-events-auto"
-      onPointerDown={consume} onPointerUp={consume} onMouseDown={consume} onDoubleClick={consume}
-      onClick={(event) => { consume(event); onDismiss(); }} />
-    {panel}
-  </>;
+  const wrap = (panel: ReactNode) => {
+    const content = !dismiss ? panel : <>
+      <div aria-hidden="true" data-joker-choice-dismiss className="fixed inset-0 z-[84] pointer-events-auto touch-none"
+        onPointerDown={(event) => { consume(event); dismiss.onPointerDown(event); }}
+        onPointerUp={(event) => { consume(event); dismiss.onPointerUp(event); }}
+        onPointerCancel={dismiss.onPointerCancel}
+        onMouseDown={consume} onDoubleClick={consume}
+        onClick={(event) => { consume(event); dismiss.onClick(event); }} />
+      {panel}
+    </>;
+    return portalTarget ? createPortal(<div data-joker-choice-layer>{content}</div>, portalTarget) : null;
+  };
   const leadOptions = options.filter((option) => option.context === "LEAD");
   const openTrickOptions = options.filter((option) => option.context === "OPEN_TRICK");
 
@@ -66,8 +87,8 @@ export function JokerChoicePicker({
               disabled={busy || !option}
               aria-label={actionLabel}
               title={actionLabel}
-              onClick={() => option && onSelect(option)}
-              className={`flex h-12 items-center justify-center border-l border-white/10 text-3xl transition-colors enabled:hover:bg-primary/15 enabled:active:bg-primary/25 disabled:opacity-20 ${meta.tone}`}
+              {...choose(option, `${mode}-${suit}`)}
+              className={`flex h-12 touch-manipulation items-center justify-center border-l border-white/10 text-3xl transition-colors enabled:hover:bg-primary/15 enabled:active:bg-primary/25 disabled:opacity-20 ${meta.tone}`}
             >
               {meta.symbol}
             </button>
@@ -100,16 +121,16 @@ export function JokerChoicePicker({
             <button
               type="button"
               disabled={busy || !fromBelow}
-              onClick={() => fromBelow && onSelect(fromBelow)}
-              className="h-11 min-w-[9rem] rounded-xl border border-[#b99a5d] bg-white px-4 text-sm font-bold text-black shadow-[0_8px_22px_rgba(0,0,0,.24)] transition-transform enabled:hover:-translate-y-0.5 enabled:bg-white enabled:active:translate-y-0 enabled:active:brightness-90 enabled:active:shadow-inner disabled:opacity-40"
+              {...choose(fromBelow, "FROM_BELOW")}
+              className="h-11 min-w-[9rem] touch-manipulation rounded-xl border border-[#b99a5d] bg-white px-4 text-sm font-bold text-black shadow-[0_8px_22px_rgba(0,0,0,.24)] transition-transform enabled:hover:-translate-y-0.5 enabled:bg-white enabled:active:translate-y-0 enabled:active:brightness-90 enabled:active:shadow-inner disabled:opacity-40"
             >
               Τζόκερ από κάτω
             </button>
             <button
               type="button"
               disabled={busy || !compete}
-              onClick={() => compete && onSelect(compete)}
-              className="h-11 min-w-[9rem] rounded-xl border border-red-300/60 bg-red-600 px-4 text-sm font-bold text-white shadow-[0_8px_22px_rgba(185,28,28,.28)] transition-transform enabled:hover:-translate-y-0.5 enabled:hover:bg-red-500 enabled:active:translate-y-0 enabled:active:brightness-90 enabled:active:shadow-inner disabled:opacity-40"
+              {...choose(compete, "COMPETE")}
+              className="h-11 min-w-[9rem] touch-manipulation rounded-xl border border-red-300/60 bg-red-600 px-4 text-sm font-bold text-white shadow-[0_8px_22px_rgba(185,28,28,.28)] transition-transform enabled:hover:-translate-y-0.5 enabled:hover:bg-red-500 enabled:active:translate-y-0 enabled:active:brightness-90 enabled:active:shadow-inner disabled:opacity-40"
             >
               Τζόκερ από πάνω
             </button>
