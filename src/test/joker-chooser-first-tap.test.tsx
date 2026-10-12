@@ -95,6 +95,8 @@ function mountTable(options: readonly object[] = OPEN) {
 beforeEach(() => {
   vi.useFakeTimers();
   window.PointerEvent = TestPointerEvent as unknown as typeof PointerEvent;
+  HTMLElement.prototype.setPointerCapture = () => undefined;
+  HTMLElement.prototype.releasePointerCapture = () => undefined;
   vi.stubGlobal("requestAnimationFrame", (fn: FrameRequestCallback) => window.setTimeout(() => fn(0), 16));
   vi.stubGlobal("cancelAnimationFrame", window.clearTimeout);
 });
