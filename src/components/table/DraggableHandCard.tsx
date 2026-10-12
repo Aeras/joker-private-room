@@ -68,7 +68,7 @@ export function DraggableHandCard({
     }
     setFaceVisible(false);
     // Rise begins after two paint frames; reveal follows it, not the mount.
-    const timer = window.setTimeout(() => setFaceVisible(true), 190 + zIndex * 22);
+    const timer = window.setTimeout(() => setFaceVisible(true), 125 + zIndex * 16);
     const finish = () => { window.clearTimeout(timer); setFaceVisible(true); };
     window.addEventListener("blur", finish);
     window.addEventListener("orientationchange", finish);
