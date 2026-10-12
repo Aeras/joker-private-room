@@ -5,6 +5,7 @@ import { enterGameDisplayMode, maintainGameLandscape } from "@/lib/gameDisplayMo
 /** Keep the table mounted: rotating must not reset its presentation journal. */
 export function LandscapeTableGuard({ children }: { children: ReactNode }) {
   const [portrait, setPortrait] = useState(() => window.matchMedia("(orientation: portrait)").matches);
+  const [unsupported, setUnsupported] = useState(false);
   const requesting = useRef(false);
   const attemptedGesture = useRef(Boolean(document.fullscreenElement));
   useEffect(() => {
@@ -31,7 +32,10 @@ export function LandscapeTableGuard({ children }: { children: ReactNode }) {
     if (requesting.current) return;
     requesting.current = true;
     attemptedGesture.current = true;
-    try { await enterGameDisplayMode(document.getElementById("table-fullscreen-root") ?? undefined); }
+    try {
+      const result = await enterGameDisplayMode(document.getElementById("table-fullscreen-root") ?? undefined);
+      setUnsupported(!result.lockedLandscape && window.matchMedia("(orientation: portrait)").matches);
+    }
     finally { requesting.current = false; }
   };
   const firstTouchGesture = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -51,7 +55,8 @@ export function LandscapeTableGuard({ children }: { children: ReactNode }) {
         <div className="mb-4 text-5xl" aria-hidden="true">↻</div>
         <h2 className="text-xl font-semibold text-primary">{t.landscapeRequired}</h2>
         <p className="mt-3 text-sm text-white/70">{t.landscapeRequiredHelp}</p>
-        <button type="button" onClick={() => void enter()} className="mt-6 min-h-12 rounded-xl border border-primary/50 px-5 py-3 font-semibold text-primary">{t.landscapeFullscreen}</button>
+        <button type="button" onClick={() => void enter()} className="relative z-10 mt-6 min-h-12 touch-manipulation rounded-xl border border-primary/50 px-5 py-3 font-semibold text-primary">{t.landscapeFullscreen}</button>
+        {unsupported && <p className="mt-3 text-sm text-white/70">Η συσκευή δεν επιτρέπει αυτόματη περιστροφή από την εφαρμογή. Απενεργοποίησε το κλείδωμα προσανατολισμού και γύρισε το iPhone οριζόντια.</p>}
       </div>
     </div>
   </>;
