@@ -7,7 +7,6 @@ import type { GameplayCommand } from "@/domain/gameplayCommands";
 import { reclaimGameControl, type GameControlFailureCode } from "@/server/gameControl";
 import {
   activateInitialDealAfterPresentation,
-  ensureInitialDealerBootstrapPrepared,
   resolveInitialDealerBootstrap,
 } from "@/server/dealerBootstrap";
 import {
@@ -29,7 +28,7 @@ import {
 } from "@/server/gamePersistence";
 import { completeTurnPresentation } from "@/server/turnPresentation";
 import { completeNineCardPresentation } from "@/server/nineCardPresentation";
-import { advanceGameUntilBlocked } from "@/server/reconciliation";
+import { loadReconciledGameState } from "@/server/reconciliation";
 
 export type ProjectedGameStateResult =
   { ok: true; projection: PlayerGameProjection } | { ok: false; code: GameStateFailureCode };
@@ -70,19 +69,8 @@ const gameplayCommand = z.discriminatedUnion("type", [
   z.object({ type: z.literal("choose_joker_semantic"), semantic: jokerSemantic }),
 ]);
 
-async function ensureBootstrapIfNeeded(gameId: string): Promise<GameStateFailureCode | null> {
-  const result = await ensureInitialDealerBootstrapPrepared(gameId);
-  return result.ok ? null : result.code;
-}
-
 async function settleAutomaticState(gameId: string): Promise<LoadGameStateResult> {
-  const reconciliation = await advanceGameUntilBlocked(gameId);
-  if (!reconciliation.ok) {
-    return reconciliation.currentStateVersion == null
-      ? { ok: false, code: reconciliation.code }
-      : { ok: false, code: reconciliation.code, stateVersion: reconciliation.currentStateVersion };
-  }
-  return loadCanonicalGameState(gameId);
+  return loadReconciledGameState(gameId);
 }
 
 function projected(loaded: Extract<LoadGameStateResult, { ok: true }>): PlayerGameProjection | null {
@@ -96,8 +84,6 @@ function projected(loaded: Extract<LoadGameStateResult, { ok: true }>): PlayerGa
 export const getProjectedGameState = createServerFn({ method: "GET" })
   .validator(z.object({ gameId: z.string().uuid() }))
   .handler(async ({ data }): Promise<ProjectedGameStateResult> => {
-    const bootstrapFailure = await ensureBootstrapIfNeeded(data.gameId);
-    if (bootstrapFailure) return { ok: false, code: bootstrapFailure };
     const loaded = await settleAutomaticState(data.gameId);
     if (!loaded.ok) return { ok: false, code: loaded.code };
     const projection = projected(loaded);
