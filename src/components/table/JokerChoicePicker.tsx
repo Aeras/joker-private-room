@@ -27,7 +27,7 @@ export function JokerChoicePicker({
   busy: boolean;
   trumpSuit?: Suit | null;
   onSelect: (option: JokerOption) => void;
-  onDismiss?: () => void;
+  onDismiss?: (() => void) | undefined;
 }) {
   useEffect(() => {
     if (!onDismiss) return;
