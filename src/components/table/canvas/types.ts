@@ -7,6 +7,8 @@ export interface SpritePose {
   opacity: number;
   flip: number;
   backBlend?: number;
+  shade?: number;
+  emphasis?: number;
 }
 export interface CardSprite {
   id: string;
@@ -32,6 +34,8 @@ export function validPose(p: SpritePose): boolean {
     p.height > 0 &&
     p.opacity >= 0 &&
     p.opacity <= 1 &&
-    (p.backBlend == null || (p.backBlend >= 0 && p.backBlend <= 1))
+    (p.backBlend == null || (p.backBlend >= 0 && p.backBlend <= 1)) &&
+    (p.shade == null || (p.shade >= 0 && p.shade <= 1)) &&
+    (p.emphasis == null || (p.emphasis >= 0 && p.emphasis <= 1))
   );
 }

@@ -74,6 +74,9 @@ export class CardCanvasEngine {
     this.sprites.delete(id);
     this.draw();
   }
+  cancelMotion(id: string) {
+    this.scheduler.cancel(id);
+  }
   metrics() {
     return { ...this.counters };
   }
@@ -108,6 +111,16 @@ export class CardCanvasEngine {
     for (const sprite of [...this.sprites.values()].sort((a, b) => a.layer - b.layer)) {
       const p = sprite.pose;
       if (!validPose(p)) throw new Error("INVALID_SPRITE_POSE");
+      const radius = Math.hypot(p.width, p.height) / 2 + 16;
+      if (
+        this.width > 0 &&
+        this.height > 0 &&
+        (p.x + radius < 0 ||
+          p.y + radius < 0 ||
+          p.x - radius > this.width ||
+          p.y - radius > this.height)
+      )
+        continue;
       ctx.save();
       try {
         ctx.globalAlpha = p.opacity;
@@ -117,26 +130,26 @@ export class CardCanvasEngine {
         ctx.scale(Math.max(0.001, Math.abs(side)), 1);
         const left = -p.width / 2,
           top = -p.height / 2,
-          radius = Math.min(8, p.width * 0.1);
-        ctx.shadowColor = "rgba(0,0,0,.28)";
-        ctx.shadowBlur = 9;
+          cornerRadius = Math.min(8, p.width * 0.1);
+        ctx.shadowColor = p.emphasis ? "rgba(212,175,55,.9)" : "rgba(0,0,0,.28)";
+        ctx.shadowBlur = p.emphasis ? 14 : 9;
         ctx.shadowOffsetY = 3;
         ctx.fillStyle = "#fff";
         ctx.beginPath();
-        ctx.moveTo(left + radius, top);
-        ctx.lineTo(left + p.width - radius, top);
-        ctx.quadraticCurveTo(left + p.width, top, left + p.width, top + radius);
-        ctx.lineTo(left + p.width, top + p.height - radius);
+        ctx.moveTo(left + cornerRadius, top);
+        ctx.lineTo(left + p.width - cornerRadius, top);
+        ctx.quadraticCurveTo(left + p.width, top, left + p.width, top + cornerRadius);
+        ctx.lineTo(left + p.width, top + p.height - cornerRadius);
         ctx.quadraticCurveTo(
           left + p.width,
           top + p.height,
-          left + p.width - radius,
+          left + p.width - cornerRadius,
           top + p.height,
         );
-        ctx.lineTo(left + radius, top + p.height);
-        ctx.quadraticCurveTo(left, top + p.height, left, top + p.height - radius);
-        ctx.lineTo(left, top + radius);
-        ctx.quadraticCurveTo(left, top, left + radius, top);
+        ctx.lineTo(left + cornerRadius, top + p.height);
+        ctx.quadraticCurveTo(left, top + p.height, left, top + p.height - cornerRadius);
+        ctx.lineTo(left, top + cornerRadius);
+        ctx.quadraticCurveTo(left, top, left + cornerRadius, top);
         ctx.closePath();
         ctx.fill();
         ctx.clip();
@@ -154,6 +167,11 @@ export class CardCanvasEngine {
         if (blend > 0 && sprite.backImage) {
           ctx.globalAlpha = p.opacity * blend;
           ctx.drawImage(sprite.backImage, left, top, p.width, p.height);
+        }
+        if (p.shade) {
+          ctx.globalAlpha = p.opacity * p.shade;
+          ctx.fillStyle = "#000";
+          ctx.fill();
         }
       } finally {
         ctx.restore();
