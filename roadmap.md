@@ -12,4 +12,4 @@
 # JOKER bot pacing and artwork continuity
 
 - [x] Slightly shorten bot-only polling without changing strategy, presentation timing or single-flight protection.
-- [ ] Diagnose and remove the white artwork flash during card play; verify targeted regressions and browser rendering.
+- [x] Remove the artwork opacity entrance and paint preloaded card images synchronously (70 targeted tests passed; six browser remounts fully drawable; preview build OK). Real-phone/full multiplayer confirmation remains unverified.
