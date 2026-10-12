@@ -1,3 +1,4 @@
+import { tablePollInterval } from "@/components/table/tablePolling";
 import { TableReturnSync, hydrateReturnedPresentation } from "@/components/table/tableReturnSync";
 import { reclaimWithFreshSnapshot } from "@/components/table/reclaimWithFreshSnapshot";
 import { retryCommandDelivery } from "@/components/table/retryCommandDelivery";
@@ -505,13 +506,14 @@ function TablePage() {
     if (automaticActorPending && document.visibilityState === "visible") void refreshAll(true);
   }, [automaticActorPending, projection?.stateVersion, refreshAll]);
 
+  const projectionPollMs = tablePollInterval(projection);
   useEffect(() => {
-    const interval = automaticActorPending ? 200 : 1500;
+    const interval = projectionPollMs;
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refreshAll();
     }, interval);
     return () => window.clearInterval(timer);
-  }, [automaticActorPending, refreshAll]);
+  }, [projectionPollMs, refreshAll]);
 
   useEffect(() => {
     if (projection?.lifecycle !== "starting") return;

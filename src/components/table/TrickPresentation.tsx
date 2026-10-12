@@ -1,3 +1,5 @@
+import { canvasCardAssets, canvasFlightAvailable } from "./canvas/assetCache";
+import { ProjectionSceneAdapter } from "./canvas/projectionAdapter";
 import { cardFlightFrames } from "./cardFlightMotion";
 import { COLLECTION_EXIT_EASING } from "./dealtCardMotion";
 import { useReducedMotion } from "./useReducedMotion";
@@ -151,6 +153,12 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
   const acknowledgedTokens = useRef(new Set<number>());
   const [ackAttempt, retryAck] = useState(0);
   const journal = useRef(new TrickPresentationJournal());
+  const canvasAdapter = useRef(new ProjectionSceneAdapter());
+  useEffect(() => {
+    const scene = canvasAdapter.current.ingest(projection);
+    if (!scene || !canvasFlightAvailable()) return;
+    for (const card of scene.ownHand) { const url = card.kind === "standard" ? assets.cardFace(card) : undefined; if (url) void canvasCardAssets.warm(url); }
+  }, [projection]);
   const [revision, revise] = useState(0);
   const [beatPending, setBeatPending] = useState(false);
   const [displayedCards, setDisplayedCards] = useState<PlayedCard[]>([]);
@@ -397,6 +405,6 @@ export function TrickPresentation({ projection, geometry, localPlayPresentation,
     <span className="sr-only" aria-live="polite">{departing ? `Η μπάζα κερδήθηκε από τη θέση ${departing.winnerSeat + 1}.` : announcement?.text ?? ""}</span>
     {announcement && <div className="absolute left-0 top-[-4.4rem] z-50 -translate-x-1/2 whitespace-nowrap rounded-xl border border-amber-300/60 bg-black/88 px-4 py-2 text-center text-sm font-semibold text-white shadow-2xl backdrop-blur" data-joker-announcement={announcement.id}>{announcement.text}</div>}
     {visibleCards.map((play) => <AnimatedTrickCard key={`${active?.id}:${play.seatIndex}:${play.card.id}`} play={play} viewerSeat={projection.viewerSeat} departingStage={departing?.stage ?? null} winnerSeat={departing?.winnerSeat ?? null} geometry={presentationGeometry} settled={landedCards.current.has(playKey(play))} reducedMotion={reducedMotion} onMotionComplete={onMotionComplete} completionGeneration={resumeGeneration} paused={paused} />)}
-    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.gameId}:${localPlayPresentation.dealNumber}:${localPlayPresentation.actorSeat}:${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} viewerSeat={projection.viewerSeat} geometry={presentationGeometry!} reducedMotion={reducedMotion} onSettled={settleLocalFlight} onLanded={markLocalLanding} />}
+    {showLocalFlight && localPlayPresentation && geometry && <LocalFlightCard key={`${localPlayPresentation.gameId}:${localPlayPresentation.dealNumber}:${localPlayPresentation.actorSeat}:${localPlayPresentation.cardId}:${localPlayPresentation.sourceStateVersion}`} presentation={localPlayPresentation} projection={projection} viewerSeat={projection.viewerSeat} geometry={presentationGeometry!} reducedMotion={reducedMotion} onSettled={settleLocalFlight} onLanded={markLocalLanding} />}
   </div>;
 }
