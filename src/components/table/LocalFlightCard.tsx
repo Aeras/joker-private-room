@@ -3,7 +3,7 @@ import { PresentationRun, presentationTimeout } from "./presentationRun";
 import { REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
 import { NORMAL_FROM_BELOW_FLIP_MS, NORMAL_FROM_BELOW_FLIGHT_MS, TRICK_CARD_ROTATION } from "./trickPresentationModel";
 import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { PlayingCard } from "../joker/PlayingCard";
 import { UnderJokerFace } from "./UnderJokerFace";
 import { playGameSound } from "@/lib/gameAudio";
@@ -62,10 +62,13 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   const destinationY = frozen.geometry.feltRect.top + target.y;
   const visualX = motionReduced ? destinationX : x;
   const visualY = motionReduced ? destinationY + (atTarget ? 0 : REDUCED_MOTION_DISTANCE_PX) : y;
-  const curved = !motionReduced && !fromBelow && launched && !landed && !rejected;
-  const frames = curved ? cardFlightFrames((point, angle, t) => `translate(${point.x - width / 2}px, ${point.y - height / 2}px) rotate(${angle}deg) scale(${1 + (targetWidth / width - 1) * t})`,
+  // Keep the completed animation's endpoint until canonical ownership is ready.
+  // Removing it at landing switches transform owners during delayed acceptance.
+  const curved = !motionReduced && !fromBelow && launched && !rejected;
+  const frames = useMemo(() => cardFlightFrames((point, angle, t) => `translate(${point.x - width / 2}px, ${point.y - height / 2}px) rotate(${angle}deg) scale(${1 + (targetWidth / width - 1) * t})`,
     { x: frozen.release.left + frozen.release.width / 2, y: frozen.release.top + frozen.release.height / 2 },
-    { x: destinationX, y: destinationY }, frozen.release.rotation ?? 0, rotation) : "";
+    { x: destinationX, y: destinationY }, frozen.release.rotation ?? 0, rotation),
+    [frozen, width, height, targetWidth, destinationX, destinationY, rotation]);
   return <div className="fixed left-0 top-0 z-40 transition-[transform,opacity] ease-out" style={{
     "--card-w": `${width}px`, opacity: motionReduced && !atTarget ? 0 : 1, transitionDuration: `${duration}ms`,
     ...(curved ? { animationName: flightId, animationDuration: `${duration}ms`, animationTimingFunction: "linear", animationFillMode: "both", transitionProperty: "opacity" } : {}),
@@ -75,7 +78,7 @@ export function LocalFlightCard({ presentation, geometry, viewerSeat, reducedMot
   } as React.CSSProperties} data-local-flight-card={presentation.cardId} data-local-flight-status={presentation.status}
     onAnimationEnd={(event) => { if (!rejected && event.target === event.currentTarget && event.animationName === flightId) completeMotion(); }}
     onTransitionEnd={(event) => { if (!curved && event.target === event.currentTarget && event.propertyName === "transform") completeMotion(); }}>
-    {frames && <style>{`@keyframes ${flightId}{${frames}}`}</style>}
+    {curved && <style>{`@keyframes ${flightId}{${frames}}`}</style>}
     {fromBelow ? <UnderJokerFace card={presentation.card} flipped={atTarget} duration={flipDuration} reducedMotion={motionReduced} /> : <PlayingCard card={presentation.card} />}
   </div>;
 }

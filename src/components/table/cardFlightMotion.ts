@@ -14,10 +14,11 @@ export function cardFlightPose(start: Point, end: Point, startRotation: number, 
   };
 }
 
-/** Ease-out sampled into keyframes; no React frame loop or independent timing clock. */
+/** Sub-frame samples at 120 Hz for both played-card durations. Browser interpolation
+ * owns motion; no React frame loop or independent timing clock. */
 export function cardFlightFrames(transform: (point: Point, rotation: number, t: number) => string, start: Point, end: Point, startRotation: number, endRotation: number): string {
-  return Array.from({ length: 21 }, (_, index) => {
-    const time = index / 20;
+  return Array.from({ length: 61 }, (_, index) => {
+    const time = index / 60;
     const t = 1 - Math.pow(1 - time, 2);
     const pose = cardFlightPose(start, end, startRotation, endRotation, t);
     return `${time * 100}%{transform:${transform(pose.point, pose.rotation, t)}}`;
