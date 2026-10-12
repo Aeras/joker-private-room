@@ -16,6 +16,6 @@ describe("nonblocking human-to-bot turn handoff", () => {
     expect(route).toContain('if (automaticActorPending && document.visibilityState === "visible") void refreshAll(true)');
     expect(route).toContain("[automaticActorPending, projection?.stateVersion, refreshAll]");
     expect(route).toContain("return refreshInFlight.current");
-    expect(route).toContain("automaticActorPending ? 500 : 1500");
+    expect(route).toContain("automaticActorPending ? 300 : 1500");
   });
 });
