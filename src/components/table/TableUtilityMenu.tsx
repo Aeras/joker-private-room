@@ -43,7 +43,7 @@ export function TableUtilityMenu({
         <JButton
           variant="outlineGold"
           size="sm"
-          className="h-11 w-11 min-w-11 touch-manipulation bg-black/60 px-0 sm:h-8 sm:w-8 sm:min-w-8"
+          className="h-11 w-11 min-w-11 touch-manipulation bg-black/60 px-0"
           aria-label="Περισσότερες επιλογές"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
