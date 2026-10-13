@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { canvasCardAssets, canvasFlightAvailable } from "./assetCache";
+import { recordTimingDiagnostic } from "@/lib/timingDiagnostics";
 export function presentationWidth(css: string, fallback: number) {
   if (typeof document === "undefined") return fallback;
   const parent = document.querySelector(".joker-room") ?? document.body;
@@ -21,28 +22,37 @@ export function useCanvasArtwork(urls: readonly (string | undefined)[], scope: s
       setResult(decision.current);
       return;
     }
+    const releases: Array<() => void> = [];
+    const pending = Promise.all((JSON.parse(key) as string[]).map((url) => {
+      const image = canvasCardAssets.warm(url);
+      releases.push(canvasCardAssets.retain?.(url) ?? (() => {}));
+      return image;
+    }));
     if (decision.current?.scope === scope) {
       setResult(decision.current);
-      return;
+      void pending;
+      return () => { for (const release of releases) release(); };
     }
     let cancelled = false,
       decided = false;
-    const finish = (enabled: boolean) => {
+    const finish = (enabled: boolean, reason?: "timeout" | "missing") => {
       if (cancelled || decided) return;
       decided = true;
+      if (!enabled && reason) recordTimingDiagnostic("canvas_artwork_fallback", { reason });
       decision.current = { scope, enabled };
       setResult(decision.current);
     };
-    const timer = window.setTimeout(() => finish(false), 120);
-    void Promise.all((JSON.parse(key) as string[]).map((url) => canvasCardAssets.warm(url))).then(
+    const timer = window.setTimeout(() => finish(false, "timeout"), 120);
+    void pending.then(
       (images) => {
         window.clearTimeout(timer);
-        finish(images.every(Boolean));
+        finish(images.every(Boolean), "missing");
       },
     );
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      for (const release of releases) release();
     };
   }, [scope, key]);
   return result?.scope === scope ? result.enabled : null;

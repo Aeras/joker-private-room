@@ -87,6 +87,7 @@ export function CanvasPresentation({
   useLayoutEffect(() => {
     const renderer = engine.current;
     if (!renderer) return;
+    renderer.batch(() => {
     const ids = new Set(sprites.map((s) => s.id));
     for (const id of phases.current.keys())
       if (!ids.has(id)) {
@@ -124,6 +125,7 @@ export function CanvasPresentation({
     } catch {
       latest.current();
     }
+    });
   }, [sprites, name]);
   return (
     <canvas

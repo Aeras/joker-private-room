@@ -144,6 +144,25 @@ describe("Canvas card layer", () => {
       ].map((name) => [name, vi.fn()]),
     ) as unknown as CanvasRenderingContext2D;
   }
+  it("paints a multi-card scene once and preserves the backing store on an unchanged resize", () => {
+    const canvas = document.createElement("canvas"), ctx = context();
+    const engine = new CardCanvasEngine(canvas, ctx, vi.fn(), frames().driver);
+    engine.resize(844, 390, 2);
+    const before = engine.metrics().draws;
+    engine.batch(() => {
+      for (let index = 0; index < 4; index++)
+        engine.set({ id: String(index), image: {} as CanvasImageSource, layer: index, pose: pose() });
+    });
+    expect(engine.metrics().draws - before).toBe(1);
+    const drawImage = vi.mocked(ctx.drawImage);
+    expect(drawImage).toHaveBeenCalledTimes(4);
+    const width = canvas.width, height = canvas.height;
+    const priorDraws = engine.metrics().draws;
+    engine.resize(844, 390, 2);
+    expect([canvas.width, canvas.height]).toEqual([width, height]);
+    expect(engine.metrics().draws).toBe(priorDraws);
+    engine.dispose();
+  });
   it("caps DPR, preserves CSS coordinates, layering and explicit backs", () => {
     const canvas = document.createElement("canvas"),
       ctx = context(),

@@ -89,6 +89,7 @@ export function CanvasTrickScene({
     if (!renderer) return;
     if (paused) renderer.suspend();
     else renderer.resume();
+    renderer.batch(() => {
     const ids = new Set(cards.map((play) => `${play.seatIndex}:${play.card.id}`));
     for (const id of owners.current.keys())
       if (!ids.has(id)) {
@@ -148,6 +149,7 @@ export function CanvasTrickScene({
         latest.current.onComplete(play, stage);
       });
     }
+    });
   }, [cards, viewerSeat, geometry, stage, winnerSeat, settled, reducedMotion, paused]);
   return (
     <>

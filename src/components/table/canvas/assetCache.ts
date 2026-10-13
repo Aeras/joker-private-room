@@ -8,6 +8,7 @@ export class CanvasCardAssets {
       ready: boolean;
       promise: Promise<HTMLImageElement | null>;
       cancel: (() => void) | undefined;
+      retained: number;
     }
   >();
   constructor(private limit = 16) {
@@ -18,6 +19,18 @@ export class CanvasCardAssets {
     const entry = this.entries.get(url);
     return entry?.ready ? entry.image : null;
   }
+  /** Keep artwork used by a mounted, authorized scene in the bounded pool. */
+  retain(url: string) {
+    const entry = this.entries.get(url);
+    if (!entry) return () => {};
+    entry.retained++;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      entry.retained = Math.max(0, entry.retained - 1);
+    };
+  }
   warm(url: string): Promise<HTMLImageElement | null> {
     const old = this.entries.get(url);
     if (old) {
@@ -25,16 +38,20 @@ export class CanvasCardAssets {
       this.entries.set(url, old);
       return old.promise;
     }
+    if (this.entries.size >= this.limit && ![...this.entries.values()].some((entry) => entry.retained === 0))
+      return Promise.resolve(null);
     if (typeof Image === "undefined") return Promise.resolve(null);
     const entry = {
       image: null as HTMLImageElement | null,
       ready: false,
       promise: Promise.resolve(null) as Promise<HTMLImageElement | null>,
       cancel: undefined as (() => void) | undefined,
+      retained: 0,
     };
     this.entries.set(url, entry);
     while (this.entries.size > this.limit) {
-      const key = this.entries.keys().next().value!;
+      const key = [...this.entries].find(([, candidate]) => candidate.retained === 0)?.[0];
+      if (!key) break;
       this.entries.get(key)?.cancel?.();
       this.entries.delete(key);
     }

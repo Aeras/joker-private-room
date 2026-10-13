@@ -16,6 +16,8 @@ export class CardCanvasEngine {
   private dpr = 1;
   private lastFrame: number | null = null;
   private paused = false;
+  private batchDepth = 0;
+  private dirty = false;
   private counters = { frames: 0, maxFrameGapMs: 0, draws: 0, paintMs: 0 };
   constructor(
     private canvas: HTMLCanvasElement,
@@ -45,20 +47,42 @@ export class CardCanvasEngine {
   resize(width: number, height: number, ratio: number) {
     if (![width, height, ratio].every(Number.isFinite) || width <= 0 || height <= 0)
       throw new Error("INVALID_CANVAS_SIZE");
+    const previousWidth = this.width;
+    const previousHeight = this.height;
+    const previousDpr = this.dpr;
     this.width = width;
     this.height = height;
     // Cap both DPR and total backing-store area (about 16MiB RGBA at most).
     this.dpr = Math.min(2, Math.max(0.1, ratio), Math.sqrt(4_000_000 / (width * height)));
-    this.canvas.width = Math.round(width * this.dpr);
-    this.canvas.height = Math.round(height * this.dpr);
-    this.draw();
+    const backingWidth = Math.round(width * this.dpr);
+    const backingHeight = Math.round(height * this.dpr);
+    if (this.canvas.width !== backingWidth) this.canvas.width = backingWidth;
+    if (this.canvas.height !== backingHeight) this.canvas.height = backingHeight;
+    if (previousWidth !== width || previousHeight !== height || previousDpr !== this.dpr)
+      this.invalidate();
+  }
+  batch(update: () => void) {
+    this.batchDepth++;
+    try {
+      update();
+    } finally {
+      this.batchDepth--;
+      if (this.batchDepth === 0 && this.dirty) {
+        this.dirty = false;
+        this.draw();
+      }
+    }
+  }
+  private invalidate() {
+    if (this.batchDepth > 0) this.dirty = true;
+    else this.draw();
   }
   set(sprite: CardSprite) {
     if (this.disposed) return;
     if (!validPose(sprite.pose) || (!this.sprites.has(sprite.id) && this.sprites.size >= 64))
       throw new Error("INVALID_SPRITE_BUDGET");
     this.sprites.set(sprite.id, sprite);
-    this.draw();
+    this.invalidate();
   }
   pose(id: string) {
     const pose = this.sprites.get(id)?.pose;
@@ -72,7 +96,7 @@ export class CardCanvasEngine {
   remove(id: string) {
     this.scheduler.cancel(id);
     this.sprites.delete(id);
-    this.draw();
+    this.invalidate();
   }
   cancelMotion(id: string) {
     this.scheduler.cancel(id);

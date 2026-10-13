@@ -62,6 +62,10 @@ export function LocalHandRow({
     if(!old&&revealing&&duration>0) next.position={...next.position,from:{...next.position.from,y:next.position.from.y+(reduced?12:next.position.from.height),opacity:reduced?0:1},duration,landing:true};
     tracks.current.set(visual.id,next);reviseVisual(n=>n+1);
   },[revealing,reduced]);
+  const getVisualPose=useCallback((id:string)=>{
+    const track=tracks.current.get(id);
+    return track?handTrackPose(track,performance.now()):null;
+  },[]);
   const legal = new Set(legalCardIds);
   const [entranceSettled, setEntranceSettled] = useState(visible && !revealing);
   const entered = useRef(visible && !revealing);
@@ -99,7 +103,7 @@ export function LocalHandRow({
       sample:()=>{
         const pose={...handTrackPose(track,performance.now()),shade:legalCardIds.length>0&&!legal.has(card.id)&&!revealing? .3:0};
         const input=inputTargets.current.get(card.id);
-        if(input?.element.isConnected){const x=pose.x-input.center.x,y=pose.y-input.center.y;input.element.style.transform=`translate3d(${x}px,${y}px,0)`;input.element.style.zIndex=track.dragging?"100":String(index);input.element.dataset["canvasHitX"]=String(x);input.element.dataset["canvasHitY"]=String(y);}
+        if(input?.element.isConnected){const x=pose.x-input.center.x,y=pose.y-input.center.y;const transform=`translate3d(${x}px,${y}px,0)`,zIndex=track.dragging?"100":String(index),hitX=String(x),hitY=String(y);if(input.element.style.transform!==transform)input.element.style.transform=transform;if(input.element.style.zIndex!==zIndex)input.element.style.zIndex=zIndex;if(input.element.dataset["canvasHitX"]!==hitX)input.element.dataset["canvasHitX"]=hitX;if(input.element.dataset["canvasHitY"]!==hitY)input.element.dataset["canvasHitY"]=hitY;}
         return pose;
       }}];
   }):[];
@@ -144,6 +148,7 @@ export function LocalHandRow({
               onCommit={onCommit}
               canvasOwned={canvasOwned}
               onVisualChange={emitVisual}
+              onGetVisualPose={getVisualPose}
               layoutEpoch={layoutEpoch}
             />
             </div>

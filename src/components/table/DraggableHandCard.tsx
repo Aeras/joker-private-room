@@ -5,6 +5,7 @@ import { PlayingCard } from "../joker/PlayingCard";
 import { shouldCommitCardGesture, shouldCommitCardRelease } from "./cardGesture";
 import type { CardReleaseRect, RectLike } from "./useTableGeometry";
 import type { HandVisual } from "./canvas/handSceneMotion";
+import type { SpritePose } from "./canvas/types";
 import { LOCAL_HAND_FLIP_MS } from "./presentationTiming";
 
 type DragState = {
@@ -28,6 +29,13 @@ function releasePose(element: HTMLDivElement, rotation = 0): CardReleaseRect {
     rotation,
   };
 }
+function releaseFromVisual(pose: SpritePose): CardReleaseRect {
+  const angle = pose.rotation * Math.PI / 180;
+  const width = Math.abs(Math.cos(angle)) * pose.width + Math.abs(Math.sin(angle)) * pose.height;
+  const height = Math.abs(Math.sin(angle)) * pose.width + Math.abs(Math.cos(angle)) * pose.height;
+  return { left: pose.x-width/2, right: pose.x+width/2, top: pose.y-height/2, bottom: pose.y+height/2,
+    width, height, cardWidth: pose.width, cardHeight: pose.height, rotation: pose.rotation };
+}
 
 export function DraggableHandCard({
   card,
@@ -44,6 +52,7 @@ export function DraggableHandCard({
   onCommit,
   canvasOwned = false,
   onVisualChange,
+  onGetVisualPose,
   layoutEpoch,
 }: {
   card: Card;
@@ -60,10 +69,16 @@ export function DraggableHandCard({
   onCommit: (cardId: string, releaseRect: CardReleaseRect) => Promise<void>;
   canvasOwned?:boolean;
   onVisualChange?: (visual:HandVisual)=>void;
+  onGetVisualPose?: (id:string)=>SpritePose|null;
   layoutEpoch?:string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const dragFrame = useRef<number | null>(null);
+  const visualBase = useRef<{center:{x:number;y:number};width:number;height:number;target:HTMLElement}|null>(null);
+  const dragOrigin = useRef<SpritePose|null>(null);
+  const cancelDragFrame = () => { if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;} };
   const committingRef = useRef(false);
   const canInteract = legal && !blocked && !pending && !revealing;
   // A Joker gesture only opens the semantic chooser; the card never moves until a choice is made.
@@ -90,12 +105,13 @@ export function DraggableHandCard({
   }, [revealing, faceUpOnReveal, card.id, zIndex]);
 
   useEffect(() => {
+    cancelDragFrame(); dragRef.current=null; dragOrigin.current=null;
     setDrag(null);
     committingRef.current = false;
   }, [authorityKey]);
 
   useEffect(() => {
-    const cancel = () => setDrag(null);
+    const cancel = () => {cancelDragFrame();dragRef.current=null;dragOrigin.current=null;setDrag(null);};
     const visibility = () => {
       if (document.visibilityState !== "visible") cancel();
     };
@@ -144,7 +160,8 @@ export function DraggableHandCard({
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!canInteract || event.button !== 0 || event.pointerType === "mouse") return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    setDrag({
+    if(canvasOwned) dragOrigin.current=onGetVisualPose?.(card.id)??null;
+    const start={
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
@@ -152,10 +169,19 @@ export function DraggableHandCard({
       currentY: event.clientY,
       startedAt: performance.now(),
       pointerType: event.pointerType,
-    });
+    };
+    dragRef.current=start;
+    setDrag(start);
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if(canvasOwned){
+      const current=dragRef.current;
+      if(!current||current.pointerId!==event.pointerId)return;
+      dragRef.current={...current,currentX:event.clientX,currentY:event.clientY};
+      if(dragFrame.current===null)dragFrame.current=requestAnimationFrame(()=>{dragFrame.current=null;setDrag(dragRef.current);});
+      return;
+    }
     setDrag((current) =>
       current?.pointerId === event.pointerId
         ? {
@@ -168,14 +194,16 @@ export function DraggableHandCard({
   };
 
   const finishPointer = (event: PointerEvent<HTMLDivElement>, cancelled: boolean) => {
-    const current = drag;
+    const current = canvasOwned?dragRef.current:drag;
     if (!current || current.pointerId !== event.pointerId) return;
+    cancelDragFrame();dragRef.current=null;
     try {
       event.currentTarget.releasePointerCapture(event.pointerId);
     } catch {
       // Pointer capture may already be released by the browser/OS.
     }
     if (cancelled || !canInteract) {
+      dragOrigin.current=null;
       setDrag(null);
       return;
     }
@@ -191,40 +219,52 @@ export function DraggableHandCard({
       },
     });
     if (!shouldCommit) {
+      dragOrigin.current=null;
       setDrag(null);
       return;
     }
     // Finish the pointer-up/capture lifecycle before mounting a Joker chooser.
     // Otherwise the chooser can appear during the same touch gesture and its first tap may be swallowed.
-    const finalPose = stationary ? releasePose(event.currentTarget) : releasePose(event.currentTarget, Math.max(-8, Math.min(8, (current.currentX - current.startX) / 18)));
-    window.requestAnimationFrame(() => { void submitOnce(finalPose); });
+    const deltaX=event.clientX-current.startX;
+    // The flight must begin at the last visible Canvas pose, even if pointer-up
+    // arrived before its last move could be painted.
+    const visual=canvasOwned?onGetVisualPose?.(card.id):null;
+    const finalPose=visual?releaseFromVisual(visual):stationary?releasePose(event.currentTarget):releasePose(event.currentTarget,Math.max(-8,Math.min(8,deltaX/18)));
+    dragOrigin.current=null;
+    if(stationary) window.requestAnimationFrame(() => { void submitOnce(finalPose); });
+    else void submitOnce(finalPose);
   };
 
   const onDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
     if (!canInteract || event.button !== 0) return;
     event.preventDefault();
-    const rect = rootRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    void submitOnce(releasePose(rootRef.current!));
+    if (!rootRef.current) return;
+    const visual=canvasOwned?onGetVisualPose?.(card.id):null;
+    void submitOnce(visual?releaseFromVisual(visual):releasePose(rootRef.current));
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!canInteract || (event.key !== "Enter" && event.key !== " ")) return;
     event.preventDefault();
-    const rect = rootRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    void submitOnce(releasePose(rootRef.current!));
+    if (!rootRef.current) return;
+    const visual=canvasOwned?onGetVisualPose?.(card.id):null;
+    void submitOnce(visual?releaseFromVisual(visual):releasePose(rootRef.current));
   };
 
   const deltaX = drag ? drag.currentX - drag.startX : 0;
   const deltaY = drag ? drag.currentY - drag.startY : 0;
   useLayoutEffect(()=>{
-    const element=rootRef.current;if(!canvasOwned||!element||!onVisualChange)return;
-    const rect=element.getBoundingClientRect(),style=getComputedStyle(element);
-    const hitTarget=element.parentElement!,hitX=Number(hitTarget.dataset["canvasHitX"]??0),hitY=Number(hitTarget.dataset["canvasHitY"]??0);
-    const logicalCenter={x:rect.left+rect.width/2-hitX,y:rect.top+rect.height/2-hitY};
-    onVisualChange({id:card.id,index:zIndex,faceUp:faceVisible,dragging:Boolean(drag&&!stationary),revealing,hitTarget,logicalCenter,pose:{x:logicalCenter.x+(drag&&!stationary?hitX:0),y:logicalCenter.y+(drag&&!stationary?hitY:0),
-      width:(parseFloat(style.width)||rect.width)*(drag&&!stationary?1.04:1),height:(parseFloat(style.height)||rect.height)*(drag&&!stationary?1.04:1),rotation:drag&&!stationary?Math.max(-8,Math.min(8,deltaX/18)):0,opacity:pending?0:1,flip:faceVisible?0:180,emphasis:commitReady&&!stationary?1:0}});
+    const element=rootRef.current;if(!canvasOwned||!element)return;
+    const rect=element.getBoundingClientRect(),style=getComputedStyle(element),hitTarget=element.parentElement!;
+    const hitX=Number(hitTarget.dataset["canvasHitX"]??0),hitY=Number(hitTarget.dataset["canvasHitY"]??0);
+    visualBase.current={center:{x:rect.left+rect.width/2-hitX,y:rect.top+rect.height/2-hitY},width:parseFloat(style.width)||rect.width,height:parseFloat(style.height)||rect.height,target:hitTarget};
+  },[canvasOwned,layoutEpoch,card.id]);
+  useLayoutEffect(()=>{
+    const base=visualBase.current;if(!canvasOwned||!base||!onVisualChange)return;
+    const origin=drag&&dragOrigin.current?dragOrigin.current:null;
+    const center=origin??base.center;
+    onVisualChange({id:card.id,index:zIndex,faceUp:faceVisible,dragging:Boolean(drag&&!stationary),revealing,hitTarget:base.target,logicalCenter:base.center,pose:{x:center.x+(drag&&!stationary?deltaX:0),y:center.y+(drag&&!stationary?deltaY:0),
+      width:base.width*(drag&&!stationary?1.04:1),height:base.height*(drag&&!stationary?1.04:1),rotation:drag&&!stationary?Math.max(-8,Math.min(8,deltaX/18)):0,opacity:pending?0:1,flip:faceVisible?0:180,emphasis:commitReady&&!stationary?1:0}});
   },[canvasOwned,onVisualChange,card.id,zIndex,faceVisible,drag,stationary,deltaX,deltaY,pending,layoutEpoch,commitReady,revealing]);
   useLayoutEffect(()=>{const target=rootRef.current?.parentElement;return()=>{if(target){target.style.transform="";target.style.zIndex="";delete target.dataset["canvasHitX"];delete target.dataset["canvasHitY"];}};},[canvasOwned]);
 
@@ -247,7 +287,7 @@ export function DraggableHandCard({
       style={{
         transition:canvasOwned?"none":undefined,
         zIndex: drag && !stationary ? 100 : zIndex,
-        transform: drag && !stationary
+        transform: !canvasOwned && drag && !stationary
           ? `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${Math.max(-8, Math.min(8, deltaX / 18))}deg)`
           : undefined,
       }}
