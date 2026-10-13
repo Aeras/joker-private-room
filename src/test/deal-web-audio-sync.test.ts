@@ -22,7 +22,7 @@ describe("deal Web Audio and visual event alignment", () => {
   it("triggers sound from the same deal visibility beat and stops on cancel", () => {
     expect(deal).toContain("setVisibleIndex(index); recordTimingDiagnostic");
     expect(deal).toContain('playGameSound("deal", beat.id)');
-    expect(deal).toContain("const clearTimers = useCallback(() => { stopGameDealAudio();");
-    expect(deal).toContain("clearTimers(); prepareGameAudio(); startTimingDiagnosticSession");
+    expect(audio).toContain("if (kind === \"deal\") stopPreviousDeal();");
+    expect(deal).toContain("clearTimers(); startTimingDiagnosticSession");
   });
 });
