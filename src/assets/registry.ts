@@ -1,3 +1,4 @@
+import { cardImageFormat } from "./cardFormat";
 /** Visual asset registry for the private Joker room. */
 import type { Card, Rank } from "@/domain/cards";
 
@@ -58,7 +59,9 @@ function tableAvatar(url: string | undefined): string | undefined {
   return match && tableAvatarNames.has(match[1]!) ? "/avatars/table/" + match[1] + ".webp" : url;
 }
 function cardArtwork(url: string): string {
-  return url.startsWith(`${RUNTIME_CARD_ROOT}/`) ? url.replace(RUNTIME_CARD_ROOT, "/cards/optimized-png") : url;
+  if (!url.startsWith(`${RUNTIME_CARD_ROOT}/`)) return url;
+  if (cardImageFormat() === "webp") return url.replace(RUNTIME_CARD_ROOT, "/cards/webp").replace(/\.png$/, ".webp");
+  return url.replace(RUNTIME_CARD_ROOT, "/cards/optimized-png");
 }
 
 export const assets = {

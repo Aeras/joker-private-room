@@ -28,6 +28,7 @@ function GameSelection() {
         <header className="game-selection-heading"><h1>Επιλέξτε το παιχνίδι</h1></header>
         <section className="home-menu" aria-label="Διαθέσιμα παιχνίδια">
           <PlayerSessionGate
+            allowCardFormatSelection
             allowLogout={!inJoker && active.status !== "loading" && active.status !== "error"}
             onAuthenticated={() => { void active.refresh(); }}
           >
