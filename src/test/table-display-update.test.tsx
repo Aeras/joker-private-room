@@ -27,7 +27,7 @@ it.each([0,90,180,270])("curves a flight but keeps both endpoints and orientatio
 it("renders only public card backs and declaration/taken values", () => {
   const seat = {index:1,occupant:{type:"bot",bot:{id:"bot",displayName:"Αντίπαλος"}}} as Seat;
   const view = render(<TableSeat seat={seat} orientation="vertical" visualSeat={1} stats={{totalScore:120,declaration:3,tricksTaken:2,isActive:false,isDealer:false,cardCount:7}} />);
-  expect(view.getByLabelText("7 κλειστά φύλλα").children).toHaveLength(7);
+  expect(view.getByLabelText("7 κλειστά φύλλα").querySelectorAll("[data-static-card-item]")).toHaveLength(7);
   expect(view.getByTitle("Δήλωση / Μπάζες")).toHaveTextContent("3 / 2");
   expect(view.getByTitle("Συνολικό σκορ")).toHaveTextContent("120");
   expect(view.container.querySelector("[data-seat-info-layout]")).not.toHaveClass("bg-black/85");
@@ -61,7 +61,7 @@ it("keeps public backs separate from compact summaries and preserves local ident
   view.rerender(<TableSeat seat={seat} orientation="vertical" visualSeat={1} stats={{...stats,cardCount:1}} />);
   expect(view.getByTitle("Δήλωση / Μπάζες")).toHaveTextContent("3 / 2");
   view.rerender(<TableSeat seat={seat} orientation="vertical" visualSeat={1} stats={stats} />);
-  expect(view.getByLabelText("9 κλειστά φύλλα").children).toHaveLength(9);
+  expect(view.getByLabelText("9 κλειστά φύλλα").querySelectorAll("[data-static-card-item]")).toHaveLength(9);
   view.rerender(<><TableSeat seat={seat} orientation="horizontal" local stats={stats}/><div data-local-hand-summary><SeatSummary seat={seat} stats={stats} local/></div></>);
   expect(view.container.querySelector(".joker-seat-identity .joker-seat-info")).toBeNull();
   expect(view.container.querySelector("[data-local-hand-summary]")).toHaveTextContent("Αντίπαλος · ΕΣΥ1203 / 2");
