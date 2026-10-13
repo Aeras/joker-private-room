@@ -20,7 +20,7 @@ export function CanvasStaticCards({
   const [painted, setPainted] = useState(false);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
-  const key = `${kind}:${visualSeat ?? "trump"}:${count}:${faceUrl ?? "back"}`;
+  const key = `${kind}:${visualSeat ?? "trump"}:${faceUrl ?? "back"}`;
 
   useLayoutEffect(() => {
     setPainted(false);
@@ -76,7 +76,7 @@ export function CanvasStaticCards({
           const side = visualSeat === 1 || visualSeat === 3;
           for (let i = 0; i < Math.min(count, 9); i++) {
             if (side) {
-              const offset = i * w * (0.1 / 1.4);
+              const offset = i * w * 0.1;
               draw(back, w * 0.2, -w * 0.2 + offset, visualSeat === 1 ? Math.PI / 2 : -Math.PI / 2);
             } else {
               draw(back, i * w * 0.1, 0);
