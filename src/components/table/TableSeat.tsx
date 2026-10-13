@@ -178,7 +178,7 @@ export function TableSeat({ seat, stats, showCards = true, entrance = false, loc
       {showCards && stats.cardCount > 0 && (
         <div data-remote-hand={visualSeat} data-hand-entrance={entrance ? "true" : undefined} aria-label={`${stats.cardCount} κλειστά φύλλα`} className="joker-remote-hand pointer-events-none absolute" style={{ "--remote-card-count": Math.min(stats.cardCount, 9) } as React.CSSProperties}>
           <CanvasStaticCards kind="remote" count={stats.cardCount} visualSeat={visualSeat as 1 | 2 | 3}>
-            {Array.from({ length: Math.min(stats.cardCount, 9) }, (_, i) => <div key={i} data-static-card-item data-static-card-measure={i === 0 ? "" : undefined} className="absolute" style={{ transform: visualSeat === 2 ? `translateX(${i * 10}%)` : `translateY(${i * 10 / 1.4}%) rotate(${visualSeat === 1 ? 90 : -90}deg)` }}><PlayingCard faceDown /></div>)}
+            {Array.from({ length: Math.min(stats.cardCount, 9) }, (_, i) => <div key={i} data-static-card-item="" data-static-card-measure={i === 0 ? "" : undefined} className="absolute" style={{ transform: visualSeat === 2 ? `translateX(${i * 10}%)` : `translateY(${i * 10 / 1.4}%) rotate(${visualSeat === 1 ? 90 : -90}deg)` }}><PlayingCard faceDown /></div>)}
           </CanvasStaticCards>
         </div>
       )}
