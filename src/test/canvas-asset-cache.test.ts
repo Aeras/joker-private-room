@@ -22,6 +22,21 @@ afterEach(() => {
   hooks.rejectDecode = false;
 });
 describe("bounded Canvas bitmaps", () => {
+  it("keeps active scene artwork while evicting idle images and releases it afterward", async () => {
+    vi.stubGlobal("Image", ImageFixture);
+    const cache = new CanvasCardAssets(2);
+    const active = await cache.warm("active");
+    const release = cache.retain("active");
+    await cache.warm("idle");
+    await cache.warm("next");
+    expect(cache.peek("active")).toBe(active);
+    expect(cache.peek("idle")).toBeNull();
+    const releaseNext = cache.retain("next");
+    expect(await cache.warm("over-capacity")).toBeNull();
+    releaseNext(); release(); release();
+    expect(await cache.warm("after-release")).not.toBeNull();
+    cache.clear();
+  });
   it("does not expose a bitmap before readiness and reuses one prepared image", async () => {
     vi.stubGlobal("Image", ImageFixture);
     const cache = new CanvasCardAssets();

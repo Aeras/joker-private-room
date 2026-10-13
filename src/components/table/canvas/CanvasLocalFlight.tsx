@@ -95,7 +95,8 @@ export function CanvasLocalFlight({
         frozen.instruction.duration,
         (time) => {
           const pose = frozen.instruction.sample(time);
-          element.style.zIndex = pose.layer === 0 ? "0" : "40";
+          const zIndex = pose.layer === 0 ? "0" : "40";
+          if (element.style.zIndex !== zIndex) element.style.zIndex = zIndex;
           return pose;
         },
         () => {

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DraggableHandCard } from "@/components/table/DraggableHandCard";
 import { shouldCommitCardRelease } from "@/components/table/cardGesture";
 import type { Card } from "@/domain/cards";
+import type { CardReleaseRect } from "@/components/table/useTableGeometry";
 
 vi.mock("@/components/joker/PlayingCard", () => ({
   PlayingCard: () => <div data-testid="playing-card" />,
@@ -80,9 +81,8 @@ describe("desktop double-click card play", () => {
     await waitFor(() => expect(space.onCommit).toHaveBeenCalledTimes(1));
   });
 
-  it("defers touch drag commit until after pointer release, unlike desktop double-click", async () => {
+  it("commits an ordinary touch drag immediately on release without waiting for another frame", async () => {
     const { root, onCommit } = view();
-    const callbacks: FrameRequestCallback[] = [];
     const originalPointerEvent = window.PointerEvent;
     class MockPointerEvent extends MouseEvent {
       pointerId: number;
@@ -94,17 +94,42 @@ describe("desktop double-click card play", () => {
       }
     }
     window.PointerEvent = MockPointerEvent as unknown as typeof PointerEvent;
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation(callback => { callbacks.push(callback); return 1; });
     Object.defineProperty(root, "setPointerCapture", { configurable: true, value: vi.fn() });
     const release = vi.fn();
     Object.defineProperty(root, "releasePointerCapture", { configurable: true, value: release });
     fireEvent.pointerDown(root, { pointerId: 7, pointerType: "touch", button: 0, clientX: 50, clientY: 140 });
     fireEvent.pointerUp(root, { pointerId: 7, pointerType: "touch", button: 0, clientX: 50, clientY: 50 });
     expect(release).toHaveBeenCalledWith(7);
-    expect(onCommit).not.toHaveBeenCalled();
-    expect(callbacks).toHaveLength(1);
-    callbacks[0]?.(0);
-    await waitFor(() => expect(onCommit).toHaveBeenCalledTimes(1));
+    expect(onCommit).toHaveBeenCalledTimes(1);
+    window.PointerEvent = originalPointerEvent;
+  });
+
+  it("releases a Canvas-owned card from its drawn pose without measuring layout on pointer-up", () => {
+    const visual = { x: 100, y: 200, width: 60, height: 90, rotation: 0, opacity: 1, flip: 0 };
+    const { root, onCommit } = view({ canvasOwned: true, onVisualChange: vi.fn(), onGetVisualPose: () => visual });
+    const measure = vi.spyOn(root, "getBoundingClientRect");
+    const originalPointerEvent = window.PointerEvent;
+    class MockPointerEvent extends MouseEvent {
+      pointerId: number;
+      pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 0;
+        this.pointerType = init.pointerType ?? "mouse";
+      }
+    }
+    window.PointerEvent = MockPointerEvent as unknown as typeof PointerEvent;
+    Object.defineProperty(root, "setPointerCapture", { configurable: true, value: vi.fn() });
+    Object.defineProperty(root, "releasePointerCapture", { configurable: true, value: vi.fn() });
+    fireEvent.pointerDown(root, { pointerId: 3, pointerType: "touch", button: 0, clientX: 50, clientY: 140 });
+    fireEvent.pointerUp(root, { pointerId: 3, pointerType: "touch", button: 0, clientX: 50, clientY: 50 });
+    expect(measure).not.toHaveBeenCalled();
+    expect(onCommit).toHaveBeenCalledOnce();
+    const release = (onCommit.mock.calls as unknown as Array<[string, CardReleaseRect]>)[0]![1];
+    expect((release.left + release.right) / 2).toBe(100);
+    expect((release.top + release.bottom) / 2).toBe(200);
+    expect(release.cardWidth).toBe(60);
+    expect(release.cardHeight).toBe(90);
     window.PointerEvent = originalPointerEvent;
   });
 
