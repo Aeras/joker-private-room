@@ -4,6 +4,7 @@ import { simulateFullGame, LAB_TIERS } from "@/server/botLab/simulation.server";
 import { selectBaselineGameplayCommand } from "./baselineRuntime";
 import {
   analyzeCompetitive,
+  TIER_BUDGETS,
   COMPETITIVE_VERSION,
   completeActions,
   rolloutPolicy,
@@ -34,6 +35,11 @@ const config = {
   strategyVersion: COMPETITIVE_VERSION,
 };
 describe("competitive observation-safe search", () => {
+  it("applies bounded tier-specific wall-clock budgets", () => {
+    expect([TIER_BUDGETS[1].maxMs, TIER_BUDGETS[2].maxMs, TIER_BUDGETS[3].maxMs]).toEqual([150, 250, 500]);
+    expect(TIER_BUDGETS[1].worlds).toBeLessThan(TIER_BUDGETS[2].worlds);
+    expect(TIER_BUDGETS[2].worlds).toBeLessThan(TIER_BUDGETS[3].worlds);
+  });
   it("finishes a real full game with legal advanced decisions", () => {
     const g = simulateFullGame(config);
     expect(g.deals).toHaveLength(24);
