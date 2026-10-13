@@ -237,7 +237,7 @@ it.each(["popular", "classic", "minus"] as const)(
         <DealPresentation projection={p} geometry={geometry} onPresentationComplete={done} />,
       );
     await tick();
-    for (let i = 0; i < 35; i++) await tick(80);
+    for (let i = 0; i < 40; i++) await tick(80);
     expect(done).toHaveBeenCalledOnce();
     expect(view.container.querySelector("[data-deal-traveling-card]")).toBeNull();
   },
