@@ -106,6 +106,8 @@ export function playGameSound(kind: GameSound, eventId: string): void {
     const index = cursor.get(kind) ?? 0;
     cursor.set(kind, (index + 1) % pool.length);
     const audio = pool[index]!;
+    // A cold HTMLAudio.play() can begin seconds late; skip rather than trail the visual.
+    if (audio.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
     audio.currentTime = 0;
     void audio.play().catch(() => undefined);
   } catch {
