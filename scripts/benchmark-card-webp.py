@@ -37,8 +37,14 @@ try:
     import cairosvg
     from io import BytesIO
     for item in rows:
-        src = ROOT / "public/cards/sources-svg" / Path(item["file"]).with_suffix(".svg")
-        if not src.exists():
+        face = Path(item["file"])
+        svg_dir = ROOT / "public/cards/sources-svg" / face.parent
+        candidate = face.stem.lower()
+        suit, _, rank = candidate.partition("_")
+        aliases = {"jack":"11","queen":"12","king":"13","ace":"1"}
+        candidates = [candidate, f"{suit}-{aliases.get(rank,rank)}", f"{suit.upper()}-{aliases.get(rank,rank)}"]
+        src = next((x for x in svg_dir.glob("*.svg") if x.stem.lower() in [v.lower() for v in candidates]), None)
+        if src is None:
             item["svgError"] = "missing SVG"
             continue
         ref = next(x for x in MANIFEST if Path(x["source"]).stem == Path(item["file"]).stem and Path(x["source"]).parent.name == Path(item["file"]).parent.name)
