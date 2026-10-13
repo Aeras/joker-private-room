@@ -34,7 +34,7 @@ import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 
 type Pos = 0 | 1 | 2 | 3;
 type OrientationLock = ScreenOrientation & { lock?: (orientation: "landscape") => Promise<void> };
-const HAND_REVEAL_MS = 660;
+const HAND_REVEAL_MS = 950;
 const PRESENTATION_ACK_DELAY_MS = 40;
 const TRUMP_ANNOUNCEMENT_MS = 3_000;
 
@@ -311,13 +311,13 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     const seat = seatAt(pos); const roomSeat = room.seats[seat]; if (!roomSeat) return null;
     const publicDeadline = projection.timing?.currentHumanDeadline ?? projection.local.humanDeadline;
     const isActor = !interactionPresentationActive && projection.progression.currentActorSeat === seat;
-    const stats = { totalScore: displayedScore.cumulativeTotals[seat], declaration: displayedScore.dealNumber !== projection.progression.dealNumber ? displayedScore.declarations[seat] ?? null : startupPresentationActive ? null : pos === 0 ? pendingDeclarationValue ?? displayedScore.declarations[seat] ?? null : displayedScore.declarations[seat] ?? null, tricksTaken: displayedScore.tricksTaken[seat], isDealer: !dealerIntroActive && projection.progression.dealerSeat === seat, isActive: isActor, cardCount: startupPresentationActive ? 0 : publicRemainingCardCount(projection, seat), humanDeadline: isActor && countdownPhase ? publicDeadline : null, isTemporarilyControlled: projection.seats[seat].owner.type === "human" && projection.seats[seat].controller === "temporary_bot" };
+    const stats = { totalScore: displayedScore.cumulativeTotals[seat], declaration: displayedScore.dealNumber !== projection.progression.dealNumber ? displayedScore.declarations[seat] ?? null : startupPresentationActive ? null : pos === 0 ? pendingDeclarationValue ?? displayedScore.declarations[seat] ?? null : displayedScore.declarations[seat] ?? null, tricksTaken: displayedScore.tricksTaken[seat], isDealer: !dealerIntroActive && projection.progression.dealerSeat === seat, isActive: isActor, cardCount: startupPresentationActive && !handRevealActive ? 0 : publicRemainingCardCount(projection, seat), humanDeadline: isActor && countdownPhase ? publicDeadline : null, isTemporarilyControlled: projection.seats[seat].owner.type === "human" && projection.seats[seat].controller === "temporary_bot" };
     if (summaryOnly) return <SeatSummary seat={roomSeat} stats={stats} local />;
     return <TableSeat seat={roomSeat} reactionEmoji={emojiBySeat?.[seat]}
       declarationBubble={declarationBubbles[seat]?.value}
       chatMessage={formatSeatChatBubble(chatMessages, seat, room)}
       chatSide={pos === 3 ? "left" : pos === 2 ? "above" : "right"}
-      orientation={orientation} infoLayout={pos === 2 ? "left" : "below"} showCards={!startupPresentationActive && !handRevealActive && projection.progression.phase !== "NINE_CARD_TRUMP_CHOICE"} visualSeat={pos} local={pos === 0} stats={stats} />;
+      orientation={orientation} infoLayout={pos === 2 ? "left" : "below"} showCards={handRevealActive || (!startupPresentationActive && projection.progression.phase !== "NINE_CARD_TRUMP_CHOICE")} entrance={handRevealActive} visualSeat={pos} local={pos === 0} stats={stats} />;
   };
 
   const forcedEnd = projection.termination?.kind === "host_ended";
