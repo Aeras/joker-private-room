@@ -17,9 +17,9 @@ import {
 export const COMPETITIVE_VERSION = "competitive-v2";
 export type CompetitiveTier = 1 | 2 | 3;
 export const TIER_BUDGETS = {
-  1: { worlds: 6, transitions: 18000 },
-  2: { worlds: 16, transitions: 42000 },
-  3: { worlds: 32, transitions: 90000 },
+  1: { worlds: 6, transitions: 18000, maxMs: 150 },
+  2: { worlds: 16, transitions: 42000, maxMs: 250 },
+  3: { worlds: 32, transitions: 90000, maxMs: 500 },
 } as const;
 export interface SearchReport {
   command: GameplayCommand;
@@ -335,7 +335,7 @@ export function analyzeCompetitive(
     action = projection.local.legalActions.find((a) => a.type !== "reclaim_control")!;
   const policy = TIER_BUDGETS[tier];
   const now = options.now ?? (() => performance.now());
-  const deadline = now() + Math.min(150, Math.max(0, options.maxMs ?? 150));
+  const deadline = now() + Math.min(policy.maxMs, Math.max(0, options.maxMs ?? policy.maxMs));
   const budget: Budget = {
     used: 0,
     limit: Math.max(0, Math.min(options.transitions ?? policy.transitions, policy.transitions)),
