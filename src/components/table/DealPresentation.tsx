@@ -11,7 +11,7 @@ import { markPresentationCompleted } from "./presentationCompletion";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { nextSeat, type SeatIndex } from "@/domain/dealing";
 import type { PlayerGameProjection } from "@/domain/projection";
-import { playGameSound } from "@/lib/gameAudio";
+import { playGameSound, prepareGameAudio, stopGameDealAudio } from "@/lib/gameAudio";
 import { recordTimingDiagnostic, startTimingDiagnosticSession } from "@/lib/timingDiagnostics";
 import { TrumpDeckMotion } from "./TrumpDeckMotion";
 import { PlayingCard } from "../joker/PlayingCard";
@@ -145,7 +145,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     const count = stage === "initial" ? 12 : stage === "remaining" ? 24 : projection.progression.cardsPerPlayer * 4; const dealer = projection.progression.dealerSeat as SeatIndex;
     return Array.from({ length: count }, (_, index) => ({ id: `${stageKey}:${index}`, seat: recipientFor(dealer, index), index, stackIndex: Math.floor(index / 4) + (stage === "remaining" ? 3 : 0) }));
   }, [projection.progression.cardsPerPlayer, projection.progression.dealerSeat, stage, stageKey]);
-  const clearTimers = useCallback(() => { runs.current.invalidate(); for (const timer of timers.current) window.clearTimeout(timer); timers.current = []; }, []);
+  const clearTimers = useCallback(() => { stopGameDealAudio(); runs.current.invalidate(); for (const timer of timers.current) window.clearTimeout(timer); timers.current = []; }, []);
   const clearPresentation = useCallback(() => { clearTimers(); running.current = false; waitingForFirstHand.current = null; afterTrump.current = null; setTrumpMotionActive(false); setTrumpPlaced(false); setSettling(false); onSettlingChangeRef.current?.(false); setBeats([]); setVisibleIndex(-1); setRunGeometry(null); onActiveChangeRef.current?.(false); }, [clearTimers]);
   const notifyCompletion = useCallback((key: string, presentationStage: DealPresentationStage, startup: boolean) => {
     const completionScope = `${key}:${startup ? "startup" : "gameplay"}`;
@@ -201,7 +201,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     if (!artworkSettled || canvasPrepared === null) { onActiveChangeRef.current?.(true); return; }
     // A cancelled handoff can replay this run; hide its old placed deck first.
     if (presentedTrumpKey.current != null) { presentedTrumpKey.current = null; onTrumpPlacedRef.current?.(null); }
-    clearTimers(); startTimingDiagnosticSession(projection.gameId); running.current = true; previousStageKey.current = stageKey; onActiveChangeRef.current?.(true);
+    clearTimers(); prepareGameAudio(); startTimingDiagnosticSession(projection.gameId); running.current = true; previousStageKey.current = stageKey; onActiveChangeRef.current?.(true);
     const frozenSequence = sequence.map((beat) => ({ ...beat })); const frozenGeometry = geometry; const frozenViewerSeat = projection.viewerSeat; const frozenDealerPos = visualPosition(frozenViewerSeat, projection.progression.dealerSeat as SeatIndex);
     setCanvasWidth(presentationWidth("var(--desktop-deal-card-w,clamp(3.4rem,8vw,5.5rem))",54.4));
     setRunGeometry(frozenGeometry); setRunViewerSeat(frozenViewerSeat); setRunDealerPos(frozenDealerPos); setBeats(frozenSequence); setVisibleIndex(-1);
