@@ -2,6 +2,8 @@ import type { Card, Suit } from "@/domain/cards";
 import type { PlayerGameProjection } from "@/domain/projection";
 import { SuitSymbol } from "../joker/SuitSymbol";
 import { PlayingCard } from "../joker/PlayingCard";
+import { assets } from "@/assets/registry";
+import { CanvasStaticCards } from "./canvas/CanvasStaticCards";
 
 const SUIT_META: Record<Suit, { symbol: string; label: string; tone: string }> = {
   hearts: { symbol: "♥", label: "Κούπες", tone: "text-red-600" },
@@ -21,8 +23,10 @@ export function TrumpIndicator({ trump, exposedTrumpCard }: {
   exposedTrumpCard: Card | null;
 }) {
   if (exposedTrumpCard) return <div className="relative w-[var(--card-w)]" data-trump-deck>
-    {[2, 1].map(layer => <div key={layer} className="absolute left-0 top-0" style={{ transform: `translate(${layer * 3}px, ${layer * -2}px)` }}><PlayingCard faceDown /></div>)}
-    <PlayingCard card={exposedTrumpCard} />
+    <CanvasStaticCards kind="trump" count={3} faceUrl={assets.cardFace(exposedTrumpCard)}>
+      {[2, 1].map(layer => <div key={layer} className="absolute left-0 top-0" style={{ transform: `translate(${layer * 3}px, ${layer * -2}px)` }}><PlayingCard faceDown /></div>)}
+      <div data-static-card-measure><PlayingCard card={exposedTrumpCard} /></div>
+    </CanvasStaticCards>
   </div>;
   if (trump.status !== "resolved") return null;
 
