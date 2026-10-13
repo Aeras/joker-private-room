@@ -43,7 +43,7 @@ export function TableUtilityMenu({
         <JButton
           variant="outlineGold"
           size="sm"
-          className="h-8 w-8 bg-black/60 px-0"
+          className="h-11 w-11 min-w-11 touch-manipulation bg-black/60 px-0"
           aria-label="Περισσότερες επιλογές"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
@@ -51,7 +51,7 @@ export function TableUtilityMenu({
           <MoreHorizontal className="h-4 w-4" />
         </JButton>
         {open && (
-          <div className="absolute right-0 top-10 z-[85] min-w-52 rounded-xl border border-white/10 bg-black/90 p-1.5 text-sm shadow-2xl backdrop-blur">
+          <div className="absolute right-0 top-12 z-[85] min-w-52 rounded-xl border border-white/10 bg-black/90 p-1.5 text-sm shadow-2xl backdrop-blur">
             <button
               type="button"
               className="w-full rounded-lg px-3 py-2 text-left text-white/80 hover:bg-white/10"
