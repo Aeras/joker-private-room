@@ -121,6 +121,7 @@ export function TableSeat({ seat, stats, showCards = true, entrance = false, loc
       aria-label={showCountdown ? `Ενεργός παίκτης, ${remainingSeconds} δευτερόλεπτα απομένουν` : stats.isActive ? "Ενεργός παίκτης" : undefined}
     >
       <div className="relative rounded-full bg-black p-0.5">
+        <div className={cn("relative", avatarSize)}>
         {reactionEmoji && emojiUrl(reactionEmoji) ? (
           <div data-emoji-seat={seat.index} className={cn(avatarSize, "relative isolate overflow-visible rounded-full bg-secondary")} role="img" aria-label="Smiley αντίδραση">
             <img
@@ -143,15 +144,16 @@ export function TableSeat({ seat, stats, showCards = true, entrance = false, loc
           )}
         />}
         {botTier && (
-          <div className={cn("pointer-events-none absolute inset-0 overflow-hidden rounded-full", avatarSize)}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-full"
             data-bot-tier={botTier} aria-label={`Bot επιπέδου ${botTier}`} role="img">
-            <div className="absolute inset-x-0 bottom-0 flex h-[27%] items-center justify-center gap-[2px] bg-[rgba(0,53,28,0.60)]">
+            <div className="absolute inset-x-0 bottom-0 flex h-[25%] items-center justify-center gap-[2px] bg-[rgba(0,53,28,0.60)]">
               {Array.from({ length: botTier }, (_, i) => (
                 <Star key={i} aria-hidden="true" className="h-[clamp(7px,1.4vw,10px)] w-[clamp(7px,1.4vw,10px)] fill-[#f7cb57] stroke-[#efb83b]" strokeWidth={1.4} />
               ))}
             </div>
           </div>
         )}
+        </div>
       </div>
       <span className={cn("joker-seat-connection absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-black", connected ? "bg-online" : "bg-muted-foreground")} aria-label={connected ? t.connected : t.disconnected} />
       {stats.isDealer && (
