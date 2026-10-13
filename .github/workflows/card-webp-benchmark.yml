@@ -1,5 +1,6 @@
 name: Card WebP experiment (non-production)
 on:
+  pull_request:
   push:
     branches:
       - experiment/card-webp-size-20261013
