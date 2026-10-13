@@ -129,6 +129,13 @@
 .joker-seat-info-local{display:flex;align-items:center;gap:8px;max-width:none;margin:0}
 .joker-remote-seat{--remote-hand-card-w:var(--desktop-remote-card-w,clamp(3.23rem,min(9.12vw,17.1vh),6.4125rem))}
 .joker-remote-hand{--card-w:var(--remote-hand-card-w)}
+/* Reveal the opponent backs in step with the local hand, from their screen edge. */
+@keyframes joker-remote-hand-enter{from{translate:var(--remote-entry-x) var(--remote-entry-y)}to{translate:0 0}}
+[data-visual-seat="1"] .joker-remote-hand{--remote-entry-x:-110vw;--remote-entry-y:0px}
+[data-visual-seat="2"] .joker-remote-hand{--remote-entry-x:0px;--remote-entry-y:-110vh}
+[data-visual-seat="3"] .joker-remote-hand{--remote-entry-x:110vw;--remote-entry-y:0px}
+.joker-remote-hand[data-hand-entrance="true"]{animation:joker-remote-hand-enter 800ms cubic-bezier(.22,1,.36,1) both;will-change:translate}
+@media(prefers-reduced-motion:reduce){.joker-remote-hand[data-hand-entrance="true"]{animation:none}}
 .joker-remote-hand{width:calc(var(--card-w)*(1 + (var(--remote-card-count) - 1)*.10));height:calc(var(--card-w)*1.4);transform-origin:center}
 [data-visual-seat="2"] .joker-remote-hand{top:calc(-4.33vh - var(--card-w)*.56);left:calc(100% + 8px);transform:rotate(180deg)}
 [data-visual-seat="1"] .joker-remote-hand,[data-visual-seat="3"] .joker-remote-hand{top:calc(var(--remote-avatar-height,56px) + 12px);width:calc(var(--card-w)*1.4);height:calc(var(--card-w)*(1 + (var(--remote-card-count) - 1)*.10))}
