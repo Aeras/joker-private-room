@@ -1,6 +1,6 @@
 import type { PlayerGameProjection } from "@/domain/projection";
 export const BOT_PROJECTION_POLL_MS = 200;
-export const REMOTE_HUMAN_PLAY_POLL_MS = 500;
+export const REMOTE_HUMAN_PLAY_POLL_MS = 350;
 export const IDLE_PROJECTION_POLL_MS = 1500;
 /** Public-state scheduling only. Foreground checks and the single-flight lock
  * remain in the route; this never advances a turn or authorizes a move. */

@@ -11,7 +11,7 @@ describe("bounded remote human observation latency", () => {
       p.progression.phase = "CARD_PLAY";
       p.progression.currentActorSeat = 1;
       p.seats[1].controller = "human";
-      expect(tablePollInterval(p)).toBe(500);
+      expect(tablePollInterval(p)).toBe(350);
       p.progression.currentActorSeat = 0;
       p.seats[0].controller = "human";
       expect(tablePollInterval(p)).toBe(1500);
@@ -38,10 +38,10 @@ describe("bounded remote human observation latency", () => {
         if (accepted && !detected) detected = Date.now();
       }, tablePollInterval(p));
       const start = Date.now();
-      vi.advanceTimersByTime(500);
+      vi.advanceTimersByTime(350);
       clearInterval(timer);
-      expect(detected - start).toBe(500);
-      expect(1500 - (detected - start)).toBe(1000);
+      expect(detected - start).toBe(350);
+      expect(1500 - (detected - start)).toBe(1150);
       // No production network or physical-device latency is inferred from this clock test.
     } finally {
       vi.useRealTimers();
