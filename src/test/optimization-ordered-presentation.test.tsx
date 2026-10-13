@@ -149,7 +149,7 @@ describe("presentation interruption and geometry", () => {
     });
     tick(599); expect(settling).not.toHaveBeenCalledWith(true);
     tick(1); expect(settling).toHaveBeenLastCalledWith(true);
-    tick(599);
+    tick(799);
     expect(complete).not.toHaveBeenCalled();
     expect(view.container.querySelectorAll("[data-deal-traveling-card]")).toHaveLength(4);
     tick(72); expect(complete).not.toHaveBeenCalled();
@@ -175,7 +175,7 @@ describe("presentation interruption and geometry", () => {
     expect(backs.every(back => back.style.opacity === "0")).toBe(true);
     view.rerender(<DealPresentation {...props} projection={{...next}} geometry={{...geometry,epoch:3}} />);
     tick(600); expect(settling).toHaveBeenLastCalledWith(true);
-    tick(671); expect(complete).toHaveBeenCalledTimes(1);
+    tick(871); expect(complete).toHaveBeenCalledTimes(1);
     tick(1); expect(complete).toHaveBeenCalledTimes(2); expect(sequenceComplete).toHaveBeenCalledOnce();
     expect(view.container.childElementCount).toBe(0);
   });
