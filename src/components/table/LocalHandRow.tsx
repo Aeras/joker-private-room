@@ -1,7 +1,7 @@
 import {useCanvasArtwork} from "./canvas/useCanvasArtwork";
 import { HAND_LANDING_EASING } from "./dealtCardMotion";
 import { useReducedMotion } from "./useReducedMotion";
-import { HAND_REVEAL_SPREAD_MS, REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
+import { HAND_REVEAL_SPREAD_MS, LOCAL_HAND_FLIP_MS, REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { assets } from "@/assets/registry";
@@ -58,7 +58,7 @@ export function LocalHandRow({
     if(visual.hitTarget&&visual.logicalCenter)inputTargets.current.set(visual.id,{element:visual.hitTarget,center:visual.logicalCenter});
     const now=performance.now(),old=tracks.current.get(visual.id);
     const duration=reduced?75:revealing?Math.max(0,LOCAL_HAND_ENTRANCE_MS-(now-visibleAt.current)):HAND_REFLOW_MS;
-    const next=updateHandTrack(old,visual,now,duration,reduced?75:340);
+    const next=updateHandTrack(old,visual,now,duration,reduced?75:LOCAL_HAND_FLIP_MS);
     if(!old&&revealing&&duration>0) next.position={...next.position,from:{...next.position.from,y:next.position.from.y+(reduced?12:next.position.from.height),opacity:reduced?0:1},duration,landing:true};
     tracks.current.set(visual.id,next);reviseVisual(n=>n+1);
   },[revealing,reduced]);

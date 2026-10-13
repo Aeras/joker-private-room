@@ -61,12 +61,13 @@ function progressPresentation(tricksTaken: number, declaration: number | null) {
   };
 }
 
-export function TableSeat({ seat, stats, showCards = true, local = false, reactionEmoji, chatMessage, declarationBubble, chatSide = "right", visualSeat = 2 }: {
+export function TableSeat({ seat, stats, showCards = true, entrance = false, local = false, reactionEmoji, chatMessage, declarationBubble, chatSide = "right", visualSeat = 2 }: {
   visualSeat?: 0 | 1 | 2 | 3;
   seat: Seat;
   stats: SeatStats;
   orientation: "horizontal" | "vertical";
   showCards?: boolean;
+  entrance?: boolean;
   local?: boolean;
   infoLayout?: "below" | "left";
   reactionEmoji?: string | null | undefined;
@@ -174,7 +175,7 @@ export function TableSeat({ seat, stats, showCards = true, local = false, reacti
     <div className="relative" data-visual-seat={visualSeat}>
       {identity}
       {showCards && stats.cardCount > 0 && (
-        <div data-remote-hand={visualSeat} aria-label={`${stats.cardCount} κλειστά φύλλα`} className="joker-remote-hand pointer-events-none absolute" style={{ "--remote-card-count": Math.min(stats.cardCount, 9) } as React.CSSProperties}>
+        <div data-remote-hand={visualSeat} data-hand-entrance={entrance ? "true" : undefined} aria-label={`${stats.cardCount} κλειστά φύλλα`} className="joker-remote-hand pointer-events-none absolute" style={{ "--remote-card-count": Math.min(stats.cardCount, 9) } as React.CSSProperties}>
           {Array.from({ length: Math.min(stats.cardCount, 9) }, (_, i) => <div key={i} className="absolute" style={{ transform: visualSeat === 2 ? `translateX(${i * 10}%)` : `translateY(${i * 10 / 1.4}%) rotate(${visualSeat === 1 ? 90 : -90}deg)` }}><PlayingCard faceDown /></div>)}
         </div>
       )}

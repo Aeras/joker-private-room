@@ -5,6 +5,7 @@ import { PlayingCard } from "../joker/PlayingCard";
 import { shouldCommitCardGesture, shouldCommitCardRelease } from "./cardGesture";
 import type { CardReleaseRect, RectLike } from "./useTableGeometry";
 import type { HandVisual } from "./canvas/handSceneMotion";
+import { LOCAL_HAND_FLIP_MS } from "./presentationTiming";
 
 type DragState = {
   pointerId: number;
@@ -259,8 +260,8 @@ export function DraggableHandCard({
     >
       <div style={{visibility:canvasOwned?"hidden":undefined}} className="[perspective:900px]" data-hand-card={card.id} data-hand-revealing={revealing} data-hand-flip-delay={faceUpOnReveal ? 0 : 190 + zIndex * 22}>
         <div
-          className="relative transition-transform duration-[340ms] motion-reduce:duration-75 [transform-style:preserve-3d]"
-          style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)`, transitionDuration:canvasOwned?"0ms":undefined,transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)" }}
+          className="relative transition-transform motion-reduce:duration-75 [transform-style:preserve-3d]"
+          style={{ transform: `rotateY(${faceVisible ? 0 : 180}deg)`, transitionDuration:canvasOwned?"0ms":`${LOCAL_HAND_FLIP_MS}ms`,transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)" }}
         >
           <div className="relative [backface-visibility:hidden]">
             <PlayingCard

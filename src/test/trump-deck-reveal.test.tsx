@@ -56,7 +56,7 @@ describe("ordinary deal trump reveal and deck placement", () => {
     expect(piles().every(card => card.style.transitionDuration.startsWith("600ms"))).toBe(true);
     tick(599); expect(settling).not.toHaveBeenCalledWith(true);
     tick(1); expect(settling).toHaveBeenLastCalledWith(true);
-    tick(671); expect(complete).not.toHaveBeenCalled(); tick(1); expect(complete).toHaveBeenCalledOnce();
+    tick(871); expect(complete).not.toHaveBeenCalled(); tick(1); expect(complete).toHaveBeenCalledOnce();
   });
   it("uses bounded completion fallbacks when native motion events are absent", () => {
     const placed = vi.fn(), complete = vi.fn();
@@ -64,7 +64,7 @@ describe("ordinary deal trump reveal and deck placement", () => {
     tick(1358); tick(16); tick(TRUMP_FLIP_MS + 120);
     expect(view.container.querySelector("[data-trump-deck-motion]")?.getAttribute("data-trump-deck-motion")).toBe("moving");
     tick(TRUMP_DECK_MOVE_MS + 119); expect(placed).not.toHaveBeenCalled();
-    tick(1); expect(placed).toHaveBeenCalledOnce(); tick(1272); expect(complete).toHaveBeenCalledOnce();
+    tick(1); expect(placed).toHaveBeenCalledOnce(); tick(1472); expect(complete).toHaveBeenCalledOnce();
   });
   it.each(["flipping", "moving"])("cancelled %s cannot acknowledge; same-key resume finishes once", stage => {
     const complete = vi.fn(), placed = vi.fn(); const projection = fixture();
@@ -73,7 +73,7 @@ describe("ordinary deal trump reveal and deck placement", () => {
     fireEvent.blur(window); tick(10000); expect(placed).not.toHaveBeenCalled(); expect(complete).not.toHaveBeenCalled();
     view.rerender(<DealPresentation projection={structuredClone(projection)} geometry={{ ...geometry, epoch: 9 }} onTrumpPlaced={placed} onPresentationComplete={complete} />);
     fireEvent.focus(window); tick(1358); tick(16); finish(view.container.querySelector("[data-trump-flip]")); finish(view.container.querySelector("[data-trump-deck-motion]"));
-    tick(1272); expect(complete).toHaveBeenCalledOnce(); expect(placed).toHaveBeenCalledOnce();
+    tick(1472); expect(complete).toHaveBeenCalledOnce(); expect(placed).toHaveBeenCalledOnce();
   });
   it("startup waits for trump placement, then canonical hand visibility, before handoff", () => {
     const projection = fixture(); projection.lifecycle = "starting"; projection.progression.phase = "DEAL_SETUP"; projection.cards.ownHandVisible = false; projection.cards.ownHand = [];
@@ -86,7 +86,7 @@ describe("ordinary deal trump reveal and deck placement", () => {
     const next = structuredClone(projection); next.lifecycle = "active"; next.progression.phase = "DEAL_PRESENTATION"; next.cards.ownHandVisible = true; next.cards.ownHand = [{ id: "own", kind: "standard", suit: "spades", rank: "A" }];
     view.rerender(<DealPresentation {...props} projection={next} />);
     expect(view.container.querySelector("[data-deal-settling]")?.getAttribute("data-deal-settling")).toBe("true");
-    tick(1272); expect(complete).toHaveBeenCalledTimes(2); expect(sequence).toHaveBeenCalledOnce();
+    tick(1472); expect(complete).toHaveBeenCalledTimes(2); expect(sequence).toHaveBeenCalledOnce();
   });
   it("hides the prior placed deck when an interrupted handoff replays", () => {
     const placed = vi.fn(), complete = vi.fn(), projection = fixture();
@@ -97,7 +97,7 @@ describe("ordinary deal trump reveal and deck placement", () => {
     fireEvent.focus(window); expect(placed).toHaveBeenLastCalledWith(null);
     tick(1358); tick(16); finish(view.container.querySelector("[data-trump-flip]")); finish(view.container.querySelector("[data-trump-deck-motion]"));
     expect(placed.mock.calls.map(call => call[0])).toEqual([`${projection.gameId}:2`, null, `${projection.gameId}:2`]);
-    tick(1272); expect(complete).toHaveBeenCalledOnce();
+    tick(1472); expect(complete).toHaveBeenCalledOnce();
   });
 
 });

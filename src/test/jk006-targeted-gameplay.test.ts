@@ -31,7 +31,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     expect(DEALER_SELECTION_WINNER_HOLD_MS).toBe(490);
     expect(NORMAL_DEAL_STAGGER_MS).toBe(350);
     expect(NORMAL_DEAL_TRAVEL_MS).toBe(308);
-    expect(NORMAL_DEAL_SETTLE_MS).toBe(1200);
+    expect(NORMAL_DEAL_SETTLE_MS).toBe(1400);
     expect(NORMAL_DEAL_TAIL_MS).toBe(72);
     expect(NORMAL_TRICK_INTER_PLAY_BEAT_MS).toBe(0);
     expect(NORMAL_TRICK_PLAY_SPACING_MS).toBe(NORMAL_TRICK_SETTLE_MS + NORMAL_TRICK_INTER_PLAY_BEAT_MS);
@@ -107,7 +107,7 @@ describe("JK-006 targeted gameplay timing and termination", () => {
     const trump = read("src/components/table/TrumpIndicator.tsx");
     const trick = read("src/components/table/TrickPresentation.tsx");
 
-    expect(table).toContain('showCards={!startupPresentationActive && !handRevealActive && projection.progression.phase !== "NINE_CARD_TRUMP_CHOICE"}');
+    expect(table).toContain('showCards={handRevealActive || (!startupPresentationActive && projection.progression.phase !== "NINE_CARD_TRUMP_CHOICE")}');
     expect(table).toContain('projection.progression.phase === "DEAL_PRESENTATION"');
     expect(table).toContain('projection.progression.phase === "NINE_CARD_INITIAL_DEAL_ALL_SEATS"');
     expect(table).toContain('projection.progression.phase === "NINE_CARD_REMAINING_DEAL"');
