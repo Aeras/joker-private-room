@@ -4,6 +4,7 @@ import { getCurrentPlayer, logoutPlayer } from "@/services/authFunctions";
 import { realIdentityService } from "@/services/realIdentity";
 import { authFailureMessage } from "@/lib/auth-feedback";
 import { JButton } from "./JButton";
+import { cardImageFormat, isCardImageAdmin, saveCardImageFormat, type CardImageFormat } from "@/assets/cardFormat";
 
 /** Login once using the existing httpOnly server session; no PIN is persisted client-side. */
 export function PlayerSessionGate({ children, onAuthenticated, allowLogout = true }: { children: (player: PublicPlayer) => React.ReactNode; onAuthenticated?: () => void; allowLogout?: boolean }) {
@@ -11,6 +12,7 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
   const [choices, setChoices] = useState<PublicPlayer[]>([]);
   const [selected, setSelected] = useState("");
   const [pin, setPin] = useState("");
+  const [format, setFormat] = useState<CardImageFormat>(() => cardImageFormat());
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -45,13 +47,16 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
     try {
       const result = await realIdentityService.verifyPin(selected, pin);
       if (!result.ok) { setError(authFailureMessage(result)); return; }
+      saveCardImageFormat(isCardImageAdmin(result.player) ? format : "png");
       setPlayer(result.player); setPin(""); onAuthenticated?.();
+      // Ensure preload and Canvas texture caches use the same format consistently.
+      window.location.reload();
     } catch { setError("Αδυναμία σύνδεσης. Δοκίμασε ξανά."); }
     finally { setBusy(false); }
   }
   async function disconnect() {
     setBusy(true);
-    try { await logoutPlayer(); setPlayer(null); }
+    try { await logoutPlayer(); saveCardImageFormat("png"); setFormat("png"); setPlayer(null); }
     catch { setError("Αδυναμία αποσύνδεσης."); }
     finally { setBusy(false); }
   }
@@ -73,6 +78,14 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
     <label className="block text-sm">Προσωπικό PIN
       <input type="password" inputMode="numeric" autoComplete="off" aria-label="Προσωπικό PIN" value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} className="mt-1 w-full rounded-lg bg-secondary p-3" />
     </label>
+    {choices.some(p => p.id === selected && isCardImageAdmin(p)) && (
+      <label className="block text-sm">Μορφή εικόνων τράπουλας (μόνο για δοκιμή)
+        <select aria-label="Μορφή εικόνων τράπουλας" className="mt-1 w-full rounded-lg bg-secondary p-3" value={format} onChange={e => setFormat(e.target.value as CardImageFormat)}>
+          <option value="png">PNG (αρχική)</option>
+          <option value="webp">WebP (δοκιμαστική)</option>
+        </select>
+      </label>
+    )}
     {error && <p role="alert" className="text-negative text-sm">{error}</p>}
     <JButton type="submit" disabled={busy || pin.length !== 4 || !selected} className="w-full">Σύνδεση</JButton>
   </form>;
