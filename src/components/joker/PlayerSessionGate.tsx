@@ -66,6 +66,19 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
       <span>Συνδεδεμένος: <strong>{player.displayName}</strong></span>
       {allowLogout && <button className="underline text-muted-foreground" type="button" disabled={busy} onClick={() => void disconnect()}>Αποσύνδεση</button>}
     </div>
+    {isCardImageAdmin(player) && (
+      <label className="mb-3 flex items-center justify-center gap-2 text-sm">Τράπουλα
+        <select aria-label="Μορφή εικόνων τράπουλας" className="rounded-lg bg-secondary px-3 py-2" value={format} onChange={e => {
+          const next = e.target.value as CardImageFormat;
+          saveCardImageFormat(next);
+          setFormat(next);
+          window.location.reload();
+        }}>
+          <option value="png">PNG</option>
+          <option value="webp">WebP</option>
+        </select>
+      </label>
+    )}
     {children(player)}
   </div>;
   return <form onSubmit={connect} className="panel mx-auto max-w-sm space-y-3 p-4">
