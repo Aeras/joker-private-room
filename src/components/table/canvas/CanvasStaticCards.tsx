@@ -29,7 +29,7 @@ export function CanvasStaticCards({
     if (!canvasFlightAvailable()) return;
     let active = true;
     void Promise.all([canvasCardAssets.warm(assets.cardBack), ...(faceUrl ? [canvasCardAssets.warm(faceUrl)] : [])])
-      .then(images => { if (active) images.every(Boolean) ? setReady(true) : setFailed(true); })
+      .then(images => { if (active) if (images.every(Boolean)) setReady(true); else setFailed(true); })
       .catch(() => { if (active) setFailed(true); });
     return () => { active = false; };
   }, [key, faceUrl]);
