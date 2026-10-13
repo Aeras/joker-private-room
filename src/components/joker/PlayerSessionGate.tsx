@@ -7,7 +7,7 @@ import { JButton } from "./JButton";
 import { cardImageFormat, isCardImageAdmin, saveCardImageFormat, type CardImageFormat } from "@/assets/cardFormat";
 
 /** Login once using the existing httpOnly server session; no PIN is persisted client-side. */
-export function PlayerSessionGate({ children, onAuthenticated, allowLogout = true }: { children: (player: PublicPlayer) => React.ReactNode; onAuthenticated?: () => void; allowLogout?: boolean }) {
+export function PlayerSessionGate({ children, onAuthenticated, allowLogout = true, allowCardFormatSelection = false }: { children: (player: PublicPlayer) => React.ReactNode; onAuthenticated?: () => void; allowLogout?: boolean; allowCardFormatSelection?: boolean }) {
   const [player, setPlayer] = useState<PublicPlayer | null>(null);
   const [choices, setChoices] = useState<PublicPlayer[]>([]);
   const [selected, setSelected] = useState("");
@@ -66,7 +66,7 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
       <span>Συνδεδεμένος: <strong>{player.displayName}</strong></span>
       {allowLogout && <button className="underline text-muted-foreground" type="button" disabled={busy} onClick={() => void disconnect()}>Αποσύνδεση</button>}
     </div>
-    {isCardImageAdmin(player) && (
+    {allowCardFormatSelection && isCardImageAdmin(player) && (
       <label className="mb-3 flex items-center justify-center gap-2 text-sm">Τράπουλα
         <select aria-label="Μορφή εικόνων τράπουλας" className="rounded-lg bg-secondary px-3 py-2" value={format} onChange={e => {
           const next = e.target.value as CardImageFormat;
@@ -91,7 +91,7 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
     <label className="block text-sm">Προσωπικό PIN
       <input type="password" inputMode="numeric" autoComplete="off" aria-label="Προσωπικό PIN" value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} className="mt-1 w-full rounded-lg bg-secondary p-3" />
     </label>
-    {choices.some(p => p.id === selected && isCardImageAdmin(p)) && (
+    {allowCardFormatSelection && choices.some(p => p.id === selected && isCardImageAdmin(p)) && (
       <label className="block text-sm">Μορφή εικόνων τράπουλας (μόνο για δοκιμή)
         <select aria-label="Μορφή εικόνων τράπουλας" className="mt-1 w-full rounded-lg bg-secondary p-3" value={format} onChange={e => setFormat(e.target.value as CardImageFormat)}>
           <option value="png">PNG (αρχική)</option>
