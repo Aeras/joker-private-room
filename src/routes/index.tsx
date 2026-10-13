@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RotateCw, Spade, Dices } from "lucide-react";
+import { RotateCw, Spade, Club } from "lucide-react";
 import { RefreshButton } from "@/components/joker/RefreshButton";
 import { FullscreenButton } from "@/components/joker/FullscreenButton";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
@@ -43,9 +43,9 @@ function GameSelection() {
                   <strong><Spade className="inline-block h-5 w-5" aria-hidden="true" /> DURAK</strong>
                   <small>Δημιουργία ή συμμετοχή</small>
                 </a>
-                <div className="home-choice-card game-selection-unavailable" aria-disabled="true" aria-label="Ντόμινο — προσεχώς">
+                <div className="home-choice-card game-selection-unavailable" aria-disabled="true" aria-label="Μπιρίμπα — προσεχώς">
                   <span className="home-choice-card__number">03</span>
-                  <strong><Dices className="inline-block h-5 w-5" aria-hidden="true" /> ΝΤΟΜΙΝΟ</strong>
+                  <strong><Club className="inline-block h-5 w-5" aria-hidden="true" /> ΜΠΙΡΙΜΠΑ</strong>
                   <small>Προσεχώς</small>
                 </div>
                 {active.status === "error" && (
