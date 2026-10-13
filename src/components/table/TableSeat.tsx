@@ -1,4 +1,5 @@
 import { emojiUrl } from "./EmojiPicker";
+import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { assets } from "@/assets/registry";
 import type { Seat } from "@/domain/players";
@@ -81,6 +82,11 @@ export function TableSeat({ seat, stats, showCards = true, entrance = false, loc
   const id = o.type === "human" ? o.player.id : o.type === "bot" ? o.bot.id : `empty-${seat.index}`;
   const explicitAvatar = o.type === "human" ? o.player.avatarUrl : o.type === "bot" ? o.bot.avatarUrl : undefined;
   const connected = o.type === "bot" || (o.type === "human" && o.connected);
+  // Use the pinned strategy profile of the seated bot, never its avatar/name.
+  const botTier = o.type !== "bot" ? null :
+    o.bot.strategyProfileId === "probability-simulation-v1" ? 3 :
+    o.bot.strategyProfileId === "memory-inference-v1" ? 2 :
+    o.bot.strategyProfileId === "strong-basic-v1" ? 1 : null;
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -136,6 +142,16 @@ export function TableSeat({ seat, stats, showCards = true, entrance = false, loc
             stats.isTemporarilyControlled && "brightness-50 opacity-65 grayscale-[0.2]",
           )}
         />}
+        {botTier && (
+          <div className={cn("pointer-events-none absolute inset-0 overflow-hidden rounded-full", avatarSize)}
+            data-bot-tier={botTier} aria-label={`Bot επιπέδου ${botTier}`} role="img">
+            <div className="absolute inset-x-0 bottom-0 flex h-[27%] items-center justify-center gap-[2px] bg-[rgba(0,53,28,0.60)]">
+              {Array.from({ length: botTier }, (_, i) => (
+                <Star key={i} aria-hidden="true" className="h-[clamp(7px,1.4vw,10px)] w-[clamp(7px,1.4vw,10px)] fill-[#f7cb57] stroke-[#efb83b]" strokeWidth={1.4} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       <span className={cn("joker-seat-connection absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-black", connected ? "bg-online" : "bg-muted-foreground")} aria-label={connected ? t.connected : t.disconnected} />
       {stats.isDealer && (
