@@ -27,6 +27,8 @@ jobs:
           git add public/cards/webp
           if ! git diff --cached --quiet; then
             git commit -m "assets: add lossless WebP deck alongside PNG"
+            git fetch origin experiment/card-webp-size-20261013
+            git rebase FETCH_HEAD
             git push origin HEAD:experiment/card-webp-size-20261013
           fi
       - uses: actions/upload-artifact@v4
