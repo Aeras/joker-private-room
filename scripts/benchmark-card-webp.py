@@ -42,7 +42,8 @@ try:
         candidate = face.stem.lower()
         suit, _, rank = candidate.partition("_")
         aliases = {"jack":"11","queen":"12","king":"13","ace":"1"}
-        candidates = [candidate, f"{suit}-{aliases.get(rank,rank)}", f"{suit.upper()}-{aliases.get(rank,rank)}"]
+        singular = suit[:-1] if suit.endswith("s") else suit
+        candidates = [candidate, f"{suit}-{aliases.get(rank,rank)}", f"{singular}-{aliases.get(rank,rank)}", f"{singular.upper()}-{aliases.get(rank,rank)}"]
         src = next((x for x in svg_dir.glob("*.svg") if x.stem.lower() in [v.lower() for v in candidates]), None)
         if src is None:
             item["svgError"] = "missing SVG"
@@ -66,7 +67,8 @@ except Exception as exc:
 fields = ("pngOriginalBytes","pngOptimizedBytes","webpLosslessBytes","webpQuality95Bytes",
           "svgWebpLosslessBytes","svgWebpQuality95Bytes")
 total = {field:sum(row.get(field,0) for row in rows) for field in fields}
-report = {"assetCount":len(rows),"pngLosslessPixelExact":True,"svgWarning":svg_error,
+svg_count = sum("svgWebpLosslessBytes" in row for row in rows)
+report = {"assetCount":len(rows),"svgConvertedCount":svg_count,"pngLosslessPixelExact":True,"svgWarning":svg_error,
           "note":"SVG outputs independently rasterized; visual parity with existing PNG is NOT asserted.",
           "totalsBytes":total,
           "savingsVersusOptimizedPNGPercent":{
