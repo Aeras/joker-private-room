@@ -10,13 +10,18 @@ import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js"
  * or score authority live in this renderer; future multiplayer updates pass
  * sanitized viewer-specific snapshots only.
  */
-export function BiribaPixiPreview({deal,game,redTeam=0}:{deal?:BiribaDealtPreview|undefined;game?:BiribaGameView|undefined;redTeam?:number}) {
+export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:BiribaDealtPreview|undefined;game?:BiribaGameView|undefined;redTeam?:number;onDealComplete?:((key:string)=>void)|undefined}) {
   const mount = useRef<HTMLDivElement>(null);
+  const lastDealtRound=useRef<string|null>(null);
   useEffect(() => {
     const parent = mount.current;
     if (!parent) return;
     let disposed = false;
     let app: Application | undefined;
+    let dealTimer:ReturnType<typeof setTimeout>|undefined;
+    const dealKey=game?`${game.roundNumber}:${game.seat}`:null;
+    const dealEntrance=dealKey!==null&&lastDealtRound.current!==dealKey;
+    if(dealEntrance)lastDealtRound.current=dealKey;
     void (async () => {
       const pixi = new Application();
       await pixi.init({ resizeTo: parent, backgroundAlpha: 0, antialias: true, resolution: Math.min(devicePixelRatio || 1, 2), autoDensity: true });
@@ -118,7 +123,7 @@ export function BiribaPixiPreview({deal,game,redTeam=0}:{deal?:BiribaDealtPrevie
       text("ΕΣΥ",640,570,22);
       (pixi as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver=observer;
     })();
-    return ()=>{disposed=true;if(app){(app as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver?.disconnect();app.destroy(true,{children:true});}};
-  },[deal,game,redTeam]);
+    return ()=>{disposed=true;if(dealTimer)clearTimeout(dealTimer);if(app){(app as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver?.disconnect();app.destroy(true,{children:true});}};
+  },[deal,game,redTeam,onDealComplete]);
   return <div ref={mount} className="absolute inset-0" role="img" aria-label="Προεπισκόπηση τραπεζιού Μπιρίμπας με κόκκινη και μπλε ομάδα, κατεβασμένες σειρές, κλειστή τράπουλα, πεταμένα και ανοιχτά φύλλα στο κάτω μέρος"/>;
 }
