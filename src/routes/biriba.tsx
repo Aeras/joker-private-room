@@ -133,6 +133,17 @@ function BiribaContent({playerId}:{playerId:string}){
 
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
    <TableSurface/><BiribaPixiPreview deal={preview} game={game??undefined} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
+   {/* Seats are anchored to the actual screen edges. Local hand remains at bottom. */}
+   {game&&[...(game.seats===4?[1,2,3]:[1])].map(delta=>{
+    const seatIndex=(game.seat+delta)%game.seats;
+    const seat=game.roomSeats[seatIndex];
+    const position=game.seats===2||delta===2?"left-1/2 top-[2%] -translate-x-1/2":delta===1?"left-[0.5%] top-[39%]":"right-[0.5%] top-[39%]";
+    return <div key={seatIndex} className={`pointer-events-none absolute z-20 flex flex-col items-center gap-1 ${position}`}>
+     <PlayerAvatar name={seat?.name??"Παίκτης"} imageUrl={seat?.name?assets.avatar("",seat.name):undefined} isBot={seat?.occupant==="bot"} size="sm"/>
+     <span className="max-w-[115px] truncate rounded bg-black/60 px-1 text-center text-[10px] text-white">{seat?.name??"Παίκτης"}</span>
+    </div>;
+   })}
+
    <div className="absolute left-3 top-3 z-20 rounded-lg bg-black/80 p-2 text-xs text-white">
     <div>ΜΠΙΡΙΜΠΑ · {room.code} · {room.target.toLocaleString("el-GR")} πόντοι</div>
     <div>{game?.roundEnded?"Τέλος γύρου":game? `Σειρά θέσης ${game.turn+1} · ${game.phase==="draw"?"Τράβηγμα":"Κατέβασμα / Πέταγμα"}`:"Φόρτωση παρτίδας…"}</div>
