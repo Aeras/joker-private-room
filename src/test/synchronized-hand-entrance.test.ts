@@ -18,7 +18,8 @@ describe("synchronized hand-entrance presentation", () => {
   });
 
   it("shows opponent hands with the local reveal instead of after it", () => {
-    expect(table).toContain("showCards={handRevealActive || (!startupPresentationActive");
+    expect(table).toContain("const remoteHandsRevealed = handRevealActive || revealedHands.current.has(");
+    expect(table).toContain('showCards={remoteHandsRevealed || (!startupPresentationActive');
     expect(table).toContain("entrance={handRevealActive}");
     expect(table).toContain("startupPresentationActive && !handRevealActive ? 0 : publicRemainingCardCount");
     expect(seat).toContain('data-hand-entrance={entrance ? "true" : undefined}');
