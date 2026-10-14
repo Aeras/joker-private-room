@@ -43,7 +43,7 @@ export function prepareGameAudio(): void {
   for (const kind of ["shuffle", "deal", "play"] as const) {
     if (decoded.has(kind) || pending.has(kind)) continue;
     const load = fetch(SOUND_PATH[kind])
-      .then(response => { if (!response.ok) throw new Error("AUDIO_FETCH"); return response.arrayBuffer(); })
+      .then(response => { if (!response.ok) return Promise.reject(new Error("AUDIO_FETCH")); return response.arrayBuffer(); })
       .then(buffer => ctx.decodeAudioData(buffer))
       .then(buffer => { if (context === ctx) decoded.set(kind, buffer); })
       .catch(() => undefined)
