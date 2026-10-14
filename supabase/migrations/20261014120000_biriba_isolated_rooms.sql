@@ -198,4 +198,4 @@ begin
 end;
 $$;
 revoke all on function public.biriba_room_command_internal(text,text,text,integer,integer,boolean,integer,text,jsonb,jsonb,bigint) from public,anon,authenticated;
-grant execute on function public.biriba_room_command_internal(text,text,text,integer,integer,integer,text,jsonb,jsonb,bigint) to service_role;
+grant execute on function public.biriba_room_command_internal(text,text,text,integer,integer,boolean,integer,text,jsonb,jsonb,bigint) to service_role;
