@@ -3,7 +3,8 @@ import type { BiribaGameView } from "@/services/biribaFunctions";
 import {biribaMeldBonus,biribaCardPoints,biribaTeamOf} from "./rules";
 import { useEffect, useRef } from "react";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
-import { NORMAL_DEAL_STAGGER_MS, NORMAL_DEAL_TRAVEL_MS, NORMAL_DEAL_HANDOFF_TRAVEL_MS, NORMAL_DEAL_HANDOFF_FADE_MS, LOCAL_HAND_ENTRANCE_MS, LOCAL_HAND_FLIP_MS } from "@/components/table/presentationTiming";
+import { NORMAL_DEAL_TRAVEL_MS, NORMAL_DEAL_HANDOFF_TRAVEL_MS } from "@/components/table/presentationTiming";
+import { dealtCardPose, dealProgress } from "@/components/table/dealtCardMotion";
 
 /**
  * BIRIBA visual proof of concept. Matches the approved red/blue team-zone
@@ -122,80 +123,81 @@ export function BiribaPixiPreview({deal,game,redTeam=0,revealComplete=false,onDe
       piles.forEach(([label,c,x])=>{void addCard(c,x,397,1.15);text(label,x+32,522,13);});
       box(1090,510,135,44,0x252923,.94,0xc3a24f);text(`ΑΤΟΥ ${deal?(deal.trump?suitIcon[deal.trump]:"—"):"♣"}`,1158,531,21);
 
+      // Use Joker's card flight easing and spatial pile presentation. Eleven
+      // backs converge into each player's full-size stack; no 44 tiny cards.
+      const BACK_W=74, BACK_H=106, BEAT_MS=58;
       const rear=(x:number,y:number,count:number,vertical=false)=>{
-        for(let i=0;i<count;i++)void addCard(null,x+(vertical?0:i*13),y+(vertical?i*13:0),.53,i*15);
+        for(let i=0;i<count;i++)void addCard(null,x+(vertical?0:i*2),y+(vertical?i*2:0),BACK_W/58);
       };
-      // Joker's presentation phases: card-by-card flight, off-screen handoff,
-      // then local hand rises and flips. The Biriba UI owns the actual face cards.
+      const topSeat=game?.seats===2?1:2;
+      const target=(delta:number):{x:number;y:number;angle:number}=>{
+        if(delta===0)return {x:562,y:605,angle:0};
+        if(delta===topSeat)return {x:578,y:-55,angle:0};
+        if(delta===1)return {x:leftEdge-39,y:258,angle:90};
+        return {x:rightEdge-31,y:258,angle:-90};
+      };
       if(game&&dealEntrance&&dealKey){
         const order=game.seats===4?[0,1,2,3]:[0,1];
         const flightCount=11*order.length;
-        const flightEnd=(flightCount-1)*NORMAL_DEAL_STAGGER_MS+NORMAL_DEAL_TRAVEL_MS;
-        const transitSprites:Sprite[]=[];
-        const backTexture=await Assets.load("/cards/optimized-png/backs/blue_back.png");
+        const allCards: Array<{sprite:Sprite;delta:number;end:{x:number;y:number;angle:number}}> = [];
+        const texture=await Assets.load("/cards/optimized-png/backs/blue_back.png");
         if(disposed)return;
         const entranceLayer=new Container();
         stage.addChild(entranceLayer);
-        for(let i=0;i<11;i++){
-          for(const delta of order){
-            const index=i*order.length+delta;
-            const top=game.seats===2||delta===2;
-            const x=delta===0?525+i*11:top?524+i*13:delta===1?leftEdge:rightEdge;
-            const y=delta===0?630:top?8:270+i*11;
-            const sx=392,sy=404;
-            const card=new Sprite(backTexture);
-            card.width=delta===0?44:36;
-            card.height=delta===0?65:53;
-            card.position.set(sx,sy);
-            card.alpha=0;
-            entranceLayer.addChild(card);
-            transitSprites.push(card);
-            schedule(()=>{
-              if(disposed)return;
-              const begin=pixi.ticker.lastTime;
-              card.alpha=1;
-              const animate=(ticker:{deltaMS:number})=>{
-                const elapsed=(pixi.ticker.lastTime-begin);
-                const progress=Math.min(1,Math.max(0,elapsed/NORMAL_DEAL_TRAVEL_MS));
-                const eased=1-Math.pow(1-progress,3);
-                card.x=sx+(x-sx)*eased;
-                card.y=sy+(y-sy)*eased;
-                if(progress>=1)pixi.ticker.remove(animate);
-              };
-              pixi.ticker.add(animate);
-            },index*NORMAL_DEAL_STAGGER_MS);
-          }
+        for(let i=0;i<11;i++)for(const delta of order){
+          const end=target(delta);
+          const sprite=new Sprite(texture);
+          sprite.width=BACK_W;
+          sprite.height=BACK_H;
+          sprite.position.set(390,402);
+          sprite.alpha=0;
+          entranceLayer.addChild(sprite);
+          allCards.push({sprite,delta,end});
+          const destination={x:end.x+i*2,y:end.y+i*2};
+          const from={x:390,y:402};
+          schedule(()=>{
+            if(disposed)return;
+            let elapsed=0;
+            sprite.alpha=1;
+            const tick=(ticker:{deltaMS:number})=>{
+              elapsed+=ticker.deltaMS;
+              const p=dealProgress(Math.min(1,elapsed/NORMAL_DEAL_TRAVEL_MS));
+              const pose=dealtCardPose(from,destination,0,end.angle,p);
+              sprite.position.set(pose.point.x,pose.point.y);
+              sprite.rotation=pose.rotation*Math.PI/180;
+              sprite.scale.set(pose.scale);
+              if(elapsed>=NORMAL_DEAL_TRAVEL_MS)pixi.ticker.remove(tick);
+            };
+            pixi.ticker.add(tick);
+          },(i*order.length+delta)*BEAT_MS);
         }
+        const flightEnd=(flightCount-1)*BEAT_MS+NORMAL_DEAL_TRAVEL_MS;
         schedule(()=>{
           if(disposed)return;
-          // Move the temporary piles out of sight, matching Joker's handoff.
-          const starts=transitSprites.map(card=>({x:card.x,y:card.y}));
+          const original=allCards.map(({sprite})=>({x:sprite.x,y:sprite.y}));
           let elapsed=0;
           const handoff=(ticker:{deltaMS:number})=>{
             elapsed+=ticker.deltaMS;
             const t=Math.min(1,elapsed/NORMAL_DEAL_HANDOFF_TRAVEL_MS);
-            transitSprites.forEach((card,index)=>{
-              const relative=index%order.length;
-              const exitX=relative===1&&game.seats===4?-80:relative===3?1360:starts[index]!.x;
-              const exitY=relative===0?800:relative===2||game.seats===2?-120:starts[index]!.y;
-              card.x=starts[index]!.x+(exitX-starts[index]!.x)*t;
-              card.y=starts[index]!.y+(exitY-starts[index]!.y)*t;
-              card.alpha=t<.58?1:Math.max(0,1-(t-.58)/.42);
+            allCards.forEach(({sprite,delta},index)=>{
+              const start=original[index]!;
+              const exit=delta===0?{x:start.x,y:780}:delta===topSeat?{x:start.x,y:-150}:delta===1?{x:leftEdge-180,y:start.y}:{x:rightEdge+180,y:start.y};
+              sprite.position.set(start.x+(exit.x-start.x)*t,start.y+(exit.y-start.y)*t);
+              sprite.alpha=t<.65?1:(1-t)/.35;
             });
-            if(t>=1){pixi.ticker.remove(handoff);entranceLayer.destroy({children:true});}
+            if(t>=1){
+              pixi.ticker.remove(handoff);
+              entranceLayer.destroy({children:true});
+            }
           };
           pixi.ticker.add(handoff);
-        },flightEnd+80);
-        schedule(()=>{
-          if(!disposed)onDealComplete?.(dealKey);
-        },flightEnd+NORMAL_DEAL_HANDOFF_TRAVEL_MS+NORMAL_DEAL_HANDOFF_FADE_MS+LOCAL_HAND_ENTRANCE_MS+LOCAL_HAND_FLIP_MS);
+        },flightEnd+90);
+        schedule(()=>{if(!disposed)onDealComplete?.(dealKey);},flightEnd+NORMAL_DEAL_HANDOFF_TRAVEL_MS+100);
       }else{
-        // Show only a slim, overlapped slice of opponent card backs, not tiny
-        // full cards in the middle of the felt.
-        rear(524,-34,game?game.handCounts[(game.seat+(game.seats===4?2:1))%game.seats]??0:8);
+        rear(578,-55,game?game.handCounts[(game.seat+topSeat)%game.seats]??0:11);
         if(!game||game.seats===4){
-          rear(leftEdge-25,248,game?game.handCounts[(game.seat+1)%game.seats]??0:6,true);
-          rear(rightEdge+5,248,game?game.handCounts[(game.seat+3)%game.seats]??0:6,true);
+          rear(leftEdge-39,258,game?game.handCounts[(game.seat+1)%game.seats]??0:11,true);
+          rear(rightEdge-31,258,game?game.handCounts[(game.seat+3)%game.seats]??0:11,true);
         }
       }
       (pixi as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver=observer;
