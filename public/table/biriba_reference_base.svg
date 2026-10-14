@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="none"><defs>
+<radialGradient id="felt"><stop stop-color="#136645"/><stop offset=".63" stop-color="#08432f"/><stop offset="1" stop-color="#02281b"/></radialGradient>
+<linearGradient id="wood" x1="0" x2=".2" y1="0" y2="1"><stop stop-color="#090707"/><stop offset=".15" stop-color="#603c26"/><stop offset=".28" stop-color="#17100c"/><stop offset=".52" stop-color="#382319"/><stop offset=".74" stop-color="#110c0a"/><stop offset="1" stop-color="#6b4226"/></linearGradient>
+<linearGradient id="gold" x1="0" y1="0" x2=".4" y2="1"><stop stop-color="#57341b"/><stop offset=".25" stop-color="#e9b567"/><stop offset=".52" stop-color="#75411a"/><stop offset=".8" stop-color="#e5a359"/><stop offset="1" stop-color="#442610"/></linearGradient>
+<radialGradient id="vignette"><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".4"/></radialGradient>
+<pattern id="grain" width="85" height="60" patternUnits="userSpaceOnUse"><path d="M0 9H85M0 12H85M0 35H85M0 37H85" stroke="#ffca83" stroke-opacity=".045"/><path d="M0 18H85M0 48H85" stroke="#000" stroke-opacity=".12"/></pattern></defs>
+<rect width="1600" height="900" fill="#080504"/><rect x="-32" y="-33" width="1664" height="925" rx="224" fill="url(#wood)" stroke="#0a0706" stroke-width="18"/>
+<rect x="-14" y="-18" width="1628" height="875" rx="213" fill="url(#grain)" opacity=".8"/><rect x="-12" y="-12" width="1624" height="860" rx="202" fill="none" stroke="url(#gold)" stroke-width="17"/>
+<rect x="8" y="10" width="1584" height="814" rx="189" fill="#061c15" stroke="#0f100c" stroke-width="10"/>
+<rect x="26" y="24" width="1548" height="782" rx="178" fill="url(#felt)"/><rect x="26" y="24" width="1548" height="782" rx="178" fill="url(#vignette)"/>
+<rect x="48" y="45" width="1504" height="739" rx="166" fill="none" stroke="#4e8c5f" stroke-opacity=".3" stroke-width="4"/>
+<path d="M25 754Q800 902 1575 754" fill="none" stroke="#f4b871" stroke-opacity=".35" stroke-width="3"/>
+<g fill="#b2ad6f" opacity=".11" font-family="serif" font-size="90"><text x="102" y="470">♠</text><text x="1430" y="470">♣</text></g></svg>

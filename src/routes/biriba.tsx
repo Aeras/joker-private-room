@@ -168,6 +168,16 @@ function BiribaContent({playerId}:{playerId:string}){
 
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
    <BiribaPixiPreview deal={preview} game={visualGame??undefined} revealComplete={dealShownKey===dealKey} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
+   {/* Foreground curved walnut avatar dock: cards rise from behind this lip. */}
+   <svg aria-hidden="true" viewBox="0 0 1600 260" preserveAspectRatio="none" className="pointer-events-none absolute inset-x-0 bottom-[-1px] z-[35] h-[clamp(60px,19vh,160px)] w-full">
+    <defs>
+     <linearGradient id="biribaFrontWalnut" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#52311c"/><stop offset=".17" stopColor="#20120d"/><stop offset=".55" stopColor="#100a08"/><stop offset="1" stopColor="#030302"/></linearGradient>
+     <linearGradient id="biribaFrontGold" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#f2c781"/><stop offset=".5" stopColor="#7a4218"/><stop offset="1" stopColor="#df994b"/></linearGradient>
+    </defs>
+    <path d="M-40 180 Q800 -135 1640 180 L1640 300 H-40 Z" fill="url(#biribaFrontWalnut)" stroke="#090605" strokeWidth="15"/>
+    <path d="M-40 180 Q800 -135 1640 180" fill="none" stroke="url(#biribaFrontGold)" strokeWidth="13"/>
+    <path d="M-40 192 Q800 -120 1640 192" fill="none" stroke="#a96a33" strokeOpacity=".45" strokeWidth="3"/>
+   </svg>
    {game&&<div className="pointer-events-none absolute bottom-0 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-0">
      <PlayerAvatar name={room.seats.find(seat=>seat.index===game.seat)?.name??"Εσύ"} imageUrl={biribaAvatar(room.seats.find(seat=>seat.index===game.seat))} size="lg"/>
     </div>}
