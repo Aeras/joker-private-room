@@ -130,7 +130,7 @@ export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:Bi
             const x=delta===0?355+i*43:(game.seats===2||delta===2?524+i*13:delta===1?leftEdge:rightEdge);
             const y=delta===0?596:(game.seats===2||delta===2?4:248+i*13);
             const delay=(i*order.length+delta)*115;
-            void addCard(null,x,y,delta===0?.98:.53,delay,[610,402]);
+            void addCard(null,x,y,delta===0?.98:.53,delay,[390,410]);
           }
         }
         dealTimer=setTimeout(()=>{
