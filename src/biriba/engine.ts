@@ -8,7 +8,7 @@ export type BiribaMatch={
  stock:BiribaCard[];discards:BiribaCard[];trump:BiribaSuit|null;
  initialJokerId:string|null;melds:BiribaMeld[];turn:number;phase:BiribaTurnPhase;
  opened:boolean[];packetTaken:boolean[];packetPlayed:boolean[];packetOwner:(number|null)[];
- pendingPacket:(number|null)[];roundEnded:boolean;closedBy:number|null;
+ pendingPacket:(number|null)[];forcedDiscardSeat:number|null;roundEnded:boolean;closedBy:number|null;
 };
 export type BiribaAction=
  |{type:"draw"}
@@ -22,7 +22,7 @@ export function beginBiribaMatch(seats:BiribaSeatCount,random:()=>number=Math.ra
  return {seats,hands:d.hands,packets:[...d.packets],stock:d.stock,discards:d.discard,
   trump:d.trump,initialJokerId:d.discard[0]?.joker?d.discard[0].id:null,melds:[],
   turn:0,phase:"draw",opened:Array(seats).fill(false),packetTaken:[false,false],
-  packetPlayed:[false,false],packetOwner:[null,null],pendingPacket:[null,null],
+  packetPlayed:[false,false],packetOwner:[null,null],pendingPacket:[null,null],forcedDiscardSeat:null,
   roundEnded:false,closedBy:null};
 }
 export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):BiribaMatch{
@@ -51,7 +51,8 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   }
   const top=next.stock.pop();
   if(!top)throw new Error("EMPTY_STOCK");
-  hand.push(top);next.phase="meld";return next;
+  const mustOnlyDiscard=hand.length===0&&!next.melds.some(md=>biribaTeamOf(md.ownerSeat,next.seats)===team&&md.cards.length>=7);
+  hand.push(top);next.phase="meld";next.forcedDiscardSeat=mustOnlyDiscard?seat:null;return next;
  }
  if(action.type==="pickup"){
   if(next.phase!=="draw")throw new Error("DRAW_ALREADY_DONE");
@@ -67,11 +68,13 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   if(ids.some(id=>!before.has(id)&&!pile.some(c=>c.id===id)))throw new Error("CARD_NOT_OWNED");
   takeIds(ids);
   next.melds.push(action.meld);
+  if(next.initialJokerId&&action.meld.cards.some(p=>p.card.id===next.initialJokerId))next.trump=action.meld.suit;
   next.opened[seat]=true;
   next.phase="meld";assessEmpty();
   return next;
  }
  if(action.type==="meld"){
+  if(next.forcedDiscardSeat===seat)throw new Error("MUST_DISCARD_DRAWN_CARD");
   if(next.phase!=="meld"||!biribaMeldValid(action.meld))throw new Error("INVALID_MELD");
   if(action.meld.ownerSeat!==seat)throw new Error("INVALID_OWNER");
   const ids=action.meld.cards.map(p=>p.card.id);
@@ -79,6 +82,7 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   assessEmpty();return next;
  }
  if(action.type==="extend"){
+  if(next.forcedDiscardSeat===seat)throw new Error("MUST_DISCARD_DRAWN_CARD");
   if(next.phase!=="meld")throw new Error("MUST_DRAW_FIRST");
   const previous=next.melds[action.index];
   if(!previous||!biribaMeldValid(action.meld)||previous.suit!==action.meld.suit||previous.highAce!==action.meld.highAce||previous.ownerSeat!==action.meld.ownerSeat)throw new Error("INVALID_EXTENSION");
@@ -106,7 +110,9 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   const eligible=next.packetTaken[team]&&next.packetPlayed[team]&&biribaCanFinish(
    next.melds.filter(md=>biribaTeamOf(md.ownerSeat,next.seats)===team),true,true);
   if(endsHand&&next.packetTaken[team]&&!eligible)throw new Error("CANNOT_FINISH_WITHOUT_BIRIBAS");
+  if(next.forcedDiscardSeat===seat&&hand.length!==1)throw new Error("MUST_DISCARD_DRAWN_CARD");
   next.discards.push(hand.splice(index,1)[0]!);
+  next.forcedDiscardSeat=null;
   if(endsHand&&eligible){next.closedBy=team;next.roundEnded=true;next.phase="ended";return next;}
   next.phase="draw";
   if(!next.packetTaken[team])assessEmpty();
