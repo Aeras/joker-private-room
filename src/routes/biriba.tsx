@@ -16,7 +16,7 @@ export const Route=createFileRoute("/biriba")({
  head:()=>({meta:[{title:"ΜΠΙΡΙΜΠΑ — Online παιχνίδι"}]}),component:BiribaHome
 });
 function BiribaHome(){
- return <PlayerSessionGate allowLogout={false}>{player=><BiribaContent playerId={player.id}/>}</PlayerSessionGate>;
+ return <PlayerSessionGate allowLogout={false} hideConnectedBanner>{player=><BiribaContent playerId={player.id}/>}</PlayerSessionGate>;
 }
 const ranks:Record<number,string>={1:"A",11:"J",12:"Q",13:"K"};
 const names:Record<string,string>={spades:"♠",hearts:"♥",diamonds:"♦",clubs:"♣"};
@@ -245,7 +245,7 @@ function BiribaContent({playerId}:{playerId:string}){
    </div>
   </main>;
  }
- return <ScreenShell title="ΜΠΙΡΙΜΠΑ" variant="pregame" hideNavigation={Boolean(room)} contentClassName={room?"!min-h-0 !overflow-hidden !py-1":"!overflow-y-auto !min-h-0 pb-8"}>
+ return <ScreenShell title="ΜΠΙΡΙΜΠΑ" variant="pregame" fixedViewport hideNavigation={Boolean(room)} contentClassName="!min-h-0 !overflow-hidden !py-1">
   <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 rounded-xl border border-primary/25 p-2">
    {error&&<p role="alert" className="text-red-400">{error}</p>}
    {!room&&<div className="grid grid-cols-2 gap-2">
