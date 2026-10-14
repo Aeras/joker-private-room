@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChartNoAxesColumn, ChevronDown, X, MoreVertical } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChartNoAxesColumn, ChevronDown, X } from "lucide-react";
 import { CANONICAL_BOTS } from "../../supabase/functions/_shared/bot-catalog";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
 import { ScreenShell } from "@/components/joker/ScreenShell";
 import { BiribaPixiPreview, BIRIBA_DEAL_BEAT_MS } from "@/biriba/BiribaPixiPreview";
+import { BiribaRoomControls } from "@/biriba/BiribaRoomControls";
 import "@/biriba/biribaReferenceTable.css";
 import {
   biribaCommand,
@@ -125,8 +126,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
   }, []);
   const [error, setError] = useState("");
   const [scoresOpen, setScoresOpen] = useState(false);
-  const [gameMenuOpen, setGameMenuOpen] = useState(false);
-  const [confirmEndGame, setConfirmEndGame] = useState(false);
+  const closedCodes = useRef(new Set<string>());
   const [picker, setPicker] = useState<"players" | "target" | null>(null);
   const [botSeatPicker, setBotSeatPicker] = useState<number | null>(null);
   const [dealShownKey, setDealShownKey] = useState<string | null>(null);
@@ -155,9 +155,10 @@ function BiribaContent({ playerId }: { playerId: string }) {
         const r = await biribaCommand({ data });
         if (!r.ok) {
           setError(format(r));
-          return;
+          return false;
         }
         if ("room" in r) {
+          closedCodes.current.delete(r.room.code);
           setRoom(r.room);
           setGame(null);
           setDealShownKey(null);
@@ -165,9 +166,11 @@ function BiribaContent({ playerId }: { playerId: string }) {
         if ("rooms" in r) setAvailable(r.rooms);
         if ("game" in r) setGame(r.game);
         if ("cancelled" in r) {
+          if (data.code) closedCodes.current.add(data.code);
           setRoom(null);
           setGame(null);
           setDealShownKey(null);
+          setMode("create");
         }
         if ("started" in r || "updated" in r) {
           if (room?.code) {
@@ -175,8 +178,10 @@ function BiribaContent({ playerId }: { playerId: string }) {
             if (changed.ok && "room" in changed) setRoom(changed.room);
           }
         }
+        return true;
       } catch {
         setError("Δεν ήταν δυνατή η σύνδεση με τον server.");
+        return false;
       } finally {
         setBusy(false);
       }
@@ -205,7 +210,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
     const poll = async () => {
       try {
         const result = await biribaCommand({ data: { action: "get", code } });
-        if (!current) return;
+        if (!current || closedCodes.current.has(code)) return;
         if (!result.ok && result.code === "ROOM_NOT_FOUND") {
           setRoom(null);
           setGame(null);
@@ -213,10 +218,25 @@ function BiribaContent({ playerId }: { playerId: string }) {
           setBotSeatPicker(null);
           return;
         }
+        if (result.ok && "room" in result && result.room.lifecycle === "finished") {
+          const final = await biribaCommand({ data: { action: "get_game", code } });
+          if (!current || closedCodes.current.has(code)) return;
+          if (!final.ok || !("game" in final) || !final.game.matchFinished) {
+            closedCodes.current.add(code);
+            setRoom(null);
+            setGame(null);
+            setDealShownKey(null);
+            setMode("create");
+            return;
+          }
+          setRoom(result.room);
+          setGame(final.game);
+          return;
+        }
         if (result.ok && "room" in result) setRoom((r) => (r?.version && r.version > result.room.version ? r : result.room));
         if (result.ok && "room" in result && result.room.lifecycle !== "waiting") {
           const next = await biribaCommand({ data: { action: "get_game", code } });
-          if (current && next.ok && "game" in next) setGame((previous) => (previous?.revision === next.game.revision ? previous : next.game));
+          if (current && !closedCodes.current.has(code) && next.ok && "game" in next) setGame((previous) => (previous?.revision === next.game.revision ? previous : next.game));
         }
       } catch {}
     };
@@ -267,6 +287,8 @@ function BiribaContent({ playerId }: { playerId: string }) {
     }
   };
 
+  const endGame = () => room ? run({ action: "end_game", code: room.code }) : Promise.resolve(false);
+
   if (room && room.lifecycle !== "waiting") {
     const mine =
       dealShownKey === dealKey &&
@@ -291,13 +313,13 @@ function BiribaContent({ playerId }: { playerId: string }) {
         ) ?? [];
 
     const redTeamIndex = (room.code.charCodeAt(0) || 0) % 2;
-    const redScore = game ? game.teamScores[redTeamIndex] ?? 120 : 120;
-    const blueScore = game ? game.teamScores[1 - redTeamIndex] ?? 80 : 80;
+    const redScore = game?.teamScores[redTeamIndex] ?? 0;
+    const blueScore = game?.teamScores[1 - redTeamIndex] ?? 0;
 
     return (
       <main className="biriba-table-container">
-        {/* Felt Oval Border & Walnut Trim matching the reference image */}
-        <div className="biriba-felt-border" />
+        {/* Live reference table artwork */}
+
 
         {/* Dynamic Canvas Layer (Melds, Opponent Card Backs, Center Piles, Animations) */}
         <BiribaPixiPreview
@@ -309,30 +331,30 @@ function BiribaContent({ playerId }: { playerId: string }) {
         />
 
         {/* 1. MELD ZONES (ΚΟΚΚΙΝΗ ΟΜΑΔΑ & ΜΠΛΕ ΟΜΑΔΑ) */}
-        <div className="pointer-events-none absolute left-[10.5%] top-[17%] z-10 h-[28%] w-[38.5%] biriba-team-zone biriba-team-zone--red">
-          <div className="absolute -top-[14px] left-3 flex items-center gap-2">
-            <span className="rounded bg-[#991b1b] px-3 py-0.5 text-xs font-bold text-white shadow">ΚΟΚΚΙΝΗ ΟΜΑΔΑ</span>
-            <span className="rounded bg-[#7f1d1d] px-2.5 py-0.5 text-xs font-black text-white shadow">{redScore}</span>
+        <div className="biriba-team-zone biriba-team-zone--red">
+          <div className="biriba-team-heading">
+            <span>ΚΟΚΚΙΝΗ ΟΜΑΔΑ</span>
+            <span className="biriba-team-score">{redScore}</span>
           </div>
         </div>
 
-        <div className="pointer-events-none absolute right-[10.5%] top-[17%] z-10 h-[28%] w-[38.5%] biriba-team-zone biriba-team-zone--blue">
-          <div className="absolute -top-[14px] left-3 flex items-center gap-2">
-            <span className="rounded bg-[#1d4ed8] px-3 py-0.5 text-xs font-bold text-white shadow">ΜΠΛΕ ΟΜΑΔΑ</span>
-            <span className="rounded bg-[#1e40af] px-2.5 py-0.5 text-xs font-black text-white shadow">{blueScore}</span>
+        <div className="biriba-team-zone biriba-team-zone--blue">
+          <div className="biriba-team-heading">
+            <span>ΜΠΛΕ ΟΜΑΔΑ</span>
+            <span className="biriba-team-score">{blueScore}</span>
           </div>
         </div>
 
         {/* 2. LABELS FOR CENTRAL PILES */}
-        <div className="pointer-events-none absolute left-1/2 top-[72%] z-20 flex -translate-x-1/2 items-center gap-[clamp(24px,5.5vw,70px)] text-[clamp(9px,1.1vw,11px)] font-bold text-white/90">
-          <span className="rounded bg-black/60 px-1.5 py-0.5">ΚΛΕΙΣΤΗ ΤΡΑΠΟΥΛΑ</span>
-          <span className="rounded bg-black/60 px-1.5 py-0.5">ΠΕΤΑΜΕΝΑ</span>
-          <span className="rounded bg-black/60 px-1.5 py-0.5">ΜΠΙΡΙΜΠΑΚΙ 1</span>
-          <span className="rounded bg-black/60 px-1.5 py-0.5">ΜΠΙΡΙΜΠΑΚΙ 2</span>
+        <div className="biriba-pile-labels">
+          <span className="biriba-pile-label">ΚΛΕΙΣΤΗ ΤΡΑΠΟΥΛΑ</span>
+          <span className="biriba-pile-label">ΠΕΤΑΜΕΝΑ</span>
+          <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 1</span>
+          <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 2</span>
         </div>
 
         {/* 3. TRUMP (ΑΤΟΥ) INDICATOR IN CENTER */}
-        <div className="pointer-events-none absolute left-1/2 top-[67%] z-20 flex -translate-x-1/2 items-center gap-2 text-xs font-bold text-amber-200">
+        <div className="biriba-trump-frame">
           <span>‹</span>
           <span className="tracking-widest">ΑΤΟΥ</span>
           <span>›</span>
@@ -340,21 +362,21 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
         {/* 4. PLAYER AVATARS ANCHORED AROUND THE TABLE */}
         {/* Local Player (ΕΣΥ) */}
-        <div className="pointer-events-none absolute bottom-[1.5%] left-1/2 z-40 flex -translate-x-1/2 flex-col items-center">
-          <div className="relative rounded-full border-2 border-emerald-400/90 shadow-[0_0_15px_rgba(52,211,153,0.5)]">
+        <div className="biriba-seat biriba-seat--local">
+          <div className="biriba-seat-avatar">
             <PlayerAvatar
               name={room.seats.find((seat) => seat.index === (game?.seat ?? 0))?.name ?? "ΕΣΥ"}
               imageUrl={biribaAvatar(room.seats.find((seat) => seat.index === (game?.seat ?? 0)))}
               size="lg"
             />
           </div>
-          <span className="mt-0.5 rounded-full bg-black/80 px-3 py-0.5 text-[11px] font-bold text-white shadow">ΕΣΥ</span>
+          <span className="biriba-seat-name">ΕΣΥ</span>
         </div>
 
         {/* Teammate (ΣΥΜΠΑΙΚΤΗΣ) - Top Center */}
         {game && (
-          <div className="pointer-events-none absolute left-1/2 top-[1.5%] z-20 flex -translate-x-1/2 flex-col items-center">
-            <div className="relative rounded-full border-2 border-blue-400/80 shadow-[0_0_12px_rgba(96,165,250,0.4)]">
+          <div className="biriba-seat biriba-seat--top">
+            <div className="biriba-seat-avatar">
               <PlayerAvatar
                 name={game.roomSeats[(game.seat + (game.seats === 2 ? 1 : 2)) % game.seats]?.name ?? "ΣΥΜΠΑΙΚΤΗΣ"}
                 imageUrl={biribaAvatar(game.roomSeats[(game.seat + (game.seats === 2 ? 1 : 2)) % game.seats])}
@@ -362,16 +384,16 @@ function BiribaContent({ playerId }: { playerId: string }) {
                 size="md"
               />
             </div>
-            <span className="mt-0.5 rounded-full bg-black/80 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow">
-              {game.seats === 4 ? "ΣΥΜΠΑΙΚΤΗΣ" : game.roomSeats[(game.seat + 1) % game.seats]?.name ?? "ΑΝΤΙΠΑΛΟΣ"}
+            <span className="biriba-seat-name">
+              {game.roomSeats[(game.seat + (game.seats === 2 ? 1 : 2)) % game.seats]?.name ?? (game.seats === 4 ? "ΣΥΜΠΑΙΚΤΗΣ" : "ΑΝΤΙΠΑΛΟΣ")}
             </span>
           </div>
         )}
 
         {/* Opponent Left (ΑΝΤΙΠΑΛΟΣ Α) */}
         {game && game.seats === 4 && (
-          <div className="pointer-events-none absolute left-[1.5%] top-[40%] z-20 flex flex-col items-center">
-            <div className="relative rounded-full border-2 border-rose-400/80 shadow-[0_0_12px_rgba(244,63,94,0.4)]">
+          <div className="biriba-seat biriba-seat--left">
+            <div className="biriba-seat-avatar">
               <PlayerAvatar
                 name={game.roomSeats[(game.seat + 1) % game.seats]?.name ?? "ΑΝΤΙΠΑΛΟΣ Α"}
                 imageUrl={biribaAvatar(game.roomSeats[(game.seat + 1) % game.seats])}
@@ -379,7 +401,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
                 size="md"
               />
             </div>
-            <span className="mt-0.5 max-w-[90px] truncate rounded-full bg-black/80 px-2 py-0.5 text-center text-[10px] font-semibold text-white shadow">
+            <span className="biriba-seat-name">
               {game.roomSeats[(game.seat + 1) % game.seats]?.name ?? "ΑΝΤΙΠΑΛΟΣ Α"}
             </span>
           </div>
@@ -387,8 +409,8 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
         {/* Opponent Right (ΑΝΤΙΠΑΛΟΣ Β) */}
         {game && game.seats === 4 && (
-          <div className="pointer-events-none absolute right-[1.5%] top-[40%] z-20 flex flex-col items-center">
-            <div className="relative rounded-full border-2 border-rose-400/80 shadow-[0_0_12px_rgba(244,63,94,0.4)]">
+          <div className="biriba-seat biriba-seat--right">
+            <div className="biriba-seat-avatar">
               <PlayerAvatar
                 name={game.roomSeats[(game.seat + 3) % game.seats]?.name ?? "ΑΝΤΙΠΑΛΟΣ Β"}
                 imageUrl={biribaAvatar(game.roomSeats[(game.seat + 3) % game.seats])}
@@ -396,53 +418,26 @@ function BiribaContent({ playerId }: { playerId: string }) {
                 size="md"
               />
             </div>
-            <span className="mt-0.5 max-w-[90px] truncate rounded-full bg-black/80 px-2 py-0.5 text-center text-[10px] font-semibold text-white shadow">
+            <span className="biriba-seat-name">
               {game.roomSeats[(game.seat + 3) % game.seats]?.name ?? "ΑΝΤΙΠΑΛΟΣ Β"}
             </span>
           </div>
         )}
 
         {/* 5. TOP BAR & UTILITIES */}
-        <div className="absolute right-3 top-3 z-30 flex gap-2">
+        <BiribaRoomControls isHost={isHost} busy={busy} error={error} onEndGame={endGame}>
           <button
             type="button"
             aria-label="Αναλυτική βαθμολογία"
-            className="rounded-lg bg-black/80 p-2 text-white shadow hover:bg-black"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/25 bg-black/80 text-white shadow hover:bg-black"
             onClick={() => setScoresOpen((open) => !open)}
           >
             <ChartNoAxesColumn size={18} />
           </button>
-          {isHost && (
-            <div className="relative">
-              <button
-                type="button"
-                aria-label="Μενού παιχνιδιού"
-                aria-expanded={gameMenuOpen}
-                className="rounded-lg bg-black/80 p-2 text-white shadow hover:bg-black"
-                onClick={() => setGameMenuOpen((open) => !open)}
-              >
-                <MoreVertical size={18} />
-              </button>
-              {gameMenuOpen && (
-                <div className="absolute right-0 top-full z-50 mt-2 min-w-44 rounded-lg border border-white/25 bg-[#111c1a] p-1 shadow-2xl">
-                  <button
-                    type="button"
-                    className="w-full rounded px-3 py-2 text-left text-sm text-red-200 hover:bg-white/10"
-                    onClick={() => {
-                      setGameMenuOpen(false);
-                      setConfirmEndGame(true);
-                    }}
-                  >
-                    Τέλος παιχνιδιού
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        </BiribaRoomControls>
 
         {/* 6. TURN CONTROLS & ACTION BUTTONS */}
-        <div className="absolute bottom-20 left-1/2 z-30 w-[min(96vw,900px)] -translate-x-1/2 text-white">
+        <div className="biriba-actions text-white">
           {error && <p role="alert" className="mb-2 text-center text-xs font-semibold text-red-300 drop-shadow">{error}</p>}
           <div className="flex flex-wrap justify-center gap-2">
             {mine && game?.phase === "draw" && (
@@ -496,7 +491,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
         </div>
 
         {/* 7. PLAYER HAND (CURVED FAN LAYOUT) */}
-        <div className="absolute bottom-0 left-1/2 z-30 flex -translate-x-1/2 items-end justify-center overflow-visible pb-0" style={{ transform: "translateY(32%)" }}>
+        <div className="biriba-hand" style={{ "--biriba-card-gap": ownCards.length > 14 ? "clamp(-100px,-7.5vw,-48px)" : "clamp(-95px,-5.5vw,-42px)" } as React.CSSProperties}>
           {dealShownKey === dealKey &&
             ownCards.map((card, i) => {
               const total = ownCards.length;
@@ -514,13 +509,10 @@ function BiribaContent({ playerId }: { playerId: string }) {
                   aria-pressed={isSelected}
                   onClick={() => toggle(card.id)}
                   style={{
-                    marginLeft: i === 0 ? 0 : "clamp(-78px,-8.5vw,-36px)",
                     transform: `translateY(${yOffset - (isSelected ? 32 : 0)}px) rotate(${rot}deg)`,
                     zIndex: isSelected ? 60 : i + 1,
                   }}
-                  className={`biriba-fan-card relative h-[clamp(115px,27vh,185px)] w-[clamp(78px,18.5vh,125px)] overflow-hidden rounded-md border bg-white shadow-xl ${
-                    isSelected ? "border-amber-400 ring-2 ring-amber-400" : "border-zinc-300"
-                  }`}
+                  className="biriba-fan-card"
                 >
                   <img
                     draggable={false}
@@ -538,12 +530,20 @@ function BiribaContent({ playerId }: { playerId: string }) {
               );
             })}
         </div>
+        <div className="biriba-hand-lip" aria-hidden="true" />
       </main>
     );
   }
 
   return (
-    <ScreenShell title="ΜΠΙΡΙΜΠΑ" variant="pregame" fixedViewport hideNavigation={Boolean(room)} contentClassName="!min-h-0 !overflow-hidden !py-1">
+    <ScreenShell
+      title="ΜΠΙΡΙΜΠΑ"
+      variant="pregame"
+      fixedViewport
+      hideNavigation={Boolean(room)}
+      contentClassName="!min-h-0 !overflow-hidden !py-1"
+      headerActions={room ? <BiribaRoomControls isHost={isHost} busy={busy} error={error} onEndGame={endGame} /> : undefined}
+    >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 rounded-xl border border-primary/25 p-2">
         {error && <p role="alert" className="text-red-400">{error}</p>}
         {!room && (

@@ -1,50 +1,368 @@
-/* Full Biriba Table Theme faithful to reference image */
+/* The table is a clean plate; cards, scores and players stay live. */
 .biriba-table-container {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
   width: 100dvw;
   height: 100dvh;
   overflow: hidden;
-  background: radial-gradient(ellipse at 50% 45%, #144933 0%, #0d3223 55%, #061911 100%);
+  isolation: isolate;
   user-select: none;
+  background: #071b13 url("/table/biriba_luxury_clean.png") center / 100% 100% no-repeat;
 }
-
-.biriba-felt-border {
+.biriba-room-controls {
+  position: fixed;
+  z-index: 100;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.biriba-end-backdrop {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #000b;
+}
+.biriba-end-dialog {
+  width: min(100%, 420px);
+  border: 1px solid #c9a15d;
+  border-radius: 16px;
+  padding: 20px;
+  color: white;
+  background: #10211b;
+  box-shadow: 0 18px 60px #000a;
+}
+.biriba-team-zone {
   position: absolute;
-  inset: 1%;
-  border-radius: 120px;
-  border: 14px solid #3d2314;
-  box-shadow: inset 0 0 45px rgba(0,0,0,0.85), 0 0 30px rgba(0,0,0,0.95), inset 0 0 0 2px #d4af37;
+  top: 21%;
+  width: 35.8%;
+  height: 23.5%;
+  border: clamp(2px, 0.22vw, 4px) solid;
+  border-radius: clamp(14px, 1.5vw, 26px);
+  background: rgba(4, 20, 12, 0.15);
   pointer-events: none;
 }
-
-.biriba-team-zone {
-  border-radius: 12px;
-  backdrop-filter: blur(2px);
-  transition: all 0.2s ease;
-}
-
 .biriba-team-zone--red {
-  background: rgba(180, 30, 30, 0.14);
-  border: 2px solid rgba(239, 68, 68, 0.9);
-  box-shadow: inset 0 0 16px rgba(239, 68, 68, 0.25);
+  left: 13.5%;
+  border-color: #f52432;
+  box-shadow:
+    inset 0 0 14px #ef222e12,
+    0 0 5px #ef222e40;
 }
-
 .biriba-team-zone--blue {
-  background: rgba(30, 80, 180, 0.14);
-  border: 2px solid rgba(59, 130, 246, 0.9);
-  box-shadow: inset 0 0 16px rgba(59, 130, 246, 0.25);
+  right: 12.4%;
+  border-color: #1388ff;
+  box-shadow:
+    inset 0 0 14px #1388ff12,
+    0 0 5px #1388ff40;
 }
-
+.biriba-team-heading {
+  position: absolute;
+  top: -3.8vh;
+  left: 10%;
+  display: flex;
+  align-items: stretch;
+  gap: 0.3vw;
+  height: clamp(28px, 5.4vh, 50px);
+  white-space: nowrap;
+  font-size: clamp(10px, 1.3vw, 22px);
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-shadow: 0 1px 2px #000;
+}
+.biriba-team-heading span {
+  display: grid;
+  place-items: center;
+  border: 2px solid #d9a341;
+  border-radius: 11px;
+  color: #fff;
+  background: linear-gradient(#851311, #410807);
+  box-shadow:
+    0 3px 8px #0008,
+    inset 0 1px #ffffff45;
+  padding: 0 clamp(8px, 1.5vw, 24px);
+}
+.biriba-team-zone--blue .biriba-team-heading span {
+  border-color: #33a6ff;
+  background: linear-gradient(#07539d, #061849);
+}
+.biriba-team-heading .biriba-team-score {
+  min-width: clamp(42px, 7.3vw, 120px);
+  font-size: 1.4em;
+}
+.biriba-seat {
+  position: absolute;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+.biriba-seat--top {
+  top: 0.5%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.biriba-seat--left {
+  top: 39%;
+  left: 4.6%;
+}
+.biriba-seat--right {
+  top: 39%;
+  right: 4.6%;
+}
+.biriba-seat--local {
+  bottom: 2.2%;
+  left: 50%;
+  z-index: 45;
+  transform: translateX(-50%);
+}
+.biriba-seat-avatar {
+  border: 3px solid #1489f6;
+  border-radius: 50%;
+  background: #111;
+  box-shadow:
+    0 0 0 2px #030507,
+    0 4px 14px #000a;
+}
+.biriba-seat--left .biriba-seat-avatar,
+.biriba-seat--right .biriba-seat-avatar {
+  border-color: #f24357;
+}
+.biriba-seat--local .biriba-seat-avatar {
+  border-color: #20e3a4;
+  box-shadow:
+    0 0 0 2px #030507,
+    0 0 15px #19ca95a0;
+}
+.biriba-seat-name {
+  max-width: clamp(85px, 13vw, 215px);
+  margin-top: -5px;
+  padding: 4px clamp(8px, 1.3vw, 18px);
+  overflow: hidden;
+  border: 1px solid #d9a341;
+  border-radius: 11px;
+  background: linear-gradient(#101311, #020303);
+  box-shadow: 0 3px 9px #000b;
+  color: #fff;
+  font-size: clamp(9px, 1.13vw, 18px);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.biriba-seat--local .biriba-seat-name {
+  min-width: clamp(80px, 10.7vw, 180px);
+}
+.biriba-pile-label {
+  position: absolute;
+  top: 59.4%;
+  z-index: 20;
+  transform: translateX(-50%);
+  padding: 3px clamp(4px, 0.55vw, 9px);
+  border: 1px solid #d9a341;
+  border-radius: 10px;
+  background: linear-gradient(#111715, #020503);
+  box-shadow: 0 3px 7px #000a;
+  color: #fff;
+  font-size: clamp(7px, 0.78vw, 13px);
+  font-weight: 750;
+  line-height: 1.15;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.biriba-trump-frame {
+  position: absolute;
+  top: 64.3%;
+  left: 50%;
+  z-index: 10;
+  width: 8.6%;
+  height: 8.4%;
+  transform: translateX(-50%);
+  border: 1px solid #d9a341;
+  border-radius: 13px;
+  background: rgba(0, 27, 17, 0.35);
+  box-shadow: 0 3px 9px #0006;
+  color: white;
+  font-size: clamp(9px, 0.9vw, 14px);
+  font-weight: 800;
+  text-align: center;
+  pointer-events: none;
+}
+.biriba-trump-frame::before,
+.biriba-trump-frame::after {
+  position: absolute;
+  top: 54%;
+  width: 12vw;
+  border-top: 1px solid #ba8b35;
+  content: "";
+}
+.biriba-trump-frame::before {
+  right: calc(100% + 1.5vw);
+}
+.biriba-trump-frame::after {
+  left: calc(100% + 1.5vw);
+}
+.biriba-hand {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  z-index: 35;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  max-width: 82vw;
+  transform: translate(-50%, -2vh);
+}
 .biriba-fan-card {
-  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s ease;
-  transform-origin: 50% 130%;
+  flex: none;
+  width: clamp(72px, 16vh, 150px);
+  height: clamp(100px, 26vh, 225px);
+  margin-left: min(0px, var(--biriba-card-gap));
+  overflow: hidden;
+  border: 1px solid #d4d4d4;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 5px 8px #0008;
+  transform-origin: 50% 140%;
+  transition:
+    transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.18s ease;
+  touch-action: manipulation;
+  opacity: 1;
+}
+.biriba-fan-card:first-child {
+  margin-left: 0;
+}
+.biriba-fan-card[aria-pressed="true"] {
+  border-color: #fbbf24;
+  box-shadow:
+    0 0 0 2px #fbbf24,
+    0 10px 18px #000a;
+}
+.biriba-hand-lip {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 38;
+  height: 11%;
+  border-top: 2px solid #bd8035;
+  clip-path: ellipse(34% 100% at 50% 100%);
+  background: linear-gradient(#3d2519, #120c0a 45%, #090807);
+  box-shadow:
+    0 -5px 15px #0008,
+    inset 0 2px 3px #f1b66680;
+  pointer-events: none;
+}
+@media (max-height: 500px) {
+  .biriba-team-heading {
+    top: -6vh;
+  }
+  .biriba-seat-name {
+    padding-block: 2px;
+  }
+  .biriba-pile-label {
+    padding-block: 2px;
+  }
+  .biriba-hand-lip {
+    height: 9%;
+  }
 }
 
-.biriba-fan-card:hover, .biriba-fan-card[aria-pressed="true"] {
-  transform: translateY(-28px) scale(1.06) !important;
-  box-shadow: 0 12px 24px rgba(0,0,0,0.6), 0 0 0 2px #f59e0b !important;
-  z-index: 60 !important;
+.biriba-pile-labels {
+  display: contents;
+}
+.biriba-pile-labels .biriba-pile-label:nth-child(1) {
+  left: 37.3%;
+}
+.biriba-pile-labels .biriba-pile-label:nth-child(2) {
+  left: 45.6%;
+}
+.biriba-pile-labels .biriba-pile-label:nth-child(3) {
+  left: 54.7%;
+}
+.biriba-pile-labels .biriba-pile-label:nth-child(4) {
+  left: 62.7%;
+}
+.biriba-actions {
+  position: absolute;
+  z-index: 50;
+  left: 4%;
+  bottom: 16%;
+  width: min(28vw, 390px);
+  max-height: 25%;
+  overflow-y: auto;
+}
+.biriba-actions > div {
+  justify-content: flex-start;
+}
+.biriba-actions button {
+  padding: clamp(4px, 0.6vw, 10px) clamp(5px, 0.8vw, 14px);
+}
+.biriba-fan-card:hover:not(:disabled) {
+  filter: drop-shadow(0 0 5px #e3b347);
+}
+@media (max-width: 850px) {
+  .biriba-pile-label {
+    font-size: 7px;
+    padding-inline: 3px;
+  }
+  .biriba-team-heading {
+    font-size: 10px;
+  }
+  .biriba-actions {
+    left: 3%;
+    width: 29vw;
+    bottom: 13%;
+  }
+  .biriba-actions button {
+    font-size: 9px;
+  }
+  .biriba-seat--left {
+    left: 3%;
+  }
+  .biriba-seat--right {
+    right: 3%;
+  }
+}
+
+.biriba-hand {
+  --biriba-card-gap: clamp(-95px, -5.5vw, -42px);
+}
+.biriba-trump-frame {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 2px;
+}
+.biriba-trump-frame span:first-child,
+.biriba-trump-frame span:last-child {
+  display: none;
+}
+.biriba-trump-frame span:nth-child(2) {
+  letter-spacing: 0.08em;
+}
+
+.biriba-seat-avatar > div {
+  width: clamp(46px, 4.8vw, 80px);
+  height: clamp(46px, 4.8vw, 80px);
+}
+.biriba-seat--local .biriba-seat-avatar > div {
+  width: clamp(54px, 5vw, 82px);
+  height: clamp(54px, 5vw, 82px);
+}
+
+.biriba-preview-avatar {
+  display: grid;
+  place-items: center;
+  width: clamp(46px, 4.8vw, 80px);
+  height: clamp(46px, 4.8vw, 80px);
+  color: #d3d7da;
+  font-size: clamp(20px, 3vw, 42px);
+  background: radial-gradient(circle at 50% 28%, #35404d, #0a121c 72%);
 }
