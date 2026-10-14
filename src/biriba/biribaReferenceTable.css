@@ -305,9 +305,10 @@
   position: absolute;
   z-index: 50;
   left: clamp(135px, 15.5vw, 210px);
-  bottom: 21%;
-  width: clamp(135px, 14vw, 190px);
-  max-height: 34%;
+  top: 55%;
+  bottom: auto;
+  width: clamp(120px, 13vw, 175px);
+  max-height: 27%;
   overflow-y: auto;
 }
 .biriba-actions > div {
@@ -352,7 +353,8 @@
     font-size: 10px;
   }
   .biriba-actions {
-    bottom: 25%;
+    top: 55%;
+    bottom: auto;
   }
   .biriba-actions button {
     font-size: 11px;
