@@ -4,7 +4,7 @@ import {createBiribaLocalDeal} from "./localDeal.ts";
 
 /** Deterministic, serializable BIRIBA match state. Authoritative persistence is separate. */
 export type BiribaTurnPhase="draw"|"meld"|"ended";
-export type BiribaRoundHistory={round:number;teamTotals:[number,number];breakdown:Array<{cards:number;bonuses:number;closing:number;penalty:number;held:number;total:number}>};
+export type BiribaRoundHistory={round:number;teamTotals:[number,number];breakdown:Array<{cards:number;bonuses:number;closing:number;penalty:number;held:number;total:number}>;playerPoints:Array<{seat:number;cards:number;held:number}>};
 export type BiribaMatch={
  seats:BiribaSeatCount;hands:BiribaCard[][];packets:BiribaCard[][];
  stock:BiribaCard[];discards:BiribaCard[];trump:BiribaSuit|null;
