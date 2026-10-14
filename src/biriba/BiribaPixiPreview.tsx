@@ -59,14 +59,21 @@ export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:Bi
       const fileRank=(rank:string)=>({A:"ace",K:"king",Q:"queen",J:"jack"} as Record<string,string>)[rank]||rank;
       type Face={rank:string;suit:string};
       const face=(rank:string,suit:string):Face=>({rank,suit});
-      const addCard=async(c:Face|null,x:number,y:number,scale=1,delay=0)=>{
+      const addCard=async(c:Face|null,x:number,y:number,scale=1,delay=0,from?:[number,number])=>{
         const path=c?(c.rank==="JOKER"?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${c.suit}_${fileRank(c.rank)}.png`):"/cards/optimized-png/backs/blue_back.png";
         try{
           const texture=await Assets.load(path);
           if(disposed)return;
-          const sprite=new Sprite(texture);sprite.width=58*scale;sprite.height=85*scale;sprite.position.set(x,y+12);
-          sprite.alpha=0;stage.addChild(sprite);
-          let progress=0;const animate=(ticker:{deltaMS:number})=>{progress+=ticker.deltaMS/180;const t=Math.min(1,progress);sprite.y=y+12*(1-t);sprite.alpha=t;if(t===1)pixi.ticker.remove(animate)};
+          const sprite=new Sprite(texture);sprite.width=58*scale;sprite.height=85*scale;sprite.position.set(from?.[0]??x,from?.[1]??(y+12));
+          sprite.alpha=from?1:0;stage.addChild(sprite);
+          let progress=0;const animate=(ticker:{deltaMS:number})=>{
+            progress+=ticker.deltaMS/(from?260:180);
+            const t=Math.min(1,progress),eased=1-Math.pow(1-t,3);
+            sprite.x=from?from[0]+(x-from[0])*eased:x;
+            sprite.y=from?from[1]+(y-from[1])*eased:y+12*(1-eased);
+            sprite.alpha=from?1:eased;
+            if(t===1)pixi.ticker.remove(animate);
+          };
           if(delay)await new Promise(r=>setTimeout(r,delay));
           if(!disposed)pixi.ticker.add(animate);
         }catch{
