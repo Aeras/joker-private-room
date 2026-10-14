@@ -1,3 +1,4 @@
+import type { BiribaDealtPreview } from "./localDeal";
 import { useEffect, useRef } from "react";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 
@@ -7,7 +8,7 @@ import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js"
  * or score authority live in this renderer; future multiplayer updates pass
  * sanitized viewer-specific snapshots only.
  */
-export function BiribaPixiPreview() {
+export function BiribaPixiPreview({deal}:{deal?:BiribaDealtPreview}) {
   const mount = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const parent = mount.current;
@@ -51,7 +52,7 @@ export function BiribaPixiPreview() {
       type Face={rank:string;suit:string};
       const face=(rank:string,suit:string):Face=>({rank,suit});
       const addCard=async(c:Face|null,x:number,y:number,scale=1,delay=0)=>{
-        const path=c?`/cards/optimized-png/faces/${c.suit}_${fileRank(c.rank)}.png`:"/cards/optimized-png/backs/blue_back.png";
+        const path=c?(c.rank==="JOKER"?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${c.suit}_${fileRank(c.rank)}.png`):"/cards/optimized-png/backs/blue_back.png";
         try{
           const texture=await Assets.load(path);
           if(disposed)return;
@@ -76,12 +77,12 @@ export function BiribaPixiPreview() {
       box(365,351,550,128,0x071f1b,.4);
       const piles:[string,Face|null,number][]=[
         ["ΚΛΕΙΣΤΗ ΤΡΑΠΟΥΛΑ",null,398],
-        ["ΠΕΤΑΜΕΝΑ",face("Q","hearts"),535],
+        ["ΠΕΤΑΜΕΝΑ",deal?.discard[0] ? (deal.discard[0].joker ? face("JOKER","joker") : face(({1:"A",11:"J",12:"Q",13:"K"} as Record<number,string>)[deal.discard[0].rank]??String(deal.discard[0].rank),deal.discard[0].suit)):face("Q","hearts"),535],
         ["ΜΠΙΡΙΜΠΑΚΙ 1",null,669],
         ["ΜΠΙΡΙΜΠΑΚΙ 2",null,804],
       ];
       piles.forEach(([label,c,x])=>{void addCard(c,x,370,.88);text(label,x+25,462,12);});
-      box(577,495,126,39,0x252923,.9,0xc3a24f);text("ΑΤΟΥ ♣",640,515,20);
+      box(577,495,126,39,0x252923,.9,0xc3a24f);text(`ΑΤΟΥ ${deal?(deal.trump?suitIcon[deal.trump]:"—"):"♣"}`,640,515,20);
       const rear=(x:number,y:number,count:number,vertical=false)=>{for(let i=0;i<count;i++)void addCard(null,x+(vertical?0:i*13),y+(vertical?i*13:0),.53,i*15)};
       rear(524,27,8);
       rear(43,290,6,true);
@@ -89,12 +90,12 @@ export function BiribaPixiPreview() {
       text("ΣΥΜΠΑΙΚΤΗΣ",640,19,18);
       text("ΑΝΤΙΠΑΛΟΣ Α",79,277,15);
       text("ΑΝΤΙΠΑΛΟΣ Β",1191,277,15);
-      const hand:[string,string][]=[["A","spades"],["K","spades"],["Q","diamonds"],["J","diamonds"],["10","diamonds"],["8","diamonds"],["5","clubs"],["4","clubs"],["3","clubs"],["2","hearts"],["7","hearts"]];
+      const hand:[string,string][]=deal ? deal.hands[0]!.map(c=>c.joker?["JOKER","joker"]:[({1:"A",11:"J",12:"Q",13:"K"} as Record<number,string>)[c.rank]??String(c.rank),c.suit]) : [["A","spades"],["K","spades"],["Q","diamonds"],["J","diamonds"],["10","diamonds"],["8","diamonds"],["5","clubs"],["4","clubs"],["3","clubs"],["2","hearts"],["7","hearts"]];
       hand.forEach(([rank,suit],i)=>void addCard(face(rank,suit),330+i*56,599,1.55,i*22));
       text("ΕΣΥ",640,570,22);
       (pixi as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver=observer;
     })();
     return ()=>{disposed=true;if(app){(app as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver?.disconnect();app.destroy(true,{children:true});}};
-  },[]);
+  },[deal]);
   return <div ref={mount} className="absolute inset-0" role="img" aria-label="Προεπισκόπηση τραπεζιού Μπιρίμπας με κόκκινη και μπλε ομάδα, κατεβασμένες σειρές, κλειστή τράπουλα, πεταμένα και ανοιχτά φύλλα στο κάτω μέρος"/>;
 }
