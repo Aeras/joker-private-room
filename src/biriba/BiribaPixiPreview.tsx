@@ -143,7 +143,15 @@ export function BiribaPixiPreview({deal,game,redTeam=0,revealComplete=false,onDe
       // backs converge into each player's full-size stack; no 44 tiny cards.
       const BACK_W=74, BACK_H=106, BEAT_MS=BIRIBA_DEAL_BEAT_MS;
       const rear=(x:number,y:number,count:number,vertical=false)=>{
-        for(let i=0;i<count;i++)void addCard(null,x+(vertical?0:i*2),y+(vertical?i*2:0),BACK_W/58);
+        // Opponents' cards follow the angled, overlapped fans in the reference.
+        const shown=Math.max(0,Math.min(count,18));
+        for(let i=0;i<shown;i++){
+          const mid=(shown-1)/2;
+          const offset=i-mid;
+          const targetX=x+(vertical?Math.abs(offset)*1.6:offset*12);
+          const targetY=y+(vertical?offset*10:Math.abs(offset)*1.3);
+          void addCard(null,targetX,targetY,BACK_W/58);
+        }
       };
       const topSeat=game?.seats===2?1:2;
       const target=(delta:number):{x:number;y:number;angle:number}=>{
