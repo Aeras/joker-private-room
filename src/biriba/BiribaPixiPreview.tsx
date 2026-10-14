@@ -221,29 +221,29 @@ export function BiribaPixiPreview({
         for (let i = 0; i < layers; i++) void addCard(null, x + i * 2, y - i * 2, 1.18);
       };
       if (!game || game.stockCount > 0)
-        backStack(440, 337, game ? Math.min(3, game.stockCount) : 3);
-      if (discardTop) void addCard(discardTop, 548, 337, 1.18);
-      if (!game || (game.packetCounts[0] ?? 0) > 0) backStack(664, 337, 2);
-      if (!game || (game.packetCounts[1] ?? 0) > 0) backStack(766, 337, 2);
+        backStack(440, 395, game ? Math.min(3, game.stockCount) : 3);
+      if (discardTop) void addCard(discardTop, 548, 395, 1.18);
+      if (!game || (game.packetCounts[0] ?? 0) > 0) backStack(664, 395, 2);
+      if (!game || (game.packetCounts[1] ?? 0) > 0) backStack(766, 395, 2);
 
       // The projection exposes the trump suit, not the identity of a trump card.
       const trumpSuit = game?.trump ?? deal?.trump;
       if (trumpSuit) {
         const trumpSurface = new Graphics()
-          .roundRect(609, 470, 55, 48, 5)
+          .roundRect(1083, 550, 68, 50, 6)
           .fill({ color: 0xfffcf4 })
-          .stroke({ color: 0xc9b98b, width: 1 });
+          .stroke({ color: 0xc9b98b, width: 2 });
         stage.addChild(trumpSurface);
         const trumpSymbol = new Text({
           text: suitIcon[trumpSuit] ?? "",
           style: {
-            fontSize: 34,
+            fontSize: 40,
             fill: trumpSuit === "hearts" || trumpSuit === "diamonds" ? "#d81926" : "#111111",
             fontWeight: "bold",
           },
         });
         trumpSymbol.anchor.set(0.5);
-        trumpSymbol.position.set(636, 494);
+        trumpSymbol.position.set(1117, 575);
         stage.addChild(trumpSymbol);
       }
 
