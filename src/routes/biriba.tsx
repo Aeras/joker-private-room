@@ -206,11 +206,6 @@ function BiribaContent({playerId}:{playerId:string}){
    </section>}
    <div className="absolute bottom-0 left-1/2 z-30 w-[min(98vw,950px)] -translate-x-1/2 text-white">
     {error&&<p role="alert" className="text-xs text-red-300">{error}</p>}
-    <div className="flex items-end justify-center gap-0 overflow-visible pb-1 text-sm">
-     {dealShownKey===dealKey&&ownCards.map((card,i)=><button type="button" key={card.id} disabled={!mine||busy}
-      aria-pressed={selected.includes(card.id)} onClick={()=>toggle(card.id)}
-      style={{marginLeft:ownCards[0]===card?0:"clamp(-24px,-2.5vw,-9px)",transform:selected.includes(card.id)?"translateY(-14px)":"none",zIndex:selected.includes(card.id)?50:1}} className={`relative h-[clamp(60px,18vh,125px)] w-[clamp(44px,12vh,86px)] overflow-hidden rounded-md border-2 bg-white shadow-lg transition-transform ${selected.includes(card.id)?"border-amber-400 ring-2 ring-amber-400":"border-zinc-300"}`}><img draggable={false} className="biriba-hand-face h-full w-full object-fill" style={{animationDelay:`${i*32}ms`}} src={card.joker?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${card.suit}_${({1:"ace",11:"jack",12:"queen",13:"king"} as Record<number,string>)[card.rank]??card.rank}.png`} alt={label(card)}/></button>)}
-    </div>
     <div className="mb-2 flex flex-wrap justify-center gap-2">
      {mine&&game?.phase==="draw"&&<button className="rounded bg-emerald-700 px-3 py-2 text-xs" disabled={busy} onClick={()=>void play({type:"draw"})}>Τράβηγμα</button>}
      {mine&&game?.phase==="draw"&&pickup?.meld&&<button className="rounded bg-amber-700 px-3 py-2 text-xs" disabled={busy} onClick={()=>void play({type:"pickup",ids:[pickup.discard.id],meld:pickup.meld})}>Πάρε πεταμένα &amp; κατέβασε</button>}
@@ -220,6 +215,12 @@ function BiribaContent({playerId}:{playerId:string}){
       <button className="rounded bg-red-700 px-3 py-2 text-xs" disabled={busy||selected.length!==1} onClick={()=>void play({type:"discard",id:selected[0]})}>Πέταγμα</button>
      </>}
     </div>
+    <div className="flex items-end justify-center gap-0 overflow-visible pb-1 text-sm">
+     {dealShownKey===dealKey&&ownCards.map((card,i)=><button type="button" key={card.id} disabled={!mine||busy}
+      aria-pressed={selected.includes(card.id)} onClick={()=>toggle(card.id)}
+      style={{marginLeft:ownCards[0]===card?0:"clamp(-24px,-2.5vw,-9px)",transform:selected.includes(card.id)?"translateY(-14px)":"none",zIndex:selected.includes(card.id)?50:1}} className={`relative h-[clamp(60px,18vh,125px)] w-[clamp(44px,12vh,86px)] overflow-hidden rounded-md border-2 bg-white shadow-lg transition-transform ${selected.includes(card.id)?"border-amber-400 ring-2 ring-amber-400":"border-zinc-300"}`}><img draggable={false} className="biriba-hand-face h-full w-full object-fill" style={{animationDelay:`${i*32}ms`}} src={card.joker?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${card.suit}_${({1:"ace",11:"jack",12:"queen",13:"king"} as Record<number,string>)[card.rank]??card.rank}.png`} alt={label(card)}/></button>)}
+    </div>
+
    </div>
   </main>;
  }
