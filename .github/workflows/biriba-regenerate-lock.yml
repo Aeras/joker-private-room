@@ -1,0 +1,28 @@
+name: Regenerate Biriba Dependency Lock (temporary)
+on:
+  push:
+    branches:
+      - feat/biriba-foundation-pixijs
+    paths:
+      - .github/workflows/biriba-regenerate-lock.yml
+permissions:
+  contents: write
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/biriba-foundation-pixijs
+          persist-credentials: true
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - name: Commit lockfile if changed
+        run: |
+          if ! git diff --quiet -- bun.lock; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add bun.lock
+            git commit -m "chore(biriba): resolve PixiJS bun lockfile"
+            git push
+          fi
