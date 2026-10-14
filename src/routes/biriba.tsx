@@ -43,6 +43,8 @@ function BiribaContent({playerId}:{playerId:string}){
  const [game,setGame]=useState<BiribaGameView|null>(null);
  const [selected,setSelected]=useState<string[]>([]);
  const [busy,setBusy]=useState(false);
+ const [clockNow,setClockNow]=useState(Date.now());
+ useEffect(()=>{const t=setInterval(()=>setClockNow(Date.now()),350);return()=>clearInterval(t)},[]);
  const [error,setError]=useState("");
  const isHost=room?.hostPlayerId===playerId;
  const run=useCallback(async(data:Parameters<typeof biribaCommand>[0]["data"])=>{
@@ -108,7 +110,7 @@ function BiribaContent({playerId}:{playerId:string}){
   finally{setBusy(false)}
  };
  if(room&&room.lifecycle!=="waiting"){
-  const mine=game?.turn===game?.seat&&!game?.roundEnded;
+  const mine=game?.turn===game?.seat&&!game?.roundEnded&&!game?.clock.botTakeovers.includes(game?.seat??-1)&&game?.clock.pausedBy===null;
   const selectedCards=ownCards.filter(c=>selected.includes(c.id));
   const candidate=game?selectedMeld(selectedCards,game.seat):null;
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
@@ -118,6 +120,19 @@ function BiribaContent({playerId}:{playerId:string}){
     <div>{game?.roundEnded?"Τέλος γύρου":game? `Σειρά θέσης ${game.turn+1} · ${game.phase==="draw"?"Τράβηγμα":"Κατέβασμα / Πέταγμα"}`:"Φόρτωση παρτίδας…"}</div>
     <div>Τράπουλα: {game?.stockCount??"…"} · Ατού: {game?.trump?names[game.trump]:"—"}</div>
    </div>
+   {game&&<div className="absolute left-3 bottom-3 z-30 flex items-center gap-2 rounded-xl border border-white/20 bg-black/85 p-2 text-xs text-white">
+    <button type="button" aria-label={game.clock.pausedBy===game.seat?"Συνέχεια παρτίδας":"Παύση παρτίδας"}
+     disabled={busy||(!game.clock.botTakeovers.includes(game.seat)&&game.clock.pausedBy!==game.seat&&game.turn!==game.seat)||game.clock.botTakeovers.includes(game.seat)||game.clock.pausedBy!==null&&game.clock.pausedBy!==game.seat||game.clock.pausesUsed[game.seat]>=3&&game.clock.pausedBy!==game.seat}
+     className="relative" onClick={()=>void run({action:game.clock.pausedBy===game.seat?"resume":"pause",code:room.code})}>
+      <PlayerAvatar name={room.seats.find(s=>s.index===game.seat)?.name??"Εσύ"} imageUrl={assets.avatar("",room.seats.find(s=>s.index===game.seat)?.name??"")} size="sm"/>
+      {game.clock.pausedBy===game.seat&&<span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 text-lg">Ⅱ</span>}
+    </button>
+    <div>
+     <div>{game.clock.pausedBy!==null?"ΠΑΥΣΗ":Math.max(0,Math.ceil((game.clock.turnDeadline-clockNow)/1000))+"″"}</div>
+     <div>Παύσεις {game.clock.pausesUsed[game.seat]??0}/3</div>
+    </div>
+    {game.clock.botTakeovers.includes(game.seat)&&<button type="button" disabled={busy} className="rounded border border-amber-400 px-2 py-1 text-amber-200" onClick={()=>void run({action:"reclaim",code:room.code})}>Πάρε τον έλεγχο</button>}
+   </div>}
    <div className="absolute right-3 top-3 z-20 flex gap-2">
     {isHost&&<button type="button" className="rounded bg-black/80 px-3 py-2 text-xs text-white" onClick={()=>void run({action:"end_game",code:room.code})}>Τέλος παιχνιδιού</button>}
    </div>
