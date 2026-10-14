@@ -11,12 +11,14 @@ export function ScreenShell({
   footer,
   variant = "default",
   contentClassName,
+  hideNavigation = false,
 }: {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
   variant?: "default" | "pregame";
   contentClassName?: string;
+  hideNavigation?: boolean;
 }) {
   const pregame = variant === "pregame";
 
@@ -26,7 +28,7 @@ export function ScreenShell({
         "relative z-20 mx-auto flex w-full items-center gap-3 px-4 pt-[max(.65rem,env(safe-area-inset-top))]",
         pregame ? "max-w-7xl" : "max-w-xl",
       )}>
-        <Link
+        {!hideNavigation && <Link
           to="/"
           aria-label={t.back}
           className={cn(
@@ -35,12 +37,12 @@ export function ScreenShell({
           )}
         >
           <ArrowLeft className="h-5 w-5" />
-        </Link>
+        </Link>}
         <h1 className={cn(
           "min-w-0 flex-1 truncate font-display text-xl text-foreground",
           pregame && "tracking-[0.08em] text-primary",
         )}>{title}</h1>
-        {pregame && <FullscreenButton />}
+        {pregame && !hideNavigation && <FullscreenButton />}
       </header>
 
       <main className={cn(
