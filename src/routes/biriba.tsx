@@ -435,6 +435,52 @@ function BiribaContent({ playerId }: { playerId: string }) {
           </button>
         </BiribaRoomControls>
 
+        {/* Score overlay is a real, accessible panel, not only a toggle state. */}
+        {scoresOpen && game && (
+          <section className="biriba-score-overlay" role="dialog" aria-modal="false" aria-label="Αναλυτική βαθμολογία">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-bold">Αναλυτική βαθμολογία</h2>
+              <button type="button" aria-label="Κλείσιμο βαθμολογίας" className="rounded-lg border border-white/40 px-3 py-1 text-sm" onClick={() => setScoresOpen(false)}>Κλείσιμο</button>
+            </div>
+            <div className="my-3 grid grid-cols-2 gap-2 text-center">
+              <div className="rounded-lg border border-rose-500/70 bg-rose-950/60 p-2"><span className="block text-xs">ΚΟΚΚΙΝΗ ΟΜΑΔΑ</span><strong className="text-xl">{redScore}</strong></div>
+              <div className="rounded-lg border border-blue-400/70 bg-blue-950/60 p-2"><span className="block text-xs">ΜΠΛΕ ΟΜΑΔΑ</span><strong className="text-xl">{blueScore}</strong></div>
+            </div>
+            <div className="max-h-[40vh] space-y-2 overflow-y-auto">
+              {game.scoreHistory.length === 0 && <p className="text-sm text-white/75">Ο πρώτος γύρος βρίσκεται σε εξέλιξη.</p>}
+              {[...game.scoreHistory].reverse().map((entry) => (
+                <div key={entry.round} className="rounded-lg border border-white/20 p-2 text-sm">
+                  <strong>Γύρος {entry.round}</strong>
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    {entry.breakdown.map((part, teamIndex) => (
+                      <div key={teamIndex} className="space-y-1 text-xs">
+                        <strong>Ομάδα {teamIndex + 1}: {part.total > 0 ? "+" : ""}{part.total}</strong>
+                        <div>Φύλλα: +{part.cards}</div>
+                        <div>Μπιρίμπες: +{part.bonuses}</div>
+                        <div>Κλείσιμο: +{part.closing}</div>
+                        <div>Ποινές: −{part.penalty}</div>
+                        <div>Στο χέρι: −{part.held}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+        {game?.roundEnded && !game.matchFinished && (
+          <div className="biriba-round-message" role="status">
+            <strong>Τέλος γύρου {game.roundNumber}</strong>
+            <span>Οι πόντοι καταχωρήθηκαν. Ο επόμενος γύρος ξεκινά αυτόματα…</span>
+          </div>
+        )}
+        {game?.matchFinished && (
+          <div className="biriba-round-message" role="status">
+            <strong>Τέλος παιχνιδιού</strong>
+            <span>Νικήτρια ομάδα: {(game.winnerTeam ?? 0) + 1}</span>
+          </div>
+        )}
+
         {/* 6. TURN CONTROLS & ACTION BUTTONS */}
         <div className="biriba-actions text-white">
           {error && <p role="alert" className="mb-2 text-center text-xs font-semibold text-red-300 drop-shadow">{error}</p>}
