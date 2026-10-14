@@ -67,7 +67,7 @@ Deno.serve(async(req)=>{
       ?pauseBiribaClock(match.clock,seat,match.turn,true,now)
       :action==="resume"
        ?resumeBiribaClock(match.clock,seat,now)
-       :reclaimBiribaClock(match.clock,seat,now);
+       :reclaimBiribaClock(match.clock,seat,match.turn,now);
     match={...match,clock};
    }catch{return json({ok:false,code:"CONTROL_DENIED"},409);}
   }else{
