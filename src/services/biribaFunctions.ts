@@ -5,7 +5,7 @@ import {EXTERNAL_SUPABASE_URL,EXTERNAL_SUPABASE_PUBLISHABLE_KEY} from "@/integra
 import type {BiribaCard,BiribaMeld,BiribaSuit} from "@/biriba/rules";
 const code=z.string().regex(/^[A-Za-z0-9]{6}$/);
 const request=z.object({
- action:z.enum(["create","list","membership","get","join","leave","start","get_game","end_game","bot_add","bot_remove","move"]),
+ action:z.enum(["create","list","membership","get","join","leave","start","get_game","end_game","bot_add","bot_remove","move","pause","resume","reclaim"]),
  code:code.optional(),capacity:z.union([z.literal(2),z.literal(4)]).optional(),
  target:z.union([z.literal(1000),z.literal(2000),z.literal(5000),z.literal(10000)]).optional(),
  seat:z.number().int().min(0).max(3).optional(),botId:z.string().max(64).optional(),
@@ -18,6 +18,7 @@ export type BiribaGameView={
  trump:BiribaSuit|null;discards:BiribaCard[];stockCount:number;handCounts:number[];
  myHand:BiribaCard[];seat:number;revision:number;packetCounts:number[];roundEnded:boolean;
  roomSeats:BiribaRoomSeat[];opened:boolean[];packetTaken:boolean[];packetPlayed:boolean[];
+ clock:{turnDeadline:number;remainingMs:number;pausedBy:number|null;pausesUsed:number[];botTakeovers:number[]};
 };
 export type BiribaResponse={ok:true;room:BiribaRoomView}|{ok:true;rooms:Array<{code:string;capacity:2|4;target:number;hostName:string;occupied:number}>}|
  {ok:true;membership:{code:string;lifecycle:string}|null}|{ok:true;cancelled:boolean}|
