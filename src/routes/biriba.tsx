@@ -245,7 +245,7 @@ function BiribaContent({playerId}:{playerId:string}){
    </div>
   </main>;
  }
- return <ScreenShell title="ΜΠΙΡΙΜΠΑ" variant="pregame" contentClassName="!min-h-0 !overflow-hidden !py-1">
+ return <ScreenShell title="ΜΠΙΡΙΜΠΑ" variant="pregame" hideNavigation={Boolean(room)} contentClassName={room?"!min-h-0 !overflow-hidden !py-1":"!overflow-y-auto !min-h-0 pb-8"}>
   <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 rounded-xl border border-primary/25 p-2">
    {error&&<p role="alert" className="text-red-400">{error}</p>}
    {!room&&<div className="grid grid-cols-2 gap-2">
