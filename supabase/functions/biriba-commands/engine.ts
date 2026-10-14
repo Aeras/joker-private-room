@@ -77,7 +77,7 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   let additions=action.meld.cards;
   if(action.index!==undefined){
     const previous=next.melds[action.index];
-    if(!previous||previous.suit!==action.meld.suit||previous.highAce!==action.meld.highAce
+    if(!previous||previous.suit!==action.meld.suit||(!previous.highAce&&action.meld.highAce&&!previous.cards.some(p=>p.value===1)&&action.meld.cards.at(-1)?.value===14?false:previous.highAce!==action.meld.highAce)
       ||previous.ownerSeat!==action.meld.ownerSeat)throw new Error("INVALID_EXTENSION");
     if(biribaTeamOf(previous.ownerSeat,next.seats)!==team)throw new Error("OPPONENT_MELD");
     if(previous.ownerSeat!==seat&&!next.opened[seat])throw new Error("MUST_OPEN_OWN_MELD_FIRST");
@@ -110,7 +110,7 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   if(next.forcedDiscardSeat===seat)throw new Error("MUST_DISCARD_DRAWN_CARD");
   if(next.phase!=="meld")throw new Error("MUST_DRAW_FIRST");
   const previous=next.melds[action.index];
-  if(!previous||!biribaMeldValid(action.meld)||previous.suit!==action.meld.suit||previous.highAce!==action.meld.highAce||previous.ownerSeat!==action.meld.ownerSeat)throw new Error("INVALID_EXTENSION");
+  if(!previous||!biribaMeldValid(action.meld)||previous.suit!==action.meld.suit||(!previous.highAce&&action.meld.highAce&&!previous.cards.some(p=>p.value===1)&&action.meld.cards.at(-1)?.value===14?false:previous.highAce!==action.meld.highAce)||previous.ownerSeat!==action.meld.ownerSeat)throw new Error("INVALID_EXTENSION");
   if(biribaTeamOf(previous.ownerSeat,next.seats)!==team)throw new Error("OPPONENT_MELD");
   if(previous.ownerSeat!==seat&&!next.opened[seat])throw new Error("MUST_OPEN_OWN_MELD_FIRST");
   const oldIds=new Set(previous.cards.map(p=>p.card.id));

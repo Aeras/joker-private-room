@@ -104,9 +104,12 @@ function extensions(match: BiribaMatch, seat: number, cards: readonly BiribaCard
       for (const side of [-1, 1]) {
         const value =
           side < 0 ? old.cards[0]!.value - 1 : old.cards[old.cards.length - 1]!.value + 1;
-        if (value < 1 || value > (old.highAce ? 14 : 13)) continue;
+        const promoteAce = side > 0 && value === 14 && !old.highAce &&
+          !old.cards.some(p => p.value === 1) && !card.joker && card.rank === 1;
+        if (value < 1 || value > (old.highAce || promoteAce ? 14 : 13)) continue;
         const meld: BiribaMeld = {
           ...old,
+          highAce: old.highAce || promoteAce,
           cards: side < 0 ? [{ card, value }, ...old.cards] : [...old.cards, { card, value }],
         };
         if (biribaMeldValid(meld))

@@ -30,4 +30,27 @@ describe("BIRIBA independent gameplay turn engine",()=>{
   m.hands[0]=[c("d",6)];
   expect(()=>biribaAction(m,0,{type:"extend",index:0, meld:meld([c("a",3),c("b",4),c("c",5),c("d",6)],1)})).toThrow("OPPONENT_MELD");
  });
+ it("accepts a high Ace after King when extending an existing run",()=>{
+  const m=beginBiribaMatch(2,()=>0.12);
+  m.phase="meld";
+  const ace=c("ace-high",1);
+  m.hands[0]=[ace,c("spare",7)];
+  m.melds=[{ownerSeat:0,suit:"spades",highAce:false,cards:[
+    {card:c("jack",11),value:11},{card:c("queen",12),value:12},{card:c("king",13),value:13}
+  ]}];
+  const extended={...m.melds[0]!,highAce:true,cards:[...m.melds[0]!.cards,{card:ace,value:14}]};
+  const n=biribaAction(m,0,{type:"extend",index:0,meld:extended});
+  expect(n.melds[0]?.cards.map(p=>p.value)).toEqual([11,12,13,14]);
+  expect(n.melds[0]?.highAce).toBe(true);
+ });
+ it("refuses to wrap a low Ace run into a high Ace run",()=>{
+  const m=beginBiribaMatch(2,()=>0.12);
+  m.phase="meld";
+  m.hands[0]=[c("king",13)];
+  m.melds=[{ownerSeat:0,suit:"spades",highAce:false,cards:[
+    {card:c("ace-low",1),value:1},{card:c("two",2),value:2},{card:c("three",3),value:3}
+  ]}];
+  const wrong={...m.melds[0]!,highAce:true,cards:[...m.melds[0]!.cards,{card:c("king",13),value:14}]};
+  expect(()=>biribaAction(m,0,{type:"extend",index:0,meld:wrong})).toThrow();
+ });
 });
