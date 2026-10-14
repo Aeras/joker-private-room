@@ -44,11 +44,11 @@ function GameSelection() {
                   <strong><Spade className="inline-block h-5 w-5" aria-hidden="true" /> DURAK</strong>
                   <small>Δημιουργία ή συμμετοχή</small>
                 </a>
-                <div className="home-choice-card game-selection-unavailable" aria-disabled="true" aria-label="Μπιρίμπα — προσεχώς">
+                <a href="/biriba" className="home-choice-card" aria-label="Μπιρίμπα — δοκιμαστική δημιουργία παιχνιδιού">
                   <span className="home-choice-card__number">03</span>
                   <strong><Club className="inline-block h-5 w-5" aria-hidden="true" /> ΜΠΙΡΙΜΠΑ</strong>
-                  <small>Προσεχώς</small>
-                </div>
+                  <small>Δοκιμαστικό μοίρασμα · PixiJS</small>
+                </a>
                 {active.status === "error" && (
                   <p role="alert" className="col-span-full text-center text-sm text-negative">
                     Δεν ήταν δυνατός ο έλεγχος ενεργής παρτίδας. Μπορείς να μπεις στο Joker για επανάληψη.

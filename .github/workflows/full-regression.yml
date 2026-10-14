@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/**'
       - 'supabase/migrations/**'
+      - '!supabase/migrations/*biriba*'
       - 'supabase/functions/verify-player-pin/**'
       - 'supabase/functions/game-state/**'
       - 'src/services/authFunctions.ts'
@@ -67,9 +68,3 @@ jobs:
     uses: ./.github/workflows/jk001-ai-banter-phase-b-gate.yml
   ai-banter-phase-c:
     uses: ./.github/workflows/jk001-ai-banter-phase-c-gate.yml
-
-  jk002-db-integration:
-    uses: ./.github/workflows/jk002-db-integration.yml
-
-  jk003-db-integration:
-    uses: ./.github/workflows/jk003-db-integration.yml

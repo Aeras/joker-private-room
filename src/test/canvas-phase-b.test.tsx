@@ -65,7 +65,7 @@ beforeEach(() => {
     ].map((name) => [name, vi.fn()]),
   );
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-    ctx as unknown as CanvasRenderingContext2D,
+    ctx as unknown as ReturnType<HTMLCanvasElement["getContext"]>,
   );
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
     left: 300,
