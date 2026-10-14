@@ -7,6 +7,7 @@ import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
 import { ScreenShell } from "@/components/joker/ScreenShell";
 import { BiribaPixiPreview, BIRIBA_DEAL_BEAT_MS } from "@/biriba/BiribaPixiPreview";
 import { BiribaRoomControls } from "@/biriba/BiribaRoomControls";
+import { BiribaMeldZone } from "@/biriba/BiribaMeldZone";
 import { BiribaTrumpIndicator } from "@/biriba/BiribaTrumpIndicator";
 import "@/biriba/biribaReferenceTable.css";
 import {
@@ -335,6 +336,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
         {/* 1. MELD ZONES (ΚΟΚΚΙΝΗ ΟΜΑΔΑ & ΜΠΛΕ ΟΜΑΔΑ) */}
         <div className="biriba-team-zone biriba-team-zone--red">
+          <BiribaMeldZone teamName="Κόκκινη ομάδα" melds={game?.melds.filter(m => biribaTeamOf(m.ownerSeat, game.seats) === redTeamIndex) ?? []} />
           <div className="biriba-team-heading">
             <span>ΚΟΚΚΙΝΗ ΟΜΑΔΑ</span>
             <span className="biriba-team-score">{redScore}</span>
@@ -342,6 +344,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
         </div>
 
         <div className="biriba-team-zone biriba-team-zone--blue">
+          <BiribaMeldZone teamName="Μπλε ομάδα" melds={game?.melds.filter(m => biribaTeamOf(m.ownerSeat, game.seats) === 1 - redTeamIndex) ?? []} />
           <div className="biriba-team-heading">
             <span>ΜΠΛΕ ΟΜΑΔΑ</span>
             <span className="biriba-team-score">{blueScore}</span>
