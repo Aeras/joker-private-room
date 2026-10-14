@@ -170,6 +170,14 @@
 
 .joker-declaration-pass{display:block;width:36%;height:3px;border-radius:2px;background:currentColor;font-size:0;line-height:0}
 
+/* Biriba uses Joker's approved 800 ms rise then 450 ms flip cadence. */
+@keyframes biriba-hand-rise {
+  0% { translate: 0 120%; opacity: 1; }
+  100% { translate: 0 0; opacity: 1; }
+}
+.biriba-hand-enter {
+  animation: biriba-hand-rise 800ms cubic-bezier(.22,1,.36,1) both;
+}
 /* Biriba: reveal the local hand after cards have been dealt face-down. */
 @keyframes biriba-card-face-reveal {
   0% { opacity: 0; transform: perspective(500px) rotateY(88deg); }
@@ -177,8 +185,8 @@
 }
 .biriba-hand-face {
   backface-visibility: hidden;
-  animation: biriba-card-face-reveal 480ms ease-out both;
+  animation: biriba-card-face-reveal 450ms ease-out both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .biriba-hand-face { animation: none; }
+  .biriba-hand-face, .biriba-hand-enter { animation: none; }
 }
