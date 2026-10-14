@@ -247,7 +247,7 @@ export function BiribaPixiPreview({
         stage.addChild(trumpSymbol);
       }
 
-      // Opponents keep portrait card backs in the same arced, tilted fans as the reference.
+      // Opponents keep horizontal card backs in arced fans along the table rim.
       const BACK_W = BIRIBA_CARD_BACK_WIDTH,
         BACK_H = BIRIBA_CARD_BACK_HEIGHT;
       const rear = async (side: "top" | "left" | "right", count: number) => {

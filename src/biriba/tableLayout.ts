@@ -14,12 +14,12 @@ export function opponentFanPose(
   if (side === "top") {
     return { x: 640 + offset * 17, y: 108 + Math.abs(offset) * 1.5, angle: offset * 1.5 };
   }
-  // Follow the oval rim: the middle of each side fan sits farther out, while
-  // its upper and lower cards curve back toward the felt. Keep the bend tied
-  // to the card offset so a shrinking hand does not jump to a new arc.
+  // Lay the side cards horizontally from the local player's viewpoint. Their
+  // outer ends spread apart while their inner ends converge near the avatar;
+  // the centers also follow the oval rim as the hand grows or shrinks.
   const bend = offset * offset * 0.9;
   if (side === "left") {
-    return { x: 72 + bend, y: 322 + offset * 14, angle: offset * 1.7 };
+    return { x: 72 + bend, y: 322 + offset * 14, angle: 90 - offset * 2.5 };
   }
-  return { x: 1208 - bend, y: 322 + offset * 14, angle: -offset * 1.7 };
+  return { x: 1208 - bend, y: 322 + offset * 14, angle: -90 + offset * 2.5 };
 }
