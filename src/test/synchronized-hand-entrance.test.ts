@@ -21,7 +21,7 @@ describe("synchronized hand-entrance presentation", () => {
     expect(table).toContain("const remoteHandsRevealed = handRevealActive || revealedHands.current.has(");
     expect(table).toContain('showCards={remoteHandsRevealed || (!startupPresentationActive');
     expect(table).toContain("entrance={handRevealActive}");
-    expect(table).toContain("startupPresentationActive && !handRevealActive ? 0 : publicRemainingCardCount");
+    expect(table).toContain("startupPresentationActive && !remoteHandsRevealed ? 0 : publicRemainingCardCount");
     expect(seat).toContain('data-hand-entrance={entrance ? "true" : undefined}');
   });
 
