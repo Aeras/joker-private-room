@@ -6,7 +6,7 @@ import {ScreenShell} from "@/components/joker/ScreenShell";
 import {TableSurface} from "@/components/table/TableSurface";
 import {BiribaPixiPreview} from "@/biriba/BiribaPixiPreview";
 import {biribaCommand,type BiribaRoomView,type BiribaGameView,type BiribaResponse} from "@/services/biribaFunctions";
-import {BIRIBA_TARGETS,DEFAULT_BIRIBA_TARGET,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaTarget,type BiribaRank} from "@/biriba/rules";
+import {BIRIBA_TARGETS,DEFAULT_BIRIBA_TARGET,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaTarget} from "@/biriba/rules";
 import {assets} from "@/assets/registry";
 
 export const Route=createFileRoute("/biriba")({
@@ -82,7 +82,7 @@ function BiribaContent({playerId}:{playerId:string}){
     if(result.ok&&"room" in result)setRoom(r=>r?.version&&r.version>result.room.version?r:result.room);
     if(result.ok&&"room" in result&&result.room.lifecycle!=="waiting"){
      const next=await biribaCommand({data:{action:"get_game",code}});
-     if(current&&next.ok&&"game" in next)setGame(next.game);
+     if(current&&next.ok&&"game" in next)setGame(previous=>previous?.revision===next.game.revision?previous:next.game);
     }
    }catch{/* retry on next interval */}
   };
@@ -112,7 +112,7 @@ function BiribaContent({playerId}:{playerId:string}){
   const selectedCards=ownCards.filter(c=>selected.includes(c.id));
   const candidate=game?selectedMeld(selectedCards,game.seat):null;
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
-   <TableSurface/><BiribaPixiPreview deal={preview}/>
+   <TableSurface/><BiribaPixiPreview deal={preview} game={game??undefined} redTeam={parseInt(room.code[0]??"0",16)%2}/>
    <div className="absolute left-3 top-3 z-20 rounded-lg bg-black/80 p-2 text-xs text-white">
     <div>ΜΠΙΡΙΜΠΑ · {room.code} · {room.target.toLocaleString("el-GR")} πόντοι</div>
     <div>{game?.roundEnded?"Τέλος γύρου":game? `Σειρά θέσης ${game.turn+1} · ${game.phase==="draw"?"Τράβηγμα":"Κατέβασμα / Πέταγμα"}`:"Φόρτωση παρτίδας…"}</div>
