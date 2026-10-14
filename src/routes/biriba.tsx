@@ -480,58 +480,41 @@ function BiribaContent({ playerId }: { playerId: string }) {
         )}
 
         {/* 6. TURN CONTROLS & ACTION BUTTONS */}
-        <div className="biriba-actions text-white">
+        <div className="biriba-actions biriba-actions--left text-white">
           {error && <p role="alert" className="mb-2 text-center text-xs font-semibold text-red-300 drop-shadow">{error}</p>}
-          <div className="flex flex-wrap justify-center gap-2">
-            {mine && game?.phase === "draw" && (
-              <button
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold shadow-lg hover:bg-emerald-500"
-                disabled={busy}
-                onClick={() => void play({ type: "draw" })}
-              >
-                Τράβηγμα
-              </button>
-            )}
-            {mine && game?.phase === "draw" && pickup?.meld && (
-              <button
-                className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold shadow-lg hover:bg-amber-500"
-                disabled={busy}
-                onClick={() => void play({ type: "pickup", ids: [pickup.discard.id], meld: pickup.meld })}
-              >
-                Πάρε πεταμένα &amp; κατέβασε
-              </button>
-            )}
-            {mine && game?.phase === "meld" && (
-              <>
-                <button
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold shadow-lg hover:bg-blue-500 disabled:opacity-40"
-                  disabled={busy || !candidate}
-                  onClick={() => candidate && void play({ type: "meld", meld: candidate })}
-                >
-                  Κατέβασμα επιλεγμένων
-                </button>
-                {extensions.map((item) => (
-                  <button
-                    key={item.index}
-                    type="button"
-                    disabled={busy}
-                    className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold shadow hover:bg-amber-500"
-                    onClick={() => item.kind && void play({ type: "extend", index: item.index, meld: item.kind })}
-                  >
-                    Κόλλημα #{item.index + 1}
-                  </button>
-                ))}
-                <button
-                  className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-bold shadow-lg hover:bg-rose-500 disabled:opacity-40"
-                  disabled={busy || selected.length !== 1}
-                  onClick={() => void play({ type: "discard", id: selected[0] })}
-                >
-                  Πέταγμα
-                </button>
-              </>
-            )}
-          </div>
+          {mine && game?.phase === "draw" && (
+            <button className="rounded-lg bg-emerald-600 font-bold shadow-lg hover:bg-emerald-500"
+              disabled={busy} onClick={() => void play({ type: "draw" })}>Τράβηγμα</button>
+          )}
+          {mine && game?.phase === "meld" && (
+            <>
+              <button className="rounded-lg bg-rose-600 font-bold shadow-lg hover:bg-rose-500 disabled:opacity-40"
+                disabled={busy || selected.length !== 1}
+                onClick={() => void play({ type: "discard", id: selected[0] })}>Πέταγμα</button>
+              <button className="rounded-lg bg-blue-600 font-bold shadow-lg hover:bg-blue-500 disabled:opacity-40"
+                disabled={busy || !candidate}
+                onClick={() => candidate && void play({ type: "meld", meld: candidate })}>Κατέβασμα</button>
+            </>
+          )}
+          {mine && game?.phase === "draw" && pickup?.meld && (
+            <button className="rounded-lg bg-amber-600 font-bold shadow-lg hover:bg-amber-500"
+              disabled={busy}
+              onClick={() => void play({ type: "pickup", ids: [pickup.discard.id], meld: pickup.meld })}>
+              Πάρε πεταμένα
+            </button>
+          )}
         </div>
+        {mine && game?.phase === "meld" && extensions.length > 0 && (
+          <div className="biriba-actions biriba-actions--right text-white">
+            {extensions.map(item => (
+              <button key={item.index} type="button" disabled={busy}
+                className="rounded-lg bg-amber-600 font-bold shadow hover:bg-amber-500"
+                onClick={() => item.kind && void play({ type: "extend", index: item.index, meld: item.kind })}>
+                Κόλλημα #{item.index + 1}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* 7. PLAYER HAND (CURVED FAN LAYOUT) */}
         <div className="biriba-hand" style={{ "--biriba-card-gap": ownCards.length > 14 ? "clamp(-100px,-7.5vw,-48px)" : "clamp(-95px,-5.5vw,-42px)" } as React.CSSProperties}>
