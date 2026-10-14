@@ -535,8 +535,8 @@ function BiribaContent({ playerId }: { playerId: string }) {
                   aria-pressed={isSelected}
                   onClick={() => toggle(card.id)}
                   style={{
-                    transform: `translateY(${yOffset - (isSelected ? 32 : 0)}px) rotate(${rot}deg)`,
-                    zIndex: isSelected ? 60 : i + 1,
+                    transform: `translateY(calc(${yOffset}px - ${isSelected ? "clamp(45px, 11.5vh, 100px)" : "0px"})) rotate(${rot}deg)`,
+                    zIndex: i + 1,
                   }}
                   className="biriba-fan-card"
                 >

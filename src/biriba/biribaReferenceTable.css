@@ -245,10 +245,13 @@
   box-shadow: 0 5px 8px #0008;
   transform-origin: 50% 140%;
   transition:
-    transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
-    box-shadow 0.18s ease;
+    transform 0.26s cubic-bezier(0.22, 0.72, 0.2, 1),
+    box-shadow 0.26s ease;
   touch-action: manipulation;
   opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .biriba-fan-card { transition-duration: 0.01ms; }
 }
 .biriba-fan-card:first-child {
   margin-left: 0;
