@@ -81,7 +81,7 @@ export function biribaCanFinish(melds:readonly BiribaMeld[],packetPlayed:boolean
   return packetPlayed&&discardedFinalCard&&biribas.length>=2&&biribas.some(m=>!biribaMeldDirty(m));
 }
 export type BiribaTeamEnd={ melds:BiribaMeld[]; held:BiribaCard[]; tookPacket:boolean; packetNeverPlayed:boolean; anyPlayerOpened:boolean; closed:boolean };
-export function biribaScoreRound(team:BiribaTeamEnd,trump:BiribaSuit|null):{cards:number;bonuses:number;closing:number;penalty:number;held:number;total:number}{
+export function biribaScoreRound(team:BiribaTeamEnd,trump:BiribaSuit|null,opponentClosed=true):{cards:number;bonuses:number;closing:number;penalty:number;held:number;total:number}{
   if(team.melds.some(m=>!biribaMeldValid(m)))throw new Error("INVALID_MELD");
   const cards=team.melds.reduce((sum,m)=>sum+m.cards.reduce((s,p)=>s+biribaCardPoints(p.card),0),0);
   const bonuses=team.melds.reduce((sum,m)=>sum+biribaMeldBonus(m,trump),0);
@@ -90,7 +90,7 @@ export function biribaScoreRound(team:BiribaTeamEnd,trump:BiribaSuit|null):{card
   let penalty=0;
   if(team.packetNeverPlayed)penalty=100;
   else if(!team.tookPacket){
-    if(biribas===0)penalty=team.anyPlayerOpened?100:200;
+    if(biribas===0)penalty=opponentClosed?(team.anyPlayerOpened?100:200):100;
     else penalty=100;
   }
   const held=team.packetNeverPlayed?0:team.held.reduce((sum,c)=>sum+biribaCardPoints(c),0);
