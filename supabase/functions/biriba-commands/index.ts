@@ -3,10 +3,10 @@ import {createClient} from "jsr:@supabase/supabase-js@2";
 import {beginBiribaMatch,biribaAction,type BiribaMatch,type BiribaAction} from "./engine.ts";
 import {type BiribaSeatCount} from "./rules.ts";
 import {chooseBiribaBotStep} from "./bot.ts";
+import {pauseBiribaClock,resumeBiribaClock,timeoutBiribaClock,reclaimBiribaClock} from "./clock.ts";
 import {CANONICAL_BOTS} from "../_shared/bot-catalog.ts";
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
-const validCard=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<80;
-const allowed=new Set(["create","join","list","get","membership","leave","bot_add","bot_remove","start","get_game","move","end_game"]);
+const allowed=new Set(["create","join","list","get","membership","leave","bot_add","bot_remove","start","get_game","move","pause","resume","reclaim","end_game"]);
 const actions=new Set(["draw","pickup","meld","extend","discard"]);
 const number=(v:unknown)=>typeof v==="number"&&Number.isInteger(v);
 Deno.serve(async(req)=>{
@@ -56,32 +56,50 @@ Deno.serve(async(req)=>{
   const revision=loaded.data.revision as number;
   const original=loaded.data.state as BiribaMatch;
   let match=original;
-  if(action==="move"){
-   const move=body.move as BiribaAction|undefined;
-   if(!move||!actions.has(String(move.type)))return json({ok:false,code:"INVALID_MOVE"},400);
-   // Only the authenticated human's seat may make a requested move.
-   try{
-    match=biribaAction(match,seat,move);
-   }catch{return json({ok:false,code:"ILLEGAL_MOVE"},400)}
-  }
   const room=await rpc("get");
   if(room.error||!room.data?.ok)return json({ok:false,code:"SERVICE_UNAVAILABLE"},503);
   const seats=room.data.room.seats as Array<{index:number;occupant:string;name:string;botId?:string;tier?:number}>;
-  // Make pending bot moves in one bounded pass; server never leaks bot hands.
-  for(let count=0;count<60&&!match.roundEnded;count++){
-   const bot=seats.find(s=>s.index===match.turn&&s.occupant==="bot");
-   if(!bot)break;
-   const changed=chooseBiribaBotStep(match,bot.index,(bot.tier===3?3:bot.tier===2?2:1));
-   if(changed===match)break;
-   match=changed;
+  const now=Date.now();
+  if(!match.clock)return json({ok:false,code:"INVALID_STATE"},503);
+  if(action==="pause"||action==="resume"||action==="reclaim"){
+   try{
+    const clock=action==="pause"
+      ?pauseBiribaClock(match.clock,seat,match.turn,true,now)
+      :action==="resume"
+       ?resumeBiribaClock(match.clock,seat,now)
+       :reclaimBiribaClock(match.clock,seat,now);
+    match={...match,clock};
+   }catch{return json({ok:false,code:"CONTROL_DENIED"},409);}
+  }else{
+   if(match.clock.pausedBy!==null){
+    if(action==="move")return json({ok:false,code:"PAUSED"},409);
+   }else{
+    match={...match,clock:timeoutBiribaClock(match.clock,match.turn,
+      seats.some(s=>s.index===match.turn&&s.occupant==="human"),now)};
+    if(action==="move"){
+     if(match.clock.botTakeovers.includes(seat)||now>match.clock.turnDeadline)
+      return json({ok:false,code:"TURN_EXPIRED"},409);
+     const move=body.move as BiribaAction|undefined;
+     if(!move||!actions.has(String(move.type)))return json({ok:false,code:"INVALID_MOVE"},400);
+     try{match=biribaAction(match,seat,move);}catch{return json({ok:false,code:"ILLEGAL_MOVE"},400);}
+    }
+    // Make pending bot moves in one bounded pass; never expose their private hands.
+    for(let count=0;count<60&&!match.roundEnded;count++){
+     const bot=seats.find(s=>s.index===match.turn&&(s.occupant==="bot"||match.clock.botTakeovers.includes(s.index)));
+     if(!bot)break;
+     const changed=chooseBiribaBotStep(match,bot.index,(bot.tier===3?3:bot.tier===2?2:1));
+     if(changed===match)break;
+     match=changed;
+    }
+   }
   }
-  if(match!==original){
+  if(JSON.stringify(match)!==JSON.stringify(original)){
    const saved=await rpc("save",{p_state:match,p_revision:revision});
    if(saved.error||!saved.data?.ok)return reply(saved.data,saved.error);
   }
   const {hands,packets,stock,...publicState}=match;
   const view={...publicState,stockCount:stock.length,handCounts:hands.map(h=>h.length),
-   myHand:hands[seat],packetCounts:packets.map(p=>p.length),seat,revision:match===original?revision:revision+1,
+   myHand:hands[seat],packetCounts:packets.map(p=>p.length),seat,revision:JSON.stringify(match)===JSON.stringify(original)?revision:revision+1,
    currentPlayerName:seats.find(s=>s.index===match.turn)?.name,roomSeats:seats};
   return json({ok:true,game:view});
  }catch(err){
