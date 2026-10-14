@@ -226,27 +226,6 @@ export function BiribaPixiPreview({
       if (!game || (game.packetCounts[0] ?? 0) > 0) backStack(664, 395, 2);
       if (!game || (game.packetCounts[1] ?? 0) > 0) backStack(766, 395, 2);
 
-      // The projection exposes the trump suit, not the identity of a trump card.
-      const trumpSuit = game?.trump ?? deal?.trump;
-      if (trumpSuit) {
-        const trumpSurface = new Graphics()
-          .roundRect(1083, 550, 68, 50, 6)
-          .fill({ color: 0xfffcf4 })
-          .stroke({ color: 0xc9b98b, width: 2 });
-        stage.addChild(trumpSurface);
-        const trumpSymbol = new Text({
-          text: suitIcon[trumpSuit] ?? "",
-          style: {
-            fontSize: 40,
-            fill: trumpSuit === "hearts" || trumpSuit === "diamonds" ? "#d81926" : "#111111",
-            fontWeight: "bold",
-          },
-        });
-        trumpSymbol.anchor.set(0.5);
-        trumpSymbol.position.set(1117, 575);
-        stage.addChild(trumpSymbol);
-      }
-
       // Opponents keep horizontal card backs in arced fans along the table rim.
       const BACK_W = BIRIBA_CARD_BACK_WIDTH,
         BACK_H = BIRIBA_CARD_BACK_HEIGHT;

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { BiribaPixiPreview } from "@/biriba/BiribaPixiPreview";
+import { BiribaTrumpIndicator } from "@/biriba/BiribaTrumpIndicator";
 import { createBiribaLocalDeal } from "@/biriba/localDeal";
 import "@/biriba/biribaReferenceTable.css";
 
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/biriba-preview")({
         <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 1</span>
         <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 2</span>
       </div>
-      <div className="biriba-trump-frame">ΑΤΟΥ</div>
+      <BiribaTrumpIndicator suit={previewDeal.trump} />
       {(["top", "left", "right", "local"] as const).map((side) => (
         <div key={side} className={`biriba-seat biriba-seat--${side}`}>
           <div className="biriba-seat-avatar biriba-preview-avatar">●</div>
