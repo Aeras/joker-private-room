@@ -29,9 +29,22 @@ describe("Biriba opponent fans", () => {
         expect(left.x + right.x).toBe(1280);
         expect(left.y).toBe(right.y);
         expect(left.angle).toBe(-right.angle);
+        expect(left.angle).toBeGreaterThan(70);
+        expect(left.angle).toBeLessThan(110);
         expect(left.x).toBeGreaterThan(40);
         expect(right.x).toBeLessThan(1240);
       }
+
+      // A physical fan opens toward the table rim, not toward the avatar.
+      const outerY = (index: number) => {
+        const pose = opponentFanPose("left", index, count);
+        return pose.y + Math.cos((pose.angle * Math.PI) / 180) * 52.5;
+      };
+      const innerY = (index: number) => {
+        const pose = opponentFanPose("left", index, count);
+        return pose.y - Math.cos((pose.angle * Math.PI) / 180) * 52.5;
+      };
+      expect(outerY(count - 1) - outerY(0)).toBeGreaterThan(innerY(count - 1) - innerY(0));
     }
   });
 });
