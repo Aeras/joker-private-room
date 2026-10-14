@@ -1,5 +1,6 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {useCallback,useEffect,useMemo,useState} from "react";
+import {ChartNoAxesColumn} from "lucide-react";
 import {PlayerSessionGate} from "@/components/joker/PlayerSessionGate";
 import {PlayerAvatar} from "@/components/joker/PlayerAvatar";
 import {ScreenShell} from "@/components/joker/ScreenShell";
@@ -46,6 +47,7 @@ function BiribaContent({playerId}:{playerId:string}){
  const [clockNow,setClockNow]=useState(Date.now());
  useEffect(()=>{const t=setInterval(()=>setClockNow(Date.now()),350);return()=>clearInterval(t)},[]);
  const [error,setError]=useState("");
+ const [scoresOpen,setScoresOpen]=useState(false);
  const isHost=room?.hostPlayerId===playerId;
  const run=useCallback(async(data:Parameters<typeof biribaCommand>[0]["data"])=>{
   setBusy(true);setError("");
@@ -133,9 +135,32 @@ function BiribaContent({playerId}:{playerId:string}){
     </div>
     {game.clock.botTakeovers.includes(game.seat)&&<button type="button" disabled={busy} className="rounded border border-amber-400 px-2 py-1 text-amber-200" onClick={()=>void run({action:"reclaim",code:room.code})}>Πάρε τον έλεγχο</button>}
    </div>}
-   <div className="absolute right-3 top-3 z-20 flex gap-2">
+   <div className="absolute right-3 top-3 z-30 flex gap-2">
+    <button type="button" aria-label="Αναλυτική βαθμολογία" className="rounded bg-black/85 p-2 text-white" onClick={()=>setScoresOpen(open=>!open)}><ChartNoAxesColumn size={20}/></button>
     {isHost&&<button type="button" className="rounded bg-black/80 px-3 py-2 text-xs text-white" onClick={()=>void run({action:"end_game",code:room.code})}>Τέλος παιχνιδιού</button>}
    </div>
+   {scoresOpen&&game&&<section className="absolute right-3 top-14 z-40 max-h-[72vh] w-[min(90vw,470px)] overflow-y-auto rounded-xl border border-white/20 bg-[#111c1a]/95 p-3 text-white shadow-2xl">
+     <div className="mb-2 flex items-center justify-between"><h2 className="font-bold">Αναλυτική βαθμολογία</h2><button type="button" className="rounded border border-white/30 px-2 py-1 text-xs" onClick={()=>setScoresOpen(false)}>Κλείσιμο</button></div>
+     <div className="mb-3 grid grid-cols-2 gap-2 text-center text-sm">
+      <div className="rounded-lg border border-red-400 p-2">Κόκκινη ομάδα <strong className="block text-lg">{game.teamScores[parseInt(room.code[0]??"0",16)%2]}</strong></div>
+      <div className="rounded-lg border border-blue-400 p-2">Μπλε ομάδα <strong className="block text-lg">{game.teamScores[1-parseInt(room.code[0]??"0",16)%2]}</strong></div>
+     </div>
+     {game.scoreHistory.length===0&&<p className="text-sm text-white/70">Ο πρώτος γύρος βρίσκεται σε εξέλιξη.</p>}
+     {[...game.scoreHistory].reverse().map(item=><div key={item.round} className="mb-3 space-y-2 rounded-lg border border-white/20 p-2 text-xs">
+      <strong>Γύρος {item.round}</strong>
+      <div className="grid grid-cols-2 gap-2">{item.breakdown.map((b,team)=><div key={team} className="space-y-1">
+       <strong>Ομάδα {team+1}: {b.total>0?"+":""}{b.total}</strong>
+       <div>Κατεβασμένα: +{b.cards}</div><div>Μπιρίμπες: +{b.bonuses}</div>
+       <div>Κλείσιμο: +{b.closing}</div><div>Ποινές: −{b.penalty}</div>
+       <div>Στο χέρι: −{b.held}</div>
+      </div>)}</div>
+      <div className="border-t border-white/20 pt-2">{item.playerPoints.map(p=><div key={p.seat}>
+       {room.seats[p.seat]?.name??`Παίκτης ${p.seat+1}`}: +{p.cards} / −{p.held} φύλλα
+      </div>)}</div>
+     </div>)}
+     {game.roundScored&&!game.matchFinished&&isHost&&<button type="button" disabled={busy} onClick={()=>void run({action:"next_round",code:room.code})} className="w-full rounded bg-emerald-700 px-3 py-2 font-bold">Επόμενος γύρος</button>}
+     {game.matchFinished&&<p className="rounded bg-amber-400/15 p-2 font-semibold">Τέλος παιχνιδιού · Νίκη ομάδας {(game.winnerTeam??0)+1}</p>}
+   </section>}
    <div className="absolute bottom-1 left-1/2 z-30 w-[min(94vw,750px)] -translate-x-1/2 rounded-lg border border-white/15 bg-black/85 p-2 text-white">
     {error&&<p role="alert" className="text-xs text-red-300">{error}</p>}
     <div className="flex flex-wrap justify-center gap-1 text-sm">
