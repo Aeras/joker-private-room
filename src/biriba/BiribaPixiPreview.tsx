@@ -113,21 +113,30 @@ export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:Bi
       ];
       piles.forEach(([label,c,x])=>{void addCard(c,x,397,1.15);text(label,x+32,522,13);});
       box(1090,510,135,44,0x252923,.94,0xc3a24f);text(`ΑΤΟΥ ${deal?(deal.trump?suitIcon[deal.trump]:"—"):"♣"}`,1158,531,21);
-      const rear=(x:number,y:number,count:number,vertical=false)=>{for(let i=0;i<count;i++)void addCard(null,x+(vertical?0:i*13),y+(vertical?i*13:0),.53,i*15)};
-      const relative=(delta:number)=>game?.roomSeats[(game.seat+delta)%game.seats];
-      rear(524,27,game?game.handCounts[(game.seat+(game.seats===4?2:1))%game.seats]??0:8);
-      if(!game||game.seats===4){
-        rear(43,290,game?game.handCounts[(game.seat+1)%game.seats]??0:6,true);
-        rear(1198,290,game?game.handCounts[(game.seat+3)%game.seats]??0:6,true);
+
+      const rear=(x:number,y:number,count:number,vertical=false)=>{
+        for(let i=0;i<count;i++)void addCard(null,x+(vertical?0:i*13),y+(vertical?i*13:0),.53,i*15);
+      };
+      if(game&&dealEntrance&&dealKey){
+        const order=game.seats===4?[0,1,2,3]:[0,1];
+        for(let i=0;i<11;i++){
+          for(const delta of order){
+            const x=delta===0?355+i*43:(game.seats===2||delta===2?524+i*13:delta===1?2:1245);
+            const y=delta===0?596:(game.seats===2||delta===2?4:248+i*13);
+            const delay=(i*order.length+delta)*115;
+            void addCard(null,x,y,delta===0?.98:.53,delay,[610,402]);
+          }
+        }
+        dealTimer=setTimeout(()=>{
+          if(!disposed)onDealComplete?.(dealKey);
+        },11*order.length*115+520);
+      }else{
+        rear(524,4,game?game.handCounts[(game.seat+(game.seats===4?2:1))%game.seats]??0:8);
+        if(!game||game.seats===4){
+          rear(2,248,game?game.handCounts[(game.seat+1)%game.seats]??0:6,true);
+          rear(1245,248,game?game.handCounts[(game.seat+3)%game.seats]??0:6,true);
+        }
       }
-      text(game?(game.roomSeats[(game.seat+(game.seats===4?2:1))%game.seats]?.name??"ΣΥΜΠΑΙΚΤΗΣ"):"ΣΥΜΠΑΙΚΤΗΣ",640,19,18);
-      if(!game||game.seats===4){
-        text(relative(1)?.name??"ΑΝΤΙΠΑΛΟΣ Α",79,277,15);
-        text(relative(3)?.name??"ΑΝΤΙΠΑΛΟΣ Β",1191,277,15);
-      }
-      const hand:[string,string][]=deal ? deal.hands[0]!.map(c=>c.joker?["JOKER","joker"]:[({1:"A",11:"J",12:"Q",13:"K"} as Record<number,string>)[c.rank]??String(c.rank),c.suit]) : [["A","spades"],["K","spades"],["Q","diamonds"],["J","diamonds"],["10","diamonds"],["8","diamonds"],["5","clubs"],["4","clubs"],["3","clubs"],["2","hearts"],["7","hearts"]];
-      hand.forEach(([rank,suit],i)=>void addCard(face(rank,suit),330+i*56,599,1.55,i*22));
-      text("ΕΣΥ",640,570,22);
       (pixi as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver=observer;
     })();
     return ()=>{disposed=true;if(dealTimer)clearTimeout(dealTimer);if(app){(app as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver?.disconnect();app.destroy(true,{children:true});}};
