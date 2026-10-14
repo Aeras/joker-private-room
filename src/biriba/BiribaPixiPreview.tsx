@@ -56,20 +56,8 @@ export function BiribaPixiPreview({deal,game,redTeam=0,revealComplete=false,onDe
         const t = new Text({text:str,style:{fontFamily:"Arial, sans-serif",fontSize:size,fill:color,fontWeight:"bold",align:"center"}});
         t.anchor.set(.5); t.position.set(x,y); stage.addChild(t); return t;
       };
-      // Perspective-inspired live table: multiple gold/wood bevel layers and
-      // dark green felt. Unlike the reference illustration, no cards are baked
-      // into the background: every card remains a live game sprite.
-      const tableBack=new Graphics();
-      tableBack.roundRect(-42,-36,1364,785,180).fill({color:0x110a08});
-      tableBack.roundRect(-32,-22,1344,752,164).fill({color:0x422417});
-      tableBack.roundRect(-24,-15,1328,736,158).stroke({color:0xc58a3e,width:12});
-      tableBack.roundRect(-16,-9,1312,721,151).fill({color:0x0b251c});
-      tableBack.roundRect(2,8,1276,684,138).fill({color:0x06412d});
-      tableBack.roundRect(24,29,1232,644,120).stroke({color:0x326c4b,width:3,alpha:.62});
-      tableBack.ellipse(640,366,575,270).fill({color:0x0c4933,alpha:.34});
-      tableBack.roundRect(-24,672,1328,43,21).fill({color:0x1b100c,alpha:.92});
-      tableBack.roundRect(-24,684,1328,7,3).fill({color:0xd29b52,alpha:.85});
-      stage.addChildAt(tableBack,0);
+      // High-detail perspective table is a separate layered artwork.
+      // The canvas draws only live cards, meld zones and match state.
       // Two colored framed meld regions, faithful to the approved reference.
       box(130,142,492,185,0x331b1b,.22,0xf34e5b);
       box(658,142,492,185,0x122a52,.22,0x3897ef);
@@ -229,5 +217,5 @@ export function BiribaPixiPreview({deal,game,redTeam=0,revealComplete=false,onDe
     })();
     return ()=>{disposed=true;for(const timer of dealTimers)clearTimeout(timer);if(app){(app as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver?.disconnect();app.destroy(true,{children:true});}};
   },[deal,game,redTeam,revealComplete,onDealComplete]);
-  return <div ref={mount} className="absolute inset-0" role="img" aria-label="Προεπισκόπηση τραπεζιού Μπιρίμπας με κόκκινη και μπλε ομάδα, κατεβασμένες σειρές, κλειστή τράπουλα, πεταμένα και ανοιχτά φύλλα στο κάτω μέρος"/>;
+  return <div ref={mount} style={{backgroundImage:"url(/table/biriba_reference_base.svg)",backgroundSize:"100% 100%",backgroundRepeat:"no-repeat"}} className="absolute inset-0" role="img" aria-label="Προεπισκόπηση τραπεζιού Μπιρίμπας με κόκκινη και μπλε ομάδα, κατεβασμένες σειρές, κλειστή τράπουλα, πεταμένα και ανοιχτά φύλλα στο κάτω μέρος"/>;
 }
