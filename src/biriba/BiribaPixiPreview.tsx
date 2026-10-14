@@ -10,7 +10,7 @@ import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js"
  * or score authority live in this renderer; future multiplayer updates pass
  * sanitized viewer-specific snapshots only.
  */
-export function BiribaPixiPreview({deal,game,redTeam=0}:{deal?:BiribaDealtPreview;game?:BiribaGameView;redTeam?:number}) {
+export function BiribaPixiPreview({deal,game,redTeam=0}:{deal?:BiribaDealtPreview|undefined;game?:BiribaGameView|undefined;redTeam?:number}) {
   const mount = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const parent = mount.current;
@@ -47,7 +47,7 @@ export function BiribaPixiPreview({deal,game,redTeam=0}:{deal?:BiribaDealtPrevie
       box(910,86,215,44,0x17589c);
       text("ΚΟΚΚΙΝΗ ΟΜΑΔΑ",262,107,18);
       text("ΜΠΛΕ ΟΜΑΔΑ",1017,107,18);
-      const currentScore=(team:number)=>game?game.teamScores[team]+(game.roundScored?0:game.melds.filter(m=>biribaTeamOf(m.ownerSeat,game.seats)===team).reduce((sum,m)=>sum+biribaMeldBonus(m,game.trump)+m.cards.reduce((n,p)=>n+biribaCardPoints(p.card),0),0)):0;
+      const currentScore=(team:number)=>game?(game.teamScores[team]??0)+(game.roundScored?0:game.melds.filter(m=>biribaTeamOf(m.ownerSeat,game.seats)===team).reduce((sum,m)=>sum+biribaMeldBonus(m,game.trump)+m.cards.reduce((n,p)=>n+biribaCardPoints(p.card),0),0)):0;
       box(525,86,96,44,0x9d2838); text(String(currentScore(redTeam)),573,108,26);
       box(662,86,96,44,0x17589c); text(String(currentScore(1-redTeam)),710,108,26);
       const suitIcon:Record<string,string>={spades:"♠",hearts:"♥",diamonds:"♦",clubs:"♣"};
@@ -75,7 +75,7 @@ export function BiribaPixiPreview({deal,game,redTeam=0}:{deal?:BiribaDealtPrevie
         const visual=(card:{joker?:boolean;rank?:number;suit?:string}):Face=>
           card.joker?face("JOKER","joker"):face(({1:"A",11:"J",12:"Q",13:"K"} as Record<number,string>)[card.rank??0]??String(card.rank??""),card.suit??"spades");
         const onTeam=(team:number)=>game.melds.filter(m=>biribaTeamOf(m.ownerSeat,game.seats)===team);
-        for(const [zone,team] of [[0,redTeam],[1,1-redTeam]]){
+        for(const [zone,team] of [[0,redTeam],[1,1-redTeam]] as [number,number][]){
           const melds=onTeam(team);
           melds.forEach((meld,i)=>{
             const x=zone===0?155:683;
