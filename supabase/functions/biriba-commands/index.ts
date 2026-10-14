@@ -36,7 +36,7 @@ Deno.serve(async(req)=>{
     p_catalog:CANONICAL_BOTS,
     p_state:null,p_revision:null,...over
    });
-  const reply=(data:any,error:any)=>error?json({ok:false,code:"SERVICE_UNAVAILABLE"},503):json(data,data?.ok?200:400);
+  const reply=(data:unknown,error:unknown)=>error?json({ok:false,code:"SERVICE_UNAVAILABLE"},503):json(data,(data as {ok?:boolean}|null)?.ok?200:400);
   if(["create","join","list","get","membership","leave","bot_add","bot_remove","end_game"].includes(action)){
    if(action==="bot_add"&&body.botId!==undefined&&!CANONICAL_BOTS.some(b=>b.id===body.botId))return json({ok:false,code:"INVALID_BOT"},400);
    if(action==="bot_remove"&&!number(body.seat))return json({ok:false,code:"INVALID_SEAT"},400);
