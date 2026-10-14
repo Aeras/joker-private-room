@@ -1,0 +1,122 @@
+import {biribaCanFinish,biribaMeldValid,biribaTeamOf,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaSuit} from "./rules";
+import {createBiribaLocalDeal} from "./localDeal";
+
+/** Deterministic, serializable BIRIBA match state. Authoritative persistence is separate. */
+export type BiribaTurnPhase="draw"|"meld"|"ended";
+export type BiribaMatch={
+ seats:BiribaSeatCount;hands:BiribaCard[][];packets:BiribaCard[][];
+ stock:BiribaCard[];discards:BiribaCard[];trump:BiribaSuit|null;
+ initialJokerId:string|null;melds:BiribaMeld[];turn:number;phase:BiribaTurnPhase;
+ opened:boolean[];packetTaken:boolean[];packetPlayed:boolean[];packetOwner:(number|null)[];
+ pendingPacket:(number|null)[];roundEnded:boolean;closedBy:number|null;
+};
+export type BiribaAction=
+ |{type:"draw"}
+ |{type:"pickup";ids:string[];meld:BiribaMeld}
+ |{type:"meld";meld:BiribaMeld}
+ |{type:"extend";index:number;meld:BiribaMeld}
+ |{type:"discard";id:string};
+const copy=(m:BiribaMatch):BiribaMatch=>structuredClone(m);
+const assert=(value:unknown,message:string):asserts value=>{if(!value)throw new Error(message);};
+export function beginBiribaMatch(seats:BiribaSeatCount,random:()=>number=Math.random):BiribaMatch{
+ const d=createBiribaLocalDeal(seats,random);
+ return {seats,hands:d.hands,packets:[...d.packets],stock:d.stock,discards:d.discard,
+  trump:d.trump,initialJokerId:d.discard[0]?.joker?d.discard[0].id:null,melds:[],
+  turn:0,phase:"draw",opened:Array(seats).fill(false),packetTaken:[false,false],
+  packetPlayed:[false,false],packetOwner:[null,null],pendingPacket:[null,null],
+  roundEnded:false,closedBy:null};
+}
+export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):BiribaMatch{
+ if(m.roundEnded||seat!==m.turn||m.phase==="ended")throw new Error("NOT_YOUR_TURN");
+ const next=copy(m), hand=next.hands[seat]!, team=biribaTeamOf(seat,next.seats);
+ const takeIds=(ids:readonly string[]):BiribaCard[]=>{
+  if(new Set(ids).size!==ids.length)throw new Error("DUPLICATE_CARDS");
+  const found=ids.map(id=>hand.find(c=>c.id===id));
+  if(found.some(c=>!c))throw new Error("CARD_NOT_OWNED");
+  ids.forEach(id=>hand.splice(hand.findIndex(c=>c.id===id),1));
+  return found as BiribaCard[];
+ };
+ const assessEmpty=()=>{
+  if(hand.length!==0||next.packetTaken[team])return;
+  const eligible=next.melds.some(md=>biribaTeamOf(md.ownerSeat,next.seats)===team&&md.cards.length>=7);
+  if(!eligible)return;
+  next.packetTaken[team]=true;next.packetOwner[team]=seat;
+  next.hands[seat]=next.packets[team]!.splice(0);
+  if(next.phase==="meld")next.packetPlayed[team]=true;
+  else next.pendingPacket[team]=seat;
+ };
+ if(action.type==="draw"){
+  if(next.phase!=="draw")throw new Error("DRAW_ALREADY_DONE");
+  if(next.pendingPacket[team]===seat&&next.hands[seat]!.length===0){
+   next.hands[seat]=next.packets[team]!.splice(0);
+   next.pendingPacket[team]=null;next.packetPlayed[team]=true;
+   next.phase="meld";return next;
+  }
+  const top=next.stock.pop();
+  if(!top)throw new Error("EMPTY_STOCK");
+  hand.push(top);next.phase="meld";return next;
+ }
+ if(action.type==="pickup"){
+  if(next.phase!=="draw")throw new Error("DRAW_ALREADY_DONE");
+  if(!next.discards.length)throw new Error("EMPTY_DISCARDS");
+  const before=new Set(hand.map(c=>c.id));
+  const pile=next.discards.splice(0);
+  hand.push(...pile);
+  const touched=action.meld.cards.some(p=>pile.some(c=>c.id===p.card.id));
+  if(!touched||!biribaMeldValid(action.meld))throw new Error("PICKUP_REQUIRES_MELD");
+  if(action.meld.ownerSeat!==seat)throw new Error("INVALID_OWNER");
+  const ids=action.meld.cards.map(p=>p.card.id);
+  // At least one prior discard, and no invented ids. All cards must originate in hand + pile.
+  if(ids.some(id=>!before.has(id)&&!pile.some(c=>c.id===id)))throw new Error("CARD_NOT_OWNED");
+  takeIds(ids);
+  next.melds.push(action.meld);
+  next.opened[seat]=true;
+  next.phase="meld";assessEmpty();
+  return next;
+ }
+ if(action.type==="meld"){
+  if(next.phase!=="meld"||!biribaMeldValid(action.meld))throw new Error("INVALID_MELD");
+  if(action.meld.ownerSeat!==seat)throw new Error("INVALID_OWNER");
+  const ids=action.meld.cards.map(p=>p.card.id);
+  if(hand.length===1&&!next.melds.some(md=>biribaTeamOf(md.ownerSeat,next.seats)===team&&md.cards.length>=7))throw new Error("EMPTY_HAND_WAITING");
+  takeIds(ids);next.melds.push(action.meld);next.opened[seat]=true;
+  assessEmpty();return next;
+ }
+ if(action.type==="extend"){
+  if(next.phase!=="meld")throw new Error("MUST_DRAW_FIRST");
+  const previous=next.melds[action.index];
+  if(!previous||!biribaMeldValid(action.meld)||previous.suit!==action.meld.suit||previous.highAce!==action.meld.highAce||previous.ownerSeat!==action.meld.ownerSeat)throw new Error("INVALID_EXTENSION");
+  if(biribaTeamOf(previous.ownerSeat,next.seats)!==team)throw new Error("OPPONENT_MELD");
+  if(previous.ownerSeat!==seat&&!next.opened[seat])throw new Error("MUST_OPEN_OWN_MELD_FIRST");
+  const oldIds=new Set(previous.cards.map(p=>p.card.id));
+  if(!previous.cards.every(p=>action.meld.cards.some(x=>x.card.id===p.card.id)))throw new Error("CANNOT_REMOVE_CARDS");
+  // Natural twos never turn into a wildcard; Joker replacements may move only inside same meld.
+  for(const p of previous.cards){
+   if(!p.card.joker&&p.card.rank===2&&p.value===2){
+    const now=action.meld.cards.find(x=>x.card.id===p.card.id);
+    if(now?.value!==2)throw new Error("NATURAL_TWO_FIXED");
+   }
+  }
+  const additions=action.meld.cards.filter(p=>!oldIds.has(p.card.id));
+  if(!additions.length)throw new Error("NO_ADDITION");
+  takeIds(additions.map(p=>p.card.id));
+  next.melds[action.index]=action.meld;assessEmpty();return next;
+ }
+ if(action.type==="discard"){
+  if(next.phase!=="meld")throw new Error("MUST_DRAW_FIRST");
+  const index=hand.findIndex(c=>c.id===action.id);
+  if(index<0)throw new Error("CARD_NOT_OWNED");
+  const endsHand=hand.length===1;
+  const eligible=next.packetTaken[team]&&next.packetPlayed[team]&&biribaCanFinish(
+   next.melds.filter(md=>biribaTeamOf(md.ownerSeat,next.seats)===team),true,true);
+  if(endsHand&&next.packetTaken[team]&&!eligible)throw new Error("CANNOT_FINISH_WITHOUT_BIRIBAS");
+  next.discards.push(hand.splice(index,1)[0]!);
+  if(endsHand&&eligible){next.closedBy=team;next.roundEnded=true;next.phase="ended";return next;}
+  next.phase="draw";
+  if(!next.packetTaken[team])assessEmpty();
+  if(next.stock.length===0){next.roundEnded=true;next.phase="ended";return next;}
+  next.turn=(seat+1)%next.seats;
+  return next;
+ }
+ throw new Error("UNKNOWN_ACTION");
+}
