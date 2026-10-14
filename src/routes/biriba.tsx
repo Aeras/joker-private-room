@@ -80,10 +80,10 @@ function BiribaContent({playerId}:{playerId:string}){
   try{
    const r=await biribaCommand({data});
    if(!r.ok){setError(format(r));return;}
-   if("room" in r){setRoom(r.room);setGame(null)}
+   if("room" in r){setRoom(r.room);setGame(null);setDealShownKey(null)}
    if("rooms" in r)setAvailable(r.rooms);
    if("game" in r)setGame(r.game);
-   if("cancelled" in r){setRoom(null);setGame(null)}
+   if("cancelled" in r){setRoom(null);setGame(null);setDealShownKey(null)}
    if("started" in r||"updated" in r){
     if(room?.code){
      const changed=await biribaCommand({data:{action:"get",code:room.code}});
