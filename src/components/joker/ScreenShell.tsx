@@ -11,6 +11,7 @@ export function ScreenShell({
   footer,
   variant = "default",
   contentClassName,
+  headerActions,
   hideNavigation = false,
   fixedViewport = false,
 }: {
@@ -19,6 +20,7 @@ export function ScreenShell({
   footer?: ReactNode;
   variant?: "default" | "pregame";
   contentClassName?: string;
+  headerActions?: ReactNode;
   hideNavigation?: boolean;
   fixedViewport?: boolean;
 }) {
@@ -44,6 +46,7 @@ export function ScreenShell({
           "min-w-0 flex-1 truncate font-display text-xl text-foreground",
           pregame && "tracking-[0.08em] text-primary",
         )}>{title}</h1>
+        {headerActions}
         {pregame && !hideNavigation && <FullscreenButton />}
       </header>
 
