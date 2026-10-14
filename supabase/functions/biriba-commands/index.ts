@@ -3,10 +3,11 @@ import {createClient} from "jsr:@supabase/supabase-js@2";
 import {beginBiribaMatch,biribaAction,type BiribaMatch,type BiribaAction} from "./engine.ts";
 import {type BiribaSeatCount} from "./rules.ts";
 import {chooseBiribaBotStep} from "./bot.ts";
+import {scoreFinishedBiribaRound,nextBiribaRound} from "./rounds.ts";
 import {pauseBiribaClock,resumeBiribaClock,timeoutBiribaClock,reclaimBiribaClock} from "./clock.ts";
 import {CANONICAL_BOTS} from "../_shared/bot-catalog.ts";
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
-const allowed=new Set(["create","join","list","get","membership","leave","bot_add","bot_remove","start","get_game","move","pause","resume","reclaim","end_game"]);
+const allowed=new Set(["create","join","list","get","membership","leave","bot_add","bot_remove","start","get_game","move","pause","resume","reclaim","next_round","end_game"]);
 const actions=new Set(["draw","pickup","meld","extend","discard"]);
 const number=(v:unknown)=>typeof v==="number"&&Number.isInteger(v);
 Deno.serve(async(req)=>{
@@ -46,7 +47,7 @@ Deno.serve(async(req)=>{
    if(error||!room?.ok)return json({ok:false,code:"ROOM_NOT_FOUND"},400);
    const count=room.room.capacity as BiribaSeatCount;
    const random=()=>crypto.getRandomValues(new Uint32Array(1))[0]!/4294967296;
-   const state=beginBiribaMatch(count,random);
+   const state=beginBiribaMatch(count,random,room.room.target);
    const result=await rpc("start",{p_state:state});
    return reply(result.data,result.error);
   }
@@ -61,7 +62,11 @@ Deno.serve(async(req)=>{
   const seats=room.data.room.seats as Array<{index:number;occupant:string;name:string;botId?:string;tier?:number}>;
   const now=Date.now();
   if(!match.clock)return json({ok:false,code:"INVALID_STATE"},503);
-  if(action==="pause"||action==="resume"||action==="reclaim"){
+  if(action==="next_round"){
+   if(seat!==0||!match.roundScored||match.matchFinished)return json({ok:false,code:"NEXT_ROUND_DENIED"},409);
+   const random=()=>crypto.getRandomValues(new Uint32Array(1))[0]!/4294967296;
+   match=nextBiribaRound(match,random);
+  }else if(action==="pause"||action==="resume"||action==="reclaim"){
    try{
     const clock=action==="pause"
       ?pauseBiribaClock(match.clock,seat,match.turn,true,now)
@@ -93,6 +98,7 @@ Deno.serve(async(req)=>{
     }
    }
   }
+  if(match.roundEnded&&!match.roundScored)match=scoreFinishedBiribaRound(match);
   if(JSON.stringify(match)!==JSON.stringify(original)){
    const saved=await rpc("save",{p_state:match,p_revision:revision});
    if(saved.error||!saved.data?.ok)return reply(saved.data,saved.error);
