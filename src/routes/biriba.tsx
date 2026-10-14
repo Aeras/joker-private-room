@@ -7,7 +7,7 @@ import {ScreenShell} from "@/components/joker/ScreenShell";
 import {TableSurface} from "@/components/table/TableSurface";
 import {BiribaPixiPreview} from "@/biriba/BiribaPixiPreview";
 import {biribaCommand,type BiribaRoomView,type BiribaGameView,type BiribaResponse} from "@/services/biribaFunctions";
-import {BIRIBA_TARGETS,DEFAULT_BIRIBA_TARGET,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaTarget} from "@/biriba/rules";
+import {BIRIBA_TARGETS,DEFAULT_BIRIBA_TARGET,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaTarget,biribaMeldValid,biribaTeamOf} from "@/biriba/rules";
 import {assets} from "@/assets/registry";
 
 export const Route=createFileRoute("/biriba")({
@@ -34,6 +34,16 @@ function selectedMeld(cards:BiribaCard[],seat:number):BiribaMeld|null{
  const ordered=[...natural].sort((a,b)=>a.rank-b.rank);
  if(!ordered.every((c,i)=>i===0||c.rank===ordered[i-1]!.rank+1))return null;
  return {ownerSeat:seat,suit,highAce:false,cards:ordered.map(c=>({card:c,value:c.rank}))};
+}
+function legalExtension(meld:BiribaMeld,cards:BiribaCard[]):BiribaMeld|null{
+ if(cards.length!==1||cards[0]?.joker)return null;
+ const card=cards[0] as Extract<BiribaCard,{joker?:false}>;
+ if(card.suit!==meld.suit)return null;
+ const first=meld.cards[0]?.value,last=meld.cards[meld.cards.length-1]?.value;
+ const proposal=card.rank===Number(first)-1
+  ?{...meld,cards:[{card,value:card.rank},...meld.cards]}
+  :card.rank===Number(last)+1?{...meld,cards:[...meld.cards,{card,value:card.rank}]}:null;
+ return proposal&&biribaMeldValid(proposal)?proposal:null;
 }
 function BiribaContent({playerId}:{playerId:string}){
  const [capacity,setCapacity]=useState<BiribaSeatCount>(4);
@@ -115,6 +125,11 @@ function BiribaContent({playerId}:{playerId:string}){
   const mine=game?.turn===game?.seat&&!game?.roundEnded&&!game?.clock.botTakeovers.includes(game?.seat??-1)&&game?.clock.pausedBy===null;
   const selectedCards=ownCards.filter(c=>selected.includes(c.id));
   const candidate=game?selectedMeld(selectedCards,game.seat):null;
+  const pickup=game?.discards.map(discard=>({discard,meld:selectedMeld([...selectedCards,discard],game.seat)})).find(item=>item.meld);
+  const team=game?biribaTeamOf(game.seat,game.seats):null;
+  const extensions=game?.melds.map((meld,index)=>({index,kind:legalExtension(meld,selectedCards),ownerSeat:meld.ownerSeat})).filter(x=>x.kind&&team===biribaTeamOf(x.ownerSeat,game.seats)&&
+     (x.ownerSeat===game.seat||game.opened[game.seat]))??[];
+
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
    <TableSurface/><BiribaPixiPreview deal={preview} game={game??undefined} redTeam={parseInt(room.code[0]??"0",16)%2}/>
    <div className="absolute left-3 top-3 z-20 rounded-lg bg-black/80 p-2 text-xs text-white">
@@ -170,8 +185,10 @@ function BiribaContent({playerId}:{playerId:string}){
     </div>
     <div className="mt-2 flex justify-center gap-2">
      {mine&&game?.phase==="draw"&&<button className="rounded bg-emerald-700 px-3 py-2 text-xs" disabled={busy} onClick={()=>void play({type:"draw"})}>Τράβηγμα</button>}
+     {mine&&game?.phase==="draw"&&pickup?.meld&&<button className="rounded bg-amber-700 px-3 py-2 text-xs" disabled={busy} onClick={()=>void play({type:"pickup",ids:[pickup.discard.id],meld:pickup.meld})}>Πάρε πεταμένα &amp; κατέβασε</button>}
      {mine&&game?.phase==="meld"&&<>
       <button className="rounded bg-blue-700 px-3 py-2 text-xs" disabled={busy||!candidate} onClick={()=>candidate&&void play({type:"meld",meld:candidate})}>Κατέβασμα επιλεγμένων</button>
+      {extensions.map(item=><button key={item.index} type="button" disabled={busy} className="rounded bg-amber-700 px-3 py-2 text-xs" onClick={()=>item.kind&&void play({type:"extend",index:item.index,meld:item.kind})}>Κόλλημα #{item.index+1}</button>)}
       <button className="rounded bg-red-700 px-3 py-2 text-xs" disabled={busy||selected.length!==1} onClick={()=>void play({type:"discard",id:selected[0]})}>Πέταγμα</button>
      </>}
     </div>
