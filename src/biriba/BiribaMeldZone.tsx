@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { BiribaCard, BiribaMeld } from "./rules";
 import { biribaMeldDirty } from "./rules";
 
@@ -11,13 +11,31 @@ const cardName = (card: BiribaCard): string => card.joker ? "Τζόκερ" : `${
 export function BiribaMeldZone({ melds, teamName }: { melds: BiribaMeld[]; teamName: string }) {
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const swipeOrigin = useRef<{ x: number; y: number } | null>(null);
+  const swipeConsumed = useRef(false);
   const pages = Math.max(1, Math.ceil(melds.length / 6));
   const current = Math.min(page, pages - 1);
   useEffect(() => { if (page >= pages) setPage(pages - 1); }, [page, pages]);
   const active = expanded === null ? null : melds[expanded] ?? null;
+  const onSwipeEnd = (x: number, y: number) => {
+    const from = swipeOrigin.current;
+    swipeOrigin.current = null;
+    if (!from || pages < 2) return;
+    const dx = x - from.x;
+    const dy = y - from.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 35) return;
+    swipeConsumed.current = true;
+    const delta = Math.abs(dy) > Math.abs(dx) ? dy : dx;
+    setPage(old => Math.max(0, Math.min(pages - 1, old + (delta < 0 ? 1 : -1))));
+  };
 
   return <>
-    <div className="biriba-meld-grid" aria-label={`Χεριές ${teamName}`}>
+    <div className="biriba-meld-grid" aria-label={`Χεριές ${teamName}`}
+      onTouchStart={e => { const t = e.touches[0]; if (t) { swipeOrigin.current = { x: t.clientX, y: t.clientY }; swipeConsumed.current = false; } }}
+      onTouchEnd={e => { const t = e.changedTouches[0]; if (t) onSwipeEnd(t.clientX, t.clientY); }}
+      onTouchCancel={() => { swipeOrigin.current = null; }}
+      onWheel={e => { if (pages > 1 && Math.abs(e.deltaY) > 12) setPage(old => Math.max(0, Math.min(pages - 1, old + (e.deltaY > 0 ? 1 : -1)))); }}
+    >
       {melds.slice(current * 6, current * 6 + 6).map((meld, index) => {
         const fullIndex = current * 6 + index;
         const dirty = biribaMeldDirty(meld);
@@ -25,7 +43,7 @@ export function BiribaMeldZone({ melds, teamName }: { melds: BiribaMeld[]; teamN
         return <button type="button" key={meld.cards.map(p => p.card.id).join(":")}
           className={`biriba-meld-slot ${dirty ? "biriba-meld-slot--dirty" : "biriba-meld-slot--clean"}`}
           aria-label={`${teamName}, χεριά ${fullIndex + 1}, ${dirty ? "βρώμικη" : "καθαρή"}, ${ordered.length} φύλλα. Πατήστε για όλα τα φύλλα.`}
-          onClick={() => setExpanded(fullIndex)}>
+          onClick={() => { if (swipeConsumed.current) { swipeConsumed.current = false; return; } setExpanded(fullIndex); }}>
           <span className="biriba-meld-stack">
             {ordered.map(({ card }, i) => {
               const last = ordered.length - 1;

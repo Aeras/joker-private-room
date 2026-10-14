@@ -433,7 +433,8 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
         {/* Score overlay is a real, accessible panel, not only a toggle state. */}
         {scoresOpen && game && (
-          <section className="biriba-score-overlay" role="dialog" aria-modal="false" aria-label="Αναλυτική βαθμολογία">
+          <div className="biriba-score-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget) setScoresOpen(false); }}>
+          <section className="biriba-score-overlay" role="dialog" aria-modal="true" aria-label="Αναλυτική βαθμολογία">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-bold">Αναλυτική βαθμολογία</h2>
               <button type="button" aria-label="Κλείσιμο βαθμολογίας" className="rounded-lg border border-white/40 px-3 py-1 text-sm" onClick={() => setScoresOpen(false)}>Κλείσιμο</button>
@@ -463,6 +464,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
               ))}
             </div>
           </section>
+          </div>
         )}
         {game?.roundEnded && !game.matchFinished && (
           <div className="biriba-round-message" role="status">
