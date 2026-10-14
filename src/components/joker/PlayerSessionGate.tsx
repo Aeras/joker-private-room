@@ -7,7 +7,7 @@ import { JButton } from "./JButton";
 import { cardImageFormat, isCardImageAdmin, saveCardImageFormat, type CardImageFormat } from "@/assets/cardFormat";
 
 /** Login once using the existing httpOnly server session; no PIN is persisted client-side. */
-export function PlayerSessionGate({ children, onAuthenticated, allowLogout = true, allowCardFormatSelection = false }: { children: (player: PublicPlayer) => React.ReactNode; onAuthenticated?: () => void; allowLogout?: boolean; allowCardFormatSelection?: boolean }) {
+export function PlayerSessionGate({ children, onAuthenticated, allowLogout = true, allowCardFormatSelection = false, hideConnectedBanner = false }: { children: (player: PublicPlayer) => React.ReactNode; onAuthenticated?: () => void; allowLogout?: boolean; allowCardFormatSelection?: boolean; hideConnectedBanner?: boolean }) {
   const [player, setPlayer] = useState<PublicPlayer | null>(null);
   const [choices, setChoices] = useState<PublicPlayer[]>([]);
   const [selected, setSelected] = useState("");
@@ -61,11 +61,11 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
     finally { setBusy(false); }
   }
   if (loading) return <p role="status" className="text-center">Έλεγχος σύνδεσης…</p>;
-  if (player) return <div>
-    <div className="mb-3 flex justify-center items-center gap-3 text-sm">
+  if (player) return <div className={hideConnectedBanner ? "h-dvh min-h-0 overflow-hidden" : undefined}>
+    {!hideConnectedBanner && <div className="mb-3 flex justify-center items-center gap-3 text-sm">
       <span>Συνδεδεμένος: <strong>{player.displayName}</strong></span>
       {allowLogout && <button className="underline text-muted-foreground" type="button" disabled={busy} onClick={() => void disconnect()}>Αποσύνδεση</button>}
-    </div>
+    </div>}
     {allowCardFormatSelection && isCardImageAdmin(player) && (
       <label className="mb-3 flex items-center justify-center gap-2 text-sm">Τράπουλα
         <select aria-label="Μορφή εικόνων τράπουλας" className="rounded-lg bg-secondary px-3 py-2" value={format} onChange={e => {

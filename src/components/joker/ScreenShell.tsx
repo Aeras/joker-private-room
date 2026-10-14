@@ -12,6 +12,7 @@ export function ScreenShell({
   variant = "default",
   contentClassName,
   hideNavigation = false,
+  fixedViewport = false,
 }: {
   title: string;
   children: ReactNode;
@@ -19,11 +20,12 @@ export function ScreenShell({
   variant?: "default" | "pregame";
   contentClassName?: string;
   hideNavigation?: boolean;
+  fixedViewport?: boolean;
 }) {
   const pregame = variant === "pregame";
 
   return (
-    <div className={cn("surface-room flex min-h-dvh flex-col", pregame && "pregame-shell")}>
+    <div className={cn("surface-room flex min-h-dvh flex-col", pregame && "pregame-shell", fixedViewport && "h-dvh !min-h-0 overflow-hidden")}>
       <header className={cn(
         "relative z-20 mx-auto flex w-full items-center gap-3 px-4 pt-[max(.65rem,env(safe-area-inset-top))]",
         pregame ? "max-w-7xl" : "max-w-xl",
@@ -47,6 +49,7 @@ export function ScreenShell({
 
       <main className={cn(
         "relative z-10 mx-auto w-full flex-1 px-4",
+        fixedViewport && "min-h-0 overflow-hidden",
         pregame ? "max-w-7xl overflow-hidden py-3" : "max-w-xl py-5",
         contentClassName,
       )}>{children}</main>
