@@ -3,7 +3,7 @@ import { Bot, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { JButton, jButton } from "@/components/joker/JButton";
 import { LobbySeat } from "@/components/joker/LobbySeat";
-import { ScreenShell, SectionLabel } from "@/components/joker/ScreenShell";
+import { ScreenShell } from "@/components/joker/ScreenShell";
 import type { PublicBotDefinition, PublicPlayer, Room } from "@/domain/players";
 import { publicRulesetName } from "@/domain/rulesetPresentation";
 import { t } from "@/i18n/el";
@@ -192,52 +192,23 @@ function Lobby() {
     <ScreenShell
       title={t.lobby}
       variant="pregame"
-      contentClassName="pregame-lobby-content"
-      footer={
-        <div className="pregame-lobby-footer">
-          {error && <p className="text-sm text-negative">{error}</p>}
-          <div className="flex items-center gap-2">
-            {room.status === "lobby" && <JButton variant="outlineGold" onClick={() => void leave()}>Έξοδος</JButton>}
-            {room.status === "lobby" ? (
-              <JButton size="lg" className="pregame-primary-button min-w-64 text-lg" disabled={!isHost || starting || botBusy} onClick={start}>
-                {t.startGame}
-              </JButton>
-            ) : room.gameId ? (
-              <Link to="/table" search={{ code: room.code, gameId: room.gameId }} className={jButton({ size: "lg", className: "pregame-primary-button min-w-64 text-lg" })}>
-                Μετάβαση στο τραπέζι
-              </Link>
-            ) : (
-              <div className="panel px-4 py-3 text-sm text-muted-foreground">{t.gameStarting}</div>
-            )}
-          </div>
-        </div>
-      }
+      contentClassName="!overflow-y-auto !min-h-0"
     >
-      <div className="pregame-lobby-grid">
-        <section className="pregame-room-summary panel">
-          <p className="text-center font-semibold">Δωμάτιο αναμονής</p>
-          <p className="mt-2 text-center text-sm text-muted-foreground">{room.rulesetName ?? publicRulesetName(room.rulesetId)}</p>
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            {isHost ? "Πάτησε μια κενή θέση για να επιλέξεις bot." : "Περιμένουμε τον host να ξεκινήσει."}
-          </p>
-        </section>
-
-        <section>
-          <SectionLabel>Παίκτες</SectionLabel>
-          <div className="grid grid-cols-2 gap-3">
-            {room.seats.map((seat) => (
-              <LobbySeat
-                key={seat.index}
-                seat={seat}
-                hostId={room.hostId}
-                manageable={isHost && room.status === "lobby" && seat.occupant.type !== "human"}
-                onManage={() => setBotSeatIndex(seat.index)}
-              />
-            ))}
-          </div>
-        </section>
-      </div>
-
+      <section className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-2 py-2">
+        <h2 className="text-center text-sm font-semibold text-primary">Δωμάτιο αναμονής — {room.rulesetId === "popular" ? "Popular" : (room.rulesetName ?? publicRulesetName(room.rulesetId))}</h2>
+        <div className="grid grid-cols-4 gap-2 sm:gap-3" aria-label="Παίκτες">
+          {room.seats.map(seat=><LobbySeat key={seat.index} seat={seat} hostId={room.hostId}
+            manageable={isHost&&room.status==="lobby"&&seat.occupant.type!=="human"}
+            onManage={()=>setBotSeatIndex(seat.index)}/>)}
+        </div>
+        {error&&<p role="alert" className="text-center text-sm text-negative">{error}</p>}
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {room.status==="lobby"&&<JButton size="sm" variant="outlineGold" onClick={()=>void leave()}>Έξοδος</JButton>}
+          {room.status==="lobby"?<JButton size="sm" disabled={!isHost||starting||botBusy} onClick={start}>Έναρξη παιχνιδιού</JButton>:
+            room.gameId?<Link to="/table" search={{code:room.code,gameId:room.gameId}} className={jButton({size:"sm"})}>Μετάβαση στο τραπέζι</Link>:
+            <span className="text-xs">{t.gameStarting}</span>}
+        </div>
+      </section>
       {botSeatIndex != null && selectedSeat && (
         <div className="pregame-modal-backdrop" role="presentation" onMouseDown={(event) => {
           if (event.currentTarget === event.target) setBotSeatIndex(null);
