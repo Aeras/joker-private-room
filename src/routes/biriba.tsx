@@ -149,7 +149,7 @@ function BiribaContent({playerId}:{playerId:string}){
      (x.ownerSeat===game.seat||game.opened[game.seat]))??[];
 
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
-   <TableSurface/><BiribaPixiPreview deal={preview} game={visualGame??undefined} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
+   <TableSurface/><BiribaPixiPreview deal={preview} game={visualGame??undefined} revealComplete={dealShownKey===dealKey} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
    {game&&<div className="pointer-events-none absolute bottom-1 left-2 z-40 flex items-center gap-2">
      <PlayerAvatar name={room.seats.find(seat=>seat.index===game.seat)?.name??"Εσύ"} imageUrl={assets.avatar("",room.seats.find(seat=>seat.index===game.seat)?.name??"")} size="md"/>
     </div>}
