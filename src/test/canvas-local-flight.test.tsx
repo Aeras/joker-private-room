@@ -84,7 +84,7 @@ beforeEach(() => {
     ].map((name) => [name, vi.fn()]),
   );
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-    context as unknown as CanvasRenderingContext2D,
+    context as unknown as ReturnType<HTMLCanvasElement["getContext"]>,
   );
   mocks.ready = true;
   mocks.enabled = true;
