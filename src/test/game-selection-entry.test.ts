@@ -10,7 +10,8 @@ describe("separate game selection after secure player login", () => {
     expect(home).toContain("Επιλέξτε το παιχνίδι");
     expect(home).toContain('href="/joker"');
     expect(home).toContain("DURAK");
-    expect(home).toContain("ΝΤΟΜΙΝΟ");
+    expect(home).toContain("ΜΠΙΡΙΜΠΑ");
+    expect(home).toContain('href="/biriba"');
     expect(home).toContain("game-selection-heading");
     expect(home).toContain("game-selection-grid");
     expect(home).toContain("Προσεχώς");
