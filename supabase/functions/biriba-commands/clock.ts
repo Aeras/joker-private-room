@@ -28,7 +28,9 @@ export function timeoutBiribaClock(clock:BiribaClock,currentSeat:number,isHuman:
  if(clock.pausedBy!==null||!isHuman||now<clock.turnDeadline||clock.botTakeovers.includes(currentSeat))return clock;
  return {...clock,botTakeovers:[...clock.botTakeovers,currentSeat]};
 }
-export function reclaimBiribaClock(clock:BiribaClock,seat:number,now:number):BiribaClock{
+export function reclaimBiribaClock(clock:BiribaClock,seat:number,currentSeat:number,now:number):BiribaClock{
  if(!clock.botTakeovers.includes(seat)||clock.pausedBy!==null)throw new Error("RECLAIM_DENIED");
- return {...clock,botTakeovers:clock.botTakeovers.filter(s=>s!==seat),turnDeadline:now+BIRIBA_TURN_SECONDS*1000,remainingMs:BIRIBA_TURN_SECONDS*1000};
+ return {...clock,botTakeovers:clock.botTakeovers.filter(s=>s!==seat),
+  turnDeadline:seat===currentSeat?now+BIRIBA_TURN_SECONDS*1000:clock.turnDeadline,
+  remainingMs:seat===currentSeat?BIRIBA_TURN_SECONDS*1000:clock.remainingMs};
 }
