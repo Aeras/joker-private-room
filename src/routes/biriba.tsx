@@ -120,12 +120,13 @@ function BiribaContent({playerId}:{playerId:string}){
   return ()=>{current=false;clearInterval(timer)};
  },[code]);
  const ownCards=game?.myHand??[];
+ const visualGame=dealShownKey===dealKey?game:initialDealView?.game??game;
  const preview=useMemo(()=>{
-  if(!game)return undefined;
-  const hands:Array<BiribaCard[]>=Array.from({length:game.seats},()=>[]);
-  hands[0]=game.myHand;
-  return {seats:game.seats,hands,packets:[[],[]] as [BiribaCard[],BiribaCard[]],stock:[],discard:game.discards,trump:game.trump};
- },[game]);
+  if(!visualGame)return undefined;
+  const hands:Array<BiribaCard[]>=Array.from({length:visualGame.seats},()=>[]);
+  hands[0]=visualGame.myHand;
+  return {seats:visualGame.seats,hands,packets:[[],[]] as [BiribaCard[],BiribaCard[]],stock:[],discard:visualGame.discards,trump:visualGame.trump};
+ },[visualGame]);
  const toggle=(id:string)=>setSelected(s=>s.includes(id)?s.filter(v=>v!==id):[...s,id]);
  const play=async(move:unknown)=>{
   if(!code)return;
@@ -147,7 +148,7 @@ function BiribaContent({playerId}:{playerId:string}){
      (x.ownerSeat===game.seat||game.opened[game.seat]))??[];
 
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
-   <TableSurface/><BiribaPixiPreview deal={preview} game={dealShownKey===dealKey?game??undefined:initialDealView?.game??game??undefined} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
+   <TableSurface/><BiribaPixiPreview deal={preview} game={visualGame??undefined} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
    {/* Seats are anchored to the actual screen edges. Local hand remains at bottom. */}
    {game&&[...(game.seats===4?[1,2,3]:[1])].map(delta=>{
     const seatIndex=(game.seat+delta)%game.seats;
