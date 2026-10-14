@@ -48,9 +48,10 @@ function legalExtension(meld:BiribaMeld,cards:BiribaCard[]):BiribaMeld|null{
 function BiribaContent({playerId}:{playerId:string}){
  const [capacity,setCapacity]=useState<BiribaSeatCount>(4);
  const [target,setTarget]=useState<BiribaTarget>(DEFAULT_BIRIBA_TARGET);
+ const [timerEnabled,setTimerEnabled]=useState(true);
  const [mode,setMode]=useState<"create"|"join">("create");
  const [room,setRoom]=useState<BiribaRoomView|null>(null);
- const [available,setAvailable]=useState<Array<{code:string;capacity:BiribaSeatCount;target:number;hostName:string;occupied:number}>>([]);
+ const [available,setAvailable]=useState<Array<{code:string;capacity:BiribaSeatCount;target:number;hostName:string;timerEnabled:boolean;occupied:number}>>([]);
  const [game,setGame]=useState<BiribaGameView|null>(null);
  const [selected,setSelected]=useState<string[]>([]);
  const [busy,setBusy]=useState(false);
@@ -137,7 +138,7 @@ function BiribaContent({playerId}:{playerId:string}){
     <div>{game?.roundEnded?"Τέλος γύρου":game? `Σειρά θέσης ${game.turn+1} · ${game.phase==="draw"?"Τράβηγμα":"Κατέβασμα / Πέταγμα"}`:"Φόρτωση παρτίδας…"}</div>
     <div>Τράπουλα: {game?.stockCount??"…"} · Ατού: {game?.trump?names[game.trump]:"—"}</div>
    </div>
-   {game&&<div className="absolute left-3 bottom-3 z-30 flex items-center gap-2 rounded-xl border border-white/20 bg-black/85 p-2 text-xs text-white">
+   {game&&room.timerEnabled&&<div className="absolute left-3 bottom-3 z-30 flex items-center gap-2 rounded-xl border border-white/20 bg-black/85 p-2 text-xs text-white">
     <button type="button" aria-label={game.clock.pausedBy===game.seat?"Συνέχεια παρτίδας":"Παύση παρτίδας"}
      disabled={busy||(!game.clock.botTakeovers.includes(game.seat)&&game.clock.pausedBy!==game.seat&&game.turn!==game.seat)||game.clock.botTakeovers.includes(game.seat)||game.clock.pausedBy!==null&&game.clock.pausedBy!==game.seat||game.clock.pausesUsed[game.seat]>=3&&game.clock.pausedBy!==game.seat}
      className="relative" onClick={()=>void run({action:game.clock.pausedBy===game.seat?"resume":"pause",code:room.code})}>
@@ -204,7 +205,7 @@ function BiribaContent({playerId}:{playerId:string}){
    </div>}
    {room?<section className="space-y-3">
     <h2 className="text-xl font-bold">Δωμάτιο {room.code}</h2>
-    <p>{room.capacity} παίκτες · {room.target.toLocaleString("el-GR")} πόντοι</p>
+    <p>{room.capacity} παίκτες · {room.target.toLocaleString("el-GR")} πόντοι · Χρονόμετρο {room.timerEnabled?"ON":"OFF"}</p>
     <div className="grid grid-cols-2 gap-2">{room.seats.map(seat=><div key={seat.index} className="flex items-center gap-2 rounded border p-2">
      <PlayerAvatar name={seat.name??"Κενή θέση"} imageUrl={seat.name?assets.avatar("",seat.name):undefined} isBot={seat.occupant==="bot"} size="sm"/>
      <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{seat.name??"Κενή θέση"}</div>
@@ -218,7 +219,9 @@ function BiribaContent({playerId}:{playerId:string}){
    </section>:mode==="create"?<div className="space-y-3">
     <label className="block">Παίκτες<select className="mt-1 w-full rounded bg-secondary p-3" value={capacity} onChange={e=>setCapacity(Number(e.target.value) as BiribaSeatCount)}><option value={2}>2</option><option value={4}>4</option></select></label>
     <label className="block">Στόχος<select className="mt-1 w-full rounded bg-secondary p-3" value={target} onChange={e=>setTarget(Number(e.target.value) as BiribaTarget)}>{BIRIBA_TARGETS.map(v=><option key={v} value={v}>{v.toLocaleString("el-GR")} πόντοι</option>)}</select></label>
-    <button className="w-full rounded border border-primary/50 bg-primary/20 p-3 font-semibold" disabled={busy} onClick={()=>void run({action:"create",capacity,target})}>Δημιουργία παιχνιδιού</button>
+    <label className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"><span>Χρονόμετρο ON/OFF</span><input type="checkbox" role="switch" aria-label="Χρονόμετρο" checked={timerEnabled} onChange={e=>setTimerEnabled(e.target.checked)} className="h-5 w-5 accent-emerald-600"/></label>
+    <p className="text-xs text-muted-foreground">{timerEnabled?"60 δευτερόλεπτα ανά πραγματικό παίκτη, με 3 προσωπικές παύσεις και προσωρινό bot στη λήξη.":"Απεριόριστος χρόνος για πραγματικούς παίκτες, χωρίς χρονόμετρο ή αυτόματο bot λόγω καθυστέρησης."}</p>
+    <button className="w-full rounded border border-primary/50 bg-primary/20 p-3 font-semibold" disabled={busy} onClick={()=>void run({action:"create",capacity,target,timerEnabled})}>Δημιουργία παιχνιδιού</button>
    </div>:<div className="space-y-3">
     <button type="button" className="rounded border p-2" disabled={busy} onClick={()=>void run({action:"list"})}>Ανανέωση</button>
     {available.length===0&&<p className="text-sm">Δεν υπάρχουν ανοιχτά δωμάτια.</p>}
