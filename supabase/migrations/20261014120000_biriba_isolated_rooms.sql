@@ -180,7 +180,7 @@ begin
    update public.biriba_match_states set state=p_state,revision=revision+1,updated_at=now()
      where room_id=v_room.id and revision=p_revision returning * into v_match;
    if not found then return jsonb_build_object('ok',false,'code','STATE_CHANGED');end if;
-   if p_state->>'roundEnded'='true' then
+   if p_state->>'matchFinished'='true' then
     update public.biriba_rooms set lifecycle='finished',version=version+1,updated_at=now() where id=v_room.id;
    end if;
    return jsonb_build_object('ok',true,'revision',v_match.revision);
