@@ -177,14 +177,14 @@ function BiribaContent({playerId}:{playerId:string}){
      {game.roundScored&&!game.matchFinished&&isHost&&<button type="button" disabled={busy} onClick={()=>void run({action:"next_round",code:room.code})} className="w-full rounded bg-emerald-700 px-3 py-2 font-bold">Επόμενος γύρος</button>}
      {game.matchFinished&&<p className="rounded bg-amber-400/15 p-2 font-semibold">Τέλος παιχνιδιού · Νίκη ομάδας {(game.winnerTeam??0)+1}</p>}
    </section>}
-   <div className="absolute bottom-1 left-1/2 z-30 w-[min(94vw,750px)] -translate-x-1/2 rounded-lg border border-white/15 bg-black/85 p-2 text-white">
+   <div className="absolute bottom-0 left-1/2 z-30 w-[min(98vw,950px)] -translate-x-1/2 text-white">
     {error&&<p role="alert" className="text-xs text-red-300">{error}</p>}
-    <div className="flex flex-wrap justify-center gap-1 text-sm">
+    <div className="flex items-end justify-center gap-0 overflow-visible pb-1 text-sm">
      {ownCards.map(card=><button type="button" key={card.id} disabled={!mine||busy}
       aria-pressed={selected.includes(card.id)} onClick={()=>toggle(card.id)}
-      className={`rounded border px-2 py-1 ${selected.includes(card.id)?"border-amber-400 bg-amber-500/30":"border-white/25"}`}>{label(card)}</button>)}
+      style={{marginLeft:ownCards[0]===card?0:"clamp(-24px,-2.5vw,-9px)",transform:selected.includes(card.id)?"translateY(-14px)":"none",zIndex:selected.includes(card.id)?50:1}} className={`relative h-[clamp(60px,18vh,125px)] w-[clamp(44px,12vh,86px)] overflow-hidden rounded-md border-2 bg-white shadow-lg transition-transform ${selected.includes(card.id)?"border-amber-400 ring-2 ring-amber-400":"border-zinc-300"}`}><img draggable={false} className="h-full w-full object-fill" src={card.joker?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${card.suit}_${({1:"ace",11:"jack",12:"queen",13:"king"} as Record<number,string>)[card.rank]??card.rank}.png`} alt={label(card)}/></button>)}
     </div>
-    <div className="mt-2 flex justify-center gap-2">
+    <div className="mb-2 flex flex-wrap justify-center gap-2">
      {mine&&game?.phase==="draw"&&<button className="rounded bg-emerald-700 px-3 py-2 text-xs" disabled={busy} onClick={()=>void play({type:"draw"})}>Τράβηγμα</button>}
      {mine&&game?.phase==="draw"&&pickup?.meld&&<button className="rounded bg-amber-700 px-3 py-2 text-xs" disabled={busy} onClick={()=>void play({type:"pickup",ids:[pickup.discard.id],meld:pickup.meld})}>Πάρε πεταμένα &amp; κατέβασε</button>}
      {mine&&game?.phase==="meld"&&<>
@@ -217,9 +217,11 @@ function BiribaContent({playerId}:{playerId:string}){
     {isHost&&<button type="button" disabled={busy} className="w-full rounded bg-primary/25 p-3 font-bold" onClick={()=>void run({action:"start",code:room.code})}>Έναρξη (αυτόματη συμπλήρωση με bots)</button>}
     <button className="rounded border px-3 py-2 text-sm" disabled={busy} onClick={()=>void run({action:"leave",code:room.code})}>Έξοδος</button>
    </section>:mode==="create"?<div className="space-y-3">
-    <label className="block">Παίκτες<select className="mt-1 w-full rounded bg-secondary p-3" value={capacity} onChange={e=>setCapacity(Number(e.target.value) as BiribaSeatCount)}><option value={2}>2</option><option value={4}>4</option></select></label>
-    <label className="block">Στόχος<select className="mt-1 w-full rounded bg-secondary p-3" value={target} onChange={e=>setTarget(Number(e.target.value) as BiribaTarget)}>{BIRIBA_TARGETS.map(v=><option key={v} value={v}>{v.toLocaleString("el-GR")} πόντοι</option>)}</select></label>
-    <label className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"><span>Χρονόμετρο ON/OFF</span><input type="checkbox" role="switch" aria-label="Χρονόμετρο" checked={timerEnabled} onChange={e=>setTimerEnabled(e.target.checked)} className="h-5 w-5 accent-emerald-600"/></label>
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)_auto] items-end gap-2">
+     <label className="min-w-0 text-xs sm:text-sm">Παίκτες<select className="mt-1 w-full rounded bg-secondary px-2 py-3 text-sm" value={capacity} onChange={e=>setCapacity(Number(e.target.value) as BiribaSeatCount)}><option value={2}>2</option><option value={4}>4</option></select></label>
+     <label className="min-w-0 text-xs sm:text-sm">Στόχος<select className="mt-1 w-full rounded bg-secondary px-2 py-3 text-sm" value={target} onChange={e=>setTarget(Number(e.target.value) as BiribaTarget)}>{BIRIBA_TARGETS.map(v=><option key={v} value={v}>{v.toLocaleString("el-GR")}</option>)}</select></label>
+     <label className="flex min-w-[85px] flex-col items-center gap-2 text-center text-xs sm:text-sm">Χρονόμετρο<input type="checkbox" role="switch" aria-label="Χρονόμετρο" checked={timerEnabled} onChange={e=>setTimerEnabled(e.target.checked)} className="h-6 w-10 accent-emerald-600"/></label>
+    </div>
     <p className="text-xs text-muted-foreground">{timerEnabled?"60 δευτερόλεπτα ανά πραγματικό παίκτη, με 3 προσωπικές παύσεις και προσωρινό bot στη λήξη.":"Απεριόριστος χρόνος για πραγματικούς παίκτες, χωρίς χρονόμετρο ή αυτόματο bot λόγω καθυστέρησης."}</p>
     <button className="w-full rounded border border-primary/50 bg-primary/20 p-3 font-semibold" disabled={busy} onClick={()=>void run({action:"create",capacity,target,timerEnabled})}>Δημιουργία παιχνιδιού</button>
    </div>:<div className="space-y-3">
