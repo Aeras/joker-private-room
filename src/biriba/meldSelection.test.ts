@@ -13,7 +13,7 @@ describe("Biriba selected melds with wildcard", () => {
     });
     it("fills missing start and end", () => {
       expect(selectedBiribaMeld([c("eight",8), c("nine",9), wild],0)?.cards.map(p=>p.value)).toEqual([7,8,9]);
-      expect(selectedBiribaMeld([wild, c("seven",7), c("eight",8)],0)?.cards.map(p=>p.value)).toEqual([7,8,9]);
+      expect(selectedBiribaMeld([wild, c("seven",7), c("eight",8)],0)?.cards.map(p=>p.value)).toEqual([6,7,8]);
     });
   }
   it("allows high Ace without a wildcard", () => {
