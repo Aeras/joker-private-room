@@ -165,7 +165,8 @@ export function BiribaPixiPreview({deal,game,redTeam=0,revealComplete=false,onDe
               const pose=dealtCardPose(from,destination,0,end.angle,p);
               sprite.position.set(pose.point.x,pose.point.y);
               sprite.rotation=pose.rotation*Math.PI/180;
-              sprite.scale.set(pose.scale);
+              sprite.width=BACK_W*pose.scale;
+              sprite.height=BACK_H*pose.scale;
               if(elapsed>=NORMAL_DEAL_TRAVEL_MS)pixi.ticker.remove(tick);
             };
             pixi.ticker.add(tick);
