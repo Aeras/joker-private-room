@@ -20,7 +20,7 @@ export type BiribaGameView={
  roomSeats:BiribaRoomSeat[];opened:boolean[];packetTaken:boolean[];packetPlayed:boolean[];
  clock:{turnDeadline:number;remainingMs:number;pausedBy:number|null;pausesUsed:number[];botTakeovers:number[]};
  target:number;roundNumber:number;teamScores:[number,number];roundScored:boolean;matchFinished:boolean;winnerTeam:number|null;
- scoreHistory:Array<{round:number;teamTotals:[number,number];breakdown:Array<{cards:number;bonuses:number;closing:number;penalty:number;held:number;total:number}>}>;
+ scoreHistory:Array<{round:number;teamTotals:[number,number];breakdown:Array<{cards:number;bonuses:number;closing:number;penalty:number;held:number;total:number}>;playerPoints:Array<{seat:number;cards:number;held:number}>}>;
 };
 export type BiribaResponse={ok:true;room:BiribaRoomView}|{ok:true;rooms:Array<{code:string;capacity:2|4;target:number;hostName:string;occupied:number}>}|
  {ok:true;membership:{code:string;lifecycle:string}|null}|{ok:true;cancelled:boolean}|
