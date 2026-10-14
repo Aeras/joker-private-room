@@ -1,24 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {createClient} from "jsr:@supabase/supabase-js@2";
 import {beginBiribaMatch,biribaAction,type BiribaMatch,type BiribaAction} from "./engine.ts";
-import {biribaTeamOf,type BiribaSeatCount} from "./rules.ts";
+import {type BiribaSeatCount} from "./rules.ts";
+import {chooseBiribaBotStep} from "./bot.ts";
 import {CANONICAL_BOTS} from "../_shared/bot-catalog.ts";
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
 const validCard=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<80;
 const allowed=new Set(["create","join","list","get","membership","leave","bot_add","bot_remove","start","get_game","move","end_game"]);
 const actions=new Set(["draw","pickup","meld","extend","discard"]);
 const number=(v:unknown)=>typeof v==="number"&&Number.isInteger(v);
-function botTurn(state:BiribaMatch,seat:number):BiribaMatch{
- const hand=state.hands[seat]??[];
- try{
-  if(state.phase==="draw")return biribaAction(state,seat,{type:"draw"});
-  if(state.phase==="meld"){
-   // Safe baseline: honor turn protocol, never peek at unseen opponents' cards.
-   if(hand.length>0)return biribaAction(state,seat,{type:"discard",id:hand[hand.length-1]!.id});
-  }
- }catch{ /* Do not fabricate legal moves. */ }
- return state;
-}
 Deno.serve(async(req)=>{
  if(req.method!=="POST")return json({ok:false,code:"INVALID_METHOD"},405);
  try{
@@ -78,10 +68,10 @@ Deno.serve(async(req)=>{
   if(room.error||!room.data?.ok)return json({ok:false,code:"SERVICE_UNAVAILABLE"},503);
   const seats=room.data.room.seats as Array<{index:number;occupant:string;name:string;botId?:string;tier?:number}>;
   // Make pending bot moves in one bounded pass; server never leaks bot hands.
-  for(let count=0;count<12&&!match.roundEnded;count++){
+  for(let count=0;count<60&&!match.roundEnded;count++){
    const bot=seats.find(s=>s.index===match.turn&&s.occupant==="bot");
    if(!bot)break;
-   const changed=botTurn(match,bot.index);
+   const changed=chooseBiribaBotStep(match,bot.index,(bot.tier===3?3:bot.tier===2?2:1));
    if(changed===match)break;
    match=changed;
   }
