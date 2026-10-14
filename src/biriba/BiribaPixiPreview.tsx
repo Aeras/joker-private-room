@@ -47,7 +47,7 @@ export function BiribaPixiPreview({deal,game,redTeam=0}:{deal?:BiribaDealtPrevie
       box(910,86,215,44,0x17589c);
       text("ΚΟΚΚΙΝΗ ΟΜΑΔΑ",262,107,18);
       text("ΜΠΛΕ ΟΜΑΔΑ",1017,107,18);
-      const currentScore=(team:number)=>game?.melds.filter(m=>biribaTeamOf(m.ownerSeat,game.seats)===team).reduce((sum,m)=>sum+biribaMeldBonus(m,game.trump)+m.cards.reduce((n,p)=>n+biribaCardPoints(p.card),0),0)??0;
+      const currentScore=(team:number)=>game?game.teamScores[team]+(game.roundScored?0:game.melds.filter(m=>biribaTeamOf(m.ownerSeat,game.seats)===team).reduce((sum,m)=>sum+biribaMeldBonus(m,game.trump)+m.cards.reduce((n,p)=>n+biribaCardPoints(p.card),0),0)):0;
       box(525,86,96,44,0x9d2838); text(String(currentScore(redTeam)),573,108,26);
       box(662,86,96,44,0x17589c); text(String(currentScore(1-redTeam)),710,108,26);
       const suitIcon:Record<string,string>={spades:"♠",hearts:"♥",diamonds:"♦",clubs:"♣"};
