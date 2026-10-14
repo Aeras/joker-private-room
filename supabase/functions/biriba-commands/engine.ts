@@ -1,15 +1,17 @@
 import {startBiribaClock,nextBiribaClock,type BiribaClock} from "./clock.ts";
-import {biribaCanFinish,biribaMeldValid,biribaTeamOf,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaSuit} from "./rules.ts";
+import {biribaCanFinish,biribaMeldValid,biribaTeamOf,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaSuit,type BiribaTarget} from "./rules.ts";
 import {createBiribaLocalDeal} from "./localDeal.ts";
 
 /** Deterministic, serializable BIRIBA match state. Authoritative persistence is separate. */
 export type BiribaTurnPhase="draw"|"meld"|"ended";
+export type BiribaRoundHistory={round:number;teamTotals:[number,number];breakdown:Array<{cards:number;bonuses:number;closing:number;penalty:number;held:number;total:number}>};
 export type BiribaMatch={
  seats:BiribaSeatCount;hands:BiribaCard[][];packets:BiribaCard[][];
  stock:BiribaCard[];discards:BiribaCard[];trump:BiribaSuit|null;
  initialJokerId:string|null;melds:BiribaMeld[];turn:number;phase:BiribaTurnPhase;
  opened:boolean[];packetTaken:boolean[];packetPlayed:boolean[];packetOwner:(number|null)[];
  pendingPacket:(number|null)[];forcedDiscardSeat:number|null;roundEnded:boolean;closedBy:number|null;clock:BiribaClock;
+ target:BiribaTarget;roundNumber:number;teamScores:[number,number];scoreHistory:BiribaRoundHistory[];roundScored:boolean;matchFinished:boolean;winnerTeam:number|null;
 };
 export type BiribaAction=
  |{type:"draw"}
@@ -18,13 +20,14 @@ export type BiribaAction=
  |{type:"extend";index:number;meld:BiribaMeld}
  |{type:"discard";id:string};
 const copy=(m:BiribaMatch):BiribaMatch=>structuredClone(m);
-export function beginBiribaMatch(seats:BiribaSeatCount,random:()=>number=Math.random):BiribaMatch{
+export function beginBiribaMatch(seats:BiribaSeatCount,random:()=>number=Math.random,target:BiribaTarget=5000):BiribaMatch{
  const d=createBiribaLocalDeal(seats,random);
  return {seats,hands:d.hands,packets:[...d.packets],stock:d.stock,discards:d.discard,
   trump:d.trump,initialJokerId:d.discard[0]?.joker?d.discard[0].id:null,melds:[],
   turn:0,phase:"draw",opened:Array(seats).fill(false),packetTaken:[false,false],
   packetPlayed:[false,false],packetOwner:[null,null],pendingPacket:[null,null],forcedDiscardSeat:null,
-  roundEnded:false,closedBy:null,clock:startBiribaClock(seats,Date.now())};
+  roundEnded:false,closedBy:null,clock:startBiribaClock(seats,Date.now()),
+  target,roundNumber:1,teamScores:[0,0],scoreHistory:[],roundScored:false,matchFinished:false,winnerTeam:null};
 }
 export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):BiribaMatch{
  if(m.roundEnded||seat!==m.turn||m.phase==="ended")throw new Error("NOT_YOUR_TURN");
