@@ -59,6 +59,21 @@ function BiribaContent({playerId}:{playerId:string}){
  useEffect(()=>{const t=setInterval(()=>setClockNow(Date.now()),350);return()=>clearInterval(t)},[]);
  const [error,setError]=useState("");
  const [scoresOpen,setScoresOpen]=useState(false);
+ const [dealShownKey,setDealShownKey]=useState<string|null>(null);
+ const dealKey=game?`${game.roundNumber}:${game.seat}`:null;
+ const initialDealView=useMemo(()=>{
+  if(!game)return null;
+  return {key:dealKey,game};
+ // First complete server snapshot after each round starts drives the dealing presentation.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[dealKey]);
+ const onDealComplete=useCallback((key:string)=>setDealShownKey(key),[]);
+ useEffect(()=>{
+  if(!dealKey||!game)return;
+  // Fallback when a browser is backgrounded and Pixi's frame clock is throttled.
+  const t=setTimeout(()=>setDealShownKey(dealKey),11*game.seats*115+1000);
+  return()=>clearTimeout(t);
+ },[dealKey,game?.seats]);
  const isHost=room?.hostPlayerId===playerId;
  const run=useCallback(async(data:Parameters<typeof biribaCommand>[0]["data"])=>{
   setBusy(true);setError("");
@@ -123,7 +138,7 @@ function BiribaContent({playerId}:{playerId:string}){
   finally{setBusy(false)}
  };
  if(room&&room.lifecycle!=="waiting"){
-  const mine=game?.turn===game?.seat&&!game?.roundEnded&&!game?.clock.botTakeovers.includes(game?.seat??-1)&&game?.clock.pausedBy===null;
+  const mine=dealShownKey===dealKey&&game?.turn===game?.seat&&!game?.roundEnded&&!game?.clock.botTakeovers.includes(game?.seat??-1)&&game?.clock.pausedBy===null;
   const selectedCards=ownCards.filter(c=>selected.includes(c.id));
   const candidate=game?selectedMeld(selectedCards,game.seat):null;
   const pickup=game?.discards.map(discard=>({discard,meld:selectedMeld([...selectedCards,discard],game.seat)})).find(item=>item.meld);
@@ -132,7 +147,7 @@ function BiribaContent({playerId}:{playerId:string}){
      (x.ownerSeat===game.seat||game.opened[game.seat]))??[];
 
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
-   <TableSurface/><BiribaPixiPreview deal={preview} game={game??undefined} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
+   <TableSurface/><BiribaPixiPreview deal={preview} game={dealShownKey===dealKey?game??undefined:initialDealView?.game??game??undefined} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
    {/* Seats are anchored to the actual screen edges. Local hand remains at bottom. */}
    {game&&[...(game.seats===4?[1,2,3]:[1])].map(delta=>{
     const seatIndex=(game.seat+delta)%game.seats;
@@ -191,7 +206,7 @@ function BiribaContent({playerId}:{playerId:string}){
    <div className="absolute bottom-0 left-1/2 z-30 w-[min(98vw,950px)] -translate-x-1/2 text-white">
     {error&&<p role="alert" className="text-xs text-red-300">{error}</p>}
     <div className="flex items-end justify-center gap-0 overflow-visible pb-1 text-sm">
-     {ownCards.map(card=><button type="button" key={card.id} disabled={!mine||busy}
+     {dealShownKey===dealKey&&ownCards.map(card=><button type="button" key={card.id} disabled={!mine||busy}
       aria-pressed={selected.includes(card.id)} onClick={()=>toggle(card.id)}
       style={{marginLeft:ownCards[0]===card?0:"clamp(-24px,-2.5vw,-9px)",transform:selected.includes(card.id)?"translateY(-14px)":"none",zIndex:selected.includes(card.id)?50:1}} className={`relative h-[clamp(60px,18vh,125px)] w-[clamp(44px,12vh,86px)] overflow-hidden rounded-md border-2 bg-white shadow-lg transition-transform ${selected.includes(card.id)?"border-amber-400 ring-2 ring-amber-400":"border-zinc-300"}`}><img draggable={false} className="h-full w-full object-fill" src={card.joker?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${card.suit}_${({1:"ace",11:"jack",12:"queen",13:"king"} as Record<number,string>)[card.rank]??card.rank}.png`} alt={label(card)}/></button>)}
     </div>
