@@ -4,8 +4,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'supabase/migrations/**'
-      - 'tests/integration/**'
+      - 'supabase/migrations/20261004183758_jk002_ephemeral_table_messages.sql'
+      - 'tests/integration/table-messages*'
       - '.github/workflows/jk002-db-integration.yml'
 jobs:
   messages:
