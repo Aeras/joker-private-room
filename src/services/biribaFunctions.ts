@@ -4,21 +4,13 @@ import {z} from "zod";
 import {EXTERNAL_SUPABASE_URL,EXTERNAL_SUPABASE_PUBLISHABLE_KEY} from "@/integrations/external-supabase/client";
 import type {BiribaCard,BiribaMeld,BiribaSuit} from "@/biriba/rules";
 const code=z.string().regex(/^[A-Za-z0-9]{6}$/);
-const request=z.discriminatedUnion("action",[
- z.object({action:z.literal("create"),capacity:z.union([z.literal(2),z.literal(4)]),target:z.union([z.literal(1000),z.literal(2000),z.literal(5000),z.literal(10000)])}),
- z.object({action:z.literal("list")}),
- z.object({action:z.literal("membership")}),
- ...(["get","join","leave","start","get_game","end_game"] as const).map(action=>z.object({action:z.literal(action),code})),
- z.object({action:z.literal("bot_add"),code,seat:z.number().int().min(0).max(3),botId:z.string().min(1).max(64).optional()}),
- z.object({action:z.literal("bot_remove"),code,seat:z.number().int().min(0).max(3)}),
- z.object({action:z.literal("move"),code,move:z.union([
-  z.object({type:z.literal("draw")}),
-  z.object({type:z.literal("discard"),id:z.string().min(1).max(80)}),
-  z.object({type:z.literal("meld"),meld:z.any()}),
-  z.object({type:z.literal("extend"),index:z.number().int().min(0),meld:z.any()}),
-  z.object({type:z.literal("pickup"),ids:z.array(z.string().max(80)),meld:z.any()})
- ])})
-]);
+const request=z.object({
+ action:z.enum(["create","list","membership","get","join","leave","start","get_game","end_game","bot_add","bot_remove","move"]),
+ code:code.optional(),capacity:z.union([z.literal(2),z.literal(4)]).optional(),
+ target:z.union([z.literal(1000),z.literal(2000),z.literal(5000),z.literal(10000)]).optional(),
+ seat:z.number().int().min(0).max(3).optional(),botId:z.string().max(64).optional(),
+ move:z.unknown().optional(),
+});
 export type BiribaRoomSeat={index:number;occupant:"human"|"bot"|"empty";name:string|null;botId?:string|null;tier?:number|null};
 export type BiribaRoomView={code:string;capacity:2|4;target:1000|2000|5000|10000;lifecycle:string;version:number;hostPlayerId:string;seats:BiribaRoomSeat[]};
 export type BiribaGameView={
