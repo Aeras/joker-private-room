@@ -17,7 +17,6 @@ export type BiribaAction=
  |{type:"extend";index:number;meld:BiribaMeld}
  |{type:"discard";id:string};
 const copy=(m:BiribaMatch):BiribaMatch=>structuredClone(m);
-const assert=(value:unknown,message:string):asserts value=>{if(!value)throw new Error(message);};
 export function beginBiribaMatch(seats:BiribaSeatCount,random:()=>number=Math.random):BiribaMatch{
  const d=createBiribaLocalDeal(seats,random);
  return {seats,hands:d.hands,packets:[...d.packets],stock:d.stock,discards:d.discard,
@@ -47,10 +46,8 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
  };
  if(action.type==="draw"){
   if(next.phase!=="draw")throw new Error("DRAW_ALREADY_DONE");
-  if(next.pendingPacket[team]===seat&&next.hands[seat]!.length===0){
-   next.hands[seat]=next.packets[team]!.splice(0);
+  if(next.pendingPacket[team]===seat){
    next.pendingPacket[team]=null;next.packetPlayed[team]=true;
-   next.phase="meld";return next;
   }
   const top=next.stock.pop();
   if(!top)throw new Error("EMPTY_STOCK");
@@ -78,7 +75,6 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   if(next.phase!=="meld"||!biribaMeldValid(action.meld))throw new Error("INVALID_MELD");
   if(action.meld.ownerSeat!==seat)throw new Error("INVALID_OWNER");
   const ids=action.meld.cards.map(p=>p.card.id);
-  if(hand.length===1&&!next.melds.some(md=>biribaTeamOf(md.ownerSeat,next.seats)===team&&md.cards.length>=7))throw new Error("EMPTY_HAND_WAITING");
   takeIds(ids);next.melds.push(action.meld);next.opened[seat]=true;
   assessEmpty();return next;
  }
