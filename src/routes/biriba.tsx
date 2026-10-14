@@ -153,7 +153,7 @@ function BiribaContent({playerId}:{playerId:string}){
    {game&&[...(game.seats===4?[1,2,3]:[1])].map(delta=>{
     const seatIndex=(game.seat+delta)%game.seats;
     const seat=game.roomSeats[seatIndex];
-    const position=game.seats===2||delta===2?"left-1/2 top-[2%] -translate-x-1/2":delta===1?"left-[0.5%] top-[39%]":"right-[0.5%] top-[39%]";
+    const position=game.seats===2||delta===2?"left-1/2 top-[10%] -translate-x-1/2":delta===1?"left-[4%] top-[39%]":"right-[4%] top-[39%]";
     return <div key={seatIndex} className={`pointer-events-none absolute z-20 flex flex-col items-center gap-1 ${position}`}>
      <PlayerAvatar name={seat?.name??"Παίκτης"} imageUrl={seat?.name?assets.avatar("",seat.name):undefined} isBot={seat?.occupant==="bot"} size="sm"/>
      <span className="max-w-[115px] truncate rounded bg-black/60 px-1 text-center text-[10px] text-white">{seat?.name??"Παίκτης"}</span>
@@ -207,9 +207,9 @@ function BiribaContent({playerId}:{playerId:string}){
    <div className="absolute bottom-0 left-1/2 z-30 w-[min(98vw,950px)] -translate-x-1/2 text-white">
     {error&&<p role="alert" className="text-xs text-red-300">{error}</p>}
     <div className="flex items-end justify-center gap-0 overflow-visible pb-1 text-sm">
-     {dealShownKey===dealKey&&ownCards.map(card=><button type="button" key={card.id} disabled={!mine||busy}
+     {dealShownKey===dealKey&&ownCards.map((card,i)=><button type="button" key={card.id} disabled={!mine||busy}
       aria-pressed={selected.includes(card.id)} onClick={()=>toggle(card.id)}
-      style={{marginLeft:ownCards[0]===card?0:"clamp(-24px,-2.5vw,-9px)",transform:selected.includes(card.id)?"translateY(-14px)":"none",zIndex:selected.includes(card.id)?50:1}} className={`relative h-[clamp(60px,18vh,125px)] w-[clamp(44px,12vh,86px)] overflow-hidden rounded-md border-2 bg-white shadow-lg transition-transform ${selected.includes(card.id)?"border-amber-400 ring-2 ring-amber-400":"border-zinc-300"}`}><img draggable={false} className="h-full w-full object-fill" src={card.joker?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${card.suit}_${({1:"ace",11:"jack",12:"queen",13:"king"} as Record<number,string>)[card.rank]??card.rank}.png`} alt={label(card)}/></button>)}
+      style={{marginLeft:ownCards[0]===card?0:"clamp(-24px,-2.5vw,-9px)",transform:selected.includes(card.id)?"translateY(-14px)":"none",zIndex:selected.includes(card.id)?50:1}} className={`relative h-[clamp(60px,18vh,125px)] w-[clamp(44px,12vh,86px)] overflow-hidden rounded-md border-2 bg-white shadow-lg transition-transform ${selected.includes(card.id)?"border-amber-400 ring-2 ring-amber-400":"border-zinc-300"}`}><img draggable={false} className="biriba-hand-face h-full w-full object-fill" style={{animationDelay:`${i*32}ms`}} src={card.joker?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${card.suit}_${({1:"ace",11:"jack",12:"queen",13:"king"} as Record<number,string>)[card.rank]??card.rank}.png`} alt={label(card)}/></button>)}
     </div>
     <div className="mb-2 flex flex-wrap justify-center gap-2">
      {mine&&game?.phase==="draw"&&<button className="rounded bg-emerald-700 px-3 py-2 text-xs" disabled={busy} onClick={()=>void play({type:"draw"})}>Τράβηγμα</button>}
