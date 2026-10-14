@@ -88,8 +88,8 @@ export function biribaScoreRound(team:BiribaTeamEnd,trump:BiribaSuit|null,oppone
   const closing=team.closed?100:0;
   const biribas=team.melds.filter(m=>m.cards.length>=7).length;
   let penalty=0;
-  if(team.packetNeverPlayed)penalty=100;
-  else if(!team.tookPacket){
+  if(opponentClosed&&team.packetNeverPlayed)penalty=100;
+  else if(opponentClosed&&!team.tookPacket){
     if(biribas===0)penalty=opponentClosed?(team.anyPlayerOpened?100:200):100;
     else penalty=100;
   }
