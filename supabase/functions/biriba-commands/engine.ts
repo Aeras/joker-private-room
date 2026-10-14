@@ -1,3 +1,4 @@
+import {startBiribaClock,nextBiribaClock,type BiribaClock} from "./clock.ts";
 import {biribaCanFinish,biribaMeldValid,biribaTeamOf,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaSuit} from "./rules.ts";
 import {createBiribaLocalDeal} from "./localDeal.ts";
 
@@ -8,7 +9,7 @@ export type BiribaMatch={
  stock:BiribaCard[];discards:BiribaCard[];trump:BiribaSuit|null;
  initialJokerId:string|null;melds:BiribaMeld[];turn:number;phase:BiribaTurnPhase;
  opened:boolean[];packetTaken:boolean[];packetPlayed:boolean[];packetOwner:(number|null)[];
- pendingPacket:(number|null)[];forcedDiscardSeat:number|null;roundEnded:boolean;closedBy:number|null;
+ pendingPacket:(number|null)[];forcedDiscardSeat:number|null;roundEnded:boolean;closedBy:number|null;clock:BiribaClock;
 };
 export type BiribaAction=
  |{type:"draw"}
@@ -23,7 +24,7 @@ export function beginBiribaMatch(seats:BiribaSeatCount,random:()=>number=Math.ra
   trump:d.trump,initialJokerId:d.discard[0]?.joker?d.discard[0].id:null,melds:[],
   turn:0,phase:"draw",opened:Array(seats).fill(false),packetTaken:[false,false],
   packetPlayed:[false,false],packetOwner:[null,null],pendingPacket:[null,null],forcedDiscardSeat:null,
-  roundEnded:false,closedBy:null};
+  roundEnded:false,closedBy:null,clock:startBiribaClock(seats,Date.now())};
 }
 export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):BiribaMatch{
  if(m.roundEnded||seat!==m.turn||m.phase==="ended")throw new Error("NOT_YOUR_TURN");
@@ -118,6 +119,7 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   if(!next.packetTaken[team])assessEmpty();
   if(next.stock.length===0){next.roundEnded=true;next.phase="ended";return next;}
   next.turn=(seat+1)%next.seats;
+  next.clock=nextBiribaClock(next.clock,Date.now());
   return next;
  }
  throw new Error("UNKNOWN_ACTION");
