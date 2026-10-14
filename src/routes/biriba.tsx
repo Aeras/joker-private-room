@@ -270,7 +270,7 @@ function BiribaContent({playerId}:{playerId:string}){
     {botSeatPicker!==null&&isHost&&(()=>{
      const chosen=room.seats.find(seat=>seat.index===botSeatPicker);
      if(!chosen||chosen.occupant==="human")return null;
-     return <div className="rounded-xl border border-primary/50 bg-secondary/80 p-3" role="dialog" aria-label={"Επιλογή bot για θέση "+(botSeatPicker+1)}>
+     return <div className="pregame-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-3" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)setBotSeatPicker(null)}}><div className="pregame-bot-modal max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-2xl border border-primary/40 bg-background p-4 shadow-2xl" role="dialog" aria-modal="true" aria-label={"Επιλογή bot για θέση "+(botSeatPicker+1)}>
       <div className="mb-3 flex items-center justify-between"><strong>Επιλογή bot · Θέση {botSeatPicker+1}</strong><button type="button" aria-label="Κλείσιμο" onClick={()=>setBotSeatPicker(null)}><X size={20}/></button></div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
        {CANONICAL_BOTS.map(bot=>{
@@ -287,7 +287,7 @@ function BiribaContent({playerId}:{playerId:string}){
       {chosen.occupant==="bot"&&<button type="button" className="mt-3 rounded-lg border border-primary/50 px-4 py-2 text-sm" disabled={busy} onClick={async()=>{
        await run({action:"bot_remove",code:room.code,seat:botSeatPicker});setBotSeatPicker(null);
       }}>Αφαίρεση bot</button>}
-     </div>;
+     </div></div>;
     })()}
     {isHost&&<button type="button" disabled={busy} className="w-full rounded bg-primary/25 p-3 font-bold" onClick={()=>void run({action:"start",code:room.code})}>Έναρξη (αυτόματη συμπλήρωση με bots)</button>}
     <button className="rounded border px-3 py-2 text-sm" disabled={busy} onClick={()=>void run({action:"leave",code:room.code})}>Έξοδος</button>
