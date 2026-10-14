@@ -455,16 +455,16 @@ function BiribaContent({ playerId }: { playerId: string }) {
                 <div key={entry.round} className="rounded-lg border border-white/20 p-2 text-sm">
                   <strong>Γύρος {entry.round}</strong>
                   <div className="mt-2 grid grid-cols-2 gap-3">
-                    {entry.breakdown.map((part, teamIndex) => (
+                    {[redTeamIndex, 1 - redTeamIndex].map((teamIndex, column) => { const part = entry.breakdown[teamIndex]!; return (
                       <div key={teamIndex} className="space-y-1 text-xs">
-                        <strong>Ομάδα {teamIndex + 1}: {part.total > 0 ? "+" : ""}{part.total}</strong>
+                        <strong>{column === 0 ? "ΚΟΚΚΙΝΗ ΟΜΑΔΑ" : "ΜΠΛΕ ΟΜΑΔΑ"}: {part.total > 0 ? "+" : ""}{part.total}</strong>
                         <div>Φύλλα: +{part.cards}</div>
                         <div>Μπιρίμπες: +{part.bonuses}</div>
                         <div>Κλείσιμο: +{part.closing}</div>
                         <div>Ποινές: −{part.penalty}</div>
                         <div>Στο χέρι: −{part.held}</div>
                       </div>
-                    ))}
+                    ); })}
                   </div>
                 </div>
               ))}
