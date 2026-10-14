@@ -20,7 +20,7 @@ Deno.serve(async(req)=>{
   if(!allowed.has(action))return json({ok:false,code:"INVALID_ACTION"},400);
   const code=String(body.code??"").toUpperCase();
   if(!["create","list","membership"].includes(action)&&!/^[A-Z0-9]{6}$/.test(code))return json({ok:false,code:"INVALID_CODE"},400);
-  if(action==="create"&&(![2,4].includes(Number(body.capacity))||![1000,2000,5000,10000].includes(Number(body.target))))
+  if(action==="create"&&(![2,4].includes(Number(body.capacity))||![1000,2000,5000,10000].includes(Number(body.target))|| (body.timerEnabled!==undefined&&typeof body.timerEnabled!=="boolean")))
    return json({ok:false,code:"INVALID_OPTIONS"},400);
   const url=Deno.env.get("SUPABASE_URL"),key=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if(!url||!key)return json({ok:false,code:"SERVICE_UNAVAILABLE"},503);
@@ -30,6 +30,7 @@ Deno.serve(async(req)=>{
     p_session_token:token,p_action:a,p_code:code||null,
     p_capacity:action==="create"?body.capacity:null,
     p_target:action==="create"?body.target:null,
+    p_timer_enabled:action==="create"?(body.timerEnabled??true):null,
     p_seat:number(body.seat)?body.seat:null,
     p_bot_id:typeof body.botId==="string"?body.botId:null,
     p_catalog:CANONICAL_BOTS,
@@ -47,7 +48,7 @@ Deno.serve(async(req)=>{
    if(error||!room?.ok)return json({ok:false,code:"ROOM_NOT_FOUND"},400);
    const count=room.room.capacity as BiribaSeatCount;
    const random=()=>crypto.getRandomValues(new Uint32Array(1))[0]!/4294967296;
-   const state=beginBiribaMatch(count,random,room.room.target);
+   const state={...beginBiribaMatch(count,random,room.room.target),timerEnabled:room.room.timerEnabled!==false};
    const result=await rpc("start",{p_state:state});
    return reply(result.data,result.error);
   }
@@ -68,6 +69,7 @@ Deno.serve(async(req)=>{
    match=nextBiribaRound(match,random);
   }else if(action==="pause"||action==="resume"||action==="reclaim"){
    try{
+    if(!match.timerEnabled)return json({ok:false,code:"TIMER_DISABLED"},409);
     const clock=action==="pause"
       ?pauseBiribaClock(match.clock,seat,match.turn,true,now)
       :action==="resume"
@@ -79,10 +81,10 @@ Deno.serve(async(req)=>{
    if(match.clock.pausedBy!==null){
     if(action==="move")return json({ok:false,code:"PAUSED"},409);
    }else{
-    match={...match,clock:timeoutBiribaClock(match.clock,match.turn,
-      seats.some(s=>s.index===match.turn&&s.occupant==="human"),now)};
+    match={...match,clock:match.timerEnabled?timeoutBiribaClock(match.clock,match.turn,
+      seats.some(s=>s.index===match.turn&&s.occupant==="human"),now):match.clock};
     if(action==="move"){
-     if(match.clock.botTakeovers.includes(seat)||now>match.clock.turnDeadline)
+     if(match.timerEnabled&&(match.clock.botTakeovers.includes(seat)||now>match.clock.turnDeadline))
       return json({ok:false,code:"TURN_EXPIRED"},409);
      const move=body.move as BiribaAction|undefined;
      if(!move||!actions.has(String(move.type)))return json({ok:false,code:"INVALID_MOVE"},400);
