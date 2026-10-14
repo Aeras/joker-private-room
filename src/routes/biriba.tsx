@@ -8,6 +8,7 @@ import { ScreenShell } from "@/components/joker/ScreenShell";
 import { BiribaPixiPreview, BIRIBA_DEAL_BEAT_MS } from "@/biriba/BiribaPixiPreview";
 import { BiribaRoomControls } from "@/biriba/BiribaRoomControls";
 import { BiribaMeldZone } from "@/biriba/BiribaMeldZone";
+import { selectedBiribaMeld } from "@/biriba/meldSelection";
 import { BiribaTrumpIndicator } from "@/biriba/BiribaTrumpIndicator";
 import "@/biriba/biribaReferenceTable.css";
 import {
@@ -76,21 +77,6 @@ const format = (r: BiribaResponse) =>
         SERVICE_UNAVAILABLE: "Ο διακομιστής Μπιρίμπας δεν είναι διαθέσιμος ακόμη.",
         NOT_AUTHENTICATED: "Χρειάζεται νέα σύνδεση.",
       } as Record<string, string>)[r.code] ?? "Η ενέργεια δεν ολοκληρώθηκε.";
-
-function selectedMeld(cards: BiribaCard[], seat: number): BiribaMeld | null {
-  if (cards.length < 3 || cards.some(c => c.joker)) return null;
-  const natural = cards as Array<Extract<BiribaCard, { joker?: false }>>;
-  const suit = natural[0]!.suit;
-  if (natural.some(c => c.suit !== suit)) return null;
-  for (const highAce of [false, true]) {
-    const ordered = [...natural].map(card => ({ card, value: card.rank === 1 && highAce ? 14 : card.rank }))
-      .sort((x, y) => x.value - y.value);
-    const meld: BiribaMeld = { ownerSeat: seat, suit, highAce,
-      cards: ordered };
-    if (biribaMeldValid(meld)) return meld;
-  }
-  return null;
-}
 
 function legalExtension(meld: BiribaMeld, cards: BiribaCard[]): BiribaMeld | null {
   if (cards.length !== 1 || cards[0]?.joker) return null;
@@ -308,9 +294,9 @@ function BiribaContent({ playerId }: { playerId: string }) {
       !game?.clock.botTakeovers.includes(game?.seat ?? -1) &&
       game?.clock.pausedBy === null;
     const selectedCards = ownCards.filter((c) => selected.includes(c.id));
-    const candidate = game ? selectedMeld(selectedCards, game.seat) : null;
+    const candidate = game ? selectedBiribaMeld(selectedCards, game.seat) : null;
     const pickup = game?.discards
-      .map((discard) => ({ discard, meld: selectedMeld([...selectedCards, discard], game.seat) }))
+      .map((discard) => ({ discard, meld: selectedBiribaMeld([...selectedCards, discard], game.seat) }))
       .find((item) => item.meld);
     const team = game ? biribaTeamOf(game.seat, game.seats) : null;
     const extensions =
