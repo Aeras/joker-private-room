@@ -169,3 +169,16 @@
 [data-declaration-bubble-seat="3"]::after{right:-7px;top:-7px;width:18px;height:18px;transform:none;clip-path:polygon(100% 0,55% 100%,0 45%)}
 
 .joker-declaration-pass{display:block;width:36%;height:3px;border-radius:2px;background:currentColor;font-size:0;line-height:0}
+
+/* Biriba: reveal the local hand after cards have been dealt face-down. */
+@keyframes biriba-card-face-reveal {
+  0% { opacity: 0; transform: perspective(500px) rotateY(88deg); }
+  100% { opacity: 1; transform: perspective(500px) rotateY(0deg); }
+}
+.biriba-hand-face {
+  backface-visibility: hidden;
+  animation: biriba-card-face-reveal 480ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .biriba-hand-face { animation: none; }
+}

@@ -59,16 +59,31 @@ function BiribaContent({playerId}:{playerId:string}){
  useEffect(()=>{const t=setInterval(()=>setClockNow(Date.now()),350);return()=>clearInterval(t)},[]);
  const [error,setError]=useState("");
  const [scoresOpen,setScoresOpen]=useState(false);
+ const [dealShownKey,setDealShownKey]=useState<string|null>(null);
+ const dealKey=game?`${game.roundNumber}:${game.seat}`:null;
+ const initialDealView=useMemo(()=>{
+  if(!game)return null;
+  return {key:dealKey,game};
+ // First complete server snapshot after each round starts drives the dealing presentation.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[dealKey]);
+ const onDealComplete=useCallback((key:string)=>setDealShownKey(key),[]);
+ useEffect(()=>{
+  if(!dealKey||!game)return;
+  // Fallback when a browser is backgrounded and Pixi's frame clock is throttled.
+  const t=setTimeout(()=>setDealShownKey(dealKey),11*game.seats*115+1000);
+  return()=>clearTimeout(t);
+ },[dealKey,game?.seats]);
  const isHost=room?.hostPlayerId===playerId;
  const run=useCallback(async(data:Parameters<typeof biribaCommand>[0]["data"])=>{
   setBusy(true);setError("");
   try{
    const r=await biribaCommand({data});
    if(!r.ok){setError(format(r));return;}
-   if("room" in r){setRoom(r.room);setGame(null)}
+   if("room" in r){setRoom(r.room);setGame(null);setDealShownKey(null)}
    if("rooms" in r)setAvailable(r.rooms);
    if("game" in r)setGame(r.game);
-   if("cancelled" in r){setRoom(null);setGame(null)}
+   if("cancelled" in r){setRoom(null);setGame(null);setDealShownKey(null)}
    if("started" in r||"updated" in r){
     if(room?.code){
      const changed=await biribaCommand({data:{action:"get",code:room.code}});
@@ -105,12 +120,13 @@ function BiribaContent({playerId}:{playerId:string}){
   return ()=>{current=false;clearInterval(timer)};
  },[code]);
  const ownCards=game?.myHand??[];
+ const visualGame=dealShownKey===dealKey?game:initialDealView?.game??game;
  const preview=useMemo(()=>{
-  if(!game)return undefined;
-  const hands:Array<BiribaCard[]>=Array.from({length:game.seats},()=>[]);
-  hands[0]=game.myHand;
-  return {seats:game.seats,hands,packets:[[],[]] as [BiribaCard[],BiribaCard[]],stock:[],discard:game.discards,trump:game.trump};
- },[game]);
+  if(!visualGame)return undefined;
+  const hands:Array<BiribaCard[]>=Array.from({length:visualGame.seats},()=>[]);
+  hands[0]=visualGame.myHand;
+  return {seats:visualGame.seats,hands,packets:[[],[]] as [BiribaCard[],BiribaCard[]],stock:[],discard:visualGame.discards,trump:visualGame.trump};
+ },[visualGame]);
  const toggle=(id:string)=>setSelected(s=>s.includes(id)?s.filter(v=>v!==id):[...s,id]);
  const play=async(move:unknown)=>{
   if(!code)return;
@@ -123,7 +139,7 @@ function BiribaContent({playerId}:{playerId:string}){
   finally{setBusy(false)}
  };
  if(room&&room.lifecycle!=="waiting"){
-  const mine=game?.turn===game?.seat&&!game?.roundEnded&&!game?.clock.botTakeovers.includes(game?.seat??-1)&&game?.clock.pausedBy===null;
+  const mine=dealShownKey===dealKey&&game?.turn===game?.seat&&!game?.roundEnded&&!game?.clock.botTakeovers.includes(game?.seat??-1)&&game?.clock.pausedBy===null;
   const selectedCards=ownCards.filter(c=>selected.includes(c.id));
   const candidate=game?selectedMeld(selectedCards,game.seat):null;
   const pickup=game?.discards.map(discard=>({discard,meld:selectedMeld([...selectedCards,discard],game.seat)})).find(item=>item.meld);
@@ -132,7 +148,18 @@ function BiribaContent({playerId}:{playerId:string}){
      (x.ownerSeat===game.seat||game.opened[game.seat]))??[];
 
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
-   <TableSurface/><BiribaPixiPreview deal={preview} game={game??undefined} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
+   <TableSurface/><BiribaPixiPreview deal={preview} game={visualGame??undefined} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
+   {/* Seats are anchored to the actual screen edges. Local hand remains at bottom. */}
+   {game&&[...(game.seats===4?[1,2,3]:[1])].map(delta=>{
+    const seatIndex=(game.seat+delta)%game.seats;
+    const seat=game.roomSeats[seatIndex];
+    const position=game.seats===2||delta===2?"left-[59%] top-[2%]":delta===1?"left-[4%] top-[39%]":"right-[4%] top-[39%]";
+    return <div key={seatIndex} className={`pointer-events-none absolute z-20 flex flex-col items-center gap-1 ${position}`}>
+     <PlayerAvatar name={seat?.name??"Παίκτης"} imageUrl={seat?.name?assets.avatar("",seat.name):undefined} isBot={seat?.occupant==="bot"} size="sm"/>
+     <span className="max-w-[115px] truncate rounded bg-black/60 px-1 text-center text-[10px] text-white">{seat?.name??"Παίκτης"}</span>
+    </div>;
+   })}
+
    <div className="absolute left-3 top-3 z-20 rounded-lg bg-black/80 p-2 text-xs text-white">
     <div>ΜΠΙΡΙΜΠΑ · {room.code} · {room.target.toLocaleString("el-GR")} πόντοι</div>
     <div>{game?.roundEnded?"Τέλος γύρου":game? `Σειρά θέσης ${game.turn+1} · ${game.phase==="draw"?"Τράβηγμα":"Κατέβασμα / Πέταγμα"}`:"Φόρτωση παρτίδας…"}</div>
@@ -177,14 +204,9 @@ function BiribaContent({playerId}:{playerId:string}){
      {game.roundScored&&!game.matchFinished&&isHost&&<button type="button" disabled={busy} onClick={()=>void run({action:"next_round",code:room.code})} className="w-full rounded bg-emerald-700 px-3 py-2 font-bold">Επόμενος γύρος</button>}
      {game.matchFinished&&<p className="rounded bg-amber-400/15 p-2 font-semibold">Τέλος παιχνιδιού · Νίκη ομάδας {(game.winnerTeam??0)+1}</p>}
    </section>}
-   <div className="absolute bottom-1 left-1/2 z-30 w-[min(94vw,750px)] -translate-x-1/2 rounded-lg border border-white/15 bg-black/85 p-2 text-white">
+   <div className="absolute bottom-0 left-1/2 z-30 w-[min(98vw,950px)] -translate-x-1/2 text-white">
     {error&&<p role="alert" className="text-xs text-red-300">{error}</p>}
-    <div className="flex flex-wrap justify-center gap-1 text-sm">
-     {ownCards.map(card=><button type="button" key={card.id} disabled={!mine||busy}
-      aria-pressed={selected.includes(card.id)} onClick={()=>toggle(card.id)}
-      className={`rounded border px-2 py-1 ${selected.includes(card.id)?"border-amber-400 bg-amber-500/30":"border-white/25"}`}>{label(card)}</button>)}
-    </div>
-    <div className="mt-2 flex justify-center gap-2">
+    <div className="mb-2 flex flex-wrap justify-center gap-2">
      {mine&&game?.phase==="draw"&&<button className="rounded bg-emerald-700 px-3 py-2 text-xs" disabled={busy} onClick={()=>void play({type:"draw"})}>Τράβηγμα</button>}
      {mine&&game?.phase==="draw"&&pickup?.meld&&<button className="rounded bg-amber-700 px-3 py-2 text-xs" disabled={busy} onClick={()=>void play({type:"pickup",ids:[pickup.discard.id],meld:pickup.meld})}>Πάρε πεταμένα &amp; κατέβασε</button>}
      {mine&&game?.phase==="meld"&&<>
@@ -193,6 +215,12 @@ function BiribaContent({playerId}:{playerId:string}){
       <button className="rounded bg-red-700 px-3 py-2 text-xs" disabled={busy||selected.length!==1} onClick={()=>void play({type:"discard",id:selected[0]})}>Πέταγμα</button>
      </>}
     </div>
+    <div className="flex items-end justify-center gap-0 overflow-visible pb-1 text-sm">
+     {dealShownKey===dealKey&&ownCards.map((card,i)=><button type="button" key={card.id} disabled={!mine||busy}
+      aria-pressed={selected.includes(card.id)} onClick={()=>toggle(card.id)}
+      style={{marginLeft:ownCards[0]===card?0:"clamp(-24px,-2.5vw,-9px)",transform:selected.includes(card.id)?"translateY(-14px)":"none",zIndex:selected.includes(card.id)?50:1}} className={`relative h-[clamp(60px,18vh,125px)] w-[clamp(44px,12vh,86px)] overflow-hidden rounded-md border-2 bg-white shadow-lg transition-transform ${selected.includes(card.id)?"border-amber-400 ring-2 ring-amber-400":"border-zinc-300"}`}><img draggable={false} className="biriba-hand-face h-full w-full object-fill" style={{animationDelay:`${i*32}ms`}} src={card.joker?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${card.suit}_${({1:"ace",11:"jack",12:"queen",13:"king"} as Record<number,string>)[card.rank]??card.rank}.png`} alt={label(card)}/></button>)}
+    </div>
+
    </div>
   </main>;
  }
@@ -217,9 +245,17 @@ function BiribaContent({playerId}:{playerId:string}){
     {isHost&&<button type="button" disabled={busy} className="w-full rounded bg-primary/25 p-3 font-bold" onClick={()=>void run({action:"start",code:room.code})}>Έναρξη (αυτόματη συμπλήρωση με bots)</button>}
     <button className="rounded border px-3 py-2 text-sm" disabled={busy} onClick={()=>void run({action:"leave",code:room.code})}>Έξοδος</button>
    </section>:mode==="create"?<div className="space-y-3">
-    <label className="block">Παίκτες<select className="mt-1 w-full rounded bg-secondary p-3" value={capacity} onChange={e=>setCapacity(Number(e.target.value) as BiribaSeatCount)}><option value={2}>2</option><option value={4}>4</option></select></label>
-    <label className="block">Στόχος<select className="mt-1 w-full rounded bg-secondary p-3" value={target} onChange={e=>setTarget(Number(e.target.value) as BiribaTarget)}>{BIRIBA_TARGETS.map(v=><option key={v} value={v}>{v.toLocaleString("el-GR")} πόντοι</option>)}</select></label>
-    <label className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"><span>Χρονόμετρο ON/OFF</span><input type="checkbox" role="switch" aria-label="Χρονόμετρο" checked={timerEnabled} onChange={e=>setTimerEnabled(e.target.checked)} className="h-5 w-5 accent-emerald-600"/></label>
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)_auto] items-end gap-2">
+     <label className="min-w-0 text-xs sm:text-sm">Παίκτες<select className="mt-1 w-full rounded bg-secondary px-2 py-3 text-sm" value={capacity} onChange={e=>setCapacity(Number(e.target.value) as BiribaSeatCount)}><option value={2}>2</option><option value={4}>4</option></select></label>
+     <label className="min-w-0 text-xs sm:text-sm">Στόχος<select className="mt-1 w-full rounded bg-secondary px-2 py-3 text-sm" value={target} onChange={e=>setTarget(Number(e.target.value) as BiribaTarget)}>{BIRIBA_TARGETS.map(v=><option key={v} value={v}>{v.toLocaleString("el-GR")}</option>)}</select></label>
+     <label className="flex min-w-[85px] cursor-pointer flex-col items-center gap-2 text-center text-xs sm:text-sm">Χρονόμετρο
+      <span className="relative inline-flex h-6 w-11 items-center">
+       <input type="checkbox" role="switch" aria-label="Χρονόμετρο" checked={timerEnabled} onChange={e=>setTimerEnabled(e.target.checked)} className="peer sr-only"/>
+       <span className="absolute inset-0 rounded-full bg-zinc-600 transition-colors peer-checked:bg-emerald-600"/>
+       <span className="pointer-events-none absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"/>
+      </span>
+     </label>
+    </div>
     <p className="text-xs text-muted-foreground">{timerEnabled?"60 δευτερόλεπτα ανά πραγματικό παίκτη, με 3 προσωπικές παύσεις και προσωρινό bot στη λήξη.":"Απεριόριστος χρόνος για πραγματικούς παίκτες, χωρίς χρονόμετρο ή αυτόματο bot λόγω καθυστέρησης."}</p>
     <button className="w-full rounded border border-primary/50 bg-primary/20 p-3 font-semibold" disabled={busy} onClick={()=>void run({action:"create",capacity,target,timerEnabled})}>Δημιουργία παιχνιδιού</button>
    </div>:<div className="space-y-3">

@@ -10,13 +10,18 @@ import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js"
  * or score authority live in this renderer; future multiplayer updates pass
  * sanitized viewer-specific snapshots only.
  */
-export function BiribaPixiPreview({deal,game,redTeam=0}:{deal?:BiribaDealtPreview|undefined;game?:BiribaGameView|undefined;redTeam?:number}) {
+export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:BiribaDealtPreview|undefined;game?:BiribaGameView|undefined;redTeam?:number;onDealComplete?:((key:string)=>void)|undefined}) {
   const mount = useRef<HTMLDivElement>(null);
+  const lastDealtRound=useRef<string|null>(null);
   useEffect(() => {
     const parent = mount.current;
     if (!parent) return;
     let disposed = false;
     let app: Application | undefined;
+    let dealTimer:ReturnType<typeof setTimeout>|undefined;
+    const dealKey=game?`${game.roundNumber}:${game.seat}`:null;
+    const dealEntrance=dealKey!==null&&lastDealtRound.current!==dealKey;
+    if(dealEntrance)lastDealtRound.current=dealKey;
     void (async () => {
       const pixi = new Application();
       await pixi.init({ resizeTo: parent, backgroundAlpha: 0, antialias: true, resolution: Math.min(devicePixelRatio || 1, 2), autoDensity: true });
@@ -26,6 +31,12 @@ export function BiribaPixiPreview({deal,game,redTeam=0}:{deal?:BiribaDealtPrevie
       const stage = new Container();
       pixi.stage.addChild(stage);
       const w = 1280, h = 720;
+      // Translate the unused letterbox gutter into table coordinates so remote
+      // card backs sit at the real viewport edges, not inset from the table.
+      const contentScale=Math.min(parent.clientWidth/w,parent.clientHeight/h);
+      const gutter=Math.max(0,(parent.clientWidth-w*contentScale)/(2*contentScale));
+      const leftEdge=-gutter+4;
+      const rightEdge=w+gutter-38;
       // Scale consistently to landscape dimensions; preserve exact zone proportions.
       const resize = () => { const scale = Math.min(parent.clientWidth/w,parent.clientHeight/h); stage.scale.set(scale); stage.position.set((parent.clientWidth-w*scale)/2,(parent.clientHeight-h*scale)/2); };
       resize();
@@ -54,14 +65,21 @@ export function BiribaPixiPreview({deal,game,redTeam=0}:{deal?:BiribaDealtPrevie
       const fileRank=(rank:string)=>({A:"ace",K:"king",Q:"queen",J:"jack"} as Record<string,string>)[rank]||rank;
       type Face={rank:string;suit:string};
       const face=(rank:string,suit:string):Face=>({rank,suit});
-      const addCard=async(c:Face|null,x:number,y:number,scale=1,delay=0)=>{
+      const addCard=async(c:Face|null,x:number,y:number,scale=1,delay=0,from?:[number,number])=>{
         const path=c?(c.rank==="JOKER"?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${c.suit}_${fileRank(c.rank)}.png`):"/cards/optimized-png/backs/blue_back.png";
         try{
           const texture=await Assets.load(path);
           if(disposed)return;
-          const sprite=new Sprite(texture);sprite.width=58*scale;sprite.height=85*scale;sprite.position.set(x,y+12);
-          sprite.alpha=0;stage.addChild(sprite);
-          let progress=0;const animate=(ticker:{deltaMS:number})=>{progress+=ticker.deltaMS/180;const t=Math.min(1,progress);sprite.y=y+12*(1-t);sprite.alpha=t;if(t===1)pixi.ticker.remove(animate)};
+          const sprite=new Sprite(texture);sprite.width=58*scale;sprite.height=85*scale;sprite.position.set(from?.[0]??x,from?.[1]??(y+12));
+          sprite.alpha=from?1:0;stage.addChild(sprite);
+          let progress=0;const animate=(ticker:{deltaMS:number})=>{
+            progress+=ticker.deltaMS/(from?260:180);
+            const t=Math.min(1,progress),eased=1-Math.pow(1-t,3);
+            sprite.x=from?from[0]+(x-from[0])*eased:x;
+            sprite.y=from?from[1]+(y-from[1])*eased:y+12*(1-eased);
+            sprite.alpha=from?1:eased;
+            if(t===1)pixi.ticker.remove(animate);
+          };
           if(delay)await new Promise(r=>setTimeout(r,delay));
           if(!disposed)pixi.ticker.add(animate);
         }catch{
@@ -92,33 +110,42 @@ export function BiribaPixiPreview({deal,game,redTeam=0}:{deal?:BiribaDealtPrevie
         set([face("9","hearts"),face("10","hearts"),face("J","hearts")],840,155);
         set([face("7","clubs"),face("8","clubs"),face("9","clubs")],998,155);
       }
-      box(365,351,550,128,0x071f1b,.4);
+      box(338,384,605,157,0x071f1b,.35);
       const piles:[string,Face|null,number][]=[
-        ["ΚΛΕΙΣΤΗ ΤΡΑΠΟΥΛΑ",null,398],
-        ["ΠΕΤΑΜΕΝΑ",deal?.discard[0] ? (deal.discard[0].joker ? face("JOKER","joker") : face(({1:"A",11:"J",12:"Q",13:"K"} as Record<number,string>)[deal.discard[0].rank]??String(deal.discard[0].rank),deal.discard[0].suit)):face("Q","hearts"),535],
-        ["ΜΠΙΡΙΜΠΑΚΙ 1",null,669],
-        ["ΜΠΙΡΙΜΠΑΚΙ 2",null,804],
+        ["ΚΛΕΙΣΤΗ ΤΡΑΠΟΥΛΑ",null,360],
+        ["ΠΕΤΑΜΕΝΑ",deal?.discard[0] ? (deal.discard[0].joker ? face("JOKER","joker") : face(({1:"A",11:"J",12:"Q",13:"K"} as Record<number,string>)[deal.discard[0].rank]??String(deal.discard[0].rank),deal.discard[0].suit)):face("Q","hearts"),522],
+        ["ΜΠΙΡΙΜΠΑΚΙ 1",null,674],
+        ["ΜΠΙΡΙΜΠΑΚΙ 2",null,828],
       ];
-      piles.forEach(([label,c,x])=>{void addCard(c,x,370,.88);text(label,x+25,462,12);});
-      box(577,495,126,39,0x252923,.9,0xc3a24f);text(`ΑΤΟΥ ${deal?(deal.trump?suitIcon[deal.trump]:"—"):"♣"}`,640,515,20);
-      const rear=(x:number,y:number,count:number,vertical=false)=>{for(let i=0;i<count;i++)void addCard(null,x+(vertical?0:i*13),y+(vertical?i*13:0),.53,i*15)};
-      const relative=(delta:number)=>game?.roomSeats[(game.seat+delta)%game.seats];
-      rear(524,27,game?game.handCounts[(game.seat+(game.seats===4?2:1))%game.seats]??0:8);
-      if(!game||game.seats===4){
-        rear(43,290,game?game.handCounts[(game.seat+1)%game.seats]??0:6,true);
-        rear(1198,290,game?game.handCounts[(game.seat+3)%game.seats]??0:6,true);
+      piles.forEach(([label,c,x])=>{void addCard(c,x,397,1.15);text(label,x+32,522,13);});
+      box(1090,510,135,44,0x252923,.94,0xc3a24f);text(`ΑΤΟΥ ${deal?(deal.trump?suitIcon[deal.trump]:"—"):"♣"}`,1158,531,21);
+
+      const rear=(x:number,y:number,count:number,vertical=false)=>{
+        for(let i=0;i<count;i++)void addCard(null,x+(vertical?0:i*13),y+(vertical?i*13:0),.53,i*15);
+      };
+      if(game&&dealEntrance&&dealKey){
+        const order=game.seats===4?[0,1,2,3]:[0,1];
+        for(let i=0;i<11;i++){
+          for(const delta of order){
+            const x=delta===0?355+i*43:(game.seats===2||delta===2?524+i*13:delta===1?leftEdge:rightEdge);
+            const y=delta===0?596:(game.seats===2||delta===2?4:248+i*13);
+            const delay=(i*order.length+delta)*115;
+            void addCard(null,x,y,delta===0?.98:.53,delay,[390,410]);
+          }
+        }
+        dealTimer=setTimeout(()=>{
+          if(!disposed)onDealComplete?.(dealKey);
+        },11*order.length*115+520);
+      }else{
+        rear(524,4,game?game.handCounts[(game.seat+(game.seats===4?2:1))%game.seats]??0:8);
+        if(!game||game.seats===4){
+          rear(leftEdge,248,game?game.handCounts[(game.seat+1)%game.seats]??0:6,true);
+          rear(rightEdge,248,game?game.handCounts[(game.seat+3)%game.seats]??0:6,true);
+        }
       }
-      text(game?(game.roomSeats[(game.seat+(game.seats===4?2:1))%game.seats]?.name??"ΣΥΜΠΑΙΚΤΗΣ"):"ΣΥΜΠΑΙΚΤΗΣ",640,19,18);
-      if(!game||game.seats===4){
-        text(relative(1)?.name??"ΑΝΤΙΠΑΛΟΣ Α",79,277,15);
-        text(relative(3)?.name??"ΑΝΤΙΠΑΛΟΣ Β",1191,277,15);
-      }
-      const hand:[string,string][]=deal ? deal.hands[0]!.map(c=>c.joker?["JOKER","joker"]:[({1:"A",11:"J",12:"Q",13:"K"} as Record<number,string>)[c.rank]??String(c.rank),c.suit]) : [["A","spades"],["K","spades"],["Q","diamonds"],["J","diamonds"],["10","diamonds"],["8","diamonds"],["5","clubs"],["4","clubs"],["3","clubs"],["2","hearts"],["7","hearts"]];
-      hand.forEach(([rank,suit],i)=>void addCard(face(rank,suit),330+i*56,599,1.55,i*22));
-      text("ΕΣΥ",640,570,22);
       (pixi as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver=observer;
     })();
-    return ()=>{disposed=true;if(app){(app as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver?.disconnect();app.destroy(true,{children:true});}};
-  },[deal,game,redTeam]);
+    return ()=>{disposed=true;if(dealTimer)clearTimeout(dealTimer);if(app){(app as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver?.disconnect();app.destroy(true,{children:true});}};
+  },[deal,game,redTeam,onDealComplete]);
   return <div ref={mount} className="absolute inset-0" role="img" aria-label="Προεπισκόπηση τραπεζιού Μπιρίμπας με κόκκινη και μπλε ομάδα, κατεβασμένες σειρές, κλειστή τράπουλα, πεταμένα και ανοιχτά φύλλα στο κάτω μέρος"/>;
 }
