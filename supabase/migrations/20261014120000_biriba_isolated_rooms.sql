@@ -6,6 +6,7 @@ create table if not exists public.biriba_rooms (
  host_player_id uuid not null references public.players(id),
  capacity smallint not null check (capacity in (2,4)),
  target_score integer not null check (target_score in (1000,2000,5000,10000)),
+ timer_enabled boolean not null default true,
  lifecycle text not null default 'waiting' check (lifecycle in ('waiting','playing','finished','cancelled')),
  version bigint not null default 0,
  created_at timestamptz not null default now(),
@@ -44,7 +45,7 @@ grant select,insert,update,delete on public.biriba_rooms,public.biriba_room_seat
 -- Creates and joins use the same advisory-lock namespace as JOKER/DURAK.
 create or replace function public.biriba_room_command_internal(
  p_session_token text, p_action text,p_code text default null,
- p_capacity integer default null,p_target integer default null,
+ p_capacity integer default null,p_target integer default null,p_timer_enabled boolean default null,
  p_seat integer default null,p_bot_id text default null,p_catalog jsonb default null,
  p_state jsonb default null,p_revision bigint default null
 ) returns jsonb language plpgsql security definer
@@ -80,7 +81,7 @@ begin
  if p_action='list' then
   return jsonb_build_object('ok',true,'rooms',coalesce((
    select jsonb_agg(x.info order by x.created_at desc) from (
-    select r.created_at,jsonb_build_object('code',r.code,'capacity',r.capacity,'target',r.target_score,
+    select r.created_at,jsonb_build_object('code',r.code,'capacity',r.capacity,'target',r.target_score,'timerEnabled',r.timer_enabled,
       'hostName',p.display_name,'occupied',(select count(*) from public.biriba_room_seats s where s.room_id=r.id and s.occupant_type<>'empty')) info
     from public.biriba_rooms r join public.players p on p.id=r.host_player_id
     where r.lifecycle='waiting' and exists(select 1 from public.biriba_room_seats s where s.room_id=r.id and s.occupant_type='empty')
@@ -92,8 +93,8 @@ begin
   for v_attempt in 1..12 loop
    v_code:=upper(substr(encode(gen_random_bytes(8),'hex'),1,6));
    begin
-    insert into public.biriba_rooms(code,host_player_id,capacity,target_score)
-      values(v_code,v_player,p_capacity,p_target) returning * into v_room;
+    insert into public.biriba_rooms(code,host_player_id,capacity,target_score,timer_enabled)
+      values(v_code,v_player,p_capacity,p_target,coalesce(p_timer_enabled,true)) returning * into v_room;
     exit;
    exception when unique_violation then
     if v_attempt=12 then return jsonb_build_object('ok',false,'code','SERVICE_UNAVAILABLE');end if;
@@ -188,7 +189,7 @@ begin
  end if;
  select * into v_room from public.biriba_rooms where id=v_room.id;
  return jsonb_build_object('ok',true,'room',jsonb_build_object(
-  'code',v_room.code,'capacity',v_room.capacity,'target',v_room.target_score,
+  'code',v_room.code,'capacity',v_room.capacity,'target',v_room.target_score,'timerEnabled',v_room.timer_enabled,
   'lifecycle',v_room.lifecycle,'version',v_room.version,'hostPlayerId',v_room.host_player_id,
   'seats',(select coalesce(jsonb_agg(jsonb_build_object('index',s.seat_index,'occupant',s.occupant_type,
    'name',coalesce(p.display_name,s.bot_display_name),'botId',s.bot_id,'tier',s.bot_tier) order by s.seat_index),'[]'::jsonb)
@@ -196,5 +197,5 @@ begin
  ));
 end;
 $$;
-revoke all on function public.biriba_room_command_internal(text,text,text,integer,integer,integer,text,jsonb,jsonb,bigint) from public,anon,authenticated;
+revoke all on function public.biriba_room_command_internal(text,text,text,integer,integer,boolean,integer,text,jsonb,jsonb,bigint) from public,anon,authenticated;
 grant execute on function public.biriba_room_command_internal(text,text,text,integer,integer,integer,text,jsonb,jsonb,bigint) to service_role;
