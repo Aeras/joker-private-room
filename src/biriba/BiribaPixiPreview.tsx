@@ -1,6 +1,5 @@
 import type { BiribaDealtPreview } from "./localDeal";
 import type { BiribaGameView } from "@/services/biribaFunctions";
-import { biribaMeldBonus, biribaCardPoints, biribaTeamOf } from "./rules";
 import { useEffect, useRef } from "react";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import {
@@ -144,68 +143,9 @@ export function BiribaPixiPreview({
         }
       };
 
-      const set = (cards: Face[], x: number, y: number) =>
-        cards.forEach((c, i) => void addCard(c, x + i * 22, y, 0.76, i * 20));
-
-      // 1. Render Melds in Left (Red) and Right (Blue) zones
-      if (game) {
-        const visual = (card: { joker?: boolean; rank?: number; suit?: string }): Face =>
-          card.joker
-            ? face("JOKER", "joker")
-            : face(
-                ({ 1: "A", 11: "J", 12: "Q", 13: "K" } as Record<number, string>)[card.rank ?? 0] ??
-                  String(card.rank ?? ""),
-                card.suit ?? "spades",
-              );
-        const onTeam = (team: number) =>
-          game.melds.filter((m) => biribaTeamOf(m.ownerSeat, game.seats) === team);
-        for (const [zone, team] of [
-          [0, redTeam],
-          [1, 1 - redTeam],
-        ] as [number, number][]) {
-          const melds = onTeam(team);
-          melds.forEach((meld, i) => {
-            const x = zone === 0 ? 215 : 715;
-            const y = 175 + Math.floor(i / 3) * 78;
-            const offset = (i % 3) * 120;
-            meld.cards.forEach(
-              (p, index) =>
-                void addCard(visual(p.card), x + offset + index * 22, y, 0.76, index * 12),
-            );
-          });
-        }
-      } else {
-        // Reference demonstration melds matching the screenshot
-        set([face("7", "hearts"), face("8", "hearts"), face("9", "hearts")], 215, 175);
-        set([face("J", "spades"), face("Q", "spades"), face("K", "spades")], 330, 175);
-        set([face("4", "clubs"), face("5", "clubs"), face("6", "clubs")], 445, 175);
-        set(
-          [
-            face("10", "diamonds"),
-            face("J", "diamonds"),
-            face("Q", "diamonds"),
-            face("K", "diamonds"),
-          ],
-          270,
-          250,
-        );
-
-        set([face("A", "spades"), face("2", "spades"), face("3", "spades")], 715, 175);
-        set([face("9", "hearts"), face("10", "hearts"), face("J", "hearts")], 830, 175);
-        set([face("7", "clubs"), face("8", "clubs"), face("9", "clubs")], 945, 175);
-        set([face("K", "hearts"), face("K", "diamonds"), face("K", "clubs")], 760, 250);
-        set(
-          [
-            face("5", "diamonds"),
-            face("6", "diamonds"),
-            face("7", "diamonds"),
-            face("8", "diamonds"),
-          ],
-          900,
-          250,
-        );
-      }
-
+      // Melds render as interactive HTML slots in BiribaMeldZone.
+      // Do not draw them again on the Pixi canvas.
+      
       // Public piles follow the authorized projection. An empty pile stays empty.
       const discard = game?.discards.at(-1) ?? deal?.discard.at(-1);
       const discardTop = discard
