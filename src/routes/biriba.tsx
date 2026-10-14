@@ -132,7 +132,7 @@ function BiribaContent({playerId}:{playerId:string}){
      (x.ownerSeat===game.seat||game.opened[game.seat]))??[];
 
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
-   <TableSurface/><BiribaPixiPreview deal={preview} game={game??undefined} redTeam={parseInt(room.code[0]??"0",16)%2}/>
+   <TableSurface/><BiribaPixiPreview deal={preview} game={game??undefined} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
    <div className="absolute left-3 top-3 z-20 rounded-lg bg-black/80 p-2 text-xs text-white">
     <div>ΜΠΙΡΙΜΠΑ · {room.code} · {room.target.toLocaleString("el-GR")} πόντοι</div>
     <div>{game?.roundEnded?"Τέλος γύρου":game? `Σειρά θέσης ${game.turn+1} · ${game.phase==="draw"?"Τράβηγμα":"Κατέβασμα / Πέταγμα"}`:"Φόρτωση παρτίδας…"}</div>
