@@ -13,13 +13,25 @@ describe("Biriba opponent fans", () => {
     expect(left.angle).toBe(-right.angle);
   });
 
-  it("fans the side hands vertically without crossing into the meld zones", () => {
-    for (const side of ["left", "right"] as const) {
-      const first = opponentFanPose(side, 0, 14);
-      const last = opponentFanPose(side, 13, 14);
-      expect(first.y).toBeLessThan(last.y);
-      expect(first.x).toBeGreaterThan(35);
-      expect(last.x).toBeLessThan(1245);
+  it("curves both side hands along mirrored table edges", () => {
+    for (const count of [3, 7, 14]) {
+      const firstLeft = opponentFanPose("left", 0, count);
+      const middleLeft = opponentFanPose("left", (count - 1) / 2, count);
+      const lastLeft = opponentFanPose("left", count - 1, count);
+      expect(firstLeft.y).toBeLessThan(middleLeft.y);
+      expect(middleLeft.y).toBeLessThan(lastLeft.y);
+      expect(firstLeft.x).toBeGreaterThan(middleLeft.x);
+      expect(lastLeft.x).toBeGreaterThan(middleLeft.x);
+
+      for (let index = 0; index < count; index++) {
+        const left = opponentFanPose("left", index, count);
+        const right = opponentFanPose("right", index, count);
+        expect(left.x + right.x).toBe(1280);
+        expect(left.y).toBe(right.y);
+        expect(left.angle).toBe(-right.angle);
+        expect(left.x).toBeGreaterThan(40);
+        expect(right.x).toBeLessThan(1240);
+      }
     }
   });
 });
