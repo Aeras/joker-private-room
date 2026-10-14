@@ -7,6 +7,7 @@ import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
 import { ScreenShell } from "@/components/joker/ScreenShell";
 import { BiribaPixiPreview, BIRIBA_DEAL_BEAT_MS } from "@/biriba/BiribaPixiPreview";
 import { BiribaRoomControls } from "@/biriba/BiribaRoomControls";
+import { BiribaTrumpIndicator } from "@/biriba/BiribaTrumpIndicator";
 import "@/biriba/biribaReferenceTable.css";
 import {
   biribaCommand,
@@ -238,7 +239,9 @@ function BiribaContent({ playerId }: { playerId: string }) {
           const next = await biribaCommand({ data: { action: "get_game", code } });
           if (current && !closedCodes.current.has(code) && next.ok && "game" in next) setGame((previous) => (previous?.revision === next.game.revision ? previous : next.game));
         }
-      } catch {}
+      } catch {
+        // A transient polling failure is retried on the next tick.
+      }
     };
     void poll();
     const timer = setInterval(() => void poll(), 900);
@@ -353,12 +356,8 @@ function BiribaContent({ playerId }: { playerId: string }) {
           <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 2</span>
         </div>
 
-        {/* 3. TRUMP (ΑΤΟΥ) INDICATOR IN CENTER */}
-        <div className="biriba-trump-frame">
-          <span>‹</span>
-          <span className="tracking-widest">ΑΤΟΥ</span>
-          <span>›</span>
-        </div>
+        {/* 3. TRUMP (ΑΤΟΥ) INDICATOR */}
+        <BiribaTrumpIndicator suit={visualGame?.trump ?? preview?.trump} />
 
         {/* 4. PLAYER AVATARS ANCHORED AROUND THE TABLE */}
         {/* Local Player (ΕΣΥ) */}
