@@ -18,7 +18,7 @@ function BiribaHome(){
 }
 const ranks:Record<number,string>={1:"A",11:"J",12:"Q",13:"K"};
 const names:Record<string,string>={spades:"♠",hearts:"♥",diamonds:"♦",clubs:"♣"};
-const label=(c:BiribaCard)=>c.joker?"JOKER":(ranks[c.rank]??c.rank)+names[c.suit];
+const label=(c:BiribaCard)=>c.joker?"JOKER":(ranks[c.rank]??c.rank)+(names[c.suit]??"");
 const format=(r:BiribaResponse)=>r.ok?"":({
  ACTIVE_GAME_EXISTS:"Έχεις ήδη άλλο ενεργό παιχνίδι. Ολοκλήρωσέ το πρώτα.",
  ROOM_NOT_FOUND:"Το δωμάτιο δεν βρέθηκε.",ROOM_FULL:"Το δωμάτιο είναι γεμάτο.",
@@ -140,7 +140,7 @@ function BiribaContent({playerId}:{playerId:string}){
    </div>
    {game&&room.timerEnabled&&<div className="absolute left-3 bottom-3 z-30 flex items-center gap-2 rounded-xl border border-white/20 bg-black/85 p-2 text-xs text-white">
     <button type="button" aria-label={game.clock.pausedBy===game.seat?"Συνέχεια παρτίδας":"Παύση παρτίδας"}
-     disabled={busy||(!game.clock.botTakeovers.includes(game.seat)&&game.clock.pausedBy!==game.seat&&game.turn!==game.seat)||game.clock.botTakeovers.includes(game.seat)||game.clock.pausedBy!==null&&game.clock.pausedBy!==game.seat||game.clock.pausesUsed[game.seat]>=3&&game.clock.pausedBy!==game.seat}
+     disabled={busy||(!game.clock.botTakeovers.includes(game.seat)&&game.clock.pausedBy!==game.seat&&game.turn!==game.seat)||game.clock.botTakeovers.includes(game.seat)||game.clock.pausedBy!==null&&game.clock.pausedBy!==game.seat||(game.clock.pausesUsed[game.seat]??0)>=3&&game.clock.pausedBy!==game.seat}
      className="relative" onClick={()=>void run({action:game.clock.pausedBy===game.seat?"resume":"pause",code:room.code})}>
       <PlayerAvatar name={room.seats.find(s=>s.index===game.seat)?.name??"Εσύ"} imageUrl={assets.avatar("",room.seats.find(s=>s.index===game.seat)?.name??"")} size="sm"/>
       {game.clock.pausedBy===game.seat&&<span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 text-lg">Ⅱ</span>}
