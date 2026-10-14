@@ -78,26 +78,33 @@ const format = (r: BiribaResponse) =>
       } as Record<string, string>)[r.code] ?? "Η ενέργεια δεν ολοκληρώθηκε.";
 
 function selectedMeld(cards: BiribaCard[], seat: number): BiribaMeld | null {
-  if (cards.length < 3 || cards.some((c) => c.joker)) return null;
+  if (cards.length < 3 || cards.some(c => c.joker)) return null;
   const natural = cards as Array<Extract<BiribaCard, { joker?: false }>>;
   const suit = natural[0]!.suit;
-  if (natural.some((c) => c.suit !== suit)) return null;
-  const ordered = [...natural].sort((a, b) => a.rank - b.rank);
-  if (!ordered.every((c, i) => i === 0 || c.rank === ordered[i - 1]!.rank + 1)) return null;
-  return { ownerSeat: seat, suit, highAce: false, cards: ordered.map((c) => ({ card: c, value: c.rank })) };
+  if (natural.some(c => c.suit !== suit)) return null;
+  for (const highAce of [false, true]) {
+    const ordered = [...natural].map(card => ({ card, value: card.rank === 1 && highAce ? 14 : card.rank }))
+      .sort((x, y) => x.value - y.value);
+    const meld: BiribaMeld = { ownerSeat: seat, suit, highAce,
+      cards: ordered };
+    if (biribaMeldValid(meld)) return meld;
+  }
+  return null;
 }
 
 function legalExtension(meld: BiribaMeld, cards: BiribaCard[]): BiribaMeld | null {
   if (cards.length !== 1 || cards[0]?.joker) return null;
   const card = cards[0] as Extract<BiribaCard, { joker?: false }>;
   if (card.suit !== meld.suit) return null;
-  const first = meld.cards[0]?.value,
-    last = meld.cards[meld.cards.length - 1]?.value;
-  const proposal =
-    card.rank === Number(first) - 1
-      ? { ...meld, cards: [{ card, value: card.rank }, ...meld.cards] }
-      : card.rank === Number(last) + 1
-      ? { ...meld, cards: [...meld.cards, { card, value: card.rank }] }
+  const first = meld.cards[0]?.value;
+  const last = meld.cards[meld.cards.length - 1]?.value;
+  const highAce = meld.highAce || (card.rank === 1 && last === 13 && !meld.cards.some(p => p.value === 1));
+  const value = card.rank === 1 && highAce ? 14 : card.rank;
+  const proposal: BiribaMeld | null =
+    value === Number(first) - 1
+      ? { ...meld, highAce, cards: [{ card, value }, ...meld.cards] }
+      : value === Number(last) + 1
+      ? { ...meld, highAce, cards: [...meld.cards, { card, value }] }
       : null;
   return proposal && biribaMeldValid(proposal) ? proposal : null;
 }
