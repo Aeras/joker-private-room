@@ -100,7 +100,18 @@ Deno.serve(async(req)=>{
     }
    }
   }
-  if(match.roundEnded&&!match.roundScored)match=scoreFinishedBiribaRound(match);
+  // Server-authoritative round handoff. All clients poll get_game; none
+  // needs the host's browser to perform a manual next_round action.
+  if(match.roundEnded&&!match.roundScored){
+    match={...scoreFinishedBiribaRound(match),roundTransitionAt:now+3500};
+  }else if(action==="get_game"&&match.roundScored&&!match.matchFinished){
+    const due=(match as BiribaMatch & {roundTransitionAt?:number}).roundTransitionAt;
+    // Recover already-scored rounds written before this rollout immediately.
+    if(due===undefined||now>=due){
+      const random=()=>crypto.getRandomValues(new Uint32Array(1))[0]!/4294967296;
+      match=nextBiribaRound(match,random);
+    }
+  }
   if(JSON.stringify(match)!==JSON.stringify(original)){
    const saved=await rpc("save",{p_state:match,p_revision:revision});
    if(saved.error||!saved.data?.ok)return reply(saved.data,saved.error);
