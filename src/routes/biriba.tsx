@@ -153,7 +153,7 @@ function BiribaContent({playerId}:{playerId:string}){
    {game&&[...(game.seats===4?[1,2,3]:[1])].map(delta=>{
     const seatIndex=(game.seat+delta)%game.seats;
     const seat=game.roomSeats[seatIndex];
-    const position=game.seats===2||delta===2?"left-1/2 top-[10%] -translate-x-1/2":delta===1?"left-[4%] top-[39%]":"right-[4%] top-[39%]";
+    const position=game.seats===2||delta===2?"left-[59%] top-[2%]":delta===1?"left-[4%] top-[39%]":"right-[4%] top-[39%]";
     return <div key={seatIndex} className={`pointer-events-none absolute z-20 flex flex-col items-center gap-1 ${position}`}>
      <PlayerAvatar name={seat?.name??"Παίκτης"} imageUrl={seat?.name?assets.avatar("",seat.name):undefined} isBot={seat?.occupant==="bot"} size="sm"/>
      <span className="max-w-[115px] truncate rounded bg-black/60 px-1 text-center text-[10px] text-white">{seat?.name??"Παίκτης"}</span>
@@ -248,7 +248,13 @@ function BiribaContent({playerId}:{playerId:string}){
     <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)_auto] items-end gap-2">
      <label className="min-w-0 text-xs sm:text-sm">Παίκτες<select className="mt-1 w-full rounded bg-secondary px-2 py-3 text-sm" value={capacity} onChange={e=>setCapacity(Number(e.target.value) as BiribaSeatCount)}><option value={2}>2</option><option value={4}>4</option></select></label>
      <label className="min-w-0 text-xs sm:text-sm">Στόχος<select className="mt-1 w-full rounded bg-secondary px-2 py-3 text-sm" value={target} onChange={e=>setTarget(Number(e.target.value) as BiribaTarget)}>{BIRIBA_TARGETS.map(v=><option key={v} value={v}>{v.toLocaleString("el-GR")}</option>)}</select></label>
-     <label className="flex min-w-[85px] flex-col items-center gap-2 text-center text-xs sm:text-sm">Χρονόμετρο<input type="checkbox" role="switch" aria-label="Χρονόμετρο" checked={timerEnabled} onChange={e=>setTimerEnabled(e.target.checked)} className="h-6 w-10 accent-emerald-600"/></label>
+     <label className="flex min-w-[85px] cursor-pointer flex-col items-center gap-2 text-center text-xs sm:text-sm">Χρονόμετρο
+      <span className="relative inline-flex h-6 w-11 items-center">
+       <input type="checkbox" role="switch" aria-label="Χρονόμετρο" checked={timerEnabled} onChange={e=>setTimerEnabled(e.target.checked)} className="peer sr-only"/>
+       <span className="absolute inset-0 rounded-full bg-zinc-600 transition-colors peer-checked:bg-emerald-600"/>
+       <span className="pointer-events-none absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"/>
+      </span>
+     </label>
     </div>
     <p className="text-xs text-muted-foreground">{timerEnabled?"60 δευτερόλεπτα ανά πραγματικό παίκτη, με 3 προσωπικές παύσεις και προσωρινό bot στη λήξη.":"Απεριόριστος χρόνος για πραγματικούς παίκτες, χωρίς χρονόμετρο ή αυτόματο bot λόγω καθυστέρησης."}</p>
     <button className="w-full rounded border border-primary/50 bg-primary/20 p-3 font-semibold" disabled={busy} onClick={()=>void run({action:"create",capacity,target,timerEnabled})}>Δημιουργία παιχνιδιού</button>
