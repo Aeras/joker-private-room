@@ -15,7 +15,7 @@ export type BiribaMatch={
 };
 export type BiribaAction=
  |{type:"draw"}
- |{type:"pickup";ids:string[];meld:BiribaMeld}
+ |{type:"pickup";ids:string[];meld:BiribaMeld;index?:number}
  |{type:"meld";meld:BiribaMeld}
  |{type:"extend";index:number;meld:BiribaMeld}
  |{type:"discard";id:string};
@@ -61,21 +61,31 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
  if(action.type==="pickup"){
   if(next.phase!=="draw")throw new Error("DRAW_ALREADY_DONE");
   if(!next.discards.length)throw new Error("EMPTY_DISCARDS");
-  const before=new Set(hand.map(c=>c.id));
   const pile=next.discards.splice(0);
   hand.push(...pile);
-  const touched=action.meld.cards.some(p=>pile.some(c=>c.id===p.card.id));
-  if(!touched||!biribaMeldValid(action.meld))throw new Error("PICKUP_REQUIRES_MELD");
-  if(action.meld.ownerSeat!==seat)throw new Error("INVALID_OWNER");
-  const ids=action.meld.cards.map(p=>p.card.id);
-  // At least one prior discard, and no invented ids. All cards must originate in hand + pile.
-  if(ids.some(id=>!before.has(id)&&!pile.some(c=>c.id===id)))throw new Error("CARD_NOT_OWNED");
-  takeIds(ids);
-  next.melds.push(action.meld);
-  if(next.initialJokerId&&action.meld.cards.some(p=>p.card.id===next.initialJokerId))next.trump=action.meld.suit;
-  next.opened[seat]=true;
-  next.phase="meld";assessEmpty();
-  return next;
+  if(!biribaMeldValid(action.meld))throw new Error("INVALID_MELD");
+  let additions=action.meld.cards;
+  if(action.index!==undefined){
+    const previous=next.melds[action.index];
+    if(!previous||previous.suit!==action.meld.suit||previous.highAce!==action.meld.highAce
+      ||previous.ownerSeat!==action.meld.ownerSeat)throw new Error("INVALID_EXTENSION");
+    if(biribaTeamOf(previous.ownerSeat,next.seats)!==team)throw new Error("OPPONENT_MELD");
+    if(previous.ownerSeat!==seat&&!next.opened[seat])throw new Error("MUST_OPEN_OWN_MELD_FIRST");
+    const old=new Set(previous.cards.map(p=>p.card.id));
+    if(!previous.cards.every(p=>action.meld.cards.some(c=>c.card.id===p.card.id)))throw new Error("CANNOT_REMOVE_CARDS");
+    for(const p of previous.cards){
+      if(!p.card.joker&&p.card.rank===2&&p.value===2 &&
+         action.meld.cards.find(x=>x.card.id===p.card.id)?.value!==2)throw new Error("NATURAL_TWO_FIXED");
+    }
+    additions=action.meld.cards.filter(p=>!old.has(p.card.id));
+  }else if(action.meld.ownerSeat!==seat)throw new Error("INVALID_OWNER");
+  if(!additions.some(p=>pile.some(c=>c.id===p.card.id)))throw new Error("PICKUP_REQUIRES_MELD");
+  if(additions.length===0)throw new Error("NO_ADDITION");
+  takeIds(additions.map(p=>p.card.id));
+  if(action.index!==undefined)next.melds[action.index]=action.meld;
+  else{next.melds.push(action.meld);next.opened[seat]=true;}
+  if(next.initialJokerId&&additions.some(p=>p.card.id===next.initialJokerId))next.trump=action.meld.suit;
+  next.phase="meld";assessEmpty();return next;
  }
  if(action.type==="meld"){
   if(next.forcedDiscardSeat===seat)throw new Error("MUST_DISCARD_DRAWN_CARD");
