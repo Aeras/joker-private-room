@@ -9,7 +9,7 @@ import {BiribaPixiPreview} from "@/biriba/BiribaPixiPreview";
 import {biribaCommand,type BiribaRoomView,type BiribaGameView,type BiribaResponse} from "@/services/biribaFunctions";
 import {BIRIBA_TARGETS,DEFAULT_BIRIBA_TARGET,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaTarget,biribaMeldValid,biribaTeamOf} from "@/biriba/rules";
 import {assets} from "@/assets/registry";
-import { NORMAL_DEAL_STAGGER_MS,NORMAL_DEAL_TRAVEL_MS,NORMAL_DEAL_HANDOFF_TRAVEL_MS,NORMAL_DEAL_HANDOFF_FADE_MS,LOCAL_HAND_ENTRANCE_MS,LOCAL_HAND_FLIP_MS } from "@/components/table/presentationTiming";
+import { NORMAL_DEAL_TRAVEL_MS,NORMAL_DEAL_HANDOFF_TRAVEL_MS,LOCAL_HAND_ENTRANCE_MS,LOCAL_HAND_FLIP_MS } from "@/components/table/presentationTiming";
 
 export const Route=createFileRoute("/biriba")({
  head:()=>({meta:[{title:"ΜΠΙΡΙΜΠΑ — Online παιχνίδι"}]}),component:BiribaHome
@@ -19,6 +19,19 @@ function BiribaHome(){
 }
 const ranks:Record<number,string>={1:"A",11:"J",12:"Q",13:"K"};
 const names:Record<string,string>={spades:"♠",hearts:"♥",diamonds:"♦",clubs:"♣"};
+// The exact images already used by Joker's canonical bot catalog.
+const botAvatars:Record<string,string>={
+ "giorgos-nousios":"/avatars/giorgos_nousios.png",
+ "thomoulis":"/avatars/thomoulis.png",
+ "theia-tamara":"/avatars/theia_tamara.png",
+ "mounara":"/avatars/mounara.png",
+ "ka-monika":"/avatars/ka_monika.png",
+ "archimandritis":"/avatars/archimandritis.png",
+};
+const biribaAvatar=(seat:{name:string|null;botId?:string|null}|undefined)=>{
+ const url=(seat?.botId?botAvatars[seat.botId]:undefined)??assets.avatar("",seat?.name??"");
+ return assets.tableAvatar(url);
+};
 const label=(c:BiribaCard)=>c.joker?"JOKER":(ranks[c.rank]??c.rank)+(names[c.suit]??"");
 const format=(r:BiribaResponse)=>r.ok?"":({
  ACTIVE_GAME_EXISTS:"Έχεις ήδη άλλο ενεργό παιχνίδι. Ολοκλήρωσέ το πρώτα.",
@@ -72,7 +85,7 @@ function BiribaContent({playerId}:{playerId:string}){
  useEffect(()=>{
   if(!dealKey||!game)return;
   // Fallback when a browser is backgrounded and Pixi's frame clock is throttled.
-  const t=setTimeout(()=>setDealShownKey(dealKey),(11*game.seats-1)*NORMAL_DEAL_STAGGER_MS+NORMAL_DEAL_TRAVEL_MS+NORMAL_DEAL_HANDOFF_TRAVEL_MS+NORMAL_DEAL_HANDOFF_FADE_MS+LOCAL_HAND_ENTRANCE_MS+LOCAL_HAND_FLIP_MS+800);
+  const t=setTimeout(()=>setDealShownKey(dealKey),(11*game.seats-1)*58+NORMAL_DEAL_TRAVEL_MS+NORMAL_DEAL_HANDOFF_TRAVEL_MS+800);
   return()=>clearTimeout(t);
  },[dealKey,game?.seats]);
  const isHost=room?.hostPlayerId===playerId;
@@ -151,15 +164,15 @@ function BiribaContent({playerId}:{playerId:string}){
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
    <TableSurface/><BiribaPixiPreview deal={preview} game={visualGame??undefined} revealComplete={dealShownKey===dealKey} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
    {game&&<div className="pointer-events-none absolute bottom-1 left-2 z-40 flex items-center gap-2">
-     <PlayerAvatar name={room.seats.find(seat=>seat.index===game.seat)?.name??"Εσύ"} imageUrl={assets.avatar("",room.seats.find(seat=>seat.index===game.seat)?.name??"")} size="md"/>
+     <PlayerAvatar name={room.seats.find(seat=>seat.index===game.seat)?.name??"Εσύ"} imageUrl={biribaAvatar(room.seats.find(seat=>seat.index===game.seat))} size="lg"/>
     </div>}
    {/* Seats are anchored to the actual screen edges. Local hand remains at bottom. */}
    {game&&[...(game.seats===4?[1,2,3]:[1])].map(delta=>{
     const seatIndex=(game.seat+delta)%game.seats;
     const seat=game.roomSeats[seatIndex];
-    const position=game.seats===2||delta===2?"left-[59%] top-[2%]":delta===1?"left-[4%] top-[39%]":"right-[4%] top-[39%]";
+    const position=game.seats===2||delta===2?"left-[55%] top-[0.5%]":delta===1?"left-[1%] top-[31%]":"right-[1%] top-[31%]";
     return <div key={seatIndex} className={`pointer-events-none absolute z-20 flex flex-col items-center gap-1 ${position}`}>
-     <PlayerAvatar name={seat?.name??"Παίκτης"} imageUrl={seat?.name?assets.avatar("",seat.name):undefined} isBot={seat?.occupant==="bot"} size="sm"/>
+     <PlayerAvatar name={seat?.name??"Παίκτης"} imageUrl={biribaAvatar(seat)} isBot={seat?.occupant==="bot"} size="lg"/>
      <span className="max-w-[115px] truncate rounded bg-black/60 px-1 text-center text-[10px] text-white">{seat?.name??"Παίκτης"}</span>
     </div>;
    })}
