@@ -31,6 +31,12 @@ export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:Bi
       const stage = new Container();
       pixi.stage.addChild(stage);
       const w = 1280, h = 720;
+      // Translate the unused letterbox gutter into table coordinates so remote
+      // card backs sit at the real viewport edges, not inset from the table.
+      const contentScale=Math.min(parent.clientWidth/w,parent.clientHeight/h);
+      const gutter=Math.max(0,(parent.clientWidth-w*contentScale)/(2*contentScale));
+      const leftEdge=-gutter+4;
+      const rightEdge=w+gutter-38;
       // Scale consistently to landscape dimensions; preserve exact zone proportions.
       const resize = () => { const scale = Math.min(parent.clientWidth/w,parent.clientHeight/h); stage.scale.set(scale); stage.position.set((parent.clientWidth-w*scale)/2,(parent.clientHeight-h*scale)/2); };
       resize();
@@ -121,7 +127,7 @@ export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:Bi
         const order=game.seats===4?[0,1,2,3]:[0,1];
         for(let i=0;i<11;i++){
           for(const delta of order){
-            const x=delta===0?355+i*43:(game.seats===2||delta===2?524+i*13:delta===1?2:1245);
+            const x=delta===0?355+i*43:(game.seats===2||delta===2?524+i*13:delta===1?leftEdge:rightEdge);
             const y=delta===0?596:(game.seats===2||delta===2?4:248+i*13);
             const delay=(i*order.length+delta)*115;
             void addCard(null,x,y,delta===0?.98:.53,delay,[610,402]);
@@ -133,8 +139,8 @@ export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:Bi
       }else{
         rear(524,4,game?game.handCounts[(game.seat+(game.seats===4?2:1))%game.seats]??0:8);
         if(!game||game.seats===4){
-          rear(2,248,game?game.handCounts[(game.seat+1)%game.seats]??0:6,true);
-          rear(1245,248,game?game.handCounts[(game.seat+3)%game.seats]??0:6,true);
+          rear(leftEdge,248,game?game.handCounts[(game.seat+1)%game.seats]??0:6,true);
+          rear(rightEdge,248,game?game.handCounts[(game.seat+3)%game.seats]??0:6,true);
         }
       }
       (pixi as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver=observer;
