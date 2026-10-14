@@ -1,0 +1,101 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import {createClient} from "jsr:@supabase/supabase-js@2";
+import {beginBiribaMatch,biribaAction,type BiribaMatch,type BiribaAction} from "./engine.ts";
+import {biribaTeamOf,type BiribaSeatCount} from "./rules.ts";
+import {CANONICAL_BOTS} from "../_shared/bot-catalog.ts";
+const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
+const validCard=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<80;
+const allowed=new Set(["create","join","list","get","membership","leave","bot_add","bot_remove","start","get_game","move","end_game"]);
+const actions=new Set(["draw","pickup","meld","extend","discard"]);
+const number=(v:unknown)=>typeof v==="number"&&Number.isInteger(v);
+function botTurn(state:BiribaMatch,seat:number):BiribaMatch{
+ const hand=state.hands[seat]??[];
+ try{
+  if(state.phase==="draw")return biribaAction(state,seat,{type:"draw"});
+  if(state.phase==="meld"){
+   // Safe baseline: honor turn protocol, never peek at unseen opponents' cards.
+   if(hand.length>0)return biribaAction(state,seat,{type:"discard",id:hand[hand.length-1]!.id});
+  }
+ }catch{ /* Do not fabricate legal moves. */ }
+ return state;
+}
+Deno.serve(async(req)=>{
+ if(req.method!=="POST")return json({ok:false,code:"INVALID_METHOD"},405);
+ try{
+  const body=await req.json() as Record<string,unknown>;
+  const action=String(body.action??"");
+  const token=String(body.sessionToken??"");
+  if(!/^[a-f0-9]{64}$/i.test(token))return json({ok:false,code:"NOT_AUTHENTICATED"},401);
+  if(!allowed.has(action))return json({ok:false,code:"INVALID_ACTION"},400);
+  const code=String(body.code??"").toUpperCase();
+  if(!["create","list","membership"].includes(action)&&!/^[A-Z0-9]{6}$/.test(code))return json({ok:false,code:"INVALID_CODE"},400);
+  if(action==="create"&&(![2,4].includes(Number(body.capacity))||![1000,2000,5000,10000].includes(Number(body.target))))
+   return json({ok:false,code:"INVALID_OPTIONS"},400);
+  const url=Deno.env.get("SUPABASE_URL"),key=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if(!url||!key)return json({ok:false,code:"SERVICE_UNAVAILABLE"},503);
+  const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+  const rpc=async(a:string,over:Record<string,unknown>={})=>
+   admin.rpc("biriba_room_command_internal",{
+    p_session_token:token,p_action:a,p_code:code||null,
+    p_capacity:action==="create"?body.capacity:null,
+    p_target:action==="create"?body.target:null,
+    p_seat:number(body.seat)?body.seat:null,
+    p_bot_id:typeof body.botId==="string"?body.botId:null,
+    p_catalog:CANONICAL_BOTS,
+    p_state:null,p_revision:null,...over
+   });
+  const reply=(data:any,error:any)=>error?json({ok:false,code:"SERVICE_UNAVAILABLE"},503):json(data,data?.ok?200:400);
+  if(["create","join","list","get","membership","leave","bot_add","bot_remove","end_game"].includes(action)){
+   if(action==="bot_add"&&body.botId!==undefined&&!CANONICAL_BOTS.some(b=>b.id===body.botId))return json({ok:false,code:"INVALID_BOT"},400);
+   if(action==="bot_remove"&&!number(body.seat))return json({ok:false,code:"INVALID_SEAT"},400);
+   const {data,error}=await rpc(action,{p_seat:number(body.seat)?body.seat:null});
+   return reply(data,error);
+  }
+  if(action==="start"){
+   const {data:room,error}=await rpc("get");
+   if(error||!room?.ok)return json({ok:false,code:"ROOM_NOT_FOUND"},400);
+   const count=room.room.capacity as BiribaSeatCount;
+   const random=()=>crypto.getRandomValues(new Uint32Array(1))[0]!/4294967296;
+   const state=beginBiribaMatch(count,random);
+   const result=await rpc("start",{p_state:state});
+   return reply(result.data,result.error);
+  }
+  const loaded=await rpc("load");
+  if(loaded.error||!loaded.data?.ok)return reply(loaded.data,loaded.error);
+  const seat=loaded.data.seat as number;
+  const revision=loaded.data.revision as number;
+  const original=loaded.data.state as BiribaMatch;
+  let match=original;
+  if(action==="move"){
+   const move=body.move as BiribaAction|undefined;
+   if(!move||!actions.has(String(move.type)))return json({ok:false,code:"INVALID_MOVE"},400);
+   // Only the authenticated human's seat may make a requested move.
+   try{
+    match=biribaAction(match,seat,move);
+   }catch{return json({ok:false,code:"ILLEGAL_MOVE"},400)}
+  }
+  const room=await rpc("get");
+  if(room.error||!room.data?.ok)return json({ok:false,code:"SERVICE_UNAVAILABLE"},503);
+  const seats=room.data.room.seats as Array<{index:number;occupant:string;name:string;botId?:string;tier?:number}>;
+  // Make pending bot moves in one bounded pass; server never leaks bot hands.
+  for(let count=0;count<12&&!match.roundEnded;count++){
+   const bot=seats.find(s=>s.index===match.turn&&s.occupant==="bot");
+   if(!bot)break;
+   const changed=botTurn(match,bot.index);
+   if(changed===match)break;
+   match=changed;
+  }
+  if(match!==original){
+   const saved=await rpc("save",{p_state:match,p_revision:revision});
+   if(saved.error||!saved.data?.ok)return reply(saved.data,saved.error);
+  }
+  const {hands,packets,stock,...publicState}=match;
+  const view={...publicState,stockCount:stock.length,handCounts:hands.map(h=>h.length),
+   myHand:hands[seat],packetCounts:packets.map(p=>p.length),seat,revision:match===original?revision:revision+1,
+   currentPlayerName:seats.find(s=>s.index===match.turn)?.name,roomSeats:seats};
+  return json({ok:true,game:view});
+ }catch(err){
+  console.error("BIRIBA_EDGE",err instanceof Error?err.name:"unknown");
+  return json({ok:false,code:"SERVICE_UNAVAILABLE"},503);
+ }
+});
