@@ -12,7 +12,7 @@ export function opponentFanPose(
   const shown = Math.max(1, Math.min(count, 14));
   const offset = index - (shown - 1) / 2;
   if (side === "top") {
-    return { x: 640 + offset * 17, y: 108 + Math.abs(offset) * 1.5, angle: offset * 1.5 };
+    return { x: 640 + offset * 17, y: 84 + Math.abs(offset) * 1.5, angle: offset * 1.5 };
   }
   // Lay the side cards horizontally from the local player's viewpoint. Their
   // outer ends spread apart while their inner ends converge near the avatar;

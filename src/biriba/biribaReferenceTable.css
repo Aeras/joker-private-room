@@ -40,8 +40,8 @@
 .biriba-team-zone {
   position: absolute;
   top: 21%;
-  width: 35.8%;
-  height: 23.5%;
+  width: 36.8%;
+  height: 32.5%;
   border: clamp(2px, 0.22vw, 4px) solid;
   border-radius: clamp(14px, 1.5vw, 26px);
   background: rgba(4, 20, 12, 0.15);
@@ -110,17 +110,16 @@
 }
 .biriba-seat--left {
   top: 39%;
-  left: 4.6%;
+  left: 0.8%;
 }
 .biriba-seat--right {
   top: 39%;
-  right: 4.6%;
+  right: 0.8%;
 }
 .biriba-seat--local {
-  bottom: 2.2%;
-  left: 50%;
+  bottom: 1.5%;
+  left: max(10px, env(safe-area-inset-left));
   z-index: 45;
-  transform: translateX(-50%);
 }
 .biriba-seat-avatar {
   border: 3px solid #1489f6;
@@ -133,6 +132,12 @@
 .biriba-seat--left .biriba-seat-avatar,
 .biriba-seat--right .biriba-seat-avatar {
   border-color: #f24357;
+}
+.biriba-seat--left .biriba-seat-avatar {
+  transform: translateX(-2vw);
+}
+.biriba-seat--right .biriba-seat-avatar {
+  transform: translateX(2vw);
 }
 .biriba-seat--local .biriba-seat-avatar {
   border-color: #20e3a4;
@@ -162,7 +167,7 @@
 }
 .biriba-pile-label {
   position: absolute;
-  top: 59.4%;
+  top: 67.5%;
   z-index: 20;
   transform: translateX(-50%);
   padding: 3px clamp(4px, 0.55vw, 9px);
@@ -179,29 +184,26 @@
 }
 .biriba-trump-frame {
   position: absolute;
-  top: 64.3%;
-  left: 50%;
+  top: 74%;
+  right: 7.5%;
   z-index: 10;
-  width: 8.6%;
-  height: 8.4%;
-  transform: translateX(-50%);
-  border: 1px solid #d9a341;
+  width: 10.5%;
+  height: 10%;
+  border: 2px solid #e7bf6b;
   border-radius: 13px;
-  background: rgba(0, 27, 17, 0.35);
-  box-shadow: 0 3px 9px #0006;
+  background: rgba(0, 27, 17, 0.08);
+  box-shadow:
+    0 4px 14px #000a,
+    inset 0 0 12px #e7bf6b25;
   color: white;
-  font-size: clamp(9px, 0.9vw, 14px);
+  font-size: clamp(11px, 1.1vw, 17px);
   font-weight: 800;
   text-align: center;
   pointer-events: none;
 }
 .biriba-trump-frame::before,
 .biriba-trump-frame::after {
-  position: absolute;
-  top: 54%;
-  width: 12vw;
-  border-top: 1px solid #ba8b35;
-  content: "";
+  display: none;
 }
 .biriba-trump-frame::before {
   right: calc(100% + 1.5vw);
@@ -218,12 +220,12 @@
   align-items: flex-end;
   justify-content: center;
   max-width: 82vw;
-  transform: translate(-50%, -2vh);
+  transform: translate(-50%, 1vh);
 }
 .biriba-fan-card {
   flex: none;
-  width: clamp(72px, 16vh, 150px);
-  height: clamp(100px, 26vh, 225px);
+  width: clamp(68px, 15.2vh, 143px);
+  height: clamp(96px, 24.5vh, 212px);
   margin-left: min(0px, var(--biriba-card-gap));
   overflow: hidden;
   border: 1px solid #d4d4d4;
@@ -250,7 +252,7 @@
   position: absolute;
   inset: auto 0 0;
   z-index: 38;
-  height: 11%;
+  height: 8.5%;
   border-top: 2px solid #bd8035;
   clip-path: ellipse(34% 100% at 50% 100%);
   background: linear-gradient(#3d2519, #120c0a 45%, #090807);
@@ -270,7 +272,7 @@
     padding-block: 2px;
   }
   .biriba-hand-lip {
-    height: 9%;
+    height: 7%;
   }
 }
 
@@ -324,10 +326,10 @@
     font-size: 9px;
   }
   .biriba-seat--left {
-    left: 3%;
+    left: 0.8%;
   }
   .biriba-seat--right {
-    right: 3%;
+    right: 0.8%;
   }
 }
 
@@ -353,8 +355,8 @@
   height: clamp(46px, 4.8vw, 80px);
 }
 .biriba-seat--local .biriba-seat-avatar > div {
-  width: clamp(54px, 5vw, 82px);
-  height: clamp(54px, 5vw, 82px);
+  width: clamp(68px, 6.5vw, 96px);
+  height: clamp(68px, 6.5vw, 96px);
 }
 
 .biriba-preview-avatar {
