@@ -245,27 +245,26 @@ function BiribaContent({playerId}:{playerId:string}){
   </main>;
  }
  return <ScreenShell title="ΜΠΙΡΙΜΠΑ" variant="pregame" contentClassName="!overflow-y-auto !min-h-0 pb-8">
-  <div className="mx-auto w-full max-w-2xl space-y-3 rounded-xl border border-primary/25 p-4">
+  <div className="mx-auto w-full max-w-6xl space-y-3 rounded-xl border border-primary/25 p-3">
    {error&&<p role="alert" className="text-red-400">{error}</p>}
    {!room&&<div className="grid grid-cols-2 gap-2">
     <button className="rounded-lg border p-3 font-semibold" type="button" aria-pressed={mode==="create"} onClick={()=>setMode("create")}>Δημιουργία</button>
     <button className="rounded-lg border p-3 font-semibold" type="button" aria-pressed={mode==="join"} onClick={()=>{setMode("join");void run({action:"list"})}}>Συμμετοχή</button>
    </div>}
    {room?<section className="space-y-3">
-    <h2 className="text-xl font-bold">Δωμάτιο {room.code}</h2>
-    <p>{room.capacity} παίκτες · {room.target.toLocaleString("el-GR")} πόντοι · Χρονόμετρο {room.timerEnabled?"ON":"OFF"}</p>
-    <div className="grid grid-cols-2 gap-3">{room.seats.map(seat=>{
+    <p className="text-center text-sm text-muted-foreground">{room.capacity} παίκτες · {room.target.toLocaleString("el-GR")} πόντοι · Χρονόμετρο {room.timerEnabled?"ON":"OFF"}</p>
+    <div className={`grid gap-2 sm:gap-3 ${room.capacity===4?"grid-cols-4":"grid-cols-2"}`}>{room.seats.map(seat=>{
      const bot=CANONICAL_BOTS.find(b=>b.id===seat.botId);
      const canManage=isHost&&seat.occupant!=="human";
      const content=<>
-      {seat.occupant==="empty"?<span className="flex h-14 w-14 items-center justify-center rounded-full border border-dashed border-primary/50 text-3xl text-primary">+</span>:
+      {seat.occupant==="empty"?<span className="flex h-9 w-9 items-center justify-center rounded-full sm:h-14 sm:w-14 border border-dashed border-primary/50 text-3xl text-primary">+</span>:
        <PlayerAvatar name={seat.name??"Παίκτης"} imageUrl={assets.tableAvatar(bot?.avatarUrl??assets.avatar("",seat.name??""))} isBot={seat.occupant==="bot"} size="lg"/>}
-      <span className="max-w-full truncate text-sm font-semibold">{seat.name??"Κενή θέση"}</span>
-      {canManage&&<span className="text-xs text-muted-foreground">{seat.occupant==="bot"?"Αλλαγή bot":"Επιλογή bot"}</span>}
+      <span className="max-w-full truncate text-[10px] font-semibold sm:text-sm">{seat.name??"Κενή θέση"}</span>
+      {canManage&&<span className="hidden text-xs text-muted-foreground sm:block">{seat.occupant==="bot"?"Αλλαγή bot":"Επιλογή bot"}</span>}
      </>;
      return canManage?<button type="button" key={seat.index} disabled={busy} onClick={()=>setBotSeatPicker(seat.index)}
-      className="flex min-h-32 flex-col items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-secondary/30 p-3 hover:border-primary/70 disabled:opacity-50">{content}</button>:
-      <div key={seat.index} className="flex min-h-32 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary/30 p-3">{content}</div>;
+      className="flex aspect-square min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-primary/40 bg-secondary/30 p-1.5 sm:p-3 hover:border-primary/70 disabled:opacity-50">{content}</button>:
+      <div key={seat.index} className="flex min-h-32 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary/30 p-1.5 sm:p-3">{content}</div>;
     })}</div>
     {botSeatPicker!==null&&isHost&&(()=>{
      const chosen=room.seats.find(seat=>seat.index===botSeatPicker);
@@ -289,8 +288,10 @@ function BiribaContent({playerId}:{playerId:string}){
       }}>Αφαίρεση bot</button>}
      </div></div>;
     })()}
-    {isHost&&<button type="button" disabled={busy} className="w-full rounded bg-primary/25 p-3 font-bold" onClick={()=>void run({action:"start",code:room.code})}>Έναρξη (αυτόματη συμπλήρωση με bots)</button>}
-    <button className="rounded border px-3 py-2 text-sm" disabled={busy} onClick={()=>void run({action:"leave",code:room.code})}>Έξοδος</button>
+    <div className="flex justify-center gap-2">
+     {isHost&&<button type="button" disabled={busy} className="rounded-lg bg-primary/25 px-4 py-2 text-sm font-semibold" onClick={()=>void run({action:"start",code:room.code})}>Έναρξη παιχνιδιού</button>}
+     <button type="button" className="rounded-lg border px-4 py-2 text-sm" disabled={busy} onClick={()=>void run({action:"leave",code:room.code})}>Έξοδος</button>
+    </div>
    </section>:mode==="create"?<div className="space-y-3">
     <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)_auto] items-end gap-2">
      <div className="relative min-w-0 text-xs sm:text-sm"><span>Παίκτες</span>

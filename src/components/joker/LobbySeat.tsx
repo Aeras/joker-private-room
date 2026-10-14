@@ -17,20 +17,20 @@ export function LobbySeat({
 }) {
   const o = seat.occupant;
   const common = cn(
-    "min-h-24 rounded-xl border p-3 transition",
+    "aspect-square min-h-0 min-w-0 rounded-xl border p-1.5 sm:p-3 transition",
     manageable && "cursor-pointer active:scale-[0.985]",
   );
 
   if (o.type === "empty") {
     const content = (
       <>
-        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-dashed border-primary/40 text-xl text-primary/75">+</div>
-        <span className="font-display text-sm text-foreground">{t.emptySeat}</span>
-        {manageable && <span className="text-[11px] text-primary/80">Επιλογή bot</span>}
+        <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-dashed border-primary/40 text-xl text-primary/75">+</div>
+        <span className="font-display max-w-full truncate text-[10px] sm:text-sm text-foreground">{t.emptySeat}</span>
+        {manageable && <span className="hidden text-[11px] text-primary/80 sm:block">Επιλογή bot</span>}
       </>
     );
     return manageable ? (
-      <button type="button" className={cn(common, "flex w-full flex-col items-center justify-center gap-1.5 border-dashed border-primary/35 bg-black/10 text-muted-foreground hover:border-primary/60")} onClick={onManage}>
+      <button type="button" className={cn(common, "flex w-full flex-col items-center justify-center gap-1 sm:gap-1.5 border-dashed border-primary/35 bg-black/10 text-muted-foreground hover:border-primary/60")} onClick={onManage}>
         {content}
       </button>
     ) : (
@@ -45,7 +45,7 @@ export function LobbySeat({
     <>
       <PlayerAvatar name={name} isBot={o.type === "bot"} imageUrl={assets.avatar(id, name)} />
       <span className="font-display text-sm text-foreground">{name}</span>
-      {status && <span className={cn("rounded-full px-2.5 py-0.5 text-[11px]", status === t.host ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>{status}</span>}
+      {status && <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] sm:px-2.5 sm:text-[11px]", status === t.host ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>{status}</span>}
       {o.type === "bot" && manageable && <span className="text-[11px] text-primary/80">Αλλαγή bot</span>}
     </>
   );
