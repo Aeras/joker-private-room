@@ -3,6 +3,7 @@ import type { BiribaGameView } from "@/services/biribaFunctions";
 import {biribaMeldBonus,biribaCardPoints,biribaTeamOf} from "./rules";
 import { useEffect, useRef } from "react";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
+import { NORMAL_DEAL_STAGGER_MS, NORMAL_DEAL_TRAVEL_MS, NORMAL_DEAL_HANDOFF_TRAVEL_MS, NORMAL_DEAL_HANDOFF_FADE_MS, LOCAL_HAND_ENTRANCE_MS, LOCAL_HAND_FLIP_MS } from "@/components/table/presentationTiming";
 
 /**
  * BIRIBA visual proof of concept. Matches the approved red/blue team-zone
@@ -10,7 +11,7 @@ import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js"
  * or score authority live in this renderer; future multiplayer updates pass
  * sanitized viewer-specific snapshots only.
  */
-export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:BiribaDealtPreview|undefined;game?:BiribaGameView|undefined;redTeam?:number;onDealComplete?:((key:string)=>void)|undefined}) {
+export function BiribaPixiPreview({deal,game,redTeam=0,revealComplete=false,onDealComplete}:{deal?:BiribaDealtPreview|undefined;game?:BiribaGameView|undefined;redTeam?:number;revealComplete?:boolean|undefined;onDealComplete?:((key:string)=>void)|undefined}) {
   const mount = useRef<HTMLDivElement>(null);
   const lastDealtRound=useRef<string|null>(null);
   useEffect(() => {
@@ -18,7 +19,8 @@ export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:Bi
     if (!parent) return;
     let disposed = false;
     let app: Application | undefined;
-    let dealTimer:ReturnType<typeof setTimeout>|undefined;
+    const dealTimers:Array<ReturnType<typeof setTimeout>>=[];
+    const schedule=(callback:()=>void,delay:number)=>{dealTimers.push(setTimeout(callback,delay));};
     const dealKey=game?`${game.roundNumber}:${game.seat}`:null;
     const dealEntrance=dealKey!==null&&lastDealtRound.current!==dealKey;
     if(dealEntrance)lastDealtRound.current=dealKey;
@@ -73,7 +75,7 @@ export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:Bi
           const sprite=new Sprite(texture);sprite.width=58*scale;sprite.height=85*scale;sprite.position.set(from?.[0]??x,from?.[1]??(y+12));
           sprite.alpha=from?1:0;stage.addChild(sprite);
           let progress=0;const animate=(ticker:{deltaMS:number})=>{
-            progress+=ticker.deltaMS/(from?260:180);
+            progress+=ticker.deltaMS/(from?NORMAL_DEAL_TRAVEL_MS:180);
             const t=Math.min(1,progress),eased=1-Math.pow(1-t,3);
             sprite.x=from?from[0]+(x-from[0])*eased:x;
             sprite.y=from?from[1]+(y-from[1])*eased:y+12*(1-eased);
@@ -123,29 +125,82 @@ export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:Bi
       const rear=(x:number,y:number,count:number,vertical=false)=>{
         for(let i=0;i<count;i++)void addCard(null,x+(vertical?0:i*13),y+(vertical?i*13:0),.53,i*15);
       };
+      // Joker's presentation phases: card-by-card flight, off-screen handoff,
+      // then local hand rises and flips. The Biriba UI owns the actual face cards.
       if(game&&dealEntrance&&dealKey){
         const order=game.seats===4?[0,1,2,3]:[0,1];
+        const flightCount=11*order.length;
+        const flightEnd=(flightCount-1)*NORMAL_DEAL_STAGGER_MS+NORMAL_DEAL_TRAVEL_MS;
+        const transitSprites:Sprite[]=[];
+        const backTexture=await Assets.load("/cards/optimized-png/backs/blue_back.png");
+        if(disposed)return;
+        const entranceLayer=new Container();
+        stage.addChild(entranceLayer);
         for(let i=0;i<11;i++){
           for(const delta of order){
-            const x=delta===0?355+i*43:(game.seats===2||delta===2?524+i*13:delta===1?leftEdge:rightEdge);
-            const y=delta===0?596:(game.seats===2||delta===2?4:248+i*13);
-            const delay=(i*order.length+delta)*115;
-            void addCard(null,x,y,delta===0?.98:.53,delay,[390,410]);
+            const index=i*order.length+delta;
+            const top=game.seats===2||delta===2;
+            const x=delta===0?525+i*11:top?524+i*13:delta===1?leftEdge:rightEdge;
+            const y=delta===0?630:top?8:270+i*11;
+            const sx=392,sy=404;
+            const card=new Sprite(backTexture);
+            card.width=delta===0?44:36;
+            card.height=delta===0?65:53;
+            card.position.set(sx,sy);
+            card.alpha=0;
+            entranceLayer.addChild(card);
+            transitSprites.push(card);
+            schedule(()=>{
+              if(disposed)return;
+              const begin=pixi.ticker.lastTime;
+              card.alpha=1;
+              const animate=(ticker:{deltaMS:number})=>{
+                const elapsed=(pixi.ticker.lastTime-begin);
+                const progress=Math.min(1,Math.max(0,elapsed/NORMAL_DEAL_TRAVEL_MS));
+                const eased=1-Math.pow(1-progress,3);
+                card.x=sx+(x-sx)*eased;
+                card.y=sy+(y-sy)*eased;
+                if(progress>=1)pixi.ticker.remove(animate);
+              };
+              pixi.ticker.add(animate);
+            },index*NORMAL_DEAL_STAGGER_MS);
           }
         }
-        dealTimer=setTimeout(()=>{
+        schedule(()=>{
+          if(disposed)return;
+          // Move the temporary piles out of sight, matching Joker's handoff.
+          const starts=transitSprites.map(card=>({x:card.x,y:card.y}));
+          let elapsed=0;
+          const handoff=(ticker:{deltaMS:number})=>{
+            elapsed+=ticker.deltaMS;
+            const t=Math.min(1,elapsed/NORMAL_DEAL_HANDOFF_TRAVEL_MS);
+            transitSprites.forEach((card,index)=>{
+              const relative=index%order.length;
+              const exitX=relative===1&&game.seats===4?-80:relative===3?1360:starts[index]!.x;
+              const exitY=relative===0?800:relative===2||game.seats===2?-120:starts[index]!.y;
+              card.x=starts[index]!.x+(exitX-starts[index]!.x)*t;
+              card.y=starts[index]!.y+(exitY-starts[index]!.y)*t;
+              card.alpha=t<.58?1:Math.max(0,1-(t-.58)/.42);
+            });
+            if(t>=1){pixi.ticker.remove(handoff);entranceLayer.destroy({children:true});}
+          };
+          pixi.ticker.add(handoff);
+        },flightEnd+80);
+        schedule(()=>{
           if(!disposed)onDealComplete?.(dealKey);
-        },11*order.length*115+520);
+        },flightEnd+NORMAL_DEAL_HANDOFF_TRAVEL_MS+NORMAL_DEAL_HANDOFF_FADE_MS+LOCAL_HAND_ENTRANCE_MS+LOCAL_HAND_FLIP_MS);
       }else{
-        rear(524,4,game?game.handCounts[(game.seat+(game.seats===4?2:1))%game.seats]??0:8);
+        // Show only a slim, overlapped slice of opponent card backs, not tiny
+        // full cards in the middle of the felt.
+        rear(524,-34,game?game.handCounts[(game.seat+(game.seats===4?2:1))%game.seats]??0:8);
         if(!game||game.seats===4){
-          rear(leftEdge,248,game?game.handCounts[(game.seat+1)%game.seats]??0:6,true);
-          rear(rightEdge,248,game?game.handCounts[(game.seat+3)%game.seats]??0:6,true);
+          rear(leftEdge-25,248,game?game.handCounts[(game.seat+1)%game.seats]??0:6,true);
+          rear(rightEdge+5,248,game?game.handCounts[(game.seat+3)%game.seats]??0:6,true);
         }
       }
       (pixi as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver=observer;
     })();
-    return ()=>{disposed=true;if(dealTimer)clearTimeout(dealTimer);if(app){(app as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver?.disconnect();app.destroy(true,{children:true});}};
-  },[deal,game,redTeam,onDealComplete]);
+    return ()=>{disposed=true;for(const timer of dealTimers)clearTimeout(timer);if(app){(app as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver?.disconnect();app.destroy(true,{children:true});}};
+  },[deal,game,redTeam,revealComplete,onDealComplete]);
   return <div ref={mount} className="absolute inset-0" role="img" aria-label="Προεπισκόπηση τραπεζιού Μπιρίμπας με κόκκινη και μπλε ομάδα, κατεβασμένες σειρές, κλειστή τράπουλα, πεταμένα και ανοιχτά φύλλα στο κάτω μέρος"/>;
 }

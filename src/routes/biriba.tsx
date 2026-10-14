@@ -9,6 +9,7 @@ import {BiribaPixiPreview} from "@/biriba/BiribaPixiPreview";
 import {biribaCommand,type BiribaRoomView,type BiribaGameView,type BiribaResponse} from "@/services/biribaFunctions";
 import {BIRIBA_TARGETS,DEFAULT_BIRIBA_TARGET,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaTarget,biribaMeldValid,biribaTeamOf} from "@/biriba/rules";
 import {assets} from "@/assets/registry";
+import { NORMAL_DEAL_STAGGER_MS,NORMAL_DEAL_TRAVEL_MS,NORMAL_DEAL_HANDOFF_TRAVEL_MS,NORMAL_DEAL_HANDOFF_FADE_MS,LOCAL_HAND_ENTRANCE_MS,LOCAL_HAND_FLIP_MS } from "@/components/table/presentationTiming";
 
 export const Route=createFileRoute("/biriba")({
  head:()=>({meta:[{title:"ΜΠΙΡΙΜΠΑ — Online παιχνίδι"}]}),component:BiribaHome
@@ -71,7 +72,7 @@ function BiribaContent({playerId}:{playerId:string}){
  useEffect(()=>{
   if(!dealKey||!game)return;
   // Fallback when a browser is backgrounded and Pixi's frame clock is throttled.
-  const t=setTimeout(()=>setDealShownKey(dealKey),11*game.seats*115+1000);
+  const t=setTimeout(()=>setDealShownKey(dealKey),(11*game.seats-1)*NORMAL_DEAL_STAGGER_MS+NORMAL_DEAL_TRAVEL_MS+NORMAL_DEAL_HANDOFF_TRAVEL_MS+NORMAL_DEAL_HANDOFF_FADE_MS+LOCAL_HAND_ENTRANCE_MS+LOCAL_HAND_FLIP_MS+800);
   return()=>clearTimeout(t);
  },[dealKey,game?.seats]);
  const isHost=room?.hostPlayerId===playerId;
@@ -148,7 +149,10 @@ function BiribaContent({playerId}:{playerId:string}){
      (x.ownerSeat===game.seat||game.opened[game.seat]))??[];
 
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
-   <TableSurface/><BiribaPixiPreview deal={preview} game={visualGame??undefined} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
+   <TableSurface/><BiribaPixiPreview deal={preview} game={visualGame??undefined} revealComplete={dealShownKey===dealKey} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
+   {game&&<div className="pointer-events-none absolute bottom-1 left-2 z-40 flex items-center gap-2">
+     <PlayerAvatar name={room.seats.find(seat=>seat.index===game.seat)?.name??"Εσύ"} imageUrl={assets.avatar("",room.seats.find(seat=>seat.index===game.seat)?.name??"")} size="md"/>
+    </div>}
    {/* Seats are anchored to the actual screen edges. Local hand remains at bottom. */}
    {game&&[...(game.seats===4?[1,2,3]:[1])].map(delta=>{
     const seatIndex=(game.seat+delta)%game.seats;
@@ -218,7 +222,7 @@ function BiribaContent({playerId}:{playerId:string}){
     <div className="flex items-end justify-center gap-0 overflow-visible pb-1 text-sm">
      {dealShownKey===dealKey&&ownCards.map((card,i)=><button type="button" key={card.id} disabled={!mine||busy}
       aria-pressed={selected.includes(card.id)} onClick={()=>toggle(card.id)}
-      style={{marginLeft:ownCards[0]===card?0:"clamp(-24px,-2.5vw,-9px)",transform:selected.includes(card.id)?"translateY(-14px)":"none",zIndex:selected.includes(card.id)?50:1}} className={`relative h-[clamp(60px,18vh,125px)] w-[clamp(44px,12vh,86px)] overflow-hidden rounded-md border-2 bg-white shadow-lg transition-transform ${selected.includes(card.id)?"border-amber-400 ring-2 ring-amber-400":"border-zinc-300"}`}><img draggable={false} className="biriba-hand-face h-full w-full object-fill" style={{animationDelay:`${i*32}ms`}} src={card.joker?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${card.suit}_${({1:"ace",11:"jack",12:"queen",13:"king"} as Record<number,string>)[card.rank]??card.rank}.png`} alt={label(card)}/></button>)}
+      style={{marginLeft:ownCards[0]===card?0:"clamp(-24px,-2.5vw,-9px)",transform:selected.includes(card.id)?"translateY(-14px)":"none",zIndex:selected.includes(card.id)?50:1}} className={`biriba-hand-enter relative h-[clamp(60px,18vh,125px)] w-[clamp(44px,12vh,86px)] overflow-hidden rounded-md border-2 bg-white shadow-lg transition-transform ${selected.includes(card.id)?"border-amber-400 ring-2 ring-amber-400":"border-zinc-300"}`}><img draggable={false} className="biriba-hand-face h-full w-full object-fill" style={{animationDelay:`${800+i*32}ms`}} src={card.joker?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${card.suit}_${({1:"ace",11:"jack",12:"queen",13:"king"} as Record<number,string>)[card.rank]??card.rank}.png`} alt={label(card)}/></button>)}
     </div>
 
    </div>
