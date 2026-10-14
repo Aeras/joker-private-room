@@ -126,6 +126,7 @@ function BiribaContent({playerId}:{playerId:string}){
    try{
     const result=await biribaCommand({data:{action:"get",code}});
     if(!current)return;
+    if(!result.ok&&result.code==="ROOM_NOT_FOUND"){setRoom(null);setGame(null);setMode("create");setBotSeatPicker(null);return;}
     if(result.ok&&"room" in result)setRoom(r=>r?.version&&r.version>result.room.version?r:result.room);
     if(result.ok&&"room" in result&&result.room.lifecycle!=="waiting"){
      const next=await biribaCommand({data:{action:"get_game",code}});
@@ -244,16 +245,16 @@ function BiribaContent({playerId}:{playerId:string}){
    </div>
   </main>;
  }
- return <ScreenShell title="ΜΠΙΡΙΜΠΑ" variant="pregame" contentClassName="!overflow-y-auto !min-h-0 pb-8">
-  <div className="mx-auto w-full max-w-6xl space-y-3 rounded-xl border border-primary/25 p-3">
+ return <ScreenShell title="ΜΠΙΡΙΜΠΑ" variant="pregame" contentClassName="!min-h-0 !overflow-hidden !py-1">
+  <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 rounded-xl border border-primary/25 p-2">
    {error&&<p role="alert" className="text-red-400">{error}</p>}
    {!room&&<div className="grid grid-cols-2 gap-2">
     <button className="rounded-lg border p-3 font-semibold" type="button" aria-pressed={mode==="create"} onClick={()=>setMode("create")}>Δημιουργία</button>
     <button className="rounded-lg border p-3 font-semibold" type="button" aria-pressed={mode==="join"} onClick={()=>{setMode("join");void run({action:"list"})}}>Συμμετοχή</button>
    </div>}
-   {room?<section className="space-y-3">
+   {room?<section className="flex min-h-0 flex-col gap-2">
     <p className="text-center text-sm text-muted-foreground">{room.capacity} παίκτες · {room.target.toLocaleString("el-GR")} πόντοι · Χρονόμετρο {room.timerEnabled?"ON":"OFF"}</p>
-    <div className={`grid gap-2 sm:gap-3 ${room.capacity===4?"grid-cols-4":"grid-cols-2"}`}>{room.seats.map(seat=>{
+    <div className={`grid min-h-0 gap-2 ${room.capacity===4?"grid-cols-4":"grid-cols-2"}`}>{room.seats.map(seat=>{
      const bot=CANONICAL_BOTS.find(b=>b.id===seat.botId);
      const canManage=isHost&&seat.occupant!=="human";
      const content=<>
@@ -263,8 +264,8 @@ function BiribaContent({playerId}:{playerId:string}){
       {canManage&&<span className="hidden text-xs text-muted-foreground sm:block">{seat.occupant==="bot"?"Αλλαγή bot":"Επιλογή bot"}</span>}
      </>;
      return canManage?<button type="button" key={seat.index} disabled={busy} onClick={()=>setBotSeatPicker(seat.index)}
-      className="flex aspect-square min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-primary/40 bg-secondary/30 p-1.5 sm:p-3 hover:border-primary/70 disabled:opacity-50">{content}</button>:
-      <div key={seat.index} className="flex min-h-32 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary/30 p-1.5 sm:p-3">{content}</div>;
+      className="flex h-[clamp(96px,29dvh,175px)] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-primary/40 bg-secondary/30 p-1.5 sm:p-3 hover:border-primary/70 disabled:opacity-50">{content}</button>:
+      <div key={seat.index} className="flex h-[clamp(96px,29dvh,175px)] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-secondary/30 p-1.5 sm:p-3">{content}</div>;
     })}</div>
     {botSeatPicker!==null&&isHost&&(()=>{
      const chosen=room.seats.find(seat=>seat.index===botSeatPicker);
@@ -324,7 +325,7 @@ function BiribaContent({playerId}:{playerId:string}){
       <button className="rounded bg-primary/20 p-2" disabled={busy} onClick={()=>void run({action:"join",code:item.code})}>Συμμετοχή</button>
     </div>)}
    </div>}
-   <a className="inline-block rounded border px-3 py-2 text-sm" href="/">← Επιλογή παιχνιδιού</a>
+   {!room&&<a className="inline-block self-start rounded border px-3 py-2 text-sm" href="/">← Επιλογή παιχνιδιού</a>}
   </div>
  </ScreenShell>;
 }
