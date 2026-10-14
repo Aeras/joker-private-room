@@ -9,6 +9,7 @@ import {BiribaPixiPreview} from "@/biriba/BiribaPixiPreview";
 import {biribaCommand,type BiribaRoomView,type BiribaGameView,type BiribaResponse} from "@/services/biribaFunctions";
 import {BIRIBA_TARGETS,DEFAULT_BIRIBA_TARGET,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaTarget,biribaMeldValid,biribaTeamOf} from "@/biriba/rules";
 import {assets} from "@/assets/registry";
+import { NORMAL_DEAL_STAGGER_MS,NORMAL_DEAL_TRAVEL_MS,NORMAL_DEAL_HANDOFF_TRAVEL_MS,NORMAL_DEAL_HANDOFF_FADE_MS,LOCAL_HAND_ENTRANCE_MS,LOCAL_HAND_FLIP_MS } from "@/components/table/presentationTiming";
 
 export const Route=createFileRoute("/biriba")({
  head:()=>({meta:[{title:"ΜΠΙΡΙΜΠΑ — Online παιχνίδι"}]}),component:BiribaHome
@@ -71,7 +72,7 @@ function BiribaContent({playerId}:{playerId:string}){
  useEffect(()=>{
   if(!dealKey||!game)return;
   // Fallback when a browser is backgrounded and Pixi's frame clock is throttled.
-  const t=setTimeout(()=>setDealShownKey(dealKey),11*game.seats*115+1000);
+  const t=setTimeout(()=>setDealShownKey(dealKey),(11*game.seats-1)*NORMAL_DEAL_STAGGER_MS+NORMAL_DEAL_TRAVEL_MS+NORMAL_DEAL_HANDOFF_TRAVEL_MS+NORMAL_DEAL_HANDOFF_FADE_MS+LOCAL_HAND_ENTRANCE_MS+LOCAL_HAND_FLIP_MS+800);
   return()=>clearTimeout(t);
  },[dealKey,game?.seats]);
  const isHost=room?.hostPlayerId===playerId;
@@ -149,6 +150,9 @@ function BiribaContent({playerId}:{playerId:string}){
 
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
    <TableSurface/><BiribaPixiPreview deal={preview} game={visualGame??undefined} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
+   {game&&<div className="pointer-events-none absolute bottom-1 left-2 z-40 flex items-center gap-2">
+     <PlayerAvatar name={room.seats.find(seat=>seat.index===game.seat)?.name??"Εσύ"} imageUrl={assets.avatar("",room.seats.find(seat=>seat.index===game.seat)?.name??"")} size="md"/>
+    </div>}
    {/* Seats are anchored to the actual screen edges. Local hand remains at bottom. */}
    {game&&[...(game.seats===4?[1,2,3]:[1])].map(delta=>{
     const seatIndex=(game.seat+delta)%game.seats;
