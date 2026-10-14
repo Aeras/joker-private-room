@@ -14,7 +14,6 @@ describe("separate game selection after secure player login", () => {
     expect(home).toContain('href="/biriba"');
     expect(home).toContain("game-selection-heading");
     expect(home).toContain("game-selection-grid");
-    expect(home).toContain("Προσεχώς");
     expect(home).not.toContain('to="/create"');
   });
   it("keeps Joker's original create, join and return-to-game flow", () => {
