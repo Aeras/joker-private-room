@@ -1,6 +1,7 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {useCallback,useEffect,useMemo,useState} from "react";
-import {ChartNoAxesColumn} from "lucide-react";
+import {ChartNoAxesColumn,ChevronDown,X} from "lucide-react";
+import {CANONICAL_BOTS} from "../../supabase/functions/_shared/bot-catalog";
 import {PlayerSessionGate} from "@/components/joker/PlayerSessionGate";
 import {PlayerAvatar} from "@/components/joker/PlayerAvatar";
 import {ScreenShell} from "@/components/joker/ScreenShell";
@@ -73,6 +74,8 @@ function BiribaContent({playerId}:{playerId:string}){
  useEffect(()=>{const t=setInterval(()=>setClockNow(Date.now()),350);return()=>clearInterval(t)},[]);
  const [error,setError]=useState("");
  const [scoresOpen,setScoresOpen]=useState(false);
+ const [picker,setPicker]=useState<"players"|"target"|null>(null);
+ const [botSeatPicker,setBotSeatPicker]=useState<number|null>(null);
  const [dealShownKey,setDealShownKey]=useState<string|null>(null);
  const dealKey=game?`${game.roundNumber}:${game.seat}`:null;
  const initialDealView=useMemo(()=>{
@@ -251,20 +254,57 @@ function BiribaContent({playerId}:{playerId:string}){
    {room?<section className="space-y-3">
     <h2 className="text-xl font-bold">Δωμάτιο {room.code}</h2>
     <p>{room.capacity} παίκτες · {room.target.toLocaleString("el-GR")} πόντοι · Χρονόμετρο {room.timerEnabled?"ON":"OFF"}</p>
-    <div className="grid grid-cols-2 gap-2">{room.seats.map(seat=><div key={seat.index} className="flex items-center gap-2 rounded border p-2">
-     <PlayerAvatar name={seat.name??"Κενή θέση"} imageUrl={seat.name?assets.avatar("",seat.name):undefined} isBot={seat.occupant==="bot"} size="sm"/>
-     <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{seat.name??"Κενή θέση"}</div>
-      <div className="text-xs">{seat.occupant==="bot"?"⭐".repeat(seat.tier??1):seat.occupant==="human"?"Παίκτης":"Αναμονή"}</div>
-     </div>
-     {isHost&&seat.occupant==="empty"&&<button type="button" disabled={busy} className="rounded border px-2 py-1 text-xs" onClick={()=>void run({action:"bot_add",code:room.code,seat:seat.index})}>+ Bot</button>}
-     {isHost&&seat.occupant==="bot"&&<button type="button" disabled={busy} className="rounded border px-2 py-1 text-xs" onClick={()=>void run({action:"bot_remove",code:room.code,seat:seat.index})}>− Bot</button>}
-    </div>)}</div>
+    <div className="grid grid-cols-2 gap-3">{room.seats.map(seat=>{
+     const bot=CANONICAL_BOTS.find(b=>b.id===seat.botId);
+     const canManage=isHost&&seat.occupant!=="human";
+     const content=<>
+      {seat.occupant==="empty"?<span className="flex h-14 w-14 items-center justify-center rounded-full border border-dashed border-primary/50 text-3xl text-primary">+</span>:
+       <PlayerAvatar name={seat.name??"Παίκτης"} imageUrl={assets.tableAvatar(bot?.avatarUrl??assets.avatar("",seat.name??""))} isBot={seat.occupant==="bot"} size="lg"/>}
+      <span className="max-w-full truncate text-sm font-semibold">{seat.name??"Κενή θέση"}</span>
+      {canManage&&<span className="text-xs text-muted-foreground">{seat.occupant==="bot"?"Αλλαγή bot":"Επιλογή bot"}</span>}
+     </>;
+     return canManage?<button type="button" key={seat.index} disabled={busy} onClick={()=>setBotSeatPicker(seat.index)}
+      className="flex min-h-32 flex-col items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-secondary/30 p-3 hover:border-primary/70 disabled:opacity-50">{content}</button>:
+      <div key={seat.index} className="flex min-h-32 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary/30 p-3">{content}</div>;
+    })}</div>
+    {botSeatPicker!==null&&isHost&&(()=>{
+     const chosen=room.seats.find(seat=>seat.index===botSeatPicker);
+     if(!chosen||chosen.occupant==="human")return null;
+     return <div className="rounded-xl border border-primary/50 bg-secondary/80 p-3" role="dialog" aria-label={"Επιλογή bot για θέση "+(botSeatPicker+1)}>
+      <div className="mb-3 flex items-center justify-between"><strong>Επιλογή bot · Θέση {botSeatPicker+1}</strong><button type="button" aria-label="Κλείσιμο" onClick={()=>setBotSeatPicker(null)}><X size={20}/></button></div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+       {CANONICAL_BOTS.map(bot=>{
+        const used=room.seats.some(s=>s.index!==botSeatPicker&&s.botId===bot.id);
+        return <button type="button" key={bot.id} disabled={busy||used} onClick={async()=>{
+         await run({action:"bot_add",code:room.code,seat:botSeatPicker,botId:bot.id});
+         setBotSeatPicker(null);
+        }} className="flex min-h-24 flex-col items-center justify-center gap-1 rounded-lg border border-primary/30 p-2 disabled:opacity-35">
+         <PlayerAvatar name={bot.displayName} imageUrl={assets.tableAvatar(bot.avatarUrl)} isBot size="md"/>
+         <span className="text-center text-xs">{bot.displayName}</span>
+        </button>;
+       })}
+      </div>
+      {chosen.occupant==="bot"&&<button type="button" className="mt-3 rounded-lg border border-primary/50 px-4 py-2 text-sm" disabled={busy} onClick={async()=>{
+       await run({action:"bot_remove",code:room.code,seat:botSeatPicker});setBotSeatPicker(null);
+      }}>Αφαίρεση bot</button>}
+     </div>;
+    })()}
     {isHost&&<button type="button" disabled={busy} className="w-full rounded bg-primary/25 p-3 font-bold" onClick={()=>void run({action:"start",code:room.code})}>Έναρξη (αυτόματη συμπλήρωση με bots)</button>}
     <button className="rounded border px-3 py-2 text-sm" disabled={busy} onClick={()=>void run({action:"leave",code:room.code})}>Έξοδος</button>
    </section>:mode==="create"?<div className="space-y-3">
     <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)_auto] items-end gap-2">
-     <label className="min-w-0 text-xs sm:text-sm">Παίκτες<select className="mt-1 w-full rounded bg-secondary px-2 py-3 text-sm" value={capacity} onChange={e=>setCapacity(Number(e.target.value) as BiribaSeatCount)}><option value={2}>2</option><option value={4}>4</option></select></label>
-     <label className="min-w-0 text-xs sm:text-sm">Στόχος<select className="mt-1 w-full rounded bg-secondary px-2 py-3 text-sm" value={target} onChange={e=>setTarget(Number(e.target.value) as BiribaTarget)}>{BIRIBA_TARGETS.map(v=><option key={v} value={v}>{v.toLocaleString("el-GR")}</option>)}</select></label>
+     <div className="relative min-w-0 text-xs sm:text-sm"><span>Παίκτες</span>
+      <button type="button" aria-label="Παίκτες" aria-expanded={picker==="players"} onClick={()=>setPicker(p=>p==="players"?null:"players")} className="mt-1 flex w-full items-center justify-between gap-1 rounded bg-secondary px-2 py-3 text-sm">{capacity}<ChevronDown size={16}/></button>
+      {picker==="players"&&<div className="absolute left-0 top-full z-50 mt-1 w-full rounded-lg border border-primary/40 bg-background p-1 shadow-xl">
+       {([2,4] as const).map(n=><button type="button" key={n} className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-secondary" aria-selected={capacity===n} onClick={()=>{setCapacity(n);setPicker(null)}}>{n}</button>)}
+      </div>}
+     </div>
+     <div className="relative min-w-0 text-xs sm:text-sm"><span>Στόχος</span>
+      <button type="button" aria-label="Στόχος" aria-expanded={picker==="target"} onClick={()=>setPicker(p=>p==="target"?null:"target")} className="mt-1 flex w-full items-center justify-between gap-1 rounded bg-secondary px-2 py-3 text-sm">{target.toLocaleString("el-GR")}<ChevronDown size={16}/></button>
+      {picker==="target"&&<div className="absolute left-0 top-full z-50 mt-1 w-full rounded-lg border border-primary/40 bg-background p-1 shadow-xl">
+       {BIRIBA_TARGETS.map(n=><button type="button" key={n} className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-secondary" aria-selected={target===n} onClick={()=>{setTarget(n);setPicker(null)}}>{n.toLocaleString("el-GR")}</button>)}
+      </div>}
+     </div>
      <label className="flex min-w-[85px] cursor-pointer flex-col items-center gap-2 text-center text-xs sm:text-sm">Χρονόμετρο
       <span className="relative inline-flex h-6 w-11 items-center">
        <input type="checkbox" role="switch" aria-label="Χρονόμετρο" checked={timerEnabled} onChange={e=>setTimerEnabled(e.target.checked)} className="peer sr-only"/>
