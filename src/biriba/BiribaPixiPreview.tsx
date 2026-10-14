@@ -12,6 +12,8 @@ import { dealtCardPose, dealProgress } from "@/components/table/dealtCardMotion"
  * or score authority live in this renderer; future multiplayer updates pass
  * sanitized viewer-specific snapshots only.
  */
+export const BIRIBA_DEAL_BEAT_MS = 110;
+
 export function BiribaPixiPreview({deal,game,redTeam=0,revealComplete=false,onDealComplete}:{deal?:BiribaDealtPreview|undefined;game?:BiribaGameView|undefined;redTeam?:number;revealComplete?:boolean|undefined;onDealComplete?:((key:string)=>void)|undefined}) {
   const mount = useRef<HTMLDivElement>(null);
   const lastDealtRound=useRef<string|null>(null);
@@ -125,7 +127,7 @@ export function BiribaPixiPreview({deal,game,redTeam=0,revealComplete=false,onDe
 
       // Use Joker's card flight easing and spatial pile presentation. Eleven
       // backs converge into each player's full-size stack; no 44 tiny cards.
-      const BACK_W=74, BACK_H=106, BEAT_MS=58;
+      const BACK_W=74, BACK_H=106, BEAT_MS=BIRIBA_DEAL_BEAT_MS;
       const rear=(x:number,y:number,count:number,vertical=false)=>{
         for(let i=0;i<count;i++)void addCard(null,x+(vertical?0:i*2),y+(vertical?i*2:0),BACK_W/58);
       };
