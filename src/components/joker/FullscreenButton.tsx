@@ -42,14 +42,13 @@ export function FullscreenButton({ className }: { className?: string }) {
       type="button"
       onClick={() => void toggle()}
       className={cn(
-        "pregame-fullscreen-button inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition active:scale-95",
+        "pregame-fullscreen-button inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border p-0 text-sm font-semibold transition active:scale-95",
         className,
       )}
       aria-label={fullscreen ? "Έξοδος από πλήρη οθόνη" : "Πλήρης οθόνη"}
       title={fullscreen ? "Έξοδος από πλήρη οθόνη" : "Πλήρης οθόνη"}
     >
       {fullscreen ? <Minimize2 className="h-4 w-4" /> : landscape ? <Maximize2 className="h-4 w-4" /> : <RotateCw className="h-4 w-4" />}
-      <span className="hidden sm:inline">{fullscreen ? "Έξοδος" : "Full screen"}</span>
     </button>
   );
 }
