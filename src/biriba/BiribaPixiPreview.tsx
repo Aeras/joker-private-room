@@ -104,15 +104,15 @@ export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:Bi
         set([face("9","hearts"),face("10","hearts"),face("J","hearts")],840,155);
         set([face("7","clubs"),face("8","clubs"),face("9","clubs")],998,155);
       }
-      box(365,351,550,128,0x071f1b,.4);
+      box(338,384,605,157,0x071f1b,.35);
       const piles:[string,Face|null,number][]=[
-        ["ΚΛΕΙΣΤΗ ΤΡΑΠΟΥΛΑ",null,398],
-        ["ΠΕΤΑΜΕΝΑ",deal?.discard[0] ? (deal.discard[0].joker ? face("JOKER","joker") : face(({1:"A",11:"J",12:"Q",13:"K"} as Record<number,string>)[deal.discard[0].rank]??String(deal.discard[0].rank),deal.discard[0].suit)):face("Q","hearts"),535],
-        ["ΜΠΙΡΙΜΠΑΚΙ 1",null,669],
-        ["ΜΠΙΡΙΜΠΑΚΙ 2",null,804],
+        ["ΚΛΕΙΣΤΗ ΤΡΑΠΟΥΛΑ",null,360],
+        ["ΠΕΤΑΜΕΝΑ",deal?.discard[0] ? (deal.discard[0].joker ? face("JOKER","joker") : face(({1:"A",11:"J",12:"Q",13:"K"} as Record<number,string>)[deal.discard[0].rank]??String(deal.discard[0].rank),deal.discard[0].suit)):face("Q","hearts"),522],
+        ["ΜΠΙΡΙΜΠΑΚΙ 1",null,674],
+        ["ΜΠΙΡΙΜΠΑΚΙ 2",null,828],
       ];
-      piles.forEach(([label,c,x])=>{void addCard(c,x,370,.88);text(label,x+25,462,12);});
-      box(577,495,126,39,0x252923,.9,0xc3a24f);text(`ΑΤΟΥ ${deal?(deal.trump?suitIcon[deal.trump]:"—"):"♣"}`,640,515,20);
+      piles.forEach(([label,c,x])=>{void addCard(c,x,397,1.15);text(label,x+32,522,13);});
+      box(1090,510,135,44,0x252923,.94,0xc3a24f);text(`ΑΤΟΥ ${deal?(deal.trump?suitIcon[deal.trump]:"—"):"♣"}`,1158,531,21);
       const rear=(x:number,y:number,count:number,vertical=false)=>{for(let i=0;i<count;i++)void addCard(null,x+(vertical?0:i*13),y+(vertical?i*13:0),.53,i*15)};
       const relative=(delta:number)=>game?.roomSeats[(game.seat+delta)%game.seats];
       rear(524,27,game?game.handCounts[(game.seat+(game.seats===4?2:1))%game.seats]??0:8);
