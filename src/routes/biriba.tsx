@@ -5,7 +5,6 @@ import {CANONICAL_BOTS} from "../../supabase/functions/_shared/bot-catalog";
 import {PlayerSessionGate} from "@/components/joker/PlayerSessionGate";
 import {PlayerAvatar} from "@/components/joker/PlayerAvatar";
 import {ScreenShell} from "@/components/joker/ScreenShell";
-import {TableSurface} from "@/components/table/TableSurface";
 import {BiribaPixiPreview,BIRIBA_DEAL_BEAT_MS} from "@/biriba/BiribaPixiPreview";
 import {biribaCommand,type BiribaRoomView,type BiribaGameView,type BiribaResponse} from "@/services/biribaFunctions";
 import {BIRIBA_TARGETS,DEFAULT_BIRIBA_TARGET,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaTarget,biribaMeldValid,biribaTeamOf} from "@/biriba/rules";
@@ -168,15 +167,15 @@ function BiribaContent({playerId}:{playerId:string}){
      (x.ownerSeat===game.seat||game.opened[game.seat]))??[];
 
   return <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b241b]">
-   <TableSurface/><BiribaPixiPreview deal={preview} game={visualGame??undefined} revealComplete={dealShownKey===dealKey} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
-   {game&&<div className="pointer-events-none absolute bottom-1 left-2 z-40 flex items-center gap-2">
+   <BiribaPixiPreview deal={preview} game={visualGame??undefined} revealComplete={dealShownKey===dealKey} onDealComplete={onDealComplete} redTeam={((room.code.charCodeAt(0)||0)%2)}/>
+   {game&&<div className="pointer-events-none absolute bottom-0 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-0">
      <PlayerAvatar name={room.seats.find(seat=>seat.index===game.seat)?.name??"Εσύ"} imageUrl={biribaAvatar(room.seats.find(seat=>seat.index===game.seat))} size="lg"/>
     </div>}
    {/* Seats are anchored to the actual screen edges. Local hand remains at bottom. */}
    {game&&[...(game.seats===4?[1,2,3]:[1])].map(delta=>{
     const seatIndex=(game.seat+delta)%game.seats;
     const seat=game.roomSeats[seatIndex];
-    const position=game.seats===2||delta===2?"left-[55%] top-[0.5%]":delta===1?"left-[1%] top-[31%]":"right-[1%] top-[31%]";
+    const position=game.seats===2||delta===2?"left-1/2 top-[0.5%] -translate-x-1/2":delta===1?"left-[0.5%] top-[42%]":"right-[0.5%] top-[42%]";
     return <div key={seatIndex} className={`pointer-events-none absolute z-20 flex flex-col items-center gap-1 ${position}`}>
      <PlayerAvatar name={seat?.name??"Παίκτης"} imageUrl={biribaAvatar(seat)} isBot={seat?.occupant==="bot"} size="lg"/>
      <span className="max-w-[115px] truncate rounded bg-black/60 px-1 text-center text-[10px] text-white">{seat?.name??"Παίκτης"}</span>
@@ -242,7 +241,7 @@ function BiribaContent({playerId}:{playerId:string}){
      {game.roundScored&&!game.matchFinished&&isHost&&<button type="button" disabled={busy} onClick={()=>void run({action:"next_round",code:room.code})} className="w-full rounded bg-emerald-700 px-3 py-2 font-bold">Επόμενος γύρος</button>}
      {game.matchFinished&&<p className="rounded bg-amber-400/15 p-2 font-semibold">Τέλος παιχνιδιού · Νίκη ομάδας {(game.winnerTeam??0)+1}</p>}
    </section>}
-   <div className="absolute bottom-0 left-1/2 z-30 w-[min(98vw,950px)] -translate-x-1/2 text-white">
+   <div className="absolute bottom-0 left-1/2 z-30 w-[min(98vw,1050px)] -translate-x-1/2 text-white">
     {error&&<p role="alert" className="text-xs text-red-300">{error}</p>}
     <div className="mb-2 flex flex-wrap justify-center gap-2">
      {mine&&game?.phase==="draw"&&<button className="rounded bg-emerald-700 px-3 py-2 text-xs" disabled={busy} onClick={()=>void play({type:"draw"})}>Τράβηγμα</button>}
@@ -253,10 +252,10 @@ function BiribaContent({playerId}:{playerId:string}){
       <button className="rounded bg-red-700 px-3 py-2 text-xs" disabled={busy||selected.length!==1} onClick={()=>void play({type:"discard",id:selected[0]})}>Πέταγμα</button>
      </>}
     </div>
-    <div className="flex items-end justify-center gap-0 overflow-visible pb-0 text-sm" style={{transform:"translateY(39%)"}}>
+    <div className="flex items-end justify-center gap-0 overflow-visible pb-0 text-sm" style={{transform:"translateY(43%)"}}>
      {dealShownKey===dealKey&&ownCards.map((card,i)=><button type="button" key={card.id} disabled={!mine||busy}
       aria-pressed={selected.includes(card.id)} onClick={()=>toggle(card.id)}
-      style={{marginLeft:ownCards[0]===card?0:"clamp(-84px,-9.5vh,-35px)",transform:selected.includes(card.id)?"translateY(-14px)":"none",zIndex:selected.includes(card.id)?50:1}} className={`biriba-hand-enter relative h-[clamp(110px,28vh,190px)] w-[clamp(76px,20vh,135px)] overflow-hidden rounded-md border-2 bg-white shadow-lg transition-transform ${selected.includes(card.id)?"border-amber-400 ring-2 ring-amber-400":"border-zinc-300"}`}><img draggable={false} className="biriba-hand-face h-full w-full object-fill" style={{animationDelay:`${800+i*32}ms`}} src={card.joker?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${card.suit}_${({1:"ace",11:"jack",12:"queen",13:"king"} as Record<number,string>)[card.rank]??card.rank}.png`} alt={label(card)}/></button>)}
+      style={{marginLeft:i===0?0:"clamp(-85px,-9vh,-34px)",transform:`translateY(${Math.pow((i-(ownCards.length-1)/2)/Math.max(1,(ownCards.length-1)/2),2)*28-(selected.includes(card.id)?28:0)}px) rotate(${((i-(ownCards.length-1)/2)/Math.max(1,(ownCards.length-1)/2))*18}deg)`,transformOrigin:"50% 130%",zIndex:selected.includes(card.id)?50:i+1}} className={`biriba-hand-enter relative h-[clamp(110px,28vh,190px)] w-[clamp(76px,20vh,135px)] overflow-hidden rounded-md border-2 bg-white shadow-lg transition-transform ${selected.includes(card.id)?"border-amber-400 ring-2 ring-amber-400":"border-zinc-300"}`}><img draggable={false} className="biriba-hand-face h-full w-full object-fill" style={{animationDelay:`${800+i*32}ms`}} src={card.joker?"/cards/optimized-png/faces/joker_red.png":`/cards/optimized-png/faces/${card.suit}_${({1:"ace",11:"jack",12:"queen",13:"king"} as Record<number,string>)[card.rank]??card.rank}.png`} alt={label(card)}/></button>)}
     </div>
 
    </div>
