@@ -36,8 +36,17 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   if(new Set(ids).size!==ids.length)throw new Error("DUPLICATE_CARDS");
   const found=ids.map(id=>hand.find(c=>c.id===id));
   if(found.some(c=>!c))throw new Error("CARD_NOT_OWNED");
+  // The client may choose card IDs and requested values, but must never
+  // substitute different rank/suit/Joker metadata for a real physical card.
   ids.forEach(id=>hand.splice(hand.findIndex(c=>c.id===id),1));
   return found as BiribaCard[];
+ };
+ const verifyCards=(cards:readonly {card:BiribaCard}[],prior:readonly BiribaMeld[]=[]):void=>{
+  const canonical=[...hand,...next.discards,...prior.flatMap(m=>m.cards.map(p=>p.card))];
+  for(const placement of cards){
+   const found=canonical.find(c=>c.id===placement.card.id);
+   if(!found||JSON.stringify(found)!==JSON.stringify(placement.card))throw new Error("SPOOFED_CARD");
+  }
  };
  const assessEmpty=()=>{
   if(hand.length!==0||next.packetTaken[team])return;
@@ -63,6 +72,7 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   if(!next.discards.length)throw new Error("EMPTY_DISCARDS");
   const pile=next.discards.splice(0);
   hand.push(...pile);
+  verifyCards(action.meld.cards,next.melds);
   if(!biribaMeldValid(action.meld))throw new Error("INVALID_MELD");
   let additions=action.meld.cards;
   if(action.index!==undefined){
@@ -91,6 +101,7 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   if(next.forcedDiscardSeat===seat)throw new Error("MUST_DISCARD_DRAWN_CARD");
   if(next.phase!=="meld"||!biribaMeldValid(action.meld))throw new Error("INVALID_MELD");
   if(action.meld.ownerSeat!==seat)throw new Error("INVALID_OWNER");
+  verifyCards(action.meld.cards,next.melds);
   const ids=action.meld.cards.map(p=>p.card.id);
   takeIds(ids);next.melds.push(action.meld);next.opened[seat]=true;
   assessEmpty();return next;
@@ -111,6 +122,7 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
     if(now?.value!==2)throw new Error("NATURAL_TWO_FIXED");
    }
   }
+  verifyCards(action.meld.cards,next.melds);
   const additions=action.meld.cards.filter(p=>!oldIds.has(p.card.id));
   if(!additions.length)throw new Error("NO_ADDITION");
   takeIds(additions.map(p=>p.card.id));
