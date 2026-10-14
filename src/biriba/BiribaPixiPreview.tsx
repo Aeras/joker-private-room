@@ -11,7 +11,7 @@ import { NORMAL_DEAL_STAGGER_MS, NORMAL_DEAL_TRAVEL_MS, NORMAL_DEAL_HANDOFF_TRAV
  * or score authority live in this renderer; future multiplayer updates pass
  * sanitized viewer-specific snapshots only.
  */
-export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:BiribaDealtPreview|undefined;game?:BiribaGameView|undefined;redTeam?:number;onDealComplete?:((key:string)=>void)|undefined}) {
+export function BiribaPixiPreview({deal,game,redTeam=0,revealComplete=false,onDealComplete}:{deal?:BiribaDealtPreview|undefined;game?:BiribaGameView|undefined;redTeam?:number;revealComplete?:boolean|undefined;onDealComplete?:((key:string)=>void)|undefined}) {
   const mount = useRef<HTMLDivElement>(null);
   const lastDealtRound=useRef<string|null>(null);
   useEffect(() => {
@@ -201,6 +201,6 @@ export function BiribaPixiPreview({deal,game,redTeam=0,onDealComplete}:{deal?:Bi
       (pixi as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver=observer;
     })();
     return ()=>{disposed=true;for(const timer of dealTimers)clearTimeout(timer);if(app){(app as Application & {__biribaObserver?:ResizeObserver}).__biribaObserver?.disconnect();app.destroy(true,{children:true});}};
-  },[deal,game,redTeam,onDealComplete]);
+  },[deal,game,redTeam,revealComplete,onDealComplete]);
   return <div ref={mount} className="absolute inset-0" role="img" aria-label="Προεπισκόπηση τραπεζιού Μπιρίμπας με κόκκινη και μπλε ομάδα, κατεβασμένες σειρές, κλειστή τράπουλα, πεταμένα και ανοιχτά φύλλα στο κάτω μέρος"/>;
 }
