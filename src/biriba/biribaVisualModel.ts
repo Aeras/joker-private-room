@@ -31,6 +31,9 @@ export type VisualCard = {
 
 export const BACK_ARTWORK = "/cards/optimized-png/backs/blue_back.png";
 
+/** The discard's visual rectangle on the Pixi reference stage (1280 × 720). */
+export const BIRIBA_DISCARD_RECT = { x: 548, y: 395, width: 68.44, height: 100.3 } as const;
+
 export function biribaDealKey(roomCode: string, roundNumber: number, seat: number): string {
   return `${roomCode}:${roundNumber}:${seat}`;
 }
@@ -80,10 +83,7 @@ export function biribaVisualCards(game: BiribaVisualGame, includeFans = true): V
     cards.push({
       id: "discard:top",
       artwork: biribaCardArtwork(discard),
-      x: 548,
-      y: 395,
-      width: 68.44,
-      height: 100.3,
+      ...BIRIBA_DISCARD_RECT,
       angle: 0,
     });
   if (includeFans)
