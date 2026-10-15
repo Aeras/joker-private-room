@@ -9,7 +9,7 @@ const cardImage = (card: BiribaCard): string => card.joker
 
 const cardName = (card: BiribaCard): string => card.joker ? "Τζόκερ" : `${card.rank} ${card.suit}`;
 
-export function BiribaMeldZone({ melds, teamName, hiddenCardIds, highlightedIndices }: { melds: BiribaMeld[]; teamName: string; hiddenCardIds?: ReadonlySet<string>; highlightedIndices?: ReadonlySet<number> }) {
+export function BiribaMeldZone({ melds, teamName, hiddenCardIds, highlightedIndices }: { melds: BiribaMeld[]; teamName: string; hiddenCardIds?: ReadonlySet<string>; highlightedIndices?: ReadonlySet<number> | undefined }) {
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [anchor, setAnchor] = useState<{ x: number; y: number; above: boolean } | null>(null);
