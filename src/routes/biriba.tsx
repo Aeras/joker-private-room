@@ -9,6 +9,8 @@ import { BiribaPixiPreview, BIRIBA_DEAL_BEAT_MS } from "@/biriba/BiribaPixiPrevi
 import { admitBiribaRevision, biribaDealKey, newMeldCardsFromPublicActions, newMeldCardsFromSingleMove, type MeldFlight } from "@/biriba/biribaVisualModel";
 import { BiribaRoomControls } from "@/biriba/BiribaRoomControls";
 import { BiribaMeldZone } from "@/biriba/BiribaMeldZone";
+import { BiribaExtensionActions } from "@/biriba/BiribaExtensionActions";
+import { biribaExtensionOptions, preferredBiribaExtension } from "@/biriba/extensionOptions";
 import { BiribaDiscardPileTrigger, BiribaDiscardsDialog } from "@/biriba/BiribaDiscardPile";
 import { selectedBiribaMeld } from "@/biriba/meldSelection";
 import { biribaMeldDisplayLayout, sortedBiribaHand } from "@/biriba/handAndMeldPresentation";
@@ -29,7 +31,6 @@ import {
   type BiribaMeld,
   type BiribaSeatCount,
   type BiribaTarget,
-  biribaMeldValid,
   biribaTeamOf,
 } from "@/biriba/rules";
 import { assets } from "@/assets/registry";
@@ -82,34 +83,6 @@ const format = (r: BiribaResponse) =>
         SERVICE_UNAVAILABLE: "Ο διακομιστής Μπιρίμπας δεν είναι διαθέσιμος ακόμη.",
         NOT_AUTHENTICATED: "Χρειάζεται νέα σύνδεση.",
       } as Record<string, string>)[r.code] ?? "Η ενέργεια δεν ολοκληρώθηκε.";
-
-function legalExtension(meld: BiribaMeld, cards: BiribaCard[]): BiribaMeld | null {
-  if (cards.length !== 1) return null;
-  const card = cards[0]!;
-  const first = meld.cards[0]?.value;
-  const last = meld.cards[meld.cards.length - 1]?.value;
-  if (first === undefined || last === undefined) return null;
-  const hasWildcard = meld.cards.some(p => p.card.joker || (!p.card.joker && p.card.rank === 2 && (p.card.suit !== meld.suit || p.value !== 2)));
-  const options: Array<{ value: number; highAce: boolean }> = [];
-  if (!card.joker && card.suit === meld.suit) {
-    const naturalValue = card.rank === 1 && last === 13 ? 14 : card.rank;
-    options.push({ value: naturalValue, highAce: meld.highAce || naturalValue === 14 });
-  }
-  if ((card.joker || card.rank === 2) && !hasWildcard) {
-    options.push({ value: first - 1, highAce: meld.highAce });
-    options.push({ value: last + 1, highAce: meld.highAce || last + 1 === 14 });
-  }
-  for (const { value, highAce } of options) {
-    if (value < 1 || value > 14 || (value === 14 && !highAce)) continue;
-    const proposal: BiribaMeld = value === first - 1
-      ? { ...meld, highAce, cards: [{ card, value }, ...meld.cards] }
-      : value === last + 1
-        ? { ...meld, highAce, cards: [...meld.cards, { card, value }] }
-        : meld;
-    if (proposal !== meld && biribaMeldValid(proposal)) return proposal;
-  }
-  return null;
-}
 
 function BiribaContent({ playerId }: { playerId: string }) {
   const [capacity, setCapacity] = useState<BiribaSeatCount>(4);
@@ -362,15 +335,16 @@ function BiribaContent({ playerId }: { playerId: string }) {
     const candidate = game ? selectedBiribaMeld(selectedCards, game.seat) : null;
     const team = game ? biribaTeamOf(game.seat, game.seats) : null;
     const meldLayout = game ? biribaMeldDisplayLayout(game.melds, game.seats) : null;
-    const extensions =
-      game?.melds
-        .map((meld, index) => ({ index, kind: legalExtension(meld, selectedCards), ownerSeat: meld.ownerSeat }))
-        .filter(
-          (x) =>
-            x.kind &&
-            team === biribaTeamOf(x.ownerSeat, game.seats) &&
-            (x.ownerSeat === game.seat || game.opened[game.seat])
-        ) ?? [];
+    const extensions = game?.melds.flatMap((meld, index) => {
+      if (team !== biribaTeamOf(meld.ownerSeat, game.seats)) return [];
+      if (meld.ownerSeat !== game.seat && !game.opened[game.seat]) return [];
+      const choices = biribaExtensionOptions(meld, selectedCards);
+      return choices ? [{
+        index,
+        displayNumber: meldLayout?.numberByGlobalIndex.get(index) ?? index + 1,
+        choices,
+      }] : [];
+    }) ?? [];
 
     const pickupOptions = game?.discards.flatMap(discard => {
       const choices: Array<{ discard: BiribaCard; meld: BiribaMeld; index?: number }> = [];
@@ -379,7 +353,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
       for (const [index, existing] of game.melds.entries()) {
         if (team !== biribaTeamOf(existing.ownerSeat, game.seats)) continue;
         if (existing.ownerSeat !== game.seat && !game.opened[game.seat]) continue;
-        const extension = legalExtension(existing, [discard]);
+        const extension = preferredBiribaExtension(existing, [discard]);
         if (extension) choices.push({ discard, meld: extension, index });
       }
       return choices;
@@ -670,15 +644,12 @@ function BiribaContent({ playerId }: { playerId: string }) {
           )}
         </div>
         {mine && game?.phase === "meld" && extensions.length > 0 && (
-          <div className="biriba-actions biriba-actions--right text-white">
-            {extensions.map(item => (
-              <button key={item.index} type="button" disabled={busy}
-                className="rounded-lg bg-amber-600 font-bold shadow hover:bg-amber-500"
-                onClick={() => item.kind && void play({ type: "extend", index: item.index, meld: item.kind })}>
-                Κόλλημα #{meldLayout?.numberByGlobalIndex.get(item.index) ?? item.index + 1}
-              </button>
-            ))}
-          </div>
+          <BiribaExtensionActions
+            key={`${dealKey}:${selected.join(",")}`}
+            targets={extensions}
+            busy={busy}
+            onExtend={(index, meld) => void play({ type: "extend", index, meld })}
+          />
         )}
 
         {/* 7. PLAYER HAND (CURVED FAN LAYOUT) */}

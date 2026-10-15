@@ -469,6 +469,60 @@
 }
 .biriba-actions button:disabled { opacity: .45; }
 .biriba-actions button:focus-visible { outline: 2px solid #ffda89; outline-offset: 2px; }
+
+/* Wildcards expand in-place beneath their target button; other targets are pushed
+   downward rather than replaced by a popup. The list scrolls on short screens. */
+.biriba-extension-list {
+  box-sizing: border-box;
+  max-height: 40%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 2px 3px 4px;
+}
+.biriba-extension-item {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+.biriba-extension-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  max-height: 0;
+  margin-top: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height .22s ease,
+    margin-top .22s ease,
+    opacity .16s ease;
+}
+.biriba-extension-choices--open {
+  max-height: clamp(30px, 5.2vh, 39px);
+  margin-top: 4px;
+  opacity: 1;
+}
+.biriba-actions .biriba-extension-side {
+  min-width: 0;
+  border: 1px solid #4bd99f;
+  border-radius: 7px;
+  background: #176b49;
+  color: #fff;
+  font-size: clamp(10px, 1.05vw, 14px);
+  font-weight: 750;
+  box-shadow: inset 0 1px #ffffff20, 0 2px 7px #0008;
+}
+.biriba-actions .biriba-extension-side:hover:not(:disabled) {
+  background: #238860;
+}
+@media (prefers-reduced-motion: reduce) {
+  .biriba-extension-choices {
+    transition: none;
+  }
+}
+
 .biriba-fan-card:hover:not(:disabled) {
   filter: drop-shadow(0 0 5px #e3b347);
 }
