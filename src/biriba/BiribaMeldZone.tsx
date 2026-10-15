@@ -9,7 +9,7 @@ const cardImage = (card: BiribaCard): string => card.joker
 
 const cardName = (card: BiribaCard): string => card.joker ? "Τζόκερ" : `${card.rank} ${card.suit}`;
 
-export function BiribaMeldZone({ melds, teamName, hiddenCardIds }: { melds: BiribaMeld[]; teamName: string; hiddenCardIds?: ReadonlySet<string> }) {
+export function BiribaMeldZone({ melds, teamName, hiddenCardIds, highlightedIndices }: { melds: BiribaMeld[]; teamName: string; hiddenCardIds?: ReadonlySet<string>; highlightedIndices?: ReadonlySet<number> | undefined }) {
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [anchor, setAnchor] = useState<{ x: number; y: number; above: boolean } | null>(null);
@@ -18,6 +18,15 @@ export function BiribaMeldZone({ melds, teamName, hiddenCardIds }: { melds: Biri
   const pages = Math.max(1, Math.ceil(melds.length / 6));
   const current = Math.min(page, pages - 1);
   useEffect(() => { if (page >= pages) setPage(pages - 1); }, [page, pages]);
+  const availablePages = new Set([...(highlightedIndices ?? [])].map(index => Math.floor(index / 6)));
+  const availablePageKey = [...availablePages].sort((a, b) => a - b).join(",");
+  // When a selection has valid targets only on a hidden page, show that page automatically.
+  // Do not steal manual swipes if a target is already visible.
+  useEffect(() => {
+    if (!availablePageKey) return;
+    const targetPages = availablePageKey.split(",").map(Number);
+    setPage(previous => targetPages.includes(previous) ? previous : targetPages[0]!);
+  }, [availablePageKey]);
   const active = expanded === null ? null : melds[expanded] ?? null;
   useEffect(() => {
     if (expanded === null) return;
@@ -47,10 +56,11 @@ export function BiribaMeldZone({ melds, teamName, hiddenCardIds }: { melds: Biri
       {melds.slice(current * 6, current * 6 + 6).map((meld, index) => {
         const fullIndex = current * 6 + index;
         const dirty = biribaMeldDirty(meld);
+        const available = highlightedIndices?.has(fullIndex) ?? false;
         const ordered = [...meld.cards].sort((a, b) => a.value - b.value);
         return <button type="button" key={fullIndex}
-          className={`biriba-meld-slot ${dirty ? "biriba-meld-slot--dirty" : "biriba-meld-slot--clean"}`}
-          aria-label={`${teamName}, χεριά ${fullIndex + 1}, ${dirty ? "βρώμικη" : "καθαρή"}, ${ordered.length} φύλλα. Πατήστε για όλα τα φύλλα.`}
+          className={`biriba-meld-slot ${dirty ? "biriba-meld-slot--dirty" : "biriba-meld-slot--clean"} ${available ? "biriba-meld-slot--available" : ""}`}
+          aria-label={`${teamName}, χεριά ${fullIndex + 1}, ${dirty ? "βρώμικη" : "καθαρή"}, ${ordered.length} φύλλα.${available ? " Διαθέσιμη για κόλλημα." : ""} Πατήστε για όλα τα φύλλα.`}
           onClick={event => { if (swipeConsumed.current) { swipeConsumed.current = false; return; } const rect = event.currentTarget.getBoundingClientRect(); setAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, above: rect.top > window.innerHeight * 0.48 }); setExpanded(old => old === fullIndex ? null : fullIndex); }}>
           <span className="biriba-meld-stack">
             {ordered.map(({ card }, i) => {
@@ -63,20 +73,21 @@ export function BiribaMeldZone({ melds, teamName, hiddenCardIds }: { melds: Biri
                 className="biriba-meld-card"/>;
             })}
           </span>
+          <span className="biriba-meld-number" aria-hidden="true">#{fullIndex + 1}</span>
         </button>;
       })}
     </div>
     {pages > 1 && <div className="biriba-meld-pager">
-      <button type="button" disabled={current === 0} aria-label={`Προηγούμενες χεριές ${teamName}`} onClick={() => setPage(current - 1)}>‹</button>
+      <button type="button" disabled={current === 0} className={availablePages.has(current - 1) ? "biriba-meld-pager-target" : undefined} aria-label={`Προηγούμενες χεριές ${teamName}${availablePages.has(current - 1) ? ", διαθέσιμο κόλλημα" : ""}`} onClick={() => setPage(current - 1)}>‹</button>
       <span>{current + 1}/{pages}</span>
-      <button type="button" disabled={current === pages - 1} aria-label={`Επόμενες χεριές ${teamName}`} onClick={() => setPage(current + 1)}>›</button>
+      <button type="button" disabled={current === pages - 1} className={availablePages.has(current + 1) ? "biriba-meld-pager-target" : undefined} aria-label={`Επόμενες χεριές ${teamName}${availablePages.has(current + 1) ? ", διαθέσιμο κόλλημα" : ""}`} onClick={() => setPage(current + 1)}>›</button>
     </div>}
     {active && anchor && typeof document !== "undefined" && createPortal(
       <div className="biriba-meld-popover-layer" onPointerDown={event => { if (event.target === event.currentTarget) setExpanded(null); }}>
         <section className={`biriba-meld-popover ${anchor.above ? "biriba-meld-popover--above" : "biriba-meld-popover--below"}`}
           style={{ left: `${Math.max(12, Math.min(window.innerWidth - 12, anchor.x))}px`, top: `${anchor.y}px` }}
           role="dialog" aria-label={`Χεριά ${teamName}`}>
-          <div className="biriba-meld-popover-heading">{teamName} · {biribaMeldDirty(active) ? "Βρώμικη" : "Καθαρή"}</div>
+          <div className="biriba-meld-popover-heading">{teamName} · Χεριά #{expanded! + 1} · {biribaMeldDirty(active) ? "Βρώμικη" : "Καθαρή"}</div>
           <div className="biriba-meld-popover-cards">
             {[...active.cards].sort((a,b)=>a.value-b.value).map(({card}) =>
               <img key={card.id} draggable={false} src={cardImage(card)} alt={cardName(card)}/>)}

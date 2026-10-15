@@ -10,6 +10,7 @@ import { admitBiribaRevision, biribaDealKey, newMeldCardsFromPublicActions, newM
 import { BiribaRoomControls } from "@/biriba/BiribaRoomControls";
 import { BiribaMeldZone } from "@/biriba/BiribaMeldZone";
 import { selectedBiribaMeld } from "@/biriba/meldSelection";
+import { biribaMeldDisplayLayout, sortedBiribaHand } from "@/biriba/handAndMeldPresentation";
 import { BiribaTrumpIndicator } from "@/biriba/BiribaTrumpIndicator";
 import { createAfterFinishedGame } from "@/biriba/finishedGameActions";
 import { localHandCardPresentation } from "@/biriba/localHandPresentation";
@@ -308,6 +309,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
   }, [code, finished, receiveGame]);
 
   const ownCards = game?.myHand ?? [];
+  const sortedOwnCards = useMemo(() => sortedBiribaHand(game?.myHand ?? []), [game?.myHand]);
   const visualGame = dealShownKey === dealKey ? game : initialDealView?.game ?? game;
   const preview = useMemo(() => {
     if (!visualGame) return undefined;
@@ -358,6 +360,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
     const selectedCards = ownCards.filter((c) => selected.includes(c.id));
     const candidate = game ? selectedBiribaMeld(selectedCards, game.seat) : null;
     const team = game ? biribaTeamOf(game.seat, game.seats) : null;
+    const meldLayout = game ? biribaMeldDisplayLayout(game.melds, game.seats) : null;
     const extensions =
       game?.melds
         .map((meld, index) => ({ index, kind: legalExtension(meld, selectedCards), ownerSeat: meld.ownerSeat }))
@@ -380,6 +383,14 @@ function BiribaContent({ playerId }: { playerId: string }) {
       }
       return choices;
     }) ?? [];
+    const highlightedMeldIndices = new Set(
+      mine && game?.phase === "meld"
+        ? extensions.flatMap(item => {
+            const number = meldLayout?.numberByGlobalIndex.get(item.index);
+            return number === undefined ? [] : [number - 1];
+          })
+        : []
+    );
     const redTeamIndex = (room.code.charCodeAt(0) || 0) % 2;
     const redScore = game?.teamScores[redTeamIndex] ?? 0;
     const blueScore = game?.teamScores[1 - redTeamIndex] ?? 0;
@@ -448,7 +459,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
         {/* 1. MELD ZONES (ΚΟΚΚΙΝΗ ΟΜΑΔΑ & ΜΠΛΕ ΟΜΑΔΑ) */}
         <div className="biriba-team-zone biriba-team-zone--red">
-          <BiribaMeldZone teamName="Κόκκινη ομάδα" melds={game?.melds.filter(m => biribaTeamOf(m.ownerSeat, game.seats) === redTeamIndex) ?? []} hiddenCardIds={hiddenMeldCards.current} />
+          <BiribaMeldZone teamName="Κόκκινη ομάδα" melds={game?.melds.filter(m => biribaTeamOf(m.ownerSeat, game.seats) === redTeamIndex) ?? []} hiddenCardIds={hiddenMeldCards.current} highlightedIndices={mine && team === redTeamIndex ? highlightedMeldIndices : undefined} />
           <div className="biriba-team-heading">
             <span>ΚΟΚΚΙΝΗ ΟΜΑΔΑ</span>
             <span className="biriba-team-score">{redScore}</span>
@@ -456,7 +467,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
         </div>
 
         <div className="biriba-team-zone biriba-team-zone--blue">
-          <BiribaMeldZone teamName="Μπλε ομάδα" melds={game?.melds.filter(m => biribaTeamOf(m.ownerSeat, game.seats) === 1 - redTeamIndex) ?? []} hiddenCardIds={hiddenMeldCards.current} />
+          <BiribaMeldZone teamName="Μπλε ομάδα" melds={game?.melds.filter(m => biribaTeamOf(m.ownerSeat, game.seats) === 1 - redTeamIndex) ?? []} hiddenCardIds={hiddenMeldCards.current} highlightedIndices={mine && team === 1 - redTeamIndex ? highlightedMeldIndices : undefined} />
           <div className="biriba-team-heading">
             <span>ΜΠΛΕ ΟΜΑΔΑ</span>
             <span className="biriba-team-score">{blueScore}</span>
@@ -496,7 +507,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
                       type="button" disabled={busy}
                       className="rounded-lg border border-amber-400 bg-amber-700 px-3 py-2 text-sm font-semibold"
                       onClick={() => { setDiscardsOpen(false); void play({ type: "pickup", ids: [option.discard.id], meld: option.meld, ...(option.index === undefined ? {} : { index: option.index }) }); }}>
-                      Πάρε με {label(option.discard)} · {option.index === undefined ? "Νέα χεριά" : `Κόλλημα #${option.index + 1}`}
+                      Πάρε με {label(option.discard)} · {option.index === undefined ? "Νέα χεριά" : `Κόλλημα #${meldLayout?.numberByGlobalIndex.get(option.index) ?? option.index + 1}`}
                     </button>
                   )) : <p className="text-sm text-white/70">Επίλεξε φύλλα από το χέρι σου για νέα χεριά ή αξιοποίησε πεταμένο φύλλο σε υπάρχουσα χεριά.</p>}
                 </div>
@@ -659,18 +670,18 @@ function BiribaContent({ playerId }: { playerId: string }) {
               <button key={item.index} type="button" disabled={busy}
                 className="rounded-lg bg-amber-600 font-bold shadow hover:bg-amber-500"
                 onClick={() => item.kind && void play({ type: "extend", index: item.index, meld: item.kind })}>
-                Κόλλημα #{item.index + 1}
+                Κόλλημα #{meldLayout?.numberByGlobalIndex.get(item.index) ?? item.index + 1}
               </button>
             ))}
           </div>
         )}
 
         {/* 7. PLAYER HAND (CURVED FAN LAYOUT) */}
-        <div className={`biriba-hand ${dealShownKey === dealKey && dealKey && freshDealKeys.current.has(dealKey) ? "biriba-hand-enter" : ""}`} style={{ "--biriba-card-gap": ownCards.length > 14 ? "clamp(-100px,-7.5vw,-48px)" : "clamp(-95px,-5.5vw,-42px)" } as React.CSSProperties}>
+        <div className={`biriba-hand ${dealShownKey === dealKey && dealKey && freshDealKeys.current.has(dealKey) ? "biriba-hand-enter" : ""}`} style={{ "--biriba-card-gap": sortedOwnCards.length > 14 ? "clamp(-100px,-7.5vw,-48px)" : "clamp(-95px,-5.5vw,-42px)" } as React.CSSProperties}>
           {dealShownKey === dealKey &&
-            ownCards.map((card, i) => {
+            sortedOwnCards.map((card, i) => {
               const isSelected = selected.includes(card.id);
-              const pose = localHandCardPresentation(i, ownCards.length, isSelected);
+              const pose = localHandCardPresentation(i, sortedOwnCards.length, isSelected);
 
               return (
                 <button
