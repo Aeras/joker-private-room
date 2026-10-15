@@ -269,6 +269,13 @@ export function BiribaPixiPreview({
             if (t >= 1) {
               pixi.ticker.remove(handoff);
               entranceLayer.destroy({ children: true });
+              // Populate the persistent opponent fans before signaling the deal
+              // handoff, avoiding a blank interval between flight and live state.
+              void rear("top", game.handCounts[(game.seat + topSeat) % game.seats] ?? 0);
+              if (game.seats === 4) {
+                void rear("left", game.handCounts[(game.seat + 1) % game.seats] ?? 0);
+                void rear("right", game.handCounts[(game.seat + 3) % game.seats] ?? 0);
+              }
             }
           };
           pixi.ticker.add(handoff);
