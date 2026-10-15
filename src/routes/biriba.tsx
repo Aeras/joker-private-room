@@ -82,20 +82,31 @@ const format = (r: BiribaResponse) =>
       } as Record<string, string>)[r.code] ?? "Η ενέργεια δεν ολοκληρώθηκε.";
 
 function legalExtension(meld: BiribaMeld, cards: BiribaCard[]): BiribaMeld | null {
-  if (cards.length !== 1 || cards[0]?.joker) return null;
-  const card = cards[0] as Extract<BiribaCard, { joker?: false }>;
-  if (card.suit !== meld.suit) return null;
+  if (cards.length !== 1) return null;
+  const card = cards[0]!;
   const first = meld.cards[0]?.value;
   const last = meld.cards[meld.cards.length - 1]?.value;
-  const highAce = meld.highAce || (card.rank === 1 && last === 13 && !meld.cards.some(p => p.value === 1));
-  const value = card.rank === 1 && highAce ? 14 : card.rank;
-  const proposal: BiribaMeld | null =
-    value === Number(first) - 1
+  if (first === undefined || last === undefined) return null;
+  const hasWildcard = meld.cards.some(p => p.card.joker || (!p.card.joker && p.card.rank === 2 && (p.card.suit !== meld.suit || p.value !== 2)));
+  const options: Array<{ value: number; highAce: boolean }> = [];
+  if (!card.joker && card.suit === meld.suit) {
+    const naturalValue = card.rank === 1 && last === 13 ? 14 : card.rank;
+    options.push({ value: naturalValue, highAce: meld.highAce || naturalValue === 14 });
+  }
+  if ((card.joker || card.rank === 2) && !hasWildcard) {
+    options.push({ value: first - 1, highAce: meld.highAce });
+    options.push({ value: last + 1, highAce: meld.highAce || last + 1 === 14 });
+  }
+  for (const { value, highAce } of options) {
+    if (value < 1 || value > 14 || (value === 14 && !highAce)) continue;
+    const proposal: BiribaMeld = value === first - 1
       ? { ...meld, highAce, cards: [{ card, value }, ...meld.cards] }
-      : value === Number(last) + 1
-      ? { ...meld, highAce, cards: [...meld.cards, { card, value }] }
-      : null;
-  return proposal && biribaMeldValid(proposal) ? proposal : null;
+      : value === last + 1
+        ? { ...meld, highAce, cards: [...meld.cards, { card, value }] }
+        : meld;
+    if (proposal !== meld && biribaMeldValid(proposal)) return proposal;
+  }
+  return null;
 }
 
 function BiribaContent({ playerId }: { playerId: string }) {
@@ -346,9 +357,6 @@ function BiribaContent({ playerId }: { playerId: string }) {
       game?.clock.pausedBy === null;
     const selectedCards = ownCards.filter((c) => selected.includes(c.id));
     const candidate = game ? selectedBiribaMeld(selectedCards, game.seat) : null;
-    const pickup = game?.discards
-      .map((discard) => ({ discard, meld: selectedBiribaMeld([...selectedCards, discard], game.seat) }))
-      .find((item) => item.meld);
     const team = game ? biribaTeamOf(game.seat, game.seats) : null;
     const extensions =
       game?.melds
@@ -360,6 +368,18 @@ function BiribaContent({ playerId }: { playerId: string }) {
             (x.ownerSeat === game.seat || game.opened[game.seat])
         ) ?? [];
 
+    const pickupOptions = game?.discards.flatMap(discard => {
+      const choices: Array<{ discard: BiribaCard; meld: BiribaMeld; index?: number }> = [];
+      const fresh = selectedBiribaMeld([...selectedCards, discard], game.seat);
+      if (fresh) choices.push({ discard, meld: fresh });
+      for (const [index, existing] of game.melds.entries()) {
+        if (team !== biribaTeamOf(existing.ownerSeat, game.seats)) continue;
+        if (existing.ownerSeat !== game.seat && !game.opened[game.seat]) continue;
+        const extension = legalExtension(existing, [discard]);
+        if (extension) choices.push({ discard, meld: extension, index });
+      }
+      return choices;
+    }) ?? [];
     const redTeamIndex = (room.code.charCodeAt(0) || 0) % 2;
     const redScore = game?.teamScores[redTeamIndex] ?? 0;
     const blueScore = game?.teamScores[1 - redTeamIndex] ?? 0;
@@ -469,6 +489,18 @@ function BiribaContent({ playerId }: { playerId: string }) {
                 ))}
               </div>
               <p className="mt-3 text-xs text-white/70">Η προβολή δεν παίρνει φύλλα. Για να πάρεις τη στοίβα, πρέπει να επιτρέπεται έγκυρο κατέβασμα σύμφωνα με τους κανόνες του παιχνιδιού.</p>
+              {mine && game?.phase === "draw" && (
+                <div className="mt-3 flex flex-wrap gap-2 overflow-y-auto">
+                  {pickupOptions.length ? pickupOptions.map((option, i) => (
+                    <button key={option.discard.id + "-" + (option.index ?? "new") + "-" + i}
+                      type="button" disabled={busy}
+                      className="rounded-lg border border-amber-400 bg-amber-700 px-3 py-2 text-sm font-semibold"
+                      onClick={() => { setDiscardsOpen(false); void play({ type: "pickup", ids: [option.discard.id], meld: option.meld, ...(option.index === undefined ? {} : { index: option.index }) }); }}>
+                      Πάρε με {label(option.discard)} · {option.index === undefined ? "Νέα χεριά" : `Κόλλημα #${option.index + 1}`}
+                    </button>
+                  )) : <p className="text-sm text-white/70">Επίλεξε φύλλα από το χέρι σου για νέα χεριά ή αξιοποίησε πεταμένο φύλλο σε υπάρχουσα χεριά.</p>}
+                </div>
+              )}
             </section>
           </div>
         )}
@@ -477,7 +509,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
         {/* 4. PLAYER AVATARS ANCHORED AROUND THE TABLE */}
         {/* Local Player (ΕΣΥ) */}
-        <div className="biriba-seat biriba-seat--local">
+        <div className={`biriba-seat biriba-seat--local ${game && biribaTeamOf(game.seat, game.seats) === redTeamIndex ? "biriba-seat--team-red" : "biriba-seat--team-blue"}`}>
           <div className="biriba-seat-avatar">
             <PlayerAvatar
               name={room.seats.find((seat) => seat.index === (game?.seat ?? 0))?.name ?? "ΕΣΥ"}
@@ -490,7 +522,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
         {/* Teammate (ΣΥΜΠΑΙΚΤΗΣ) - Top Center */}
         {game && (
-          <div className="biriba-seat biriba-seat--top">
+          <div className={`biriba-seat biriba-seat--top ${game && biribaTeamOf((game.seat + (game.seats === 2 ? 1 : 2)) % game.seats, game.seats) === redTeamIndex ? "biriba-seat--team-red" : "biriba-seat--team-blue"}`}>
             <div className="biriba-seat-avatar">
               <PlayerAvatar
                 name={game.roomSeats[(game.seat + (game.seats === 2 ? 1 : 2)) % game.seats]?.name ?? "ΣΥΜΠΑΙΚΤΗΣ"}
@@ -507,7 +539,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
         {/* Opponent Left (ΑΝΤΙΠΑΛΟΣ Α) */}
         {game && game.seats === 4 && (
-          <div className="biriba-seat biriba-seat--left">
+          <div className={`biriba-seat biriba-seat--left ${game && biribaTeamOf((game.seat + 1) % game.seats, game.seats) === redTeamIndex ? "biriba-seat--team-red" : "biriba-seat--team-blue"}`}>
             <div className="biriba-seat-avatar">
               <PlayerAvatar
                 name={game.roomSeats[(game.seat + 1) % game.seats]?.name ?? "ΑΝΤΙΠΑΛΟΣ Α"}
@@ -524,7 +556,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
         {/* Opponent Right (ΑΝΤΙΠΑΛΟΣ Β) */}
         {game && game.seats === 4 && (
-          <div className="biriba-seat biriba-seat--right">
+          <div className={`biriba-seat biriba-seat--right ${game && biribaTeamOf((game.seat + 3) % game.seats, game.seats) === redTeamIndex ? "biriba-seat--team-red" : "biriba-seat--team-blue"}`}>
             <div className="biriba-seat-avatar">
               <PlayerAvatar
                 name={game.roomSeats[(game.seat + 3) % game.seats]?.name ?? "ΑΝΤΙΠΑΛΟΣ Β"}
@@ -616,12 +648,9 @@ function BiribaContent({ playerId }: { playerId: string }) {
                 onClick={() => candidate && void play({ type: "meld", meld: candidate })}>Κατέβασμα</button>
             </>
           )}
-          {mine && game?.phase === "draw" && pickup?.meld && (
-            <button className="rounded-lg bg-amber-600 font-bold shadow-lg hover:bg-amber-500"
-              disabled={busy}
-              onClick={() => void play({ type: "pickup", ids: [pickup.discard.id], meld: pickup.meld })}>
-              Πάρε πεταμένα
-            </button>
+          {mine && game?.phase === "draw" && pickupOptions.length > 0 && (
+            <button type="button" className="rounded-lg bg-amber-600 font-bold shadow-lg hover:bg-amber-500"
+              disabled={busy} onClick={() => setDiscardsOpen(true)}>Πάρε πεταμένα</button>
           )}
         </div>
         {mine && game?.phase === "meld" && extensions.length > 0 && (
