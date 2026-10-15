@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {beginBiribaMatch,biribaAction} from "./engine";
+import {beginBiribaMatch,biribaAction} from "../../supabase/functions/biriba-commands/engine";
 import type {BiribaCard,BiribaMeld,BiribaRank} from "./rules";
 const c=(id:string,rank:number):BiribaCard=>({id,rank:rank as BiribaRank,suit:"spades"});
 const meld=(cards:BiribaCard[],ownerSeat=0):BiribaMeld=>({ownerSeat,suit:"spades",highAce:false,cards:cards.map((card,i)=>({card,value:i+3}))});
@@ -66,6 +66,23 @@ describe("BIRIBA independent gameplay turn engine",()=>{
   expect(n.hands[0]).toHaveLength(11);
   expect(n.pendingPacket[0]).toBe(0);
   expect(n.turn).toBe(1);
+  expect(n.phase).toBe("draw");
+  expect(n.packetPlayed[0]).toBe(false);
+  const returned={...n,turn:0};
+  const afterDraw=biribaAction(returned,0,{type:"draw"});
+  expect(afterDraw.pendingPacket[0]).toBeNull();
+  expect(afterDraw.packetPlayed[0]).toBe(true);
+  expect(afterDraw.hands[0]).toHaveLength(12);
+ });
+ it("gives seat 2 the shared team packet in a four-player game",()=>{
+  const m=beginBiribaMatch(4,()=>0.12);
+  m.turn=2;m.phase="meld";m.hands[2]=[c("last-3",3),c("last-4",4),c("last-5",5)];
+  const packetIds=m.packets[0]!.map(card=>card.id);
+  const n=biribaAction(m,2,{type:"meld",meld:meld(m.hands[2]!,2)});
+  expect(n.hands[2]!.map(card=>card.id)).toEqual(packetIds);
+  expect(n.packetOwner[0]).toBe(2);
+  expect(n.packets[0]).toEqual([]);
+  expect(n.packets[1]).toEqual(m.packets[1]);
  });
  it("refuses to wrap a low Ace run into a high Ace run",()=>{
   const m=beginBiribaMatch(2,()=>0.12);

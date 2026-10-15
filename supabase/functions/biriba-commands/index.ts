@@ -6,6 +6,7 @@ import {chooseBiribaBotStep} from "./bot.ts";
 import {scoreFinishedBiribaRound,nextBiribaRound} from "./rounds.ts";
 import {pauseBiribaClock,resumeBiribaClock,timeoutBiribaClock,reclaimBiribaClock} from "./clock.ts";
 import {CANONICAL_BOTS} from "../_shared/bot-catalog.ts";
+import {recoverUnclaimedBiribaPacket} from "./recoverPacket.ts";
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
 const allowed=new Set(["create","join","list","get","membership","leave","bot_add","bot_remove","start","get_game","move","pause","resume","reclaim","next_round","end_game"]);
 const actions=new Set(["draw","pickup","meld","extend","discard"]);
@@ -58,6 +59,7 @@ Deno.serve(async(req)=>{
   const revision=loaded.data.revision as number;
   const original=loaded.data.state as BiribaMatch;
   let match=original;
+  if(action==="get_game")match=recoverUnclaimedBiribaPacket(match);
   const room=await rpc("get");
   if(room.error||!room.data?.ok)return json({ok:false,code:"SERVICE_UNAVAILABLE"},503);
   const seats=room.data.room.seats as Array<{index:number;occupant:string;name:string;botId?:string;tier?:number}>;

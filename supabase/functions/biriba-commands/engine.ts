@@ -1,5 +1,5 @@
 import {startBiribaClock,nextBiribaClock,type BiribaClock} from "./clock.ts";
-import {biribaCanFinish,biribaMeldValid,biribaTeamOf,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaSuit,type BiribaTarget} from "./rules.ts";
+import {BIRIBA_PACKET_SIZE,biribaCanFinish,biribaMeldValid,biribaTeamOf,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaSuit,type BiribaTarget} from "./rules.ts";
 import {createBiribaLocalDeal} from "./localDeal.ts";
 
 /** Deterministic, serializable BIRIBA match state. Authoritative persistence is separate. */
@@ -50,8 +50,10 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
  };
  const assessEmpty=()=>{
   if(hand.length!==0||next.packetTaken[team])return;
-  const eligible=next.melds.some(md=>biribaTeamOf(md.ownerSeat,next.seats)===team&&md.cards.length>=7);
-  if(!eligible)return;
+  if(next.packets[team]?.length!==BIRIBA_PACKET_SIZE||next.packetOwner[team]!==null||
+     next.pendingPacket[team]!==null||next.packetPlayed[team])throw new Error("INVALID_PACKET_STATE");
+  // The first packet is collected when the hand is emptied, independently
+  // of the biriba requirements for closing the round.
   next.packetTaken[team]=true;next.packetOwner[team]=seat;
   next.hands[seat]=next.packets[team]!.splice(0);
   if(next.phase==="meld")next.packetPlayed[team]=true;
