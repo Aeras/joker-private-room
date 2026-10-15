@@ -1,6 +1,6 @@
 import type { BiribaDealtPreview } from "./localDeal";
 import type { BiribaGameView } from "@/services/biribaFunctions";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import {
   NORMAL_DEAL_TRAVEL_MS,
@@ -26,12 +26,47 @@ export function BiribaPixiPreview({
 }) {
   const mount = useRef<HTMLDivElement>(null);
   const lastDealtRound = useRef<string | null>(null);
+  const appRef = useRef<Application | null>(null);
+  const [ready, setReady] = useState(false);
 
+  // Keep the WebGL canvas and renderer alive across realtime game revisions.
   useEffect(() => {
     const parent = mount.current;
     if (!parent) return;
+    let cancelled = false;
+    let app: Application | null = null;
+    let observer: ResizeObserver | null = null;
+    void (async () => {
+      const pixi = new Application();
+      await pixi.init({resizeTo: parent, backgroundAlpha: 0, antialias: true,
+        resolution: Math.min(devicePixelRatio || 1, 2), autoDensity: true});
+      if (cancelled) { pixi.destroy(true); return; }
+      app = pixi;
+      appRef.current = pixi;
+      parent.appendChild(pixi.canvas);
+      observer = new ResizeObserver(() => pixi.resize());
+      observer.observe(parent);
+      setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+      if (appRef.current === app) appRef.current = null;
+      app?.destroy(true, {children:true});
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !appRef.current) return;
+    const parent = mount.current;
+    if (!parent) return;
     let disposed = false;
-    let app: Application | undefined;
+    const pixi = appRef.current;
+    const tickers: Array<(ticker: { deltaMS: number }) => void> = [];
+    const addTicker = (callback: (ticker: { deltaMS: number }) => void) => {
+      tickers.push(callback);
+      pixi.ticker.add(callback);
+    };
     const dealTimers: Array<ReturnType<typeof setTimeout>> = [];
     const schedule = (callback: () => void, delay: number) => {
       dealTimers.push(setTimeout(callback, delay));
@@ -41,20 +76,7 @@ export function BiribaPixiPreview({
     if (dealEntrance) lastDealtRound.current = dealKey;
 
     void (async () => {
-      const pixi = new Application();
-      await pixi.init({
-        resizeTo: parent,
-        backgroundAlpha: 0,
-        antialias: true,
-        resolution: Math.min(devicePixelRatio || 1, 2),
-        autoDensity: true,
-      });
-      if (disposed) {
-        pixi.destroy(true);
-        return;
-      }
-      app = pixi;
-      parent.appendChild(pixi.canvas);
+      if (disposed) return;
       const stage = new Container();
       pixi.stage.addChild(stage);
       const w = 1280,
@@ -70,8 +92,6 @@ export function BiribaPixiPreview({
         stage.position.set(0, 0);
       };
       resize();
-      const observer = new ResizeObserver(resize);
-      observer.observe(parent);
 
       const suitIcon: Record<string, string> = {
         spades: "♠",
@@ -117,7 +137,7 @@ export function BiribaPixiPreview({
             if (t === 1) pixi.ticker.remove(animate);
           };
           if (delay) await new Promise((r) => setTimeout(r, delay));
-          if (!disposed) pixi.ticker.add(animate);
+          if (!disposed) addTicker(animate);
         } catch {
           if (disposed) return;
           const g = new Graphics()
@@ -237,7 +257,7 @@ export function BiribaPixiPreview({
                   sprite.height = BACK_H * pose.scale;
                   if (elapsed >= NORMAL_DEAL_TRAVEL_MS) pixi.ticker.remove(tick);
                 };
-                pixi.ticker.add(tick);
+                addTicker(tick);
               },
               (i * order.length + delta) * BIRIBA_DEAL_BEAT_MS,
             );
@@ -278,7 +298,7 @@ export function BiribaPixiPreview({
               }
             }
           };
-          pixi.ticker.add(handoff);
+          addTicker(handoff);
         }, flightEnd + 90);
         schedule(
           () => {
@@ -294,18 +314,15 @@ export function BiribaPixiPreview({
         }
       }
 
-      (pixi as Application & { __biribaObserver?: ResizeObserver }).__biribaObserver = observer;
     })();
 
     return () => {
       disposed = true;
       for (const timer of dealTimers) clearTimeout(timer);
-      if (app) {
-        (app as Application & { __biribaObserver?: ResizeObserver }).__biribaObserver?.disconnect();
-        app.destroy(true, { children: true });
-      }
+      for (const ticker of tickers) pixi.ticker.remove(ticker);
+      pixi.stage.removeChildren().forEach(child => child.destroy({children:true}));
     };
-  }, [deal, game, redTeam, revealComplete, onDealComplete]);
+  }, [ready, deal, game, redTeam, revealComplete, onDealComplete]);
 
   return (
     <div
