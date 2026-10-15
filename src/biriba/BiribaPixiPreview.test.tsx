@@ -125,6 +125,60 @@ afterEach(() => {
 });
 
 describe("Biriba Pixi scene lifecycle", () => {
+  it("flies a confirmed local discard from its measured hand rect before settling the pile", async () => {
+    const started = vi.fn();
+    const completed = vi.fn();
+    const first = game();
+    const view = render(<BiribaPixiPreview game={first} roomCode="local-flight" revealComplete />);
+    await waitFor(() => expect(mock.sprites).toHaveLength(41));
+    const played = { id: "played", suit: "hearts", rank: 8 } as BiribaCard;
+    const next = { ...first, revision: 2, discards: [...first.discards, played] };
+    view.rerender(<BiribaPixiPreview game={next} roomCode="local-flight" revealComplete
+      localDiscardFlight={{ card: played, source: { x: 610, y: 580, width: 108, height: 160 }, revision: 2 }}
+      onLocalDiscardStart={started} onLocalDiscardComplete={completed} />);
+    await waitFor(() => expect(started).toHaveBeenCalledTimes(1));
+    const flight = mock.sprites.at(-1) as typeof mock.sprites[number] & { x: number; y: number };
+    expect([flight.x, flight.y]).toEqual([610, 580]);
+    expect(completed).not.toHaveBeenCalled();
+    act(() => { for (const tick of [...mock.apps[0]!.ticks]) tick({ deltaMS: 340 }); });
+    expect(completed).toHaveBeenCalledTimes(1);
+    expect(flight.destroyed).toBe(false);
+    view.unmount();
+  });
+  it("keeps a drawn card face down during its stock-to-hand flight and reveals it once", async () => {
+    const completed = vi.fn();
+    const card = { id: "new-private", suit: "clubs", rank: 9 } as BiribaCard;
+    const target = document.createElement("button");
+    target.dataset["biribaHandCard"] = card.id;
+    document.body.appendChild(target);
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return (this === target
+        ? { left: 600, top: 500, width: 100, height: 150 }
+        : { left: 0, top: 0, width: 1280, height: 720 }) as DOMRect;
+    });
+    try {
+      const first = game();
+      const view = render(<BiribaPixiPreview game={first} roomCode="draw-flight" revealComplete />);
+      await waitFor(() => expect(mock.sprites).toHaveLength(41));
+      const next = { ...first, revision: 2, stockCount: 39 };
+      view.rerender(<BiribaPixiPreview game={next} roomCode="draw-flight" revealComplete
+        localDrawFlight={{ card, revision: 2 }} onLocalDrawComplete={completed} />);
+      await waitFor(() => expect(mock.sprites).toHaveLength(42));
+      const flight = mock.sprites.at(-1) as typeof mock.sprites[number] & { x: number; y: number; width: number };
+      expect([flight.x, flight.y]).toEqual([440, 395]);
+      expect(completed).not.toHaveBeenCalled();
+      act(() => { for (const tick of [...mock.apps[0]!.ticks]) tick({ deltaMS: 320 }); });
+      expect(completed).not.toHaveBeenCalled();
+      act(() => { for (const tick of [...mock.apps[0]!.ticks]) tick({ deltaMS: 70 }); });
+      expect(flight.width).toBeLessThan(15);
+      act(() => { for (const tick of [...mock.apps[0]!.ticks]) tick({ deltaMS: 70 }); });
+      expect(completed).toHaveBeenCalledTimes(1);
+      view.unmount();
+    } finally {
+      rect.mockRestore();
+      target.remove();
+    }
+  });
   it("keeps the renderer and sprites across ordinary revisions, then disposes them", async () => {
     const view = render(<BiribaPixiPreview game={game()} roomCode="test-room" revealComplete />);
     await waitFor(() => expect(mock.apps).toHaveLength(1));
