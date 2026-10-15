@@ -38,7 +38,7 @@ export function BiribaFinishedScreen({
           Κόκκινη: {redScore.toLocaleString("el-GR")} · Μπλε: {blueScore.toLocaleString("el-GR")}
         </p>
         {error && <p className="biriba-finish-error" role="alert">{error}</p>}
-        <div className="biriba-finish-buttons">
+        <div className={isHost ? "biriba-finish-buttons" : "biriba-finish-buttons biriba-finish-buttons--single"}>
           <button type="button" disabled={busy} onClick={onHome} className="biriba-finish-home">
             Αρχική
           </button>
