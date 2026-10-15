@@ -115,6 +115,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [clockNow, setClockNow] = useState(Date.now());
+  const finished = game?.matchFinished === true;
   useEffect(() => {
     if (finished) return;
     const t = setInterval(() => setClockNow(Date.now()), 350);
@@ -122,7 +123,6 @@ function BiribaContent({ playerId }: { playerId: string }) {
   }, [finished]);
   const [error, setError] = useState("");
   const [scoresOpen, setScoresOpen] = useState(false);
-  const finished = game?.matchFinished === true;
   const closedCodes = useRef(new Set<string>());
   const [picker, setPicker] = useState<"players" | "target" | null>(null);
   const [botSeatPicker, setBotSeatPicker] = useState<number | null>(null);
