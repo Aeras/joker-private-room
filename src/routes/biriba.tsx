@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChartNoAxesColumn, ChevronDown } from "lucide-react";
+import { ChartNoAxesColumn, ChevronDown, X } from "lucide-react";
 import { CANONICAL_BOTS } from "../../supabase/functions/_shared/bot-catalog";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
