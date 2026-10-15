@@ -58,6 +58,24 @@ Deno.serve(async(req)=>{
   const revision=loaded.data.revision as number;
   const original=loaded.data.state as BiribaMatch;
   let match=original;
+  // Repair a previously persisted stuck turn from the old packet-pickup rule.
+  // Only the active player's empty meld-phase hand is eligible; never alter
+  // another player's hand, a scored round, or an already collected packet.
+  if(action==="get_game"&&match.phase==="meld"&&!match.roundEnded&&!match.roundScored){
+   const active=match.turn;
+   const team=active%2;
+   if(match.hands[active]?.length===0&&!match.packetTaken[team]&&
+      match.packets[team]?.length===11&&match.packetOwner[team]===null){
+    const hands=match.hands.map(h=>[...h]);
+    const packets=match.packets.map(p=>[...p]);
+    hands[active]=packets[team]!;
+    packets[team]=[];
+    const packetTaken=[...match.packetTaken];packetTaken[team]=true;
+    const packetPlayed=[...match.packetPlayed];packetPlayed[team]=true;
+    const packetOwner=[...match.packetOwner];packetOwner[team]=active;
+    match={...match,hands,packets,packetTaken,packetPlayed,packetOwner};
+   }
+  }
   const room=await rpc("get");
   if(room.error||!room.data?.ok)return json({ok:false,code:"SERVICE_UNAVAILABLE"},503);
   const seats=room.data.room.seats as Array<{index:number;occupant:string;name:string;botId?:string;tier?:number}>;
