@@ -17,7 +17,7 @@ export function biribaMeldDisplayLayout(melds: readonly BiribaMeld[], seats: Bir
   const numberByGlobalIndex = new Map<number, number>();
   melds.forEach((meld, globalIndex) => {
     const teamIndex = biribaTeamOf(meld.ownerSeat, seats);
-    const teamMelds = byTeam[teamIndex];
+    const teamMelds = byTeam[teamIndex]!;
     teamMelds.push(globalIndex);
     numberByGlobalIndex.set(globalIndex, teamMelds.length);
   });
