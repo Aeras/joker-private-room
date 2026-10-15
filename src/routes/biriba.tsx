@@ -126,6 +126,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
   }, [finished]);
   const [error, setError] = useState("");
   const [scoresOpen, setScoresOpen] = useState(false);
+  const [discardsOpen, setDiscardsOpen] = useState(false);
   const closedCodes = useRef(new Set<string>());
   const observedWaiting = useRef(new Set<string>());
   const freshDealKeys = useRef(new Set<string>());
@@ -445,11 +446,32 @@ function BiribaContent({ playerId }: { playerId: string }) {
         {/* 2. LABELS FOR CENTRAL PILES */}
         <div className="biriba-pile-labels">
           <span className="biriba-pile-label">ΚΛΕΙΣΤΗ ΤΡΑΠΟΥΛΑ</span>
-          <span className="biriba-pile-label">ΠΕΤΑΜΕΝΑ</span>
+          <button type="button" className="biriba-pile-label cursor-pointer" onClick={() => setDiscardsOpen(true)} aria-label="Προβολή όλων των πεταμένων φύλλων">ΠΕΤΑΜΕΝΑ · {game?.discards.length ?? 0} <span aria-hidden="true">⌕</span></button>
           <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 1</span>
           <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 2</span>
         </div>
 
+        {discardsOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 p-3" onPointerDown={(event) => { if (event.target === event.currentTarget) setDiscardsOpen(false); }}>
+            <section role="dialog" aria-modal="true" aria-label="Όλα τα πεταμένα φύλλα" className="flex max-h-[85dvh] w-full max-w-2xl flex-col rounded-xl border border-amber-500/50 bg-slate-950 p-4 text-white shadow-2xl">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="font-bold">Πεταμένα φύλλα ({game?.discards.length ?? 0})</h2>
+                <button type="button" onClick={() => setDiscardsOpen(false)} aria-label="Κλείσιμο πεταμένων" className="rounded-lg border border-white/40 p-2"><X size={20}/></button>
+              </div>
+              <p className="mb-3 text-sm text-white/75">Εμφανίζονται όλα τα φύλλα με τη σειρά που πετάχτηκαν. Το τελευταίο βρίσκεται στο τέλος.</p>
+              <div className="grid grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6">
+                {(game?.discards ?? []).map((card, index) => (
+                  <div key={card.id} className="flex min-h-20 flex-col items-center justify-center rounded-lg border border-white/25 bg-white/10 p-2">
+                    <span className="text-xs text-white/60">{index + 1}</span>
+                    <strong className="text-lg">{label(card)}</strong>
+                    {index === (game?.discards.length ?? 0) - 1 && <span className="text-[10px] text-amber-300">Πάνω φύλλο</span>}
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-white/70">Η προβολή δεν παίρνει φύλλα. Για να πάρεις τη στοίβα, πρέπει να επιτρέπεται έγκυρο κατέβασμα σύμφωνα με τους κανόνες του παιχνιδιού.</p>
+            </section>
+          </div>
+        )}
         {/* 3. TRUMP (ΑΤΟΥ) INDICATOR */}
         <BiribaTrumpIndicator suit={visualGame?.trump ?? preview?.trump} />
 
