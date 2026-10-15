@@ -1,6 +1,6 @@
 import type { BiribaDealtPreview } from "./localDeal";
 import type { BiribaGameView } from "@/services/biribaFunctions";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import {
   NORMAL_DEAL_TRAVEL_MS,
@@ -28,6 +28,13 @@ export function BiribaPixiPreview({
   const lastDealtRound = useRef<string | null>(null);
   const appRef = useRef<Application | null>(null);
   const [ready, setReady] = useState(false);
+  const projectionKey = JSON.stringify(game ? {
+    seat: game.seat, seats: game.seats, round: game.roundNumber,
+    stock: game.stockCount, packets: game.packetCounts,
+    hands: game.handCounts, discard: game.discards.at(-1),
+  } : null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const projectedGame = useMemo(() => game, [projectionKey]);
 
   // Keep the WebGL canvas and renderer alive across realtime game revisions.
   useEffect(() => {
@@ -73,7 +80,7 @@ export function BiribaPixiPreview({
     const schedule = (callback: () => void, delay: number) => {
       dealTimers.push(setTimeout(callback, delay));
     };
-    const dealKey = game ? `${game.roundNumber}:${game.seat}` : null;
+    const dealKey = projectedGame ? `${projectedGame.roundNumber}:${projectedGame.seat}` : null;
     const dealEntrance = dealKey !== null && lastDealtRound.current !== dealKey;
     if (dealEntrance) lastDealtRound.current = dealKey;
 
@@ -172,7 +179,7 @@ export function BiribaPixiPreview({
       // Do not draw them again on the Pixi canvas.
       
       // Public piles follow the authorized projection. An empty pile stays empty.
-      const discard = game?.discards.at(-1) ?? deal?.discard.at(-1);
+      const discard = projectedGame?.discards.at(-1) ?? deal?.discard.at(-1);
       const discardTop = discard
         ? discard.joker
           ? face("JOKER", "joker")
@@ -185,11 +192,11 @@ export function BiribaPixiPreview({
       const backStack = (x: number, y: number, layers: number) => {
         for (let i = 0; i < layers; i++) void addCard(null, x + i * 2, y - i * 2, 1.18);
       };
-      if (!game || game.stockCount > 0)
-        backStack(440, 395, game ? Math.min(3, game.stockCount) : 3);
+      if (!projectedGame || projectedGame.stockCount > 0)
+        backStack(440, 395, projectedGame ? Math.min(3, projectedGame.stockCount) : 3);
       if (discardTop) void addCard(discardTop, 548, 395, 1.18);
-      if (!game || (game.packetCounts[0] ?? 0) > 0) backStack(664, 395, 2);
-      if (!game || (game.packetCounts[1] ?? 0) > 0) backStack(766, 395, 2);
+      if (!projectedGame || (projectedGame.packetCounts[0] ?? 0) > 0) backStack(664, 395, 2);
+      if (!projectedGame || (projectedGame.packetCounts[1] ?? 0) > 0) backStack(766, 395, 2);
 
       // Opponents keep horizontal card backs in arced fans along the table rim.
       const BACK_W = BIRIBA_CARD_BACK_WIDTH,
@@ -215,15 +222,15 @@ export function BiribaPixiPreview({
         }
       };
 
-      const topSeat = game?.seats === 2 ? 1 : 2;
+      const topSeat = projectedGame?.seats === 2 ? 1 : 2;
       const target = (delta: number, index: number): { x: number; y: number; angle: number } => {
         if (delta === 0) return { x: 640 + (index - 5) * 10, y: 665, angle: 0 };
         if (delta === topSeat) return opponentFanPose("top", index, 11);
         if (delta === 1) return opponentFanPose("left", index, 11);
         return opponentFanPose("right", index, 11);
       };
-      if (game && dealEntrance && dealKey) {
-        const order = game.seats === 4 ? [0, 1, 2, 3] : [0, 1];
+      if (projectedGame && dealEntrance && dealKey) {
+        const order = projectedGame.seats === 4 ? [0, 1, 2, 3] : [0, 1];
         const flightCount = 11 * order.length;
         const allCards: Array<{
           sprite: Sprite;
@@ -296,10 +303,10 @@ export function BiribaPixiPreview({
               entranceLayer.destroy({ children: true });
               // Populate the persistent opponent fans before signaling the deal
               // handoff, avoiding a blank interval between flight and live state.
-              void rear("top", game.handCounts[(game.seat + topSeat) % game.seats] ?? 0);
-              if (game.seats === 4) {
-                void rear("left", game.handCounts[(game.seat + 1) % game.seats] ?? 0);
-                void rear("right", game.handCounts[(game.seat + 3) % game.seats] ?? 0);
+              void rear("top", projectedGame.handCounts[(projectedGame.seat + topSeat) % projectedGame.seats] ?? 0);
+              if (projectedGame.seats === 4) {
+                void rear("left", projectedGame.handCounts[(projectedGame.seat + 1) % projectedGame.seats] ?? 0);
+                void rear("right", projectedGame.handCounts[(projectedGame.seat + 3) % projectedGame.seats] ?? 0);
               }
             }
           };
@@ -312,10 +319,10 @@ export function BiribaPixiPreview({
           flightEnd + NORMAL_DEAL_HANDOFF_TRAVEL_MS + 100,
         );
       } else {
-        void rear("top", game ? (game.handCounts[(game.seat + topSeat) % game.seats] ?? 0) : 11);
-        if (!game || game.seats === 4) {
-          void rear("left", game ? (game.handCounts[(game.seat + 1) % game.seats] ?? 0) : 11);
-          void rear("right", game ? (game.handCounts[(game.seat + 3) % game.seats] ?? 0) : 11);
+        void rear("top", projectedGame ? (projectedGame.handCounts[(projectedGame.seat + topSeat) % projectedGame.seats] ?? 0) : 11);
+        if (!projectedGame || projectedGame.seats === 4) {
+          void rear("left", projectedGame ? (projectedGame.handCounts[(projectedGame.seat + 1) % projectedGame.seats] ?? 0) : 11);
+          void rear("right", projectedGame ? (projectedGame.handCounts[(projectedGame.seat + 3) % projectedGame.seats] ?? 0) : 11);
         }
       }
 
@@ -331,7 +338,7 @@ export function BiribaPixiPreview({
         projectionStage.destroy({children:true});
       }
     };
-  }, [ready, deal, game, redTeam, revealComplete, onDealComplete]);
+  }, [ready, deal, projectedGame, onDealComplete]);
 
   return (
     <div
