@@ -9,7 +9,7 @@ const cardImage = (card: BiribaCard): string => card.joker
 
 const cardName = (card: BiribaCard): string => card.joker ? "Τζόκερ" : `${card.rank} ${card.suit}`;
 
-export function BiribaMeldZone({ melds, teamName, hiddenCardIds }: { melds: BiribaMeld[]; teamName: string; hiddenCardIds?: ReadonlySet<string> }) {
+export function BiribaMeldZone({ melds, teamName, hiddenCardIds, highlightedIndices }: { melds: BiribaMeld[]; teamName: string; hiddenCardIds?: ReadonlySet<string>; highlightedIndices?: ReadonlySet<number> }) {
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [anchor, setAnchor] = useState<{ x: number; y: number; above: boolean } | null>(null);
@@ -47,10 +47,11 @@ export function BiribaMeldZone({ melds, teamName, hiddenCardIds }: { melds: Biri
       {melds.slice(current * 6, current * 6 + 6).map((meld, index) => {
         const fullIndex = current * 6 + index;
         const dirty = biribaMeldDirty(meld);
+        const available = highlightedIndices?.has(fullIndex) ?? false;
         const ordered = [...meld.cards].sort((a, b) => a.value - b.value);
         return <button type="button" key={fullIndex}
-          className={`biriba-meld-slot ${dirty ? "biriba-meld-slot--dirty" : "biriba-meld-slot--clean"}`}
-          aria-label={`${teamName}, χεριά ${fullIndex + 1}, ${dirty ? "βρώμικη" : "καθαρή"}, ${ordered.length} φύλλα. Πατήστε για όλα τα φύλλα.`}
+          className={`biriba-meld-slot ${dirty ? "biriba-meld-slot--dirty" : "biriba-meld-slot--clean"} ${available ? "biriba-meld-slot--available" : ""}`}
+          aria-label={`${teamName}, χεριά ${fullIndex + 1}, ${dirty ? "βρώμικη" : "καθαρή"}, ${ordered.length} φύλλα.${available ? " Διαθέσιμη για κόλλημα." : ""} Πατήστε για όλα τα φύλλα.`}
           onClick={event => { if (swipeConsumed.current) { swipeConsumed.current = false; return; } const rect = event.currentTarget.getBoundingClientRect(); setAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, above: rect.top > window.innerHeight * 0.48 }); setExpanded(old => old === fullIndex ? null : fullIndex); }}>
           <span className="biriba-meld-stack">
             {ordered.map(({ card }, i) => {
@@ -63,6 +64,7 @@ export function BiribaMeldZone({ melds, teamName, hiddenCardIds }: { melds: Biri
                 className="biriba-meld-card"/>;
             })}
           </span>
+          <span className="biriba-meld-number" aria-hidden="true">#{fullIndex + 1}</span>
         </button>;
       })}
     </div>
