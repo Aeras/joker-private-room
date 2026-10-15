@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChartNoAxesColumn, ChevronDown, X } from "lucide-react";
 import { CANONICAL_BOTS } from "../../supabase/functions/_shared/bot-catalog";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
@@ -18,6 +18,7 @@ import { biribaMeldDisplayLayout, sortedBiribaHand } from "@/biriba/handAndMeldP
 import { BiribaTrumpIndicator } from "@/biriba/BiribaTrumpIndicator";
 import { createAfterFinishedGame } from "@/biriba/finishedGameActions";
 import { localHandCardPresentation } from "@/biriba/localHandPresentation";
+import { confirmedLocalDiscard, confirmedLocalDraw, projectCardRect, type LocalDiscardFlight, type LocalDrawFlight, type TableRect } from "@/biriba/localCardMotion";
 import "@/biriba/biribaReferenceTable.css";
 import {
   biribaCommand,
@@ -102,6 +103,13 @@ function BiribaContent({ playerId }: { playerId: string }) {
     }>
   >([]);
   const [game, setGame] = useState<BiribaGameView | null>(null);
+  const gameRef = useRef<BiribaGameView | null>(null);
+  const pendingLocalMove = useRef<{ type: "draw" | "discard"; cardId: string | undefined; source: TableRect | undefined; round: number; revision: number } | null>(null);
+  const handRects = useRef(new Map<string, DOMRect>());
+  const discardGhost = useRef<HTMLImageElement | null>(null);
+  const [localDiscardFlight, setLocalDiscardFlight] = useState<LocalDiscardFlight | null>(null);
+  const [localDrawFlight, setLocalDrawFlight] = useState<LocalDrawFlight | null>(null);
+  useEffect(() => { gameRef.current = game; }, [game]);
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [clockNow, setClockNow] = useState(Date.now());
@@ -137,8 +145,41 @@ function BiribaContent({ playerId }: { playerId: string }) {
     setMeldPresentationVersion(value => value + 1);
   }, []);
   const receiveGame = useCallback((code: string, next: BiribaGameView) => {
-    setGame(previous => {
-      if (!admitBiribaRevision(previous, next)) return previous;
+    const previous = gameRef.current;
+    if (!admitBiribaRevision(previous, next)) return;
+    gameRef.current = next;
+    const pending = pendingLocalMove.current;
+    const animateLocal = !hydrateNextProjection.current &&
+      (next.publicActionSequence !== undefined || (previous && next.revision === previous.revision + 1)) &&
+      document.visibilityState === "visible" &&
+      !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (previous && pending && pending.round === previous.roundNumber && pending.revision <= previous.revision) {
+      if (pending.type === "draw") {
+        const card = confirmedLocalDraw(previous, next);
+        if (card && animateLocal)
+          setLocalDrawFlight({ card, revision: next.revision });
+        if (card || next.roundNumber !== pending.round) pendingLocalMove.current = null;
+      } else if (pending.cardId && pending.source) {
+        const card = confirmedLocalDiscard(previous, next, pending.cardId);
+        if (card && animateLocal) {
+          const original = [...document.querySelectorAll<HTMLButtonElement>("[data-biriba-hand-card]")]
+            .find(node => node.dataset["biribaHandCard"] === card.id);
+          const image = original?.querySelector("img");
+          if (image) {
+            const rect = original!.getBoundingClientRect();
+            const ghost = image.cloneNode(true) as HTMLImageElement;
+            Object.assign(ghost.style, { position: "fixed", left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`, zIndex: "100", pointerEvents: "none", transform: getComputedStyle(original!).transform, transformOrigin: "50% 140%" });
+            document.body.appendChild(ghost);
+            discardGhost.current?.remove();
+            discardGhost.current = ghost;
+          }
+          setLocalDiscardFlight({ card, source: pending.source, revision: next.revision });
+        }
+        if (card || next.roundNumber !== pending.round) pendingLocalMove.current = null;
+      }
+    }
+    setGame(previousState => {
+      if (previousState && previousState.revision > next.revision) return previousState;
       const skipMotion = hydrateNextProjection.current || document.visibilityState !== "visible";
       hydrateNextProjection.current = false;
       const flights = skipMotion ? [] : next.publicActionSequence === undefined
@@ -152,6 +193,49 @@ function BiribaContent({ playerId }: { playerId: string }) {
       return next;
     });
   }, []);
+  const onLocalDiscardStart = useCallback(() => {
+    discardGhost.current?.remove();
+    discardGhost.current = null;
+  }, []);
+  const onLocalDiscardComplete = useCallback(() => {
+    discardGhost.current?.remove();
+    discardGhost.current = null;
+    setLocalDiscardFlight(null);
+  }, []);
+  const onLocalDrawComplete = useCallback(() => setLocalDrawFlight(null), []);
+  useEffect(() => () => { discardGhost.current?.remove(); }, []);
+  useEffect(() => {
+    if (!localDiscardFlight) return;
+    const fallback = setTimeout(onLocalDiscardComplete, 1200);
+    return () => clearTimeout(fallback);
+  }, [localDiscardFlight, onLocalDiscardComplete]);
+  useEffect(() => {
+    if (!localDrawFlight) return;
+    const fallback = setTimeout(onLocalDrawComplete, 1200);
+    return () => clearTimeout(fallback);
+  }, [localDrawFlight, onLocalDrawComplete]);
+  useLayoutEffect(() => {
+    if (!game || pendingLocalMove.current || handRects.current.size === 0 ||
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const before = handRects.current;
+    handRects.current = new Map();
+    const reflow: Array<{ node: HTMLButtonElement; dx: number; dy: number; transform: string }> = [];
+    for (const node of document.querySelectorAll<HTMLButtonElement>("[data-biriba-hand-card]")) {
+      const prior = before.get(node.dataset["biribaHandCard"] ?? "");
+      if (!prior) continue;
+      const current = node.getBoundingClientRect();
+      const dx = prior.left - current.left;
+      const dy = prior.top - current.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+      reflow.push({ node, dx, dy, transform: getComputedStyle(node).transform });
+    }
+    for (const { node, dx, dy, transform } of reflow) {
+      node.animate([
+        { transform: `translate(${dx}px, ${dy}px) ${transform}` },
+        { transform },
+      ], { duration: 260, easing: "cubic-bezier(0.22, 0.72, 0.2, 1)" });
+    }
+  }, [game]);
 
   const dealSeats = game?.seats;
   useEffect(() => {
@@ -304,11 +388,26 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
   const play = async (move: unknown) => {
     if (!code) return;
+    const local = move as { type?: string; id?: string };
+    if (game && (local.type === "draw" || local.type === "discard")) {
+      const nodes = [...document.querySelectorAll<HTMLButtonElement>("[data-biriba-hand-card]")];
+      handRects.current = new Map(nodes.map(node => [node.dataset["biribaHandCard"] ?? "", node.getBoundingClientRect()]));
+      const source = local.type === "discard" && local.id
+        ? (() => {
+            const card = nodes.find(node => node.dataset["biribaHandCard"] === local.id);
+            const table = document.querySelector<HTMLElement>(".biriba-table-container");
+            return card && table ? projectCardRect(card.getBoundingClientRect(), table.getBoundingClientRect()) : null;
+          })()
+        : null;
+      pendingLocalMove.current = { type: local.type, cardId: local.id, source: source ?? undefined, round: game.roundNumber, revision: game.revision };
+    }
     setError("");
     setBusy(true);
     try {
       const result = await biribaCommand({ data: { action: "move", code, move } });
       if (!result.ok) {
+        pendingLocalMove.current = null;
+        handRects.current.clear();
         setError(format(result));
         return;
       }
@@ -317,6 +416,8 @@ function BiribaContent({ playerId }: { playerId: string }) {
         setSelected([]);
       }
     } catch {
+      pendingLocalMove.current = null;
+      handRects.current.clear();
       setError("Αποτυχία επικοινωνίας με τον server.");
     } finally {
       setBusy(false);
@@ -427,6 +528,11 @@ function BiribaContent({ playerId }: { playerId: string }) {
           onDealComplete={onDealComplete}
           meldFlights={pendingMeldFlights.current}
           onMeldFlightComplete={onMeldFlightComplete}
+          localDiscardFlight={localDiscardFlight}
+          localDrawFlight={localDrawFlight}
+          onLocalDiscardStart={onLocalDiscardStart}
+          onLocalDiscardComplete={onLocalDiscardComplete}
+          onLocalDrawComplete={onLocalDrawComplete}
           redTeam={redTeamIndex}
         />
         {/* The hit area shares the same 1280×720 discard rectangle as Pixi. */}
@@ -661,13 +767,16 @@ function BiribaContent({ playerId }: { playerId: string }) {
                 <button
                   type="button"
                   key={card.id}
-                  disabled={!mine || busy}
+                  data-biriba-hand-card={card.id}
+                  disabled={!mine || busy || localDrawFlight?.card.id === card.id}
                   aria-pressed={isSelected}
                   onClick={() => toggle(card.id)}
                   style={{
                     ...pose,
+                    visibility: localDrawFlight?.card.id === card.id ? "hidden" : undefined,
                   }}
                   className="biriba-fan-card"
+                  aria-hidden={localDrawFlight?.card.id === card.id ? true : undefined}
                 >
                   <img
                     draggable={false}
