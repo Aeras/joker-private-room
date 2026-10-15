@@ -168,20 +168,30 @@
 }
 .biriba-pile-label {
   position: absolute;
-  top: 67.5%;
-  z-index: 20;
+  /* Cards end above this row. Labels must never sit underneath the card sprites. */
+  top: 70.2%;
+  z-index: 32;
+  box-sizing: border-box;
+  width: 7.7vw;
+  max-width: 132px;
   transform: translateX(-50%);
-  padding: 3px clamp(4px, 0.55vw, 9px);
+  padding: 3px clamp(2px, 0.4vw, 6px);
   border: 1px solid #d9a341;
   border-radius: 10px;
   background: linear-gradient(#111715, #020503);
   box-shadow: 0 3px 7px #000a;
   color: #fff;
-  font-size: clamp(7px, 0.78vw, 13px);
+  font-size: clamp(8px, 0.72vw, 12px);
   font-weight: 750;
   line-height: 1.15;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
+  overflow-wrap: break-word;
   pointer-events: none;
+}
+.biriba-pile-labels button.biriba-pile-label {
+  pointer-events: auto;
+  cursor: pointer;
 }
 .biriba-trump-frame {
   position: absolute;
@@ -456,6 +466,32 @@
 }
 .biriba-meld-slot--clean { border-color: #75ebea; }
 .biriba-meld-slot--dirty { border-color: #f7bc52; }
+.biriba-meld-slot--available {
+  border-color: #6cffb0;
+  background: #1d624888;
+  box-shadow: 0 0 0 2px #67ffac90, 0 0 16px #4efda0c4, inset 0 0 12px #4efda050;
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+.biriba-meld-number {
+  position: absolute;
+  z-index: 20;
+  top: 3px;
+  right: 3px;
+  padding: 1px 4px;
+  border: 1px solid #d7c29f;
+  border-radius: 5px;
+  background: #071410e8;
+  color: white;
+  font-size: clamp(9px, .85vw, 12px);
+  font-weight: 800;
+  line-height: 1.15;
+  pointer-events: none;
+}
+.biriba-meld-slot--available .biriba-meld-number {
+  border-color: #72ffb6;
+  color: #b6ffd8;
+  background: #06432ee8;
+}
 .biriba-meld-slot:focus-visible { outline: 2px solid white; outline-offset: 1px; }
 .biriba-meld-stack {
   position: relative;
@@ -499,6 +535,15 @@
   border-radius: 4px;
 }
 .biriba-meld-pager button:disabled { opacity: .3; }
+.biriba-meld-pager .biriba-meld-pager-target {
+  border-color: #70ffb1;
+  background: #186d49;
+  color: #fff;
+  box-shadow: 0 0 8px #55ffa8af;
+}
+@media (prefers-reduced-motion: reduce) {
+  .biriba-meld-slot--available { transition: none; }
+}
 .biriba-meld-preview-backdrop {
   position: fixed;
   inset: 0;
