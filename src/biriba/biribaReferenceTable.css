@@ -37,6 +37,127 @@
   background: #10211b;
   box-shadow: 0 18px 60px #000a;
 }
+
+/* Finished-game results: a compact panel that remains fully reachable in short
+   landscape viewports, including mobile safe areas and zoomed displays. */
+.biriba-finish-screen {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100dvh;
+  padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  overflow-y: auto;
+  background: #09251d;
+}
+.biriba-finish-panel {
+  box-sizing: border-box;
+  flex: 0 1 390px;
+  width: 100%;
+  min-width: 0;
+  max-height: 100%;
+  margin: auto;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  border: 1px solid #c9a15d;
+  border-radius: 18px;
+  padding: clamp(10px, 2.5vh, 18px) clamp(12px, 2.2vw, 22px);
+  background: #112c24;
+  box-shadow: 0 15px 40px #0009;
+  text-align: center;
+}
+.biriba-finish-trophy {
+  display: block;
+  margin-bottom: clamp(2px, .9vh, 7px);
+  font-size: clamp(26px, 5.8vh, 40px);
+  line-height: 1.1;
+}
+.biriba-finish-heading {
+  margin: 0 0 clamp(6px, 1.5vh, 13px);
+  font-size: clamp(21px, 4.6vh, 30px);
+  font-weight: 800;
+  line-height: 1.15;
+}
+.biriba-finish-winner {
+  margin: 0 0 clamp(8px, 2vh, 18px);
+  color: #fcd34d;
+  font-size: clamp(15px, 3vh, 19px);
+  font-weight: 800;
+  line-height: 1.25;
+}
+.biriba-finish-players {
+  margin-bottom: clamp(8px, 1.8vh, 18px);
+}
+.biriba-finish-players-caption {
+  margin: 0 0 4px;
+  color: #ffffffad;
+  font-size: clamp(11px, 2vh, 13px);
+}
+.biriba-finish-players-names {
+  margin: 0;
+  font-size: clamp(13px, 2.7vh, 17px);
+  font-weight: 650;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.biriba-finish-scores {
+  margin: 0 0 clamp(10px, 2.4vh, 18px);
+  color: #ffffffad;
+  font-size: clamp(12px, 2.3vh, 14px);
+  line-height: 1.25;
+}
+.biriba-finish-error {
+  margin: 0 0 8px;
+  color: #fca5a5;
+  font-size: 12px;
+}
+.biriba-finish-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.biriba-finish-buttons--single { grid-template-columns: minmax(0, 1fr); }
+.biriba-finish-buttons > button {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: clamp(38px, 6vh, 45px);
+  padding: 7px 4px;
+  border-radius: 9px;
+  font-size: clamp(12px, 2.5vh, 15px);
+  font-weight: 750;
+  line-height: 1.15;
+  cursor: pointer;
+}
+.biriba-finish-home {
+  border: 1px solid #f59e0b;
+  color: white;
+  background: transparent;
+}
+.biriba-finish-new {
+  border: 1px solid #f59e0b;
+  color: #0b130e;
+  background: #f59e0b;
+}
+.biriba-finish-buttons > button:disabled { opacity: .5; cursor: default; }
+.biriba-finish-buttons > button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-height: 420px) {
+  .biriba-finish-panel {
+    padding: 9px 13px;
+    border-radius: 14px;
+  }
+  .biriba-finish-trophy { font-size: 26px; margin-bottom: 2px; }
+  .biriba-finish-heading { font-size: 21px; margin-bottom: 6px; }
+  .biriba-finish-winner { font-size: 15px; margin-bottom: 7px; }
+  .biriba-finish-players { margin-bottom: 7px; }
+  .biriba-finish-players-caption { margin-bottom: 2px; font-size: 11px; }
+  .biriba-finish-players-names { font-size: 13px; }
+  .biriba-finish-scores { margin-bottom: 9px; font-size: 12px; }
+  .biriba-finish-buttons > button { min-height: 38px; padding-block: 6px; font-size: 12px; }
+}
+
 .biriba-team-zone {
   z-index: 23;
   position: absolute;
