@@ -6,10 +6,13 @@ import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
 import { ScreenShell } from "@/components/joker/ScreenShell";
 import { BiribaPixiPreview, BIRIBA_DEAL_BEAT_MS } from "@/biriba/BiribaPixiPreview";
+import { admitBiribaRevision, biribaDealKey, newMeldCardsFromPublicActions, newMeldCardsFromSingleMove, type MeldFlight } from "@/biriba/biribaVisualModel";
 import { BiribaRoomControls } from "@/biriba/BiribaRoomControls";
 import { BiribaMeldZone } from "@/biriba/BiribaMeldZone";
 import { selectedBiribaMeld } from "@/biriba/meldSelection";
 import { BiribaTrumpIndicator } from "@/biriba/BiribaTrumpIndicator";
+import { createAfterFinishedGame } from "@/biriba/finishedGameActions";
+import { localHandCardPresentation } from "@/biriba/localHandPresentation";
 import "@/biriba/biribaReferenceTable.css";
 import {
   biribaCommand,
@@ -124,24 +127,53 @@ function BiribaContent({ playerId }: { playerId: string }) {
   const [error, setError] = useState("");
   const [scoresOpen, setScoresOpen] = useState(false);
   const closedCodes = useRef(new Set<string>());
+  const observedWaiting = useRef(new Set<string>());
+  const freshDealKeys = useRef(new Set<string>());
+  const pendingMeldFlights = useRef<MeldFlight[]>([]);
+  const hydrateNextProjection = useRef(false);
+  const hiddenMeldCards = useRef(new Set<string>());
+  const [, setMeldPresentationVersion] = useState(0);
   const [picker, setPicker] = useState<"players" | "target" | null>(null);
   const [botSeatPicker, setBotSeatPicker] = useState<number | null>(null);
   const [dealShownKey, setDealShownKey] = useState<string | null>(null);
-  const dealKey = game ? `${game.roundNumber}:${game.seat}` : null;
+  const dealKey = game && room ? biribaDealKey(room.code, game.roundNumber, game.seat) : null;
   const initialDealView = useMemo(() => {
     if (!game) return null;
     return { key: dealKey, game };
+  // Freeze the first authoritative projection for this round until the deal completes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dealKey]);
   const onDealComplete = useCallback((key: string) => setDealShownKey(key), []);
+  const onMeldFlightComplete = useCallback((id: string) => {
+    if (!hiddenMeldCards.current.delete(id)) return;
+    setMeldPresentationVersion(value => value + 1);
+  }, []);
+  const receiveGame = useCallback((code: string, next: BiribaGameView) => {
+    setGame(previous => {
+      if (!admitBiribaRevision(previous, next)) return previous;
+      const skipMotion = hydrateNextProjection.current || document.visibilityState !== "visible";
+      hydrateNextProjection.current = false;
+      const flights = skipMotion ? [] : next.publicActionSequence === undefined
+        ? newMeldCardsFromSingleMove(previous, next)
+        : newMeldCardsFromPublicActions(previous, next);
+      pendingMeldFlights.current = flights;
+      hiddenMeldCards.current = new Set(flights.map(flight => flight.card.id));
+      if (observedWaiting.current.delete(code) ||
+          (previous && next.roundNumber > previous.roundNumber))
+        freshDealKeys.current.add(biribaDealKey(code, next.roundNumber, next.seat));
+      return next;
+    });
+  }, []);
 
+  const dealSeats = game?.seats;
   useEffect(() => {
-    if (!dealKey || !game) return;
+    if (!dealKey || !dealSeats) return;
     const t = setTimeout(
       () => setDealShownKey(dealKey),
-      (11 * game.seats - 1) * BIRIBA_DEAL_BEAT_MS + NORMAL_DEAL_TRAVEL_MS + NORMAL_DEAL_HANDOFF_TRAVEL_MS + 800
+      (11 * dealSeats - 1) * BIRIBA_DEAL_BEAT_MS + NORMAL_DEAL_TRAVEL_MS + NORMAL_DEAL_HANDOFF_TRAVEL_MS + 800
     );
     return () => clearTimeout(t);
-  }, [dealKey, game?.seats]);
+  }, [dealKey, dealSeats]);
 
   const isHost = room?.hostPlayerId === playerId;
   const run = useCallback(
@@ -156,12 +188,13 @@ function BiribaContent({ playerId }: { playerId: string }) {
         }
         if ("room" in r) {
           closedCodes.current.delete(r.room.code);
+          if (r.room.lifecycle === "waiting") observedWaiting.current.add(r.room.code);
           setRoom(r.room);
           setGame(null);
           setDealShownKey(null);
         }
         if ("rooms" in r) setAvailable(r.rooms);
-        if ("game" in r) setGame(r.game);
+        if ("game" in r && data.code) receiveGame(data.code, r.game);
         if ("cancelled" in r) {
           if (data.code) closedCodes.current.add(data.code);
           setRoom(null);
@@ -183,7 +216,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
         setBusy(false);
       }
     },
-    [room?.code]
+    [room?.code, receiveGame]
   );
 
   useEffect(() => {
@@ -192,7 +225,10 @@ function BiribaContent({ playerId }: { playerId: string }) {
       .then(async (r) => {
         if (!active || !r.ok || !("membership" in r) || !r.membership) return;
         const found = await biribaCommand({ data: { action: "get", code: r.membership.code } });
-        if (active && found.ok && "room" in found) setRoom(found.room);
+        if (active && found.ok && "room" in found) {
+          if (found.room.lifecycle === "waiting") observedWaiting.current.add(found.room.code);
+          setRoom(found.room);
+        }
       })
       .catch(() => {});
     return () => {
@@ -227,13 +263,17 @@ function BiribaContent({ playerId }: { playerId: string }) {
             return;
           }
           setRoom(result.room);
-          setGame(final.game);
+          receiveGame(code, final.game);
           return;
         }
-        if (result.ok && "room" in result) setRoom((r) => (r?.version && r.version > result.room.version ? r : result.room));
+        if (result.ok && "room" in result) {
+          if (result.room.lifecycle === "waiting") observedWaiting.current.add(code);
+          setRoom((r) => (r?.version && r.version > result.room.version ? r : result.room));
+        }
         if (result.ok && "room" in result && result.room.lifecycle !== "waiting") {
           const next = await biribaCommand({ data: { action: "get_game", code } });
-          if (current && !closedCodes.current.has(code) && next.ok && "game" in next) setGame((previous) => (previous?.revision === next.game.revision ? previous : next.game));
+          if (current && !closedCodes.current.has(code) && next.ok && "game" in next)
+            receiveGame(code, next.game);
         }
       } catch {
         // A transient polling failure is retried on the next tick.
@@ -241,11 +281,19 @@ function BiribaContent({ playerId }: { playerId: string }) {
     };
     void poll();
     const timer = setInterval(() => void poll(), 900);
+    const refreshVisible = () => {
+      if (document.visibilityState === "hidden") hydrateNextProjection.current = true;
+      if (document.visibilityState === "visible") void poll();
+    };
+    document.addEventListener("visibilitychange", refreshVisible);
+    window.addEventListener("focus", refreshVisible);
     return () => {
       current = false;
       clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshVisible);
+      window.removeEventListener("focus", refreshVisible);
     };
-  }, [code, finished]);
+  }, [code, finished, receiveGame]);
 
   const ownCards = game?.myHand ?? [];
   const visualGame = dealShownKey === dealKey ? game : initialDealView?.game ?? game;
@@ -276,7 +324,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
         return;
       }
       if ("game" in result) {
-        setGame(result.game);
+        receiveGame(code, result.game);
         setSelected([]);
       }
     } catch {
@@ -328,9 +376,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
         setBusy(true);
         setError("");
         try {
-          const ended = await biribaCommand({ data: { action: "end_game", code: room.code } });
-          if (!ended.ok) { setError(format(ended)); return; }
-          const created = await biribaCommand({ data: { action: "create", capacity: room.capacity, target: room.target, timerEnabled: room.timerEnabled } });
+          const created = await createAfterFinishedGame(room, biribaCommand);
           if (!created.ok || !("room" in created)) { setError(format(created)); return; }
           closedCodes.current.add(room.code);
           setCapacity(room.capacity);
@@ -369,15 +415,19 @@ function BiribaContent({ playerId }: { playerId: string }) {
         {/* Dynamic Canvas Layer (Melds, Opponent Card Backs, Center Piles, Animations) */}
         <BiribaPixiPreview
           deal={preview}
-          game={visualGame ?? undefined}
+          game={game ?? undefined}
+          roomCode={room.code}
           revealComplete={dealShownKey === dealKey}
+          animateDeal={Boolean(dealKey && freshDealKeys.current.has(dealKey))}
           onDealComplete={onDealComplete}
+          meldFlights={pendingMeldFlights.current}
+          onMeldFlightComplete={onMeldFlightComplete}
           redTeam={redTeamIndex}
         />
 
         {/* 1. MELD ZONES (ΚΟΚΚΙΝΗ ΟΜΑΔΑ & ΜΠΛΕ ΟΜΑΔΑ) */}
         <div className="biriba-team-zone biriba-team-zone--red">
-          <BiribaMeldZone teamName="Κόκκινη ομάδα" melds={game?.melds.filter(m => biribaTeamOf(m.ownerSeat, game.seats) === redTeamIndex) ?? []} />
+          <BiribaMeldZone teamName="Κόκκινη ομάδα" melds={game?.melds.filter(m => biribaTeamOf(m.ownerSeat, game.seats) === redTeamIndex) ?? []} hiddenCardIds={hiddenMeldCards.current} />
           <div className="biriba-team-heading">
             <span>ΚΟΚΚΙΝΗ ΟΜΑΔΑ</span>
             <span className="biriba-team-score">{redScore}</span>
@@ -385,7 +435,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
         </div>
 
         <div className="biriba-team-zone biriba-team-zone--blue">
-          <BiribaMeldZone teamName="Μπλε ομάδα" melds={game?.melds.filter(m => biribaTeamOf(m.ownerSeat, game.seats) === 1 - redTeamIndex) ?? []} />
+          <BiribaMeldZone teamName="Μπλε ομάδα" melds={game?.melds.filter(m => biribaTeamOf(m.ownerSeat, game.seats) === 1 - redTeamIndex) ?? []} hiddenCardIds={hiddenMeldCards.current} />
           <div className="biriba-team-heading">
             <span>ΜΠΛΕ ΟΜΑΔΑ</span>
             <span className="biriba-team-score">{blueScore}</span>
@@ -565,15 +615,11 @@ function BiribaContent({ playerId }: { playerId: string }) {
         )}
 
         {/* 7. PLAYER HAND (CURVED FAN LAYOUT) */}
-        <div className="biriba-hand" style={{ "--biriba-card-gap": ownCards.length > 14 ? "clamp(-100px,-7.5vw,-48px)" : "clamp(-95px,-5.5vw,-42px)" } as React.CSSProperties}>
+        <div className={`biriba-hand ${dealShownKey === dealKey && dealKey && freshDealKeys.current.has(dealKey) ? "biriba-hand-enter" : ""}`} style={{ "--biriba-card-gap": ownCards.length > 14 ? "clamp(-100px,-7.5vw,-48px)" : "clamp(-95px,-5.5vw,-42px)" } as React.CSSProperties}>
           {dealShownKey === dealKey &&
             ownCards.map((card, i) => {
-              const total = ownCards.length;
-              const mid = (total - 1) / 2;
-              const norm = total > 1 ? (i - mid) / mid : 0;
-              const rot = norm * 15;
-              const yOffset = Math.pow(norm, 2) * 22;
               const isSelected = selected.includes(card.id);
+              const pose = localHandCardPresentation(i, ownCards.length, isSelected);
 
               return (
                 <button
@@ -583,14 +629,13 @@ function BiribaContent({ playerId }: { playerId: string }) {
                   aria-pressed={isSelected}
                   onClick={() => toggle(card.id)}
                   style={{
-                    transform: `translateY(calc(${yOffset}px - ${isSelected ? "clamp(45px, 11.5vh, 100px)" : "0px"})) rotate(${rot}deg)`,
-                    zIndex: i + 1,
+                    ...pose,
                   }}
                   className="biriba-fan-card"
                 >
                   <img
                     draggable={false}
-                    className="h-full w-full object-fill"
+                    className={`h-full w-full object-fill ${dealKey && freshDealKeys.current.has(dealKey) ? "biriba-hand-face" : ""}`}
                     src={
                       card.joker
                         ? "/cards/optimized-png/faces/joker_red.png"

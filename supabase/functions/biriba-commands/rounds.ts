@@ -27,5 +27,6 @@ export function nextBiribaRound(m:BiribaMatch,random:()=>number=Math.random):Bir
  if(!m.roundScored||m.matchFinished)throw new Error("CANNOT_START_NEXT_ROUND");
  const next=beginBiribaMatch(m.seats,random,m.target);
  return {...next,timerEnabled:m.timerEnabled,roundNumber:m.roundNumber+1,teamScores:m.teamScores,scoreHistory:m.scoreHistory,
+   publicActionSequence:m.publicActionSequence??0,publicActions:[],
    clock:{...next.clock,pausesUsed:[...m.clock.pausesUsed],botTakeovers:[...m.clock.botTakeovers]}};
 }
