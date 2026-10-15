@@ -561,3 +561,48 @@
     transform: rotate(90deg);
   }
 }
+
+/* Avatar identity always follows the same seat-to-team mapping as melds and scores. */
+.biriba-seat--team-red .biriba-seat-avatar,
+.biriba-seat--local.biriba-seat--team-red .biriba-seat-avatar { border-color: #f24357; box-shadow: 0 0 0 2px #030507, 0 4px 14px #000a; }
+.biriba-seat--team-blue .biriba-seat-avatar,
+.biriba-seat--local.biriba-seat--team-blue .biriba-seat-avatar { border-color: #1489f6; box-shadow: 0 0 0 2px #030507, 0 4px 14px #000a; }
+
+/* The meld inspection is a compact floating bubble, portaled outside the table's stacking context. */
+.biriba-meld-popover-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: transparent;
+}
+.biriba-meld-popover {
+  position: absolute;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(90vw, 920px);
+  padding: 9px 11px 11px;
+  border: 1.5px solid #d4ae70;
+  border-radius: 12px;
+  background: #0b241cf7;
+  color: white;
+  box-shadow: 0 12px 30px #000b;
+  transform: translate(-50%, 10px);
+  animation: biriba-popover-in .16s ease-out both;
+}
+.biriba-meld-popover--above { transform: translate(-50%, calc(-100% - 10px)); }
+.biriba-meld-popover::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 13px;
+  height: 13px;
+  background: #0b241c;
+  border: 1.5px solid #d4ae70;
+  transform: translateX(-50%) rotate(45deg);
+}
+.biriba-meld-popover--below::before { top: -8px; border-right: 0; border-bottom: 0; }
+.biriba-meld-popover--above::before { bottom: -8px; border-left: 0; border-top: 0; }
+.biriba-meld-popover-heading { font-size: 12px; font-weight: 700; margin-bottom: 7px; }
+.biriba-meld-popover-cards { display: flex; gap: 3px; overflow-x: auto; max-width: calc(min(90vw, 920px) - 22px); }
+.biriba-meld-popover-cards img { width: clamp(37px, 5.3vw, 67px); height: clamp(53px, 7.5vw, 96px); flex: 0 0 auto; object-fit: fill; border-radius: 3px; }
+@keyframes biriba-popover-in { from { opacity: 0; } to { opacity: 1; } }
