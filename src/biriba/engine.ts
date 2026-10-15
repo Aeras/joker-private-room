@@ -50,8 +50,8 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
  };
  const assessEmpty=()=>{
   if(hand.length!==0||next.packetTaken[team])return;
-  const eligible=next.melds.some(md=>biribaTeamOf(md.ownerSeat,next.seats)===team&&md.cards.length>=7);
-  if(!eligible)return;
+  // Taking the first packet is triggered by emptying the hand; a completed
+  // biriba is required for closing, not for taking the packet.
   next.packetTaken[team]=true;next.packetOwner[team]=seat;
   next.hands[seat]=next.packets[team]!.splice(0);
   if(next.phase==="meld")next.packetPlayed[team]=true;
