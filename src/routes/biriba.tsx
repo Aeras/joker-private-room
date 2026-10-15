@@ -8,6 +8,7 @@ import { ScreenShell } from "@/components/joker/ScreenShell";
 import { BiribaPixiPreview, BIRIBA_DEAL_BEAT_MS } from "@/biriba/BiribaPixiPreview";
 import { admitBiribaRevision, biribaDealKey, newMeldCardsFromPublicActions, newMeldCardsFromSingleMove, type MeldFlight } from "@/biriba/biribaVisualModel";
 import { BiribaRoomControls } from "@/biriba/BiribaRoomControls";
+import { BiribaFinishedScreen } from "@/biriba/BiribaFinishedScreen";
 import { BiribaMeldZone } from "@/biriba/BiribaMeldZone";
 import { BiribaExtensionActions } from "@/biriba/BiribaExtensionActions";
 import { biribaExtensionOptions, preferredBiribaExtension } from "@/biriba/extensionOptions";
@@ -397,20 +398,17 @@ function BiribaContent({ playerId }: { playerId: string }) {
         finally { setBusy(false); }
       };
       return (
-        <main className="flex min-h-dvh items-center justify-center bg-[#09251d] p-4 text-white">
-          <section className="w-full max-w-md rounded-2xl border border-amber-500/60 bg-[#112c24] p-6 text-center shadow-2xl" aria-label="Τέλος παιχνιδιού">
-            <div className="mb-3 text-5xl" aria-hidden="true">🏆</div>
-            <h1 className="mb-4 text-3xl font-bold">Τέλος παιχνιδιού</h1>
-            <p className="mb-4 text-xl font-bold text-amber-300">{winningTeam === null ? "Ισοπαλία" : `Νικήτρια: ${winningColor} ΟΜΑΔΑ`}</p>
-            {winners.length > 0 && <div className="mb-6"><p className="mb-2 text-sm text-white/70">Παίκτες της νικήτριας ομάδας</p><p className="font-semibold">{winners.map(seat => seat.name ?? "Παίκτης").join(" · ")}</p></div>}
-            <p className="mb-6 text-sm text-white/70">Κόκκινη: {redScore.toLocaleString("el-GR")} · Μπλε: {blueScore.toLocaleString("el-GR")}</p>
-            {error && <p role="alert" className="mb-3 text-sm text-red-300">{error}</p>}
-            <div className="flex flex-col gap-3">
-              {isHost && <button type="button" disabled={busy} onClick={() => void newGame()} className="rounded-lg bg-amber-500 px-5 py-3 font-bold text-black disabled:opacity-50">Νέο παιχνίδι</button>}
-              <button type="button" disabled={busy} onClick={() => void goHome()} className="rounded-lg border border-amber-500 px-5 py-3 font-bold disabled:opacity-50">Αρχική οθόνη</button>
-            </div>
-          </section>
-        </main>
+        <BiribaFinishedScreen
+          winningColor={winningTeam === null ? null : winningColor}
+          winnerNames={winners.map(seat => seat.name ?? "Παίκτης")}
+          redScore={redScore}
+          blueScore={blueScore}
+          error={error}
+          busy={busy}
+          isHost={isHost}
+          onHome={() => void goHome()}
+          onNewGame={() => void newGame()}
+        />
       );
     }
 
