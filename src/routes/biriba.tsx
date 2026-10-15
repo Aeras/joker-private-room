@@ -18,6 +18,7 @@ import { biribaMeldDisplayLayout, sortedBiribaHand } from "@/biriba/handAndMeldP
 import { BiribaTrumpIndicator } from "@/biriba/BiribaTrumpIndicator";
 import { createAfterFinishedGame } from "@/biriba/finishedGameActions";
 import { localHandCardPresentation } from "@/biriba/localHandPresentation";
+import { createBiribaPollGate } from "@/biriba/pollGate";
 import { confirmedLocalDiscard, confirmedLocalDraw, projectCardRect, type LocalDiscardFlight, type LocalDrawFlight, type TableRect } from "@/biriba/localCardMotion";
 import "@/biriba/biribaReferenceTable.css";
 import {
@@ -82,7 +83,7 @@ const format = (r: BiribaResponse) =>
         ROOM_FULL: "Το δωμάτιο είναι γεμάτο.",
         HOST_ONLY: "Η ενέργεια επιτρέπεται μόνο στον δημιουργό.",
         ILLEGAL_MOVE: "Μη επιτρεπτή κίνηση.",
-        SERVICE_UNAVAILABLE: "Ο διακομιστής Μπιρίμπας δεν είναι διαθέσιμος ακόμη.",
+        SERVICE_UNAVAILABLE: "Ο διακομιστής της Μπιρίμπας καθυστέρησε. Δοκίμασε ξανά σε λίγο.",
         NOT_AUTHENTICATED: "Χρειάζεται νέα σύνδεση.",
       } as Record<string, string>)[r.code] ?? "Η ενέργεια δεν ολοκληρώθηκε.";
 
@@ -92,6 +93,8 @@ function BiribaContent({ playerId }: { playerId: string }) {
   const [timerEnabled, setTimerEnabled] = useState(true);
   const [mode, setMode] = useState<"create" | "join">("create");
   const [room, setRoom] = useState<BiribaRoomView | null>(null);
+  const roomRef = useRef(room);
+  roomRef.current = room;
   const [available, setAvailable] = useState<
     Array<{
       code: string;
@@ -112,6 +115,9 @@ function BiribaContent({ playerId }: { playerId: string }) {
   useEffect(() => { gameRef.current = game; }, [game]);
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const commandPending = useRef(false);
+  const uncertainDiscard = useRef<string | null>(null);
+  const refreshAfterCommand = useRef<(() => void) | null>(null);
   const [clockNow, setClockNow] = useState(Date.now());
   const finished = game?.matchFinished === true;
   useEffect(() => {
@@ -148,6 +154,14 @@ function BiribaContent({ playerId }: { playerId: string }) {
     const previous = gameRef.current;
     if (!admitBiribaRevision(previous, next)) return;
     gameRef.current = next;
+    if (uncertainDiscard.current && !next.myHand.some(card => card.id === uncertainDiscard.current)) {
+      uncertainDiscard.current = null;
+      setError("");
+    }
+    setSelected(ids => {
+      const held = new Set(next.myHand.map(card => card.id));
+      return ids.every(id => held.has(id)) ? ids : ids.filter(id => held.has(id));
+    });
     const pending = pendingLocalMove.current;
     const animateLocal = !hydrateNextProjection.current &&
       (next.publicActionSequence !== undefined || (previous && next.revision === previous.revision + 1)) &&
@@ -312,21 +326,34 @@ function BiribaContent({ playerId }: { playerId: string }) {
   useEffect(() => {
     if (!code || finished) return;
     let current = true;
+    const gate = createBiribaPollGate();
     const poll = async () => {
+      if (commandPending.current || document.visibilityState === "hidden") return;
       try {
-        const result = await biribaCommand({ data: { action: "get", code } });
-        if (!current || closedCodes.current.has(code)) return;
-        if (!result.ok && result.code === "ROOM_NOT_FOUND") {
-          setRoom(null);
-          setGame(null);
-          setMode("create");
-          setBotSeatPicker(null);
-          return;
-        }
-        if (result.ok && "room" in result && result.room.lifecycle === "finished") {
-          const final = await biribaCommand({ data: { action: "get_game", code } });
+        await gate.run(async pollCount => {
+        // Waiting rooms need prompt seat updates. Once playing, the authorized game
+        // projection is the hot path; room metadata can be refreshed less often.
+        const checkRoom = !gameRef.current || pollCount % 5 === 0;
+        let lifecycle = roomRef.current?.lifecycle ?? "waiting";
+        if (checkRoom) {
+          const result = await biribaCommand({ data: { action: "get", code } });
           if (!current || closedCodes.current.has(code)) return;
-          if (!final.ok || !("game" in final) || !final.game.matchFinished) {
+          if (!result.ok && result.code === "ROOM_NOT_FOUND") {
+            setRoom(null);
+            setGame(null);
+            setMode("create");
+            setBotSeatPicker(null);
+            return;
+          }
+          if (!result.ok || !("room" in result)) return;
+          lifecycle = result.room.lifecycle;
+          if (lifecycle === "waiting") observedWaiting.current.add(code);
+          setRoom((r) => (r?.version && r.version > result.room.version ? r : result.room));
+        }
+        if (lifecycle !== "waiting" && !commandPending.current) {
+          const next = await biribaCommand({ data: { action: "get_game", code } });
+          if (!current || closedCodes.current.has(code)) return;
+          if (lifecycle === "finished" && (!next.ok || !("game" in next) || !next.game.matchFinished)) {
             closedCodes.current.add(code);
             setRoom(null);
             setGame(null);
@@ -334,23 +361,14 @@ function BiribaContent({ playerId }: { playerId: string }) {
             setMode("create");
             return;
           }
-          setRoom(result.room);
-          receiveGame(code, final.game);
-          return;
+          if (next.ok && "game" in next) receiveGame(code, next.game);
         }
-        if (result.ok && "room" in result) {
-          if (result.room.lifecycle === "waiting") observedWaiting.current.add(code);
-          setRoom((r) => (r?.version && r.version > result.room.version ? r : result.room));
-        }
-        if (result.ok && "room" in result && result.room.lifecycle !== "waiting") {
-          const next = await biribaCommand({ data: { action: "get_game", code } });
-          if (current && !closedCodes.current.has(code) && next.ok && "game" in next)
-            receiveGame(code, next.game);
-        }
+        });
       } catch {
         // A transient polling failure is retried on the next tick.
       }
     };
+    refreshAfterCommand.current = () => void poll();
     void poll();
     const timer = setInterval(() => void poll(), 900);
     const refreshVisible = () => {
@@ -361,6 +379,8 @@ function BiribaContent({ playerId }: { playerId: string }) {
     window.addEventListener("focus", refreshVisible);
     return () => {
       current = false;
+      gate.stop();
+      refreshAfterCommand.current = null;
       clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshVisible);
       window.removeEventListener("focus", refreshVisible);
@@ -387,8 +407,11 @@ function BiribaContent({ playerId }: { playerId: string }) {
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((v) => v !== id) : [...s, id]));
 
   const play = async (move: unknown) => {
-    if (!code) return;
+    if (!code || commandPending.current) return;
+    commandPending.current = true;
+    let reconcile = false;
     const local = move as { type?: string; id?: string };
+    uncertainDiscard.current = null;
     if (game && (local.type === "draw" || local.type === "discard")) {
       const nodes = [...document.querySelectorAll<HTMLButtonElement>("[data-biriba-hand-card]")];
       handRects.current = new Map(nodes.map(node => [node.dataset["biribaHandCard"] ?? "", node.getBoundingClientRect()]));
@@ -406,9 +429,13 @@ function BiribaContent({ playerId }: { playerId: string }) {
     try {
       const result = await biribaCommand({ data: { action: "move", code, move } });
       if (!result.ok) {
+        reconcile = result.code === "SERVICE_UNAVAILABLE";
+        if (reconcile && local.type === "discard") uncertainDiscard.current = local.id ?? null;
         pendingLocalMove.current = null;
         handRects.current.clear();
-        setError(format(result));
+        setError(reconcile
+          ? "Η κίνηση καθυστέρησε. Έλεγξε την παρτίδα πριν την επαναλάβεις."
+          : format(result));
         return;
       }
       if ("game" in result) {
@@ -416,11 +443,15 @@ function BiribaContent({ playerId }: { playerId: string }) {
         setSelected([]);
       }
     } catch {
+      reconcile = true;
+      if (local.type === "discard") uncertainDiscard.current = local.id ?? null;
       pendingLocalMove.current = null;
       handRects.current.clear();
-      setError("Αποτυχία επικοινωνίας με τον server.");
+      setError("Η κίνηση δεν επιβεβαιώθηκε. Έλεγξε την παρτίδα πριν την επαναλάβεις.");
     } finally {
+      commandPending.current = false;
       setBusy(false);
+      if (reconcile) refreshAfterCommand.current?.();
     }
   };
 
