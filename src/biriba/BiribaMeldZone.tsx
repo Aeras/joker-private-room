@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { BiribaCard, BiribaMeld } from "./rules";
 import { biribaMeldDirty } from "./rules";
 
@@ -11,12 +12,19 @@ const cardName = (card: BiribaCard): string => card.joker ? "Τζόκερ" : `${
 export function BiribaMeldZone({ melds, teamName, hiddenCardIds }: { melds: BiribaMeld[]; teamName: string; hiddenCardIds?: ReadonlySet<string> }) {
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [anchor, setAnchor] = useState<{ x: number; y: number; above: boolean } | null>(null);
   const swipeOrigin = useRef<{ x: number; y: number } | null>(null);
   const swipeConsumed = useRef(false);
   const pages = Math.max(1, Math.ceil(melds.length / 6));
   const current = Math.min(page, pages - 1);
   useEffect(() => { if (page >= pages) setPage(pages - 1); }, [page, pages]);
   const active = expanded === null ? null : melds[expanded] ?? null;
+  useEffect(() => {
+    if (expanded === null) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setExpanded(null); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [expanded]);
   const onSwipeEnd = (x: number, y: number) => {
     const from = swipeOrigin.current;
     swipeOrigin.current = null;
@@ -43,7 +51,7 @@ export function BiribaMeldZone({ melds, teamName, hiddenCardIds }: { melds: Biri
         return <button type="button" key={fullIndex}
           className={`biriba-meld-slot ${dirty ? "biriba-meld-slot--dirty" : "biriba-meld-slot--clean"}`}
           aria-label={`${teamName}, χεριά ${fullIndex + 1}, ${dirty ? "βρώμικη" : "καθαρή"}, ${ordered.length} φύλλα. Πατήστε για όλα τα φύλλα.`}
-          onClick={() => { if (swipeConsumed.current) { swipeConsumed.current = false; return; } setExpanded(fullIndex); }}>
+          onClick={event => { if (swipeConsumed.current) { swipeConsumed.current = false; return; } const rect = event.currentTarget.getBoundingClientRect(); setAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, above: rect.top > window.innerHeight * 0.48 }); setExpanded(old => old === fullIndex ? null : fullIndex); }}>
           <span className="biriba-meld-stack">
             {ordered.map(({ card }, i) => {
               const last = ordered.length - 1;
@@ -63,17 +71,18 @@ export function BiribaMeldZone({ melds, teamName, hiddenCardIds }: { melds: Biri
       <span>{current + 1}/{pages}</span>
       <button type="button" disabled={current === pages - 1} aria-label={`Επόμενες χεριές ${teamName}`} onClick={() => setPage(current + 1)}>›</button>
     </div>}
-    {active && <div className="biriba-meld-preview-backdrop" role="presentation" onClick={() => setExpanded(null)}>
-      <section className="biriba-meld-preview" role="dialog" aria-modal="true" aria-label={`Αναλυτική προβολή χεριάς ${teamName}`} onClick={event => event.stopPropagation()}>
-        <div className="biriba-meld-preview-header">
-          <strong>{teamName} · {biribaMeldDirty(active) ? "Βρώμικη" : "Καθαρή"} χεριά</strong>
-          <button type="button" onClick={() => setExpanded(null)} aria-label="Κλείσιμο χεριάς">✕</button>
-        </div>
-        <div className="biriba-meld-preview-cards">
-          {[...active.cards].sort((a,b)=>a.value-b.value).map(({card}) =>
-            <img key={card.id} draggable={false} src={cardImage(card)} alt={cardName(card)}/>)}
-        </div>
-      </section>
-    </div>}
+    {active && anchor && typeof document !== "undefined" && createPortal(
+      <div className="biriba-meld-popover-layer" onPointerDown={event => { if (event.target === event.currentTarget) setExpanded(null); }}>
+        <section className={`biriba-meld-popover ${anchor.above ? "biriba-meld-popover--above" : "biriba-meld-popover--below"}`}
+          style={{ left: `${Math.max(12, Math.min(window.innerWidth - 12, anchor.x))}px`, top: `${anchor.y}px` }}
+          role="dialog" aria-label={`Χεριά ${teamName}`}>
+          <div className="biriba-meld-popover-heading">{teamName} · {biribaMeldDirty(active) ? "Βρώμικη" : "Καθαρή"}</div>
+          <div className="biriba-meld-popover-cards">
+            {[...active.cards].sort((a,b)=>a.value-b.value).map(({card}) =>
+              <img key={card.id} draggable={false} src={cardImage(card)} alt={cardName(card)}/>)}
+          </div>
+        </section>
+      </div>, document.body)}
+
   </>;
 }
