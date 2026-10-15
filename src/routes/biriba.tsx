@@ -9,6 +9,7 @@ import { BiribaPixiPreview, BIRIBA_DEAL_BEAT_MS } from "@/biriba/BiribaPixiPrevi
 import { admitBiribaRevision, biribaDealKey, newMeldCardsFromPublicActions, newMeldCardsFromSingleMove, type MeldFlight } from "@/biriba/biribaVisualModel";
 import { BiribaRoomControls } from "@/biriba/BiribaRoomControls";
 import { BiribaMeldZone } from "@/biriba/BiribaMeldZone";
+import { BiribaDiscardPileTrigger, BiribaDiscardsDialog } from "@/biriba/BiribaDiscardPile";
 import { selectedBiribaMeld } from "@/biriba/meldSelection";
 import { biribaMeldDisplayLayout, sortedBiribaHand } from "@/biriba/handAndMeldPresentation";
 import { BiribaTrumpIndicator } from "@/biriba/BiribaTrumpIndicator";
@@ -138,7 +139,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
   }, [finished]);
   const [error, setError] = useState("");
   const [scoresOpen, setScoresOpen] = useState(false);
-  const [discardsOpen, setDiscardsOpen] = useState(false);
+  const [discardsMode, setDiscardsMode] = useState<"inspect" | "pickup" | null>(null);
   const closedCodes = useRef(new Set<string>());
   const observedWaiting = useRef(new Set<string>());
   const freshDealKeys = useRef(new Set<string>());
@@ -456,6 +457,11 @@ function BiribaContent({ playerId }: { playerId: string }) {
           onMeldFlightComplete={onMeldFlightComplete}
           redTeam={redTeamIndex}
         />
+        {/* The hit area shares the same 1280×720 discard rectangle as Pixi. */}
+        <BiribaDiscardPileTrigger
+          visible={Boolean(game?.discards.length)}
+          onOpen={() => setDiscardsMode("inspect")}
+        />
 
         {/* 1. MELD ZONES (ΚΟΚΚΙΝΗ ΟΜΑΔΑ & ΜΠΛΕ ΟΜΑΔΑ) */}
         <div className="biriba-team-zone biriba-team-zone--red">
@@ -477,43 +483,42 @@ function BiribaContent({ playerId }: { playerId: string }) {
         {/* 2. LABELS FOR CENTRAL PILES */}
         <div className="biriba-pile-labels">
           <span className="biriba-pile-label">ΚΛΕΙΣΤΗ ΤΡΑΠΟΥΛΑ</span>
-          <button type="button" className="biriba-pile-label cursor-pointer" onClick={() => setDiscardsOpen(true)} aria-label="Προβολή όλων των πεταμένων φύλλων">ΠΕΤΑΜΕΝΑ · {game?.discards.length ?? 0} <span aria-hidden="true">⌕</span></button>
+          <button type="button" className="biriba-pile-label cursor-pointer" onClick={() => setDiscardsMode("inspect")} aria-label="Προβολή όλων των πεταμένων φύλλων">ΠΕΤΑΜΕΝΑ · {game?.discards.length ?? 0} <span aria-hidden="true">⌕</span></button>
           <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 1</span>
           <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 2</span>
         </div>
 
-        {discardsOpen && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 p-3" onPointerDown={(event) => { if (event.target === event.currentTarget) setDiscardsOpen(false); }}>
-            <section role="dialog" aria-modal="true" aria-label="Όλα τα πεταμένα φύλλα" className="flex max-h-[85dvh] w-full max-w-2xl flex-col rounded-xl border border-amber-500/50 bg-slate-950 p-4 text-white shadow-2xl">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="font-bold">Πεταμένα φύλλα ({game?.discards.length ?? 0})</h2>
-                <button type="button" onClick={() => setDiscardsOpen(false)} aria-label="Κλείσιμο πεταμένων" className="rounded-lg border border-white/40 p-2"><X size={20}/></button>
-              </div>
-              <p className="mb-3 text-sm text-white/75">Εμφανίζονται όλα τα φύλλα με τη σειρά που πετάχτηκαν. Το τελευταίο βρίσκεται στο τέλος.</p>
-              <div className="grid grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6">
-                {(game?.discards ?? []).map((card, index) => (
-                  <div key={card.id} className="flex min-h-20 flex-col items-center justify-center rounded-lg border border-white/25 bg-white/10 p-2">
-                    <span className="text-xs text-white/60">{index + 1}</span>
-                    <strong className="text-lg">{label(card)}</strong>
-                    {index === (game?.discards.length ?? 0) - 1 && <span className="text-[10px] text-amber-300">Πάνω φύλλο</span>}
-                  </div>
+        {discardsMode !== null && (
+          <BiribaDiscardsDialog cards={game?.discards ?? []} onClose={() => setDiscardsMode(null)}>
+            {/* Explicit pickup flow stays available via its own action button, never by inspecting a card. */}
+            {discardsMode === "pickup" && mine && game?.phase === "draw" && (
+              <div className="biriba-discard-pickup-actions">
+                {pickupOptions.map((option, i) => (
+                  <button
+                    key={option.discard.id + "-" + (option.index ?? "new") + "-" + i}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setDiscardsMode(null);
+                      void play({
+                        type: "pickup",
+                        ids: [option.discard.id],
+                        meld: option.meld,
+                        ...(option.index === undefined ? {} : { index: option.index }),
+                      });
+                    }}
+                  >
+                    Πάρε με {label(option.discard)} · {option.index === undefined
+                      ? "Νέα χεριά"
+                      : `Κόλλημα #${meldLayout?.numberByGlobalIndex.get(option.index) ?? option.index + 1}`}
+                  </button>
                 ))}
+                {pickupOptions.length === 0 && (
+                  <span className="biriba-discard-pickup-empty">Δεν υπάρχει διαθέσιμο κόλλημα.</span>
+                )}
               </div>
-              <p className="mt-3 text-xs text-white/70">Η προβολή δεν παίρνει φύλλα. Για να πάρεις τη στοίβα, πρέπει να επιτρέπεται έγκυρο κατέβασμα σύμφωνα με τους κανόνες του παιχνιδιού.</p>
-              {mine && game?.phase === "draw" && (
-                <div className="mt-3 flex flex-wrap gap-2 overflow-y-auto">
-                  {pickupOptions.length ? pickupOptions.map((option, i) => (
-                    <button key={option.discard.id + "-" + (option.index ?? "new") + "-" + i}
-                      type="button" disabled={busy}
-                      className="rounded-lg border border-amber-400 bg-amber-700 px-3 py-2 text-sm font-semibold"
-                      onClick={() => { setDiscardsOpen(false); void play({ type: "pickup", ids: [option.discard.id], meld: option.meld, ...(option.index === undefined ? {} : { index: option.index }) }); }}>
-                      Πάρε με {label(option.discard)} · {option.index === undefined ? "Νέα χεριά" : `Κόλλημα #${meldLayout?.numberByGlobalIndex.get(option.index) ?? option.index + 1}`}
-                    </button>
-                  )) : <p className="text-sm text-white/70">Επίλεξε φύλλα από το χέρι σου για νέα χεριά ή αξιοποίησε πεταμένο φύλλο σε υπάρχουσα χεριά.</p>}
-                </div>
-              )}
-            </section>
-          </div>
+            )}
+          </BiribaDiscardsDialog>
         )}
         {/* 3. TRUMP (ΑΤΟΥ) INDICATOR */}
         <BiribaTrumpIndicator suit={visualGame?.trump ?? preview?.trump} />
@@ -661,7 +666,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
           )}
           {mine && game?.phase === "draw" && pickupOptions.length > 0 && (
             <button type="button" className="rounded-lg bg-amber-600 font-bold shadow-lg hover:bg-amber-500"
-              disabled={busy} onClick={() => setDiscardsOpen(true)}>Πάρε πεταμένα</button>
+              disabled={busy} onClick={() => setDiscardsMode("pickup")}>Πάρε πεταμένα</button>
           )}
         </div>
         {mine && game?.phase === "meld" && extensions.length > 0 && (

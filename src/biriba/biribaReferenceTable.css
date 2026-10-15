@@ -193,6 +193,125 @@
   pointer-events: auto;
   cursor: pointer;
 }
+
+/* The same reference rectangle used by Pixi becomes an invisible, accessible tap target. */
+.biriba-discard-pile-hitbox {
+  position: absolute;
+  z-index: 34;
+  box-sizing: border-box;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.biriba-discard-pile-hitbox:focus-visible {
+  outline: 3px solid #f6d18a;
+  outline-offset: 2px;
+  border-radius: 5px;
+}
+
+/* Compact, picture-only discard inspection; no oversized text tiles or instructions. */
+.biriba-discard-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  background: #000b;
+  pointer-events: auto;
+}
+.biriba-discard-dialog {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  max-width: min(92%, 680px);
+  max-height: 78%;
+  padding: clamp(8px, 1.1vw, 14px);
+  border: 1px solid #c79d5f;
+  border-radius: 13px;
+  background: #07101ef7;
+  color: #fff;
+  box-shadow: 0 12px 34px #000b;
+}
+.biriba-discard-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.biriba-discard-dialog-header h2 {
+  font-size: clamp(12px, 1.05vw, 16px);
+  line-height: 1.2;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.biriba-discard-dialog-header button {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #fff7;
+  border-radius: 8px;
+  color: white;
+}
+.biriba-discard-dialog-header button:focus-visible,
+.biriba-discard-pickup-actions button:focus-visible {
+  outline: 2px solid #e6bb75;
+  outline-offset: 2px;
+}
+.biriba-discard-dialog-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-content: flex-start;
+  gap: clamp(4px, .6vw, 8px);
+  min-height: 0;
+  max-height: min(50dvh, 370px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.biriba-discard-dialog-card {
+  display: block;
+  flex: 0 0 auto;
+  width: clamp(54px, 5vw, 76px);
+  height: auto;
+  aspect-ratio: 68.44 / 100.3;
+  border-radius: 4px;
+  object-fit: fill;
+  box-shadow: 0 2px 6px #0008;
+  pointer-events: none;
+}
+.biriba-discard-dialog-empty,
+.biriba-discard-pickup-empty {
+  font-size: 12px;
+  color: #ddd;
+}
+.biriba-discard-pickup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 105px;
+  margin-top: 10px;
+  overflow-y: auto;
+}
+.biriba-discard-pickup-actions button {
+  border: 1px solid #e8bb67;
+  border-radius: 7px;
+  padding: 6px 9px;
+  background: #8b611e;
+  font-size: 12px;
+  font-weight: 700;
+}
+.biriba-discard-pickup-actions button:disabled { opacity: .45; }
+
 .biriba-trump-frame {
   position: absolute;
   top: 63%;
