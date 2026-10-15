@@ -119,6 +119,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
+.biriba-finish-buttons--single { grid-template-columns: minmax(0, 1fr); }
 .biriba-finish-buttons > button {
   box-sizing: border-box;
   min-width: 0;
