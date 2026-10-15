@@ -43,6 +43,30 @@ describe("BIRIBA independent gameplay turn engine",()=>{
   expect(n.melds[0]?.cards.map(p=>p.value)).toEqual([11,12,13,14]);
   expect(n.melds[0]?.highAce).toBe(true);
  });
+ it("collects the 11-card packet immediately after melding the last three cards",()=>{
+  const m=beginBiribaMatch(2,()=>0.12);
+  m.phase="meld";
+  const last=[c("last-3",3),c("last-4",4),c("last-5",5)];
+  m.hands[0]=last;
+  const packetIds=m.packets[0]!.map(card=>card.id);
+  const n=biribaAction(m,0,{type:"meld",meld:meld(last)});
+  expect(n.packetTaken[0]).toBe(true);
+  expect(n.packetPlayed[0]).toBe(true);
+  expect(n.hands[0]!.map(card=>card.id)).toEqual(packetIds);
+  expect(n.phase).toBe("meld");
+  expect(n.turn).toBe(0);
+  expect(n.roundEnded).toBe(false);
+ });
+ it("collects a packet after discarding the final card without an existing biriba",()=>{
+  const m=beginBiribaMatch(2,()=>0.12);
+  m.phase="meld";
+  m.hands[0]=[c("last-card",8)];
+  const n=biribaAction(m,0,{type:"discard",id:"last-card"});
+  expect(n.packetTaken[0]).toBe(true);
+  expect(n.hands[0]).toHaveLength(11);
+  expect(n.pendingPacket[0]).toBe(0);
+  expect(n.turn).toBe(1);
+ });
  it("refuses to wrap a low Ace run into a high Ace run",()=>{
   const m=beginBiribaMatch(2,()=>0.12);
   m.phase="meld";
