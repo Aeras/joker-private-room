@@ -62,6 +62,8 @@ export function BiribaPixiPreview({
     if (!parent) return;
     let disposed = false;
     const pixi = appRef.current;
+    let projectionStage: Container | null = null;
+    let projectionObserver: ResizeObserver | null = null;
     const tickers: Array<(ticker: { deltaMS: number }) => void> = [];
     const addTicker = (callback: (ticker: { deltaMS: number }) => void) => {
       tickers.push(callback);
@@ -79,6 +81,7 @@ export function BiribaPixiPreview({
       if (disposed) return;
       const stage = new Container();
       pixi.stage.addChild(stage);
+      projectionStage = stage;
       const w = 1280,
         h = 720;
 
@@ -92,6 +95,8 @@ export function BiribaPixiPreview({
         stage.position.set(0, 0);
       };
       resize();
+      projectionObserver = new ResizeObserver(resize);
+      projectionObserver.observe(parent);
 
       const suitIcon: Record<string, string> = {
         spades: "♠",
@@ -320,7 +325,11 @@ export function BiribaPixiPreview({
       disposed = true;
       for (const timer of dealTimers) clearTimeout(timer);
       for (const ticker of tickers) pixi.ticker.remove(ticker);
-      pixi.stage.removeChildren().forEach(child => child.destroy({children:true}));
+      projectionObserver?.disconnect();
+      if (projectionStage) {
+        pixi.stage.removeChild(projectionStage);
+        projectionStage.destroy({children:true});
+      }
     };
   }, [ready, deal, game, redTeam, revealComplete, onDealComplete]);
 
