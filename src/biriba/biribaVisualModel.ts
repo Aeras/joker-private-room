@@ -1,4 +1,5 @@
 import type { BiribaCard, BiribaMeld } from "./rules";
+import type { BiribaPublicAction } from "../../supabase/functions/biriba-commands/presentation";
 import { opponentFanPose, type BiribaOpponentSide } from "./tableLayout";
 
 export type BiribaVisualGame = {
@@ -14,6 +15,8 @@ export type BiribaVisualGame = {
   phase?: string;
   melds?: BiribaMeld[];
   myHand?: BiribaCard[];
+  publicActionSequence?: number;
+  publicActions?: BiribaPublicAction[];
 };
 
 export type VisualCard = {
@@ -147,7 +150,63 @@ export function newDiscardFromSingleMove(
     : null;
 }
 
-export type MeldFlight = { card: BiribaCard; actorSeat: number };
+export type MeldFlight = { card: BiribaCard; actorSeat: number; sequence?: number };
+
+/** A missing event means the client was offline or the bounded journal rolled over. */
+export function publicActionsSince(
+  previous: BiribaVisualGame | null,
+  next: BiribaVisualGame,
+): BiribaPublicAction[] {
+  if (
+    !previous ||
+    previous.roundNumber !== next.roundNumber ||
+    next.publicActionSequence === undefined
+  )
+    return [];
+  const previousSequence = previous.publicActionSequence ?? 0;
+  if (next.publicActionSequence <= previousSequence) return [];
+  const actions = (next.publicActions ?? []).filter(
+    (action) => action.round === next.roundNumber && action.sequence > previousSequence,
+  );
+  if (
+    actions.length === 0 ||
+    actions[0]!.sequence !== previousSequence + 1 ||
+    actions.at(-1)!.sequence !== next.publicActionSequence ||
+    actions.some(
+      (action, index) => index > 0 && action.sequence !== actions[index - 1]!.sequence + 1,
+    )
+  )
+    return [];
+  return actions;
+}
+
+export function newMeldCardsFromPublicActions(
+  previous: BiribaVisualGame | null,
+  next: BiribaVisualGame,
+): MeldFlight[] {
+  const visible = new Set(
+    next.melds?.flatMap((meld) => meld.cards.map(({ card }) => card.id)) ?? [],
+  );
+  return publicActionsSince(previous, next)
+    .filter((action) => action.kind === "meld")
+    .flatMap((action) =>
+      action.cards
+        .filter((card) => visible.has(card.id))
+        .map((card) => ({ card, actorSeat: action.actorSeat, sequence: action.sequence })),
+    );
+}
+
+export function newDiscardFromPublicActions(
+  previous: BiribaVisualGame | null,
+  next: BiribaVisualGame,
+): MeldFlight | null {
+  const top = next.discards.at(-1);
+  if (!top) return null;
+  const action = publicActionsSince(previous, next)
+    .reverse()
+    .find((item) => item.kind === "discard" && item.cards.some((card) => card.id === top.id));
+  return action ? { card: top, actorSeat: action.actorSeat, sequence: action.sequence } : null;
+}
 
 /** Never guess which bot played a public card from a batched projection. */
 export function newMeldCardsFromSingleMove(

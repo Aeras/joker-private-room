@@ -361,6 +361,37 @@ describe("Biriba Pixi scene lifecycle", () => {
     expect(mock.apps[0]?.ticks.size).toBe(0);
   });
 
+  it("uses the server action actor for a remote discard even after batched revisions", async () => {
+    const played = { id: "remote-discard", suit: "hearts", rank: 9 } as BiribaCard;
+    const before = { ...game(), publicActionSequence: 0, publicActions: [] };
+    const view = render(<BiribaPixiPreview game={before} roomCode="test-room" revealComplete />);
+    await waitFor(() => expect(mock.sprites).toHaveLength(41));
+    const after = {
+      ...before,
+      revision: 4,
+      discards: [...before.discards, played],
+      publicActionSequence: 1,
+      publicActions: [
+        { sequence: 1, round: 1, actorSeat: 1, kind: "discard" as const, cards: [played] },
+      ],
+    };
+    view.rerender(<BiribaPixiPreview game={after} roomCode="test-room" revealComplete />);
+    await waitFor(() => expect(mock.sprites).toHaveLength(42));
+    const flight = mock.sprites[41]!;
+    expect((flight as unknown as { x: number; y: number }).x).toBe(80);
+    expect((flight as unknown as { x: number; y: number }).y).toBe(280);
+    view.rerender(
+      <BiribaPixiPreview
+        game={{ ...after, revision: 5, handCounts: [11, 10, 11, 11] }}
+        roomCode="test-room"
+        revealComplete
+      />,
+    );
+    expect(flight.destroyed).toBe(true);
+    expect(mock.sprites).toHaveLength(42);
+    view.unmount();
+  });
+
   it("keeps a confirmed meld card in Pixi until its hidden DOM destination is revealed", async () => {
     const target = document.createElement("img");
     target.dataset["biribaCardId"] = "meld-arrival";

@@ -6,7 +6,7 @@ import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
 import { ScreenShell } from "@/components/joker/ScreenShell";
 import { BiribaPixiPreview, BIRIBA_DEAL_BEAT_MS } from "@/biriba/BiribaPixiPreview";
-import { admitBiribaRevision, biribaDealKey, newMeldCardsFromSingleMove, type MeldFlight } from "@/biriba/biribaVisualModel";
+import { admitBiribaRevision, biribaDealKey, newMeldCardsFromPublicActions, newMeldCardsFromSingleMove, type MeldFlight } from "@/biriba/biribaVisualModel";
 import { BiribaRoomControls } from "@/biriba/BiribaRoomControls";
 import { BiribaMeldZone } from "@/biriba/BiribaMeldZone";
 import { selectedBiribaMeld } from "@/biriba/meldSelection";
@@ -130,6 +130,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
   const observedWaiting = useRef(new Set<string>());
   const freshDealKeys = useRef(new Set<string>());
   const pendingMeldFlights = useRef<MeldFlight[]>([]);
+  const hydrateNextProjection = useRef(false);
   const hiddenMeldCards = useRef(new Set<string>());
   const [, setMeldPresentationVersion] = useState(0);
   const [picker, setPicker] = useState<"players" | "target" | null>(null);
@@ -150,7 +151,11 @@ function BiribaContent({ playerId }: { playerId: string }) {
   const receiveGame = useCallback((code: string, next: BiribaGameView) => {
     setGame(previous => {
       if (!admitBiribaRevision(previous, next)) return previous;
-      const flights = newMeldCardsFromSingleMove(previous, next);
+      const skipMotion = hydrateNextProjection.current || document.visibilityState !== "visible";
+      hydrateNextProjection.current = false;
+      const flights = skipMotion ? [] : next.publicActionSequence === undefined
+        ? newMeldCardsFromSingleMove(previous, next)
+        : newMeldCardsFromPublicActions(previous, next);
       pendingMeldFlights.current = flights;
       hiddenMeldCards.current = new Set(flights.map(flight => flight.card.id));
       if (observedWaiting.current.delete(code) ||
@@ -276,7 +281,10 @@ function BiribaContent({ playerId }: { playerId: string }) {
     };
     void poll();
     const timer = setInterval(() => void poll(), 900);
-    const refreshVisible = () => { if (document.visibilityState === "visible") void poll(); };
+    const refreshVisible = () => {
+      if (document.visibilityState === "hidden") hydrateNextProjection.current = true;
+      if (document.visibilityState === "visible") void poll();
+    };
     document.addEventListener("visibilitychange", refreshVisible);
     window.addEventListener("focus", refreshVisible);
     return () => {

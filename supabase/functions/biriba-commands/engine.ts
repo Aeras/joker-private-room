@@ -1,6 +1,7 @@
 import {startBiribaClock,nextBiribaClock,type BiribaClock} from "./clock.ts";
 import {BIRIBA_PACKET_SIZE,biribaCanFinish,biribaMeldValid,biribaTeamOf,type BiribaCard,type BiribaMeld,type BiribaSeatCount,type BiribaSuit,type BiribaTarget} from "./rules.ts";
 import {createBiribaLocalDeal} from "./localDeal.ts";
+import type { BiribaPublicAction } from "./presentation.ts";
 
 /** Deterministic, serializable BIRIBA match state. Authoritative persistence is separate. */
 export type BiribaTurnPhase="draw"|"meld"|"ended";
@@ -12,6 +13,7 @@ export type BiribaMatch={
  opened:boolean[];packetTaken:boolean[];packetPlayed:boolean[];packetOwner:(number|null)[];
  pendingPacket:(number|null)[];forcedDiscardSeat:number|null;roundEnded:boolean;closedBy:number|null;clock:BiribaClock;
  target:BiribaTarget;timerEnabled:boolean;roundNumber:number;teamScores:[number,number];scoreHistory:BiribaRoundHistory[];roundScored:boolean;matchFinished:boolean;winnerTeam:number|null;
+ publicActionSequence?:number;publicActions?:BiribaPublicAction[];
 };
 export type BiribaAction=
  |{type:"draw"}
@@ -27,7 +29,8 @@ export function beginBiribaMatch(seats:BiribaSeatCount,random:()=>number=Math.ra
   turn:0,phase:"draw",opened:Array(seats).fill(false),packetTaken:[false,false],
   packetPlayed:[false,false],packetOwner:[null,null],pendingPacket:[null,null],forcedDiscardSeat:null,
   roundEnded:false,closedBy:null,clock:startBiribaClock(seats,Date.now()),
-  target,timerEnabled:true,roundNumber:1,teamScores:[0,0],scoreHistory:[],roundScored:false,matchFinished:false,winnerTeam:null};
+  target,timerEnabled:true,roundNumber:1,teamScores:[0,0],scoreHistory:[],roundScored:false,matchFinished:false,winnerTeam:null,
+  publicActionSequence:0,publicActions:[]};
 }
 export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):BiribaMatch{
  if(m.roundEnded||seat!==m.turn||m.phase==="ended")throw new Error("NOT_YOUR_TURN");

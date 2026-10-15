@@ -7,6 +7,7 @@ import {scoreFinishedBiribaRound,nextBiribaRound} from "./rounds.ts";
 import {pauseBiribaClock,resumeBiribaClock,timeoutBiribaClock,reclaimBiribaClock} from "./clock.ts";
 import {CANONICAL_BOTS} from "../_shared/bot-catalog.ts";
 import {recoverUnclaimedBiribaPacket} from "./recoverPacket.ts";
+import {recordBiribaPublicActions} from "./presentation.ts";
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
 const allowed=new Set(["create","join","list","get","membership","leave","bot_add","bot_remove","start","get_game","move","pause","resume","reclaim","next_round","end_game"]);
 const actions=new Set(["draw","pickup","meld","extend","discard"]);
@@ -90,7 +91,7 @@ Deno.serve(async(req)=>{
       return json({ok:false,code:"TURN_EXPIRED"},409);
      const move=body.move as BiribaAction|undefined;
      if(!move||!actions.has(String(move.type)))return json({ok:false,code:"INVALID_MOVE"},400);
-     try{match=biribaAction(match,seat,move);}catch{return json({ok:false,code:"ILLEGAL_MOVE"},400);}
+     try{match=recordBiribaPublicActions(match,biribaAction(match,seat,move),seat);}catch{return json({ok:false,code:"ILLEGAL_MOVE"},400);}
     }
     // Make pending bot moves in one bounded pass; never expose their private hands.
     for(let count=0;count<60&&!match.roundEnded;count++){
@@ -98,7 +99,7 @@ Deno.serve(async(req)=>{
      if(!bot)break;
      const changed=chooseBiribaBotStep(match,bot.index,(bot.tier===3?3:bot.tier===2?2:1));
      if(changed===match)break;
-     match=changed;
+     match=recordBiribaPublicActions(match,changed,bot.index);
     }
    }
   }
