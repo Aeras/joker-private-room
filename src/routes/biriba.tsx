@@ -115,10 +115,12 @@ function BiribaContent({ playerId }: { playerId: string }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [clockNow, setClockNow] = useState(Date.now());
+  const finished = game?.matchFinished === true;
   useEffect(() => {
+    if (finished) return;
     const t = setInterval(() => setClockNow(Date.now()), 350);
     return () => clearInterval(t);
-  }, []);
+  }, [finished]);
   const [error, setError] = useState("");
   const [scoresOpen, setScoresOpen] = useState(false);
   const closedCodes = useRef(new Set<string>());
@@ -200,7 +202,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
   const code = room?.code;
   useEffect(() => {
-    if (!code) return;
+    if (!code || finished) return;
     let current = true;
     const poll = async () => {
       try {
@@ -243,7 +245,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
       current = false;
       clearInterval(timer);
     };
-  }, [code]);
+  }, [code, finished]);
 
   const ownCards = game?.myHand ?? [];
   const visualGame = dealShownKey === dealKey ? game : initialDealView?.game ?? game;
@@ -312,6 +314,52 @@ function BiribaContent({ playerId }: { playerId: string }) {
     const redTeamIndex = (room.code.charCodeAt(0) || 0) % 2;
     const redScore = game?.teamScores[redTeamIndex] ?? 0;
     const blueScore = game?.teamScores[1 - redTeamIndex] ?? 0;
+
+    if (game?.matchFinished) {
+      const winningTeam = game.winnerTeam;
+      const winningColor = winningTeam === redTeamIndex ? "ΚΟΚΚΙΝΗ" : "ΜΠΛΕ";
+      const winners = winningTeam === null ? [] : room.seats.filter(seat => biribaTeamOf(seat.index, game.seats) === winningTeam && seat.occupant !== "empty");
+      const goHome = async () => {
+        setBusy(true);
+        try { await biribaCommand({ data: { action: "leave", code: room.code } }); }
+        finally { window.location.assign("/"); }
+      };
+      const newGame = async () => {
+        setBusy(true);
+        setError("");
+        try {
+          const ended = await biribaCommand({ data: { action: "end_game", code: room.code } });
+          if (!ended.ok) { setError(format(ended)); return; }
+          const created = await biribaCommand({ data: { action: "create", capacity: room.capacity, target: room.target, timerEnabled: room.timerEnabled } });
+          if (!created.ok || !("room" in created)) { setError(format(created)); return; }
+          closedCodes.current.add(room.code);
+          setCapacity(room.capacity);
+          setTarget(room.target);
+          setTimerEnabled(room.timerEnabled);
+          setSelected([]);
+          setGame(null);
+          setDealShownKey(null);
+          setRoom(created.room);
+        } catch { setError("Δεν ήταν δυνατή η δημιουργία νέου παιχνιδιού."); }
+        finally { setBusy(false); }
+      };
+      return (
+        <main className="flex min-h-dvh items-center justify-center bg-[#09251d] p-4 text-white">
+          <section className="w-full max-w-md rounded-2xl border border-amber-500/60 bg-[#112c24] p-6 text-center shadow-2xl" aria-label="Τέλος παιχνιδιού">
+            <div className="mb-3 text-5xl" aria-hidden="true">🏆</div>
+            <h1 className="mb-4 text-3xl font-bold">Τέλος παιχνιδιού</h1>
+            <p className="mb-4 text-xl font-bold text-amber-300">{winningTeam === null ? "Ισοπαλία" : `Νικήτρια: ${winningColor} ΟΜΑΔΑ`}</p>
+            {winners.length > 0 && <div className="mb-6"><p className="mb-2 text-sm text-white/70">Παίκτες της νικήτριας ομάδας</p><p className="font-semibold">{winners.map(seat => seat.name ?? "Παίκτης").join(" · ")}</p></div>}
+            <p className="mb-6 text-sm text-white/70">Κόκκινη: {redScore.toLocaleString("el-GR")} · Μπλε: {blueScore.toLocaleString("el-GR")}</p>
+            {error && <p role="alert" className="mb-3 text-sm text-red-300">{error}</p>}
+            <div className="flex flex-col gap-3">
+              {isHost && <button type="button" disabled={busy} onClick={() => void newGame()} className="rounded-lg bg-amber-500 px-5 py-3 font-bold text-black disabled:opacity-50">Νέο παιχνίδι</button>}
+              <button type="button" disabled={busy} onClick={() => void goHome()} className="rounded-lg border border-amber-500 px-5 py-3 font-bold disabled:opacity-50">Αρχική οθόνη</button>
+            </div>
+          </section>
+        </main>
+      );
+    }
 
     return (
       <main className="biriba-table-container">
