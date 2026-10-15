@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { BiribaMeldZone } from "./BiribaMeldZone";
 import type { BiribaMeld } from "./rules";
 
@@ -44,5 +44,25 @@ describe("Biriba meld rendering", () => {
       <BiribaMeldZone melds={[first]} teamName="Κόκκινη ομάδα" hiddenCardIds={hidden} />,
     );
     expect(arriving.style.visibility).toBe("visible");
+  });
+
+  it("shows team numbers 1–6 and 7–12 with availability across both pages", () => {
+    const twelve = Array.from({ length: 12 }, () => first);
+    const view = render(<BiribaMeldZone melds={twelve} teamName="Κόκκινη ομάδα" highlightedIndices={new Set([0, 7])} />);
+    const numbers = () => [...view.container.querySelectorAll(".biriba-meld-number")].map(node => node.textContent);
+    expect(numbers()).toEqual(["#1", "#2", "#3", "#4", "#5", "#6"]);
+    expect(view.container.querySelectorAll(".biriba-meld-slot--available")).toHaveLength(1);
+    const nextPage = view.getByRole("button", { name: /Επόμενες χεριές Κόκκινη ομάδα/ });
+    expect(nextPage.className).toContain("biriba-meld-pager-target");
+    fireEvent.click(nextPage);
+    expect(numbers()).toEqual(["#7", "#8", "#9", "#10", "#11", "#12"]);
+    expect(view.container.querySelectorAll(".biriba-meld-slot--available")).toHaveLength(1);
+    expect(view.container.querySelector(".biriba-meld-slot--available .biriba-meld-number")?.textContent).toBe("#8");
+  });
+
+  it("switches to a hidden page when it has the only legal extension", async () => {
+    const twelve = Array.from({ length: 12 }, () => first);
+    const view = render(<BiribaMeldZone melds={twelve} teamName="Μπλε ομάδα" highlightedIndices={new Set([8])} />);
+    await waitFor(() => expect(view.container.querySelector(".biriba-meld-slot--available .biriba-meld-number")?.textContent).toBe("#9"));
   });
 });
