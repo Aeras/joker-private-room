@@ -8,7 +8,7 @@ const cardImage = (card: BiribaCard): string => card.joker
 
 const cardName = (card: BiribaCard): string => card.joker ? "Τζόκερ" : `${card.rank} ${card.suit}`;
 
-export function BiribaMeldZone({ melds, teamName }: { melds: BiribaMeld[]; teamName: string }) {
+export function BiribaMeldZone({ melds, teamName, hiddenCardIds }: { melds: BiribaMeld[]; teamName: string; hiddenCardIds?: ReadonlySet<string> }) {
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<number | null>(null);
   const swipeOrigin = useRef<{ x: number; y: number } | null>(null);
@@ -40,7 +40,7 @@ export function BiribaMeldZone({ melds, teamName }: { melds: BiribaMeld[]; teamN
         const fullIndex = current * 6 + index;
         const dirty = biribaMeldDirty(meld);
         const ordered = [...meld.cards].sort((a, b) => a.value - b.value);
-        return <button type="button" key={meld.cards.map(p => p.card.id).join(":")}
+        return <button type="button" key={fullIndex}
           className={`biriba-meld-slot ${dirty ? "biriba-meld-slot--dirty" : "biriba-meld-slot--clean"}`}
           aria-label={`${teamName}, χεριά ${fullIndex + 1}, ${dirty ? "βρώμικη" : "καθαρή"}, ${ordered.length} φύλλα. Πατήστε για όλα τα φύλλα.`}
           onClick={() => { if (swipeConsumed.current) { swipeConsumed.current = false; return; } setExpanded(fullIndex); }}>
@@ -50,7 +50,8 @@ export function BiribaMeldZone({ melds, teamName }: { melds: BiribaMeld[]; teamN
               // Endpoints are visible in full. Interior cards are tightly stacked in the middle.
               const left = last === 0 ? 35 : i === 0 ? 0 : i === last ? 70 : 33 + 29 * ((i - 1) / Math.max(1, last - 1));
               return <img key={card.id} src={cardImage(card)} alt={cardName(card)}
-                draggable={false} style={{ left: `${left}%`, zIndex: i + 1 }}
+                data-biriba-card-id={card.id}
+                draggable={false} style={{ left: `${left}%`, zIndex: i + 1, visibility: hiddenCardIds?.has(card.id) ? "hidden" : "visible" }}
                 className="biriba-meld-card"/>;
             })}
           </span>

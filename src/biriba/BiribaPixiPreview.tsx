@@ -1,351 +1,732 @@
+import { useEffect, useRef, useState } from "react";
+import { Application, Assets, Container, Sprite, Texture } from "pixi.js";
 import type { BiribaDealtPreview } from "./localDeal";
 import type { BiribaGameView } from "@/services/biribaFunctions";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
-import {
-  NORMAL_DEAL_TRAVEL_MS,
-  NORMAL_DEAL_HANDOFF_TRAVEL_MS,
-} from "@/components/table/presentationTiming";
+import { NORMAL_DEAL_TRAVEL_MS } from "@/components/table/presentationTiming";
 import { dealtCardPose, dealProgress } from "@/components/table/dealtCardMotion";
-import { BIRIBA_CARD_BACK_WIDTH, BIRIBA_CARD_BACK_HEIGHT, opponentFanPose } from "./tableLayout";
+import { opponentFanPose, type BiribaOpponentSide } from "./tableLayout";
+import {
+  BACK_ARTWORK,
+  biribaDealKey,
+  biribaCardArtwork,
+  biribaVisualCards,
+  newDiscardFromSingleMove,
+  type MeldFlight,
+  shouldAnimateFreshDeal,
+  visibleOpponentSides,
+  type BiribaVisualGame,
+  type VisualCard,
+} from "./biribaVisualModel";
 
 export const BIRIBA_DEAL_BEAT_MS = 110;
+const EMPTY_MELD_FLIGHTS: readonly MeldFlight[] = [];
+const reducedMotion = () =>
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+type Tick = (ticker: { deltaMS: number }) => void;
+type CardSprite = { sprite: Sprite; artwork: string; request: number; loaded: boolean };
+type Scene = {
+  app: Application;
+  stage: Container;
+  cards: Map<string, CardSprite>;
+  timers: Set<ReturnType<typeof setTimeout>>;
+  tickers: Set<Tick>;
+  motions: Map<string, Tick>;
+  disposed: boolean;
+  dealToken: number;
+  dealActive: boolean;
+  dealKey: string | null;
+  completedDeals: Set<string>;
+  lastProjection: BiribaVisualGame | null;
+  discardToken: number;
+  activeDiscardId: string | null;
+  meldToken: number;
+  meldCleanups: Map<string, () => void>;
+};
+
+function schedule(scene: Scene, callback: () => void, delay: number) {
+  const timer = setTimeout(() => {
+    scene.timers.delete(timer);
+    if (!scene.disposed) callback();
+  }, delay);
+  scene.timers.add(timer);
+}
+function addTick(scene: Scene, tick: Tick) {
+  scene.tickers.add(tick);
+  scene.app.ticker.add(tick);
+}
+function removeTick(scene: Scene, tick: Tick) {
+  scene.app.ticker.remove(tick);
+  scene.tickers.delete(tick);
+}
+function removeCard(scene: Scene, id: string) {
+  const motion = scene.motions.get(id);
+  if (motion) {
+    removeTick(scene, motion);
+    scene.motions.delete(id);
+  }
+  const card = scene.cards.get(id);
+  if (!card) return;
+  scene.cards.delete(id);
+  scene.stage.removeChild(card.sprite);
+  card.sprite.destroy();
+}
+function setCard(scene: Scene, card: VisualCard, animate = false) {
+  let entry = scene.cards.get(card.id);
+  const existing = Boolean(entry);
+  if (!entry) {
+    const sprite = new Sprite(Texture.WHITE);
+    sprite.visible = false;
+    sprite.anchor.set(card.id.startsWith("fan:") ? 0.5 : 0);
+    scene.stage.addChild(sprite);
+    entry = { sprite, artwork: "", request: 0, loaded: false };
+    scene.cards.set(card.id, entry);
+  }
+  const priorMotion = scene.motions.get(card.id);
+  if (priorMotion) {
+    removeTick(scene, priorMotion);
+    scene.motions.delete(card.id);
+  }
+  const startX = entry.sprite.x;
+  const startY = entry.sprite.y;
+  const startAngle = entry.sprite.rotation;
+  const targetAngle = (card.angle * Math.PI) / 180;
+  if (
+    existing &&
+    animate &&
+    card.id.startsWith("fan:") &&
+    entry.sprite.visible &&
+    (Math.abs(startX - card.x) > 0.01 ||
+      Math.abs(startY - card.y) > 0.01 ||
+      Math.abs(startAngle - targetAngle) > 0.001)
+  ) {
+    let elapsed = 0;
+    const tick: Tick = ({ deltaMS }) => {
+      elapsed += deltaMS;
+      const t = Math.min(1, elapsed / 220);
+      const eased = 1 - Math.pow(1 - t, 3);
+      entry!.sprite.position.set(
+        startX + (card.x - startX) * eased,
+        startY + (card.y - startY) * eased,
+      );
+      entry!.sprite.rotation = startAngle + (targetAngle - startAngle) * eased;
+      if (t === 1) {
+        removeTick(scene, tick);
+        scene.motions.delete(card.id);
+      }
+    };
+    scene.motions.set(card.id, tick);
+    addTick(scene, tick);
+  } else {
+    entry.sprite.position.set(card.x, card.y);
+    entry.sprite.rotation = targetAngle;
+  }
+  entry.sprite.width = card.width;
+  entry.sprite.height = card.height;
+  if (entry.artwork === card.artwork) {
+    // A cancelled deal may leave an already textured fan sprite hidden before its beat.
+    if (entry.loaded) entry.sprite.visible = true;
+    return;
+  }
+  entry.artwork = card.artwork;
+  const request = ++entry.request;
+  const target = entry;
+  void Assets.load(card.artwork)
+    .then((texture: Texture) => {
+      if (
+        scene.disposed ||
+        scene.cards.get(card.id) !== target ||
+        target.request !== request ||
+        target.artwork !== card.artwork
+      )
+        return;
+      target.sprite.texture = texture;
+      target.loaded = true;
+      target.sprite.width = card.width;
+      target.sprite.height = card.height;
+      target.sprite.visible = true;
+    })
+    .catch(() => {
+      if (scene.disposed || scene.cards.get(card.id) !== target || target.request !== request)
+        return;
+      target.sprite.texture = Texture.WHITE;
+      target.loaded = true;
+      target.sprite.tint = card.artwork === BACK_ARTWORK ? 0x1e3a8a : 0xffffff;
+      target.sprite.width = card.width;
+      target.sprite.height = card.height;
+      target.sprite.visible = true;
+    });
+}
+function syncCards(scene: Scene, game: BiribaVisualGame, animate = false) {
+  const desired = biribaVisualCards(game, !scene.dealActive);
+  const ids = new Set(desired.map((card) => card.id));
+  for (const card of desired) setCard(scene, card, animate);
+  for (const id of [...scene.cards.keys()]) {
+    if (id.startsWith("deal:local:")) continue;
+    if (id.startsWith("flight:meld:")) continue;
+    if (scene.dealActive && id.startsWith("fan:")) continue;
+    if (!ids.has(id)) removeCard(scene, id);
+  }
+  scene.lastProjection = game;
+}
+function cancelDiscardFlight(scene: Scene) {
+  scene.discardToken++;
+  scene.activeDiscardId = null;
+  removeCard(scene, "flight:discard");
+}
+function cancelMeldFlights(scene: Scene) {
+  scene.meldToken++;
+  for (const cleanup of scene.meldCleanups.values()) cleanup();
+  scene.meldCleanups.clear();
+  for (const id of [...scene.cards.keys()])
+    if (id.startsWith("flight:meld:")) removeCard(scene, id);
+}
+function discardOrigin(game: BiribaVisualGame, seat: number) {
+  if (seat === game.seat) return { x: 640, y: 650 };
+  const side = visibleOpponentSides(game).find((item) => item.seat === seat)?.side;
+  if (side === "top") return { x: 640, y: 80 };
+  if (side === "left") return { x: 80, y: 280 };
+  return { x: 1200, y: 280 };
+}
+function startMeldFlights(
+  scene: Scene,
+  parent: HTMLElement,
+  game: BiribaGameView,
+  flights: readonly MeldFlight[],
+  onComplete: (id: string) => void,
+) {
+  cancelMeldFlights(scene);
+  if (!flights.length) return;
+  const token = scene.meldToken;
+  for (const { card, actorSeat } of flights) {
+    const target = [...document.querySelectorAll<HTMLImageElement>("[data-biriba-card-id]")].find(
+      (element) => element.dataset["biribaCardId"] === card.id,
+    );
+    if (!target || reducedMotion() || document.visibilityState !== "visible") {
+      onComplete(card.id);
+      continue;
+    }
+    const table = parent.getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
+    if (table.width <= 0 || table.height <= 0 || rect.width <= 0 || rect.height <= 0) {
+      onComplete(card.id);
+      continue;
+    }
+    const end = {
+      x: ((rect.left + rect.width / 2 - table.left) / table.width) * 1280,
+      y: ((rect.top + rect.height / 2 - table.top) / table.height) * 720,
+    };
+    const start = discardOrigin(game, actorSeat);
+    const artwork = biribaCardArtwork(card);
+    void Assets.load(artwork)
+      .then((texture: Texture) => {
+        if (scene.disposed || scene.meldToken !== token) return;
+        const id = `flight:meld:${card.id}`;
+        const sprite = new Sprite(texture);
+        sprite.anchor.set(0.5);
+        sprite.width = (rect.width / table.width) * 1280;
+        sprite.height = (rect.height / table.height) * 720;
+        sprite.position.set(start.x, start.y);
+        scene.stage.addChild(sprite);
+        scene.cards.set(id, { sprite, artwork, request: 0, loaded: true });
+        let elapsed = 0;
+        const tick: Tick = ({ deltaMS }) => {
+          elapsed += deltaMS;
+          const progress = dealProgress(Math.min(1, elapsed / 360));
+          const pose = dealtCardPose(start, end, 0, 0, progress);
+          sprite.position.set(pose.point.x, pose.point.y);
+          if (elapsed < 360) return;
+          removeTick(scene, tick);
+          scene.motions.delete(id);
+          sprite.position.set(end.x, end.y);
+          let settled = false;
+          const finish = () => {
+            if (settled || scene.meldToken !== token) return;
+            settled = true;
+            observer.disconnect();
+            scene.meldCleanups.delete(id);
+            removeCard(scene, id);
+          };
+          const observer = new MutationObserver(() => {
+            if (target.style.visibility !== "hidden") finish();
+          });
+          observer.observe(target, { attributes: true, attributeFilter: ["style"] });
+          scene.meldCleanups.set(id, () => {
+            observer.disconnect();
+            settled = true;
+          });
+          onComplete(card.id);
+          if (target.style.visibility !== "hidden") finish();
+          schedule(scene, finish, 350);
+        };
+        scene.motions.set(id, tick);
+        addTick(scene, tick);
+      })
+      .catch(() => {
+        if (scene.disposed || scene.meldToken !== token) return;
+        onComplete(card.id);
+      });
+  }
+}
+function startDiscardFlight(scene: Scene, previous: BiribaVisualGame, next: BiribaVisualGame) {
+  const card = newDiscardFromSingleMove(previous, next);
+  if (!card || previous.turn === undefined) return;
+  cancelDiscardFlight(scene);
+  scene.activeDiscardId = card.id;
+  const token = scene.discardToken;
+  const artwork = biribaCardArtwork(card);
+  const from = discardOrigin(next, previous.turn);
+  const to = { x: 548, y: 395 };
+  void Assets.load(artwork)
+    .then((texture: Texture) => {
+      if (scene.disposed || scene.discardToken !== token) return;
+      const sprite = new Sprite(texture);
+      sprite.width = 68.44;
+      sprite.height = 100.3;
+      sprite.position.set(from.x, from.y);
+      scene.stage.addChild(sprite);
+      scene.cards.set("flight:discard", { sprite, artwork, request: 0, loaded: true });
+      let elapsed = 0;
+      const tick: Tick = ({ deltaMS }) => {
+        elapsed += deltaMS;
+        const progress = dealProgress(Math.min(1, elapsed / 320));
+        const pose = dealtCardPose(from, to, 0, 0, progress);
+        sprite.position.set(pose.point.x, pose.point.y);
+        if (elapsed < 320) return;
+        removeTick(scene, tick);
+        scene.motions.delete("flight:discard");
+        removeCard(scene, "discard:top");
+        scene.cards.delete("flight:discard");
+        sprite.position.set(to.x, to.y);
+        scene.cards.set("discard:top", { sprite, artwork, request: 0, loaded: true });
+        scene.activeDiscardId = null;
+      };
+      scene.motions.set("flight:discard", tick);
+      addTick(scene, tick);
+    })
+    .catch(() => {
+      if (scene.disposed || scene.discardToken !== token) return;
+      scene.activeDiscardId = null;
+      syncCards(scene, next);
+    });
+}
+function cancelDeal(scene: Scene) {
+  cancelDiscardFlight(scene);
+  cancelMeldFlights(scene);
+  scene.dealToken++;
+  scene.dealActive = false;
+  for (const timer of scene.timers) clearTimeout(timer);
+  scene.timers.clear();
+  for (const tick of scene.tickers) scene.app.ticker.remove(tick);
+  scene.tickers.clear();
+  scene.motions.clear();
+  for (const id of [...scene.cards.keys()]) if (id.startsWith("deal:local:")) removeCard(scene, id);
+}
+function destination(side: BiribaOpponentSide | "local", index: number) {
+  return side === "local"
+    ? { x: 640 + (index - 5) * 10, y: 665, angle: 0 }
+    : opponentFanPose(side, index, 11);
+}
+function origin(side: BiribaOpponentSide | "local", end: { x: number; y: number }) {
+  if (side === "top") return { x: end.x, y: -110 };
+  if (side === "left") return { x: -110, y: end.y };
+  if (side === "right") return { x: 1390, y: end.y };
+  return { x: end.x, y: 820 };
+}
+function startDeal(
+  scene: Scene,
+  game: BiribaGameView,
+  key: string,
+  latestGame: () => BiribaGameView | undefined,
+  onComplete: (key: string) => void,
+) {
+  cancelDeal(scene);
+  scene.dealActive = true;
+  scene.dealKey = key;
+  syncCards(scene, game);
+  const token = scene.dealToken;
+  const order: Array<{ side: BiribaOpponentSide | "local"; seat: number }> = [
+    { side: "local", seat: game.seat },
+    ...visibleOpponentSides(game),
+  ];
+  void Assets.load(BACK_ARTWORK)
+    .then((texture: Texture) => {
+      if (scene.disposed || scene.dealToken !== token) return;
+      try {
+        sessionStorage.setItem(`biriba-deal:${key}`, "1");
+      } catch {
+        /* optional */
+      }
+      for (let index = 0; index < 11; index++)
+        for (let orderIndex = 0; orderIndex < order.length; orderIndex++) {
+          const { side } = order[orderIndex]!;
+          const id = side === "local" ? `deal:local:${index}` : `fan:${side}:${index}`;
+          const end = destination(side, index);
+          const start = origin(side, end);
+          const sprite = new Sprite(texture);
+          sprite.anchor.set(0.5);
+          sprite.width = 70;
+          sprite.height = 100;
+          sprite.position.set(start.x, start.y);
+          sprite.visible = false;
+          scene.stage.addChild(sprite);
+          scene.cards.set(id, { sprite, artwork: BACK_ARTWORK, request: 0, loaded: true });
+          schedule(
+            scene,
+            () => {
+              if (scene.dealToken !== token) return;
+              let elapsed = 0;
+              sprite.visible = true;
+              const tick: Tick = ({ deltaMS }) => {
+                elapsed += deltaMS;
+                const progress = dealProgress(Math.min(1, elapsed / NORMAL_DEAL_TRAVEL_MS));
+                const pose = dealtCardPose(start, end, 0, end.angle, progress);
+                sprite.position.set(pose.point.x, pose.point.y);
+                sprite.rotation = (pose.rotation * Math.PI) / 180;
+                if (elapsed >= NORMAL_DEAL_TRAVEL_MS) {
+                  sprite.position.set(end.x, end.y);
+                  sprite.rotation = (end.angle * Math.PI) / 180;
+                  sprite.width = side === "top" ? 58 : side === "local" ? 70 : 75;
+                  sprite.height = side === "top" ? 82 : side === "local" ? 100 : 105;
+                  removeTick(scene, tick);
+                }
+              };
+              addTick(scene, tick);
+            },
+            (index * order.length + orderIndex) * BIRIBA_DEAL_BEAT_MS,
+          );
+        }
+      schedule(
+        scene,
+        () => {
+          if (scene.dealToken !== token || scene.completedDeals.has(key)) return;
+          scene.completedDeals.add(key);
+          scene.dealActive = false;
+          syncCards(scene, latestGame() ?? game);
+          onComplete(key);
+          // React commits the face-up hand before the temporary local backs leave.
+          schedule(
+            scene,
+            () => {
+              if (scene.dealToken !== token) return;
+              for (const id of [...scene.cards.keys()])
+                if (id.startsWith("deal:local:")) removeCard(scene, id);
+            },
+            80,
+          );
+        },
+        (11 * order.length - 1) * BIRIBA_DEAL_BEAT_MS + NORMAL_DEAL_TRAVEL_MS + 30,
+      );
+    })
+    .catch(() => {
+      if (scene.disposed || scene.dealToken !== token) return;
+      try {
+        sessionStorage.setItem(`biriba-deal:${key}`, "1");
+      } catch {
+        /* optional */
+      }
+      scene.dealActive = false;
+      scene.completedDeals.add(key);
+      syncCards(scene, latestGame() ?? game);
+      onComplete(key);
+    });
+}
 
 export function BiribaPixiPreview({
+  animateDeal = true,
   deal,
   game,
-  redTeam = 0,
   revealComplete = false,
   onDealComplete,
+  roomCode,
+  meldFlights = EMPTY_MELD_FLIGHTS,
+  onMeldFlightComplete,
 }: {
+  animateDeal?: boolean;
   deal?: BiribaDealtPreview | undefined;
   game?: BiribaGameView | undefined;
   redTeam?: number;
-  revealComplete?: boolean | undefined;
-  onDealComplete?: ((key: string) => void) | undefined;
+  revealComplete?: boolean;
+  onDealComplete?: (key: string) => void;
+  roomCode?: string;
+  meldFlights?: readonly MeldFlight[];
+  onMeldFlightComplete?: (id: string) => void;
 }) {
   const mount = useRef<HTMLDivElement>(null);
-  const lastDealtRound = useRef<string | null>(null);
-  const appRef = useRef<Application | null>(null);
+  const sceneRef = useRef<Scene | null>(null);
+  const latestGame = useRef(game);
+  const latestMeldFlights = useRef(meldFlights);
+  const latestDealKey = useRef<string | null>(null);
+  const callback = useRef(onDealComplete);
+  const meldCallback = useRef(onMeldFlightComplete);
   const [ready, setReady] = useState(false);
-  const projectionKey = JSON.stringify(game ? {
-    seat: game.seat, seats: game.seats, round: game.roundNumber,
-    stock: game.stockCount, packets: game.packetCounts,
-    hands: game.handCounts, discard: game.discards.at(-1),
-  } : null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const projectedGame = useMemo(() => game, [projectionKey]);
+  const [failed, setFailed] = useState(false);
+  latestGame.current = game;
+  latestMeldFlights.current = meldFlights;
+  latestDealKey.current = game
+    ? biribaDealKey(roomCode ?? "room", game.roundNumber, game.seat)
+    : null;
+  callback.current = onDealComplete;
+  meldCallback.current = onMeldFlightComplete;
 
-  // Keep the WebGL canvas and renderer alive across realtime game revisions.
   useEffect(() => {
     const parent = mount.current;
     if (!parent) return;
     let cancelled = false;
-    let app: Application | null = null;
     let observer: ResizeObserver | null = null;
+    let scene: Scene | null = null;
+    let canvas: HTMLCanvasElement | null = null;
+    const contextLost = (event: Event) => {
+      event.preventDefault();
+      if (scene && !scene.disposed) {
+        cancelDeal(scene);
+        scene.disposed = true;
+      }
+      setFailed(true);
+    };
+    const background = () => {
+      if (document.visibilityState !== "hidden" || !scene || scene.disposed) return;
+      const wasDealing = scene.dealActive;
+      cancelDeal(scene);
+      if (latestGame.current) syncCards(scene, latestGame.current);
+      if (wasDealing && latestDealKey.current && !scene.completedDeals.has(latestDealKey.current)) {
+        scene.completedDeals.add(latestDealKey.current);
+        callback.current?.(latestDealKey.current);
+      }
+      for (const flight of latestMeldFlights.current) meldCallback.current?.(flight.card.id);
+    };
+    document.addEventListener("visibilitychange", background);
     void (async () => {
-      const pixi = new Application();
-      await pixi.init({resizeTo: parent, backgroundAlpha: 0, antialias: true,
-        resolution: Math.min(devicePixelRatio || 1, 2), autoDensity: true});
-      if (cancelled) { pixi.destroy(true); return; }
-      app = pixi;
-      appRef.current = pixi;
-      parent.appendChild(pixi.canvas);
-      observer = new ResizeObserver(() => pixi.resize());
+      const app = new Application();
+      try {
+        await app.init({
+          resizeTo: parent,
+          backgroundAlpha: 0,
+          antialias: true,
+          resolution: Math.min(window.devicePixelRatio || 1, 2),
+          autoDensity: true,
+        });
+      } catch {
+        try {
+          app.destroy(true);
+        } catch {
+          /* Partial WebGL initialization may not own a renderer. */
+        }
+        if (!cancelled) setFailed(true);
+        return;
+      }
+      if (cancelled) {
+        app.destroy(true);
+        return;
+      }
+      const stage = new Container();
+      app.stage.addChild(stage);
+      scene = {
+        app,
+        stage,
+        cards: new Map(),
+        timers: new Set(),
+        tickers: new Set(),
+        motions: new Map(),
+        disposed: false,
+        dealToken: 0,
+        dealActive: false,
+        dealKey: null,
+        completedDeals: new Set(),
+        lastProjection: null,
+        discardToken: 0,
+        activeDiscardId: null,
+        meldToken: 0,
+        meldCleanups: new Map(),
+      };
+      sceneRef.current = scene;
+      parent.appendChild(app.canvas);
+      canvas = app.canvas;
+      canvas.addEventListener("webglcontextlost", contextLost);
+      const resize = () => {
+        if (!scene || scene.disposed) return;
+        app.resize();
+        stage.scale.set(parent.clientWidth / 1280, parent.clientHeight / 720);
+      };
+      observer = new ResizeObserver(resize);
       observer.observe(parent);
+      resize();
       setReady(true);
     })();
     return () => {
       cancelled = true;
       observer?.disconnect();
-      if (appRef.current === app) appRef.current = null;
-      app?.destroy(true, {children:true});
+      document.removeEventListener("visibilitychange", background);
+      canvas?.removeEventListener("webglcontextlost", contextLost);
+      if (!scene) return;
+      if (!scene.disposed) cancelDeal(scene);
+      scene.disposed = true;
+      if (sceneRef.current === scene) sceneRef.current = null;
+      scene.app.destroy(true, { children: true });
     };
   }, []);
 
+  const currentDealKey = game
+    ? biribaDealKey(roomCode ?? "room", game.roundNumber, game.seat)
+    : null;
   useEffect(() => {
-    if (!ready || !appRef.current) return;
-    const parent = mount.current;
-    if (!parent) return;
-    let disposed = false;
-    const pixi = appRef.current;
-    let projectionStage: Container | null = null;
-    let projectionObserver: ResizeObserver | null = null;
-    const tickers: Array<(ticker: { deltaMS: number }) => void> = [];
-    const addTicker = (callback: (ticker: { deltaMS: number }) => void) => {
-      tickers.push(callback);
-      pixi.ticker.add(callback);
-    };
-    const dealTimers: Array<ReturnType<typeof setTimeout>> = [];
-    const schedule = (callback: () => void, delay: number) => {
-      dealTimers.push(setTimeout(callback, delay));
-    };
-    const dealKey = projectedGame ? `${projectedGame.roundNumber}:${projectedGame.seat}` : null;
-    const dealEntrance = dealKey !== null && lastDealtRound.current !== dealKey;
-    if (dealEntrance) lastDealtRound.current = dealKey;
+    if (failed && currentDealKey) callback.current?.(currentDealKey);
+  }, [failed, currentDealKey]);
 
-    void (async () => {
-      if (disposed) return;
-      const stage = new Container();
-      pixi.stage.addChild(stage);
-      projectionStage = stage;
-      const w = 1280,
-        h = 720;
+  useEffect(() => {
+    if (failed) for (const flight of meldFlights) meldCallback.current?.(flight.card.id);
+  }, [failed, meldFlights]);
 
-      const contentScale = Math.min(parent.clientWidth / w, parent.clientHeight / h);
-      const gutter = Math.max(0, (parent.clientWidth - w * contentScale) / (2 * contentScale));
-      const leftEdge = -gutter + 8;
-      const rightEdge = w + gutter - 38;
-
-      const resize = () => {
-        stage.scale.set(parent.clientWidth / w, parent.clientHeight / h);
-        stage.position.set(0, 0);
-      };
-      resize();
-      projectionObserver = new ResizeObserver(resize);
-      projectionObserver.observe(parent);
-
-      const suitIcon: Record<string, string> = {
-        spades: "♠",
-        hearts: "♥",
-        diamonds: "♦",
-        clubs: "♣",
-      };
-      const fileRank = (rank: string) =>
-        (({ A: "ace", K: "king", Q: "queen", J: "jack" }) as Record<string, string>)[rank] || rank;
-      type Face = { rank: string; suit: string };
-      const face = (rank: string, suit: string): Face => ({ rank, suit });
-
-      const addCard = async (
-        c: Face | null,
-        x: number,
-        y: number,
-        scale = 1,
-        delay = 0,
-        from?: [number, number],
-      ) => {
-        const path = c
-          ? c.rank === "JOKER"
-            ? "/cards/optimized-png/faces/joker_red.png"
-            : `/cards/optimized-png/faces/${c.suit}_${fileRank(c.rank)}.png`
-          : "/cards/optimized-png/backs/blue_back.png";
-        try {
-          const texture = await Assets.load(path);
-          if (disposed) return;
-          const sprite = new Sprite(texture);
-          sprite.width = 58 * scale;
-          sprite.height = 85 * scale;
-          sprite.position.set(from?.[0] ?? x, from?.[1] ?? y + 12);
-          sprite.alpha = from ? 1 : 0;
-          stage.addChild(sprite);
-          let progress = 0;
-          const animate = (ticker: { deltaMS: number }) => {
-            progress += ticker.deltaMS / (from ? NORMAL_DEAL_TRAVEL_MS : 180);
-            const t = Math.min(1, progress),
-              eased = 1 - Math.pow(1 - t, 3);
-            sprite.x = from ? from[0] + (x - from[0]) * eased : x;
-            sprite.y = from ? from[1] + (y - from[1]) * eased : y + 12 * (1 - eased);
-            sprite.alpha = from ? 1 : eased;
-            if (t === 1) pixi.ticker.remove(animate);
-          };
-          if (delay) await new Promise((r) => setTimeout(r, delay));
-          if (!disposed) addTicker(animate);
-        } catch {
-          if (disposed) return;
-          const g = new Graphics()
-            .roundRect(x, y, 58 * scale, 85 * scale, 8)
-            .fill({ color: c ? 0xfafafa : 0x1e3a8a });
-          g.roundRect(x, y, 58 * scale, 85 * scale, 8).stroke({
-            color: c ? 0xd4af37 : 0x93c5fd,
-            width: 2,
-          });
-          stage.addChild(g);
-          if (c) {
-            const t = new Text({
-              text: c.rank + (suitIcon[c.suit] ?? ""),
-              style: {
-                fontSize: 16 * scale,
-                fill: c.suit === "hearts" || c.suit === "diamonds" ? "#dc2626" : "#171717",
-                fontWeight: "bold",
-              },
-            });
-            t.position.set(x + 6 * scale, y + 6 * scale);
-            stage.addChild(t);
+  const projectionKey = game
+    ? JSON.stringify({
+        round: game.roundNumber,
+        seat: game.seat,
+        seats: game.seats,
+        stock: game.stockCount,
+        packets: game.packetCounts,
+        hands: game.handCounts,
+        discard: game.discards.at(-1)?.id,
+        phase: game.phase,
+        ended: game.roundEnded,
+      })
+    : null;
+  useEffect(() => {
+    if (!ready || failed || !sceneRef.current) return;
+    const scene = sceneRef.current;
+    const visual =
+      game ??
+      (deal
+        ? {
+            seats: deal.seats,
+            seat: 0,
+            roundNumber: 0,
+            revision: 0,
+            stockCount: deal.stock.length,
+            packetCounts: deal.packets.map((packet) => packet.length),
+            handCounts: deal.hands.map((hand) => hand.length),
+            discards: deal.discard,
           }
-        }
-      };
-
-      // Melds render as interactive HTML slots in BiribaMeldZone.
-      // Do not draw them again on the Pixi canvas.
-      
-      // Public piles follow the authorized projection. An empty pile stays empty.
-      const discard = projectedGame?.discards.at(-1) ?? deal?.discard.at(-1);
-      const discardTop = discard
-        ? discard.joker
-          ? face("JOKER", "joker")
-          : face(
-              ({ 1: "A", 11: "J", 12: "Q", 13: "K" } as Record<number, string>)[discard.rank] ??
-                String(discard.rank),
-              discard.suit,
-            )
-        : null;
-      const backStack = (x: number, y: number, layers: number) => {
-        for (let i = 0; i < layers; i++) void addCard(null, x + i * 2, y - i * 2, 1.18);
-      };
-      if (!projectedGame || projectedGame.stockCount > 0)
-        backStack(440, 395, projectedGame ? Math.min(3, projectedGame.stockCount) : 3);
-      if (discardTop) void addCard(discardTop, 548, 395, 1.18);
-      if (!projectedGame || (projectedGame.packetCounts[0] ?? 0) > 0) backStack(664, 395, 2);
-      if (!projectedGame || (projectedGame.packetCounts[1] ?? 0) > 0) backStack(766, 395, 2);
-
-      // Opponents keep horizontal card backs in arced fans along the table rim.
-      const BACK_W = BIRIBA_CARD_BACK_WIDTH,
-        BACK_H = BIRIBA_CARD_BACK_HEIGHT;
-      const rear = async (side: "top" | "left" | "right", count: number) => {
-        const shown = Math.max(0, Math.min(count, 14));
-        if (!shown) return;
-        try {
-          const texture = await Assets.load("/cards/optimized-png/backs/blue_back.png");
-          if (disposed) return;
-          for (let i = 0; i < shown; i++) {
-            const pose = opponentFanPose(side, i, shown);
-            const sprite = new Sprite(texture);
-            sprite.anchor.set(0.5);
-            sprite.width = side === "top" ? 58 : 75;
-            sprite.height = side === "top" ? 82 : 105;
-            sprite.position.set(pose.x, pose.y);
-            sprite.rotation = (pose.angle * Math.PI) / 180;
-            stage.addChild(sprite);
-          }
-        } catch {
-          // A missing artwork asset should not break the rest of the table.
-        }
-      };
-
-      const topSeat = projectedGame?.seats === 2 ? 1 : 2;
-      const target = (delta: number, index: number): { x: number; y: number; angle: number } => {
-        if (delta === 0) return { x: 640 + (index - 5) * 10, y: 665, angle: 0 };
-        if (delta === topSeat) return opponentFanPose("top", index, 11);
-        if (delta === 1) return opponentFanPose("left", index, 11);
-        return opponentFanPose("right", index, 11);
-      };
-      if (projectedGame && dealEntrance && dealKey) {
-        const order = projectedGame.seats === 4 ? [0, 1, 2, 3] : [0, 1];
-        const flightCount = 11 * order.length;
-        const allCards: Array<{
-          sprite: Sprite;
-          delta: number;
-          end: { x: number; y: number; angle: number };
-        }> = [];
-        const texture = await Assets.load("/cards/optimized-png/backs/blue_back.png");
-        if (disposed) return;
-        const entranceLayer = new Container();
-        stage.addChild(entranceLayer);
-        for (let i = 0; i < 11; i++)
-          for (const delta of order) {
-            const end = target(delta, i);
-            const sprite = new Sprite(texture);
-            sprite.anchor.set(0.5);
-            sprite.width = BACK_W;
-            sprite.height = BACK_H;
-            sprite.position.set(474, 380);
-            sprite.alpha = 0;
-            entranceLayer.addChild(sprite);
-            allCards.push({ sprite, delta, end });
-            const destination = { x: end.x, y: end.y };
-            const from = { x: 474, y: 380 };
-            schedule(
-              () => {
-                if (disposed) return;
-                let elapsed = 0;
-                sprite.alpha = 1;
-                const tick = (ticker: { deltaMS: number }) => {
-                  elapsed += ticker.deltaMS;
-                  const p = dealProgress(Math.min(1, elapsed / NORMAL_DEAL_TRAVEL_MS));
-                  const pose = dealtCardPose(from, destination, 0, end.angle, p);
-                  sprite.position.set(pose.point.x, pose.point.y);
-                  sprite.rotation = (pose.rotation * Math.PI) / 180;
-                  sprite.width = BACK_W * pose.scale;
-                  sprite.height = BACK_H * pose.scale;
-                  if (elapsed >= NORMAL_DEAL_TRAVEL_MS) pixi.ticker.remove(tick);
-                };
-                addTicker(tick);
-              },
-              (i * order.length + delta) * BIRIBA_DEAL_BEAT_MS,
-            );
-          }
-        const flightEnd = (flightCount - 1) * BIRIBA_DEAL_BEAT_MS + NORMAL_DEAL_TRAVEL_MS;
-        schedule(() => {
-          if (disposed) return;
-          const original = allCards.map(({ sprite }) => ({ x: sprite.x, y: sprite.y }));
-          let elapsed = 0;
-          const handoff = (ticker: { deltaMS: number }) => {
-            elapsed += ticker.deltaMS;
-            const t = Math.min(1, elapsed / NORMAL_DEAL_HANDOFF_TRAVEL_MS);
-            allCards.forEach(({ sprite, delta }, index) => {
-              const start = original[index]!;
-              const exit =
-                delta === 0
-                  ? { x: start.x, y: 780 }
-                  : delta === topSeat
-                    ? { x: start.x, y: -150 }
-                    : delta === 1
-                      ? { x: leftEdge - 180, y: start.y }
-                      : { x: rightEdge + 180, y: start.y };
-              sprite.position.set(
-                start.x + (exit.x - start.x) * t,
-                start.y + (exit.y - start.y) * t,
-              );
-              sprite.alpha = t < 0.65 ? 1 : (1 - t) / 0.35;
-            });
-            if (t >= 1) {
-              pixi.ticker.remove(handoff);
-              entranceLayer.destroy({ children: true });
-              // Populate the persistent opponent fans before signaling the deal
-              // handoff, avoiding a blank interval between flight and live state.
-              void rear("top", projectedGame.handCounts[(projectedGame.seat + topSeat) % projectedGame.seats] ?? 0);
-              if (projectedGame.seats === 4) {
-                void rear("left", projectedGame.handCounts[(projectedGame.seat + 1) % projectedGame.seats] ?? 0);
-                void rear("right", projectedGame.handCounts[(projectedGame.seat + 3) % projectedGame.seats] ?? 0);
-              }
-            }
-          };
-          addTicker(handoff);
-        }, flightEnd + 90);
-        schedule(
-          () => {
-            if (!disposed) onDealComplete?.(dealKey);
-          },
-          flightEnd + NORMAL_DEAL_HANDOFF_TRAVEL_MS + 100,
+        : null);
+    if (!visual) return;
+    const key = game ? biribaDealKey(roomCode ?? "room", game.roundNumber, game.seat) : null;
+    if (scene.dealKey !== key) {
+      cancelDeal(scene);
+      scene.dealKey = key;
+      scene.lastProjection = null;
+      // A new round owns a new visual scene; no old-round pile may remain.
+      for (const id of [...scene.cards.keys()]) removeCard(scene, id);
+      let stored: string | null = null;
+      try {
+        stored = key ? sessionStorage.getItem(`biriba-deal:${key}`) : null;
+      } catch {
+        /* storage is optional */
+      }
+      if (
+        game &&
+        key &&
+        animateDeal &&
+        !revealComplete &&
+        !stored &&
+        !reducedMotion() &&
+        shouldAnimateFreshDeal(game)
+      ) {
+        startDeal(
+          scene,
+          game,
+          key,
+          () => latestGame.current,
+          (value) => callback.current?.(value),
         );
-      } else {
-        void rear("top", projectedGame ? (projectedGame.handCounts[(projectedGame.seat + topSeat) % projectedGame.seats] ?? 0) : 11);
-        if (!projectedGame || projectedGame.seats === 4) {
-          void rear("left", projectedGame ? (projectedGame.handCounts[(projectedGame.seat + 1) % projectedGame.seats] ?? 0) : 11);
-          void rear("right", projectedGame ? (projectedGame.handCounts[(projectedGame.seat + 3) % projectedGame.seats] ?? 0) : 11);
+        return;
+      }
+      if (game && key && !revealComplete && !scene.completedDeals.has(key)) {
+        scene.completedDeals.add(key);
+        callback.current?.(key);
+      }
+    }
+    if (scene.dealActive && (revealComplete || (game && !shouldAnimateFreshDeal(game)))) {
+      cancelDeal(scene);
+      if (key && !scene.completedDeals.has(key)) {
+        scene.completedDeals.add(key);
+        callback.current?.(key);
+      }
+    }
+    const previous = scene.lastProjection;
+    if (
+      scene.activeDiscardId === visual.discards.at(-1)?.id &&
+      previous?.revision === visual.revision
+    )
+      return;
+    const animate = Boolean(
+      game &&
+      previous &&
+      !scene.dealActive &&
+      game.roundNumber === previous.roundNumber &&
+      game.revision === previous.revision + 1 &&
+      document.visibilityState === "visible" &&
+      !reducedMotion(),
+    );
+    const discard = animate ? newDiscardFromSingleMove(previous, visual) : null;
+    if (discard && previous) {
+      syncCards(scene, { ...visual, discards: previous.discards }, animate);
+      scene.lastProjection = visual;
+      startDiscardFlight(scene, previous, visual);
+    } else {
+      if (scene.activeDiscardId) cancelDiscardFlight(scene);
+      syncCards(scene, visual, animate);
+    }
+    // projectionKey excludes timer, scores, chat and other unrelated updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, failed, projectionKey, revealComplete, roomCode, animateDeal]);
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    const parent = mount.current;
+    const current = latestGame.current;
+    if (!ready || failed || !scene || !parent || !current) return;
+    startMeldFlights(scene, parent, current, meldFlights, (id) => meldCallback.current?.(id));
+  }, [ready, failed, meldFlights]);
+
+  const fallback =
+    game ??
+    (deal
+      ? {
+          seats: deal.seats,
+          seat: 0,
+          roundNumber: 0,
+          revision: 0,
+          stockCount: deal.stock.length,
+          packetCounts: deal.packets.map((packet) => packet.length),
+          handCounts: deal.hands.map((hand) => hand.length),
+          discards: deal.discard,
         }
-      }
-
-    })();
-
-    return () => {
-      disposed = true;
-      for (const timer of dealTimers) clearTimeout(timer);
-      for (const ticker of tickers) pixi.ticker.remove(ticker);
-      projectionObserver?.disconnect();
-      if (projectionStage) {
-        pixi.stage.removeChild(projectionStage);
-        projectionStage.destroy({children:true});
-      }
-    };
-  }, [ready, deal, projectedGame, onDealComplete]);
+      : null);
 
   return (
     <div
       ref={mount}
       className="absolute inset-0 pointer-events-none"
+      style={{ zIndex: 24 }}
       role="img"
       aria-label="Τραπέζι Μπιρίμπας με ζώνες ομάδων, κεντρικές στοίβες και φύλλα"
-    />
+    >
+      {failed &&
+        fallback &&
+        biribaVisualCards(fallback).map((card) => (
+          <img
+            key={card.id}
+            src={card.artwork}
+            alt=""
+            draggable={false}
+            style={{
+              position: "absolute",
+              left: `${card.x / 12.8}%`,
+              top: `${card.y / 7.2}%`,
+              width: `${card.width / 12.8}%`,
+              height: `${card.height / 7.2}%`,
+              transform: `${card.id.startsWith("fan:") ? "translate(-50%, -50%) " : ""}rotate(${card.angle}deg)`,
+            }}
+          />
+        ))}
+    </div>
   );
 }
