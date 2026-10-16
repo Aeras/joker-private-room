@@ -112,15 +112,22 @@ function BiribaContent({ playerId }: { playerId: string }) {
   const recorder = useRef<BiribaFlightRecorder | null>(null);
   const loggedSequence = useRef(0);
   const [debugAdmin, setDebugAdmin] = useState(false);
+  const [captureEnabled, setCaptureEnabled] = useState(false);
   useEffect(() => {
     let alive = true;
-    void biribaDiagnostics({ data: { action: "status" } })
-      .then(result => { if (alive && result.ok) setDebugAdmin(result.isAdmin === true); })
-      .catch(() => {});
-    return () => { alive = false; };
+    const check = () => void biribaDiagnostics({ data: { action: "status" } })
+      .then(result => {
+        if (alive && result.ok) {
+          setDebugAdmin(result.isAdmin === true);
+          setCaptureEnabled(result.enabled === true);
+        }
+      }).catch(() => {});
+    check();
+    const timer = setInterval(check, 120000);
+    return () => { alive = false; clearInterval(timer); };
   }, []);
   useEffect(() => {
-    if (!room?.code || room.lifecycle === "waiting") {
+    if (!captureEnabled || !room?.code || room.lifecycle === "waiting") {
       recorder.current?.stop();
       recorder.current = null;
       loggedSequence.current = 0;
@@ -132,7 +139,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
       active.stop();
       if (recorder.current === active) recorder.current = null;
     };
-  }, [room?.code, room?.lifecycle === "waiting"]);
+  }, [captureEnabled, room?.code, room?.lifecycle === "waiting"]);
   useEffect(() => {
     if (!game || !recorder.current) return;
     recorder.current.record("revision", {
@@ -149,7 +156,10 @@ function BiribaContent({ playerId }: { playerId: string }) {
       });
     }
     loggedSequence.current = Math.max(loggedSequence.current, game.publicActionSequence ?? 0);
-    if (game.matchFinished) recorder.current.record("match_finished", { revision: game.revision, round: game.roundNumber });
+    if (game.matchFinished) {
+      recorder.current.record("match_finished", { revision: game.revision, round: game.roundNumber });
+      void recorder.current.flush();
+    }
   }, [game]);
 
   const pendingLocalMove = useRef<{ type: "draw" | "discard"; cardId: string | undefined; source: TableRect | undefined; round: number; revision: number } | null>(null);
@@ -571,11 +581,13 @@ function BiribaContent({ playerId }: { playerId: string }) {
       const winners = winningTeam === null ? [] : room.seats.filter(seat => biribaTeamOf(seat.index, game.seats) === winningTeam && seat.occupant !== "empty");
       const goHome = async () => {
         setBusy(true);
+        await recorder.current?.flush();
         try { await biribaCommand({ data: { action: "leave", code: room.code } }); }
         finally { window.location.assign("/"); }
       };
       const newGame = async () => {
         setBusy(true);
+        await recorder.current?.flush();
         setError("");
         try {
           const created = await createAfterFinishedGame(room, biribaCommand);
