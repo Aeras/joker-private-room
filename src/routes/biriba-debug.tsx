@@ -5,8 +5,10 @@ import { createDiagnosticZip } from "@/biriba/diagnosticsZip";
 
 export const Route = createFileRoute("/biriba-debug")({ component: BiribaDiagnosticsPage });
 
-function exportZip(match: DebugMatch, events: DebugEvent[], onlyPlayer?: string) {
-  const subset = onlyPlayer ? events.filter(event => event.playerId === onlyPlayer) : events;
+function exportZip(match: DebugMatch, events: DebugEvent[], onlyPlayer?: string, onlySession?: string) {
+  const subset = events.filter(event =>
+    (!onlyPlayer || event.playerId === onlyPlayer) &&
+    (!onlySession || event.sessionKey === onlySession));
   const sessions = new Map<string, DebugEvent[]>();
   for (const event of subset) {
     const key = `${event.playerId}_${event.sessionKey}`;
@@ -37,7 +39,7 @@ function exportZip(match: DebugMatch, events: DebugEvent[], onlyPlayer?: string)
     "REPORT.md": summary,
     "README.md": "BIRIBA Black Box. timeline.json: all captured events in order. player_*.json: separate device sessions. No video is included. The log reflects browser telemetry and publicly observed actions, not private card hands.\n",
     "timeline.json": JSON.stringify(subset, null, 2),
-    "metadata.json": JSON.stringify({ room: match, playerFilter: onlyPlayer ?? null, exportedAt: new Date().toISOString() }, null, 2),
+    "metadata.json": JSON.stringify({ room: match, playerFilter: onlyPlayer ?? null, sessionFilter: onlySession ?? null, exportedAt: new Date().toISOString() }, null, 2),
   };
   let n = 0;
   for (const logs of sessions.values()) {
@@ -59,6 +61,7 @@ function BiribaDiagnosticsPage() {
   const [selected, setSelected] = useState("");
   const [events, setEvents] = useState<DebugEvent[]>([]);
   const [playerFilter, setPlayerFilter] = useState("");
+  const [deviceFilter, setDeviceFilter] = useState("");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -75,7 +78,7 @@ function BiribaDiagnosticsPage() {
   useEffect(() => { void refresh().catch(() => setAuthorized(false)); }, [refresh]);
 
   const open = async (roomId: string) => {
-    setBusy(true); setMessage(""); setSelected(roomId); setEvents([]); setPlayerFilter("");
+    setBusy(true); setMessage(""); setSelected(roomId); setEvents([]); setPlayerFilter(""); setDeviceFilter("");
     try {
       const response = await biribaDiagnostics({ data: { action: "export", roomId } });
       if (response.ok) setEvents(response.events ?? []);
@@ -89,6 +92,19 @@ function BiribaDiagnosticsPage() {
     return Array.from(found, ([id, name]) => ({ id, name }));
   }, [events]);
 
+  const devices = useMemo(() => {
+    const sessions = new Map<string, { id: string; playerId: string; name: string; label: string }>();
+    for (const event of events) {
+      if (event.kind !== "device") continue;
+      const data = event.details.data ?? {};
+      sessions.set(event.sessionKey, {
+        id: event.sessionKey, playerId: event.playerId, name: event.player,
+        label: String(data.os ?? "Άγνωστο") + " · " + String(data.browser ?? "Browser") +
+          " · " + String(data.width ?? "?") + "×" + String(data.height ?? "?"),
+      });
+    }
+    return [...sessions.values()];
+  }, [events]);
   const toggle = async () => {
     setBusy(true);
     try {
@@ -146,18 +162,25 @@ function BiribaDiagnosticsPage() {
             {match && <>
               <p className="text-sm text-white/70">Δωμάτιο {match.code} · {events.length} καταγεγραμμένα συμβάντα</p>
               <label className="block text-sm">Παίκτης / συσκευή
-                <select className="mt-1 w-full rounded-lg border border-white/20 bg-[#10191a] p-2" value={playerFilter} onChange={e => setPlayerFilter(e.target.value)}>
+                <select className="mt-1 w-full rounded-lg border border-white/20 bg-[#10191a] p-2" value={playerFilter} onChange={e => { setPlayerFilter(e.target.value); setDeviceFilter(""); }}>
                   <option value="">Όλοι οι παίκτες</option>
                   {participants.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
               </label>
+              <label className="block text-sm">Συσκευή
+                <select className="mt-1 w-full rounded-lg border border-white/20 bg-[#10191a] p-2" value={deviceFilter} onChange={e => setDeviceFilter(e.target.value)}>
+                  <option value="">Όλες οι συσκευές</option>
+                  {devices.filter(d => !playerFilter || d.playerId === playerFilter).map(d =>
+                    <option key={d.id} value={d.id}>{d.name} · {d.label}</option>)}
+                </select>
+              </label>
               <div className="flex flex-wrap gap-2">
-                <button disabled={busy || !events.length} onClick={() => exportZip(match, events, playerFilter || undefined)}
-                  className="rounded bg-emerald-700 px-4 py-2 text-sm">Λήψη ZIP {playerFilter ? "παίκτη" : "παρτίδας"}</button>
+                <button disabled={busy || !events.length} onClick={() => exportZip(match, events, playerFilter || undefined, deviceFilter || undefined)}
+                  className="rounded bg-emerald-700 px-4 py-2 text-sm">Λήψη ZIP {deviceFilter ? "συσκευής" : playerFilter ? "παίκτη" : "παρτίδας"}</button>
                 <button disabled={busy} onClick={() => void purge(match.roomId)} className="rounded border border-red-500/60 px-3 py-2 text-sm text-red-200">Διαγραφή παρτίδας</button>
               </div>
               <div className="max-h-[48vh] overflow-auto rounded-lg bg-black/30 p-3 text-xs">
-                {events.filter(e => !playerFilter || e.playerId === playerFilter).slice(-120).map(e => (
+                {events.filter(e => (!playerFilter || e.playerId === playerFilter) && (!deviceFilter || e.sessionKey === deviceFilter)).slice(-120).map(e => (
                   <div key={e.id} className="border-b border-white/10 py-2">
                     <span className="text-white/50">{new Date(e.at).toLocaleTimeString("el-GR")}</span> <b>{e.player}</b> · {e.kind}
                     <pre className="whitespace-pre-wrap break-all text-white/60">{JSON.stringify(e.details.data ?? {})}</pre>
