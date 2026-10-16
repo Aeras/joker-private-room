@@ -726,6 +726,17 @@ function BiribaContent({ playerId }: { playerId: string }) {
           <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 1</span>
           <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 2</span>
         </div>
+          {game && (
+            <output
+              className="biriba-stock-counter"
+              aria-label={`Κλειστή τράπουλα: ${game.stockCount} από 108 φύλλα απομένουν`}
+              title={`Απομένουν ${game.stockCount} φύλλα στην κλειστή τράπουλα`}
+            >
+              <span className="biriba-stock-counter-current">{game.stockCount}</span>
+              <span className="biriba-stock-counter-total">/ 108</span>
+            </output>
+          )}
+
 
         {discardsMode !== null && (
           <BiribaDiscardsDialog cards={game?.discards ?? []} onClose={() => setDiscardsMode(null)}>

@@ -310,6 +310,39 @@
   overflow-wrap: break-word;
   pointer-events: none;
 }
+/* Read-only overlay on the stock stack. Uses the same horizontal anchor as
+   the stock caption; never captures taps or alters Pixi card animations. */
+.biriba-stock-counter {
+  position: absolute;
+  left: 37.3%;
+  top: 63.3%;
+  transform: translate(-50%, -50%);
+  z-index: 33;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  min-width: 42px;
+  padding: 3px 7px;
+  border: 1px solid #efc77e;
+  border-radius: 9px;
+  background: #0a1515e8;
+  box-shadow: 0 2px 6px #000a;
+  color: #fff5dd;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.biriba-stock-counter-current {
+  font-size: clamp(11px, 1.15vw, 17px);
+  font-weight: 850;
+  line-height: 1;
+}
+.biriba-stock-counter-total {
+  font-size: clamp(8px, 0.75vw, 11px);
+  color: #e7c991;
+}
+
 .biriba-pile-labels button.biriba-pile-label {
   pointer-events: auto;
   cursor: pointer;
