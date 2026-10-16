@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { confirmedLocalDiscard, confirmedLocalDraw, projectCardRect } from "./localCardMotion";
+import { confirmedLocalDiscard, confirmedLocalDraw, isSameBiribaProjection, projectCardRect } from "./localCardMotion";
 import type { BiribaGameView } from "@/services/biribaFunctions";
 import type { BiribaCard } from "./rules";
 
@@ -13,6 +13,14 @@ function game(): BiribaGameView {
 }
 
 describe("Biriba local card flight admission", () => {
+  it("recognizes a successful unchanged foreground projection without accepting stale revisions", () => {
+    const before = game();
+    expect(isSameBiribaProjection(before, { ...before })).toBe(true);
+    expect(isSameBiribaProjection(before, { ...before, revision: 3 })).toBe(false);
+    expect(isSameBiribaProjection(before, { ...before, revision: 5 })).toBe(false);
+    expect(isSameBiribaProjection(before, { ...before, roundNumber: 2 })).toBe(false);
+    expect(isSameBiribaProjection(null, before)).toBe(false);
+  });
   it("reveals only the one newly authorized card after a real stock draw", () => {
     const before = game();
     const next = { ...before, revision: 5, phase: "meld" as const, stockCount: 9,

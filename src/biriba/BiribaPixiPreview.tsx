@@ -11,8 +11,8 @@ import {
   biribaDealKey,
   biribaCardArtwork,
   biribaVisualCards,
+  newDiscardFlightsFromPublicActions,
   newDiscardFromPublicActions,
-  publicActionsSince,
   newDiscardFromSingleMove,
   type MeldFlight,
   shouldAnimateFreshDeal,
@@ -43,9 +43,13 @@ type Scene = {
   discardToken: number;
   drawToken: number;
   activeDiscardId: string | null;
+  activeDiscardRevision: number | null;
+  activeLocalDiscardFlight: LocalDiscardFlight | null;
+  activeLocalDrawFlight: LocalDrawFlight | null;
   meldToken: number;
   meldCleanups: Map<string, () => void>;
   hydrateNextProjection: boolean;
+  resumeEpoch: number;
 };
 
 function schedule(scene: Scene, callback: () => void, delay: number) {
@@ -168,7 +172,7 @@ function syncCards(scene: Scene, game: BiribaVisualGame, animate = false) {
   for (const id of [...scene.cards.keys()]) {
     if (id.startsWith("deal:local:")) continue;
     if (id.startsWith("flight:meld:")) continue;
-    if (id === "flight:draw" || id === "flight:discard") continue;
+    if (id === "flight:draw" || id.startsWith("flight:discard")) continue;
     if (scene.dealActive && id.startsWith("fan:")) continue;
     if (!ids.has(id)) removeCard(scene, id);
   }
@@ -177,10 +181,13 @@ function syncCards(scene: Scene, game: BiribaVisualGame, animate = false) {
 function cancelDiscardFlight(scene: Scene) {
   scene.discardToken++;
   scene.activeDiscardId = null;
-  removeCard(scene, "flight:discard");
+  scene.activeDiscardRevision = null;
+  scene.activeLocalDiscardFlight = null;
+  for (const id of [...scene.cards.keys()]) if (id.startsWith("flight:discard")) removeCard(scene, id);
 }
 function cancelDrawFlight(scene: Scene) {
   scene.drawToken++;
+  scene.activeLocalDrawFlight = null;
   removeCard(scene, "flight:draw");
 }
 function cancelMeldFlights(scene: Scene) {
@@ -247,10 +254,11 @@ function startMeldFlights(
       sprite.width = (rect.width / table.width) * 1280;
       sprite.height = (rect.height / table.height) * 720;
       sprite.position.set(start.x, start.y);
-      sprite.visible = sequenceOrder.indexOf(flight.sequence ?? 0) === 0;
+      const delayMs = Math.min(600, (flight.order ?? sequenceOrder.indexOf(flight.sequence ?? 0)) * 90);
+      sprite.visible = delayMs === 0;
       scene.stage.addChild(sprite);
       scene.cards.set(id, { sprite, artwork, request: 0, loaded: true });
-      let elapsed = -Math.min(600, sequenceOrder.indexOf(flight.sequence ?? 0) * 90);
+      let elapsed = -delayMs;
       const tick: Tick = ({ deltaMS }) => {
         elapsed += deltaMS;
         if (elapsed < 0) return;
@@ -292,6 +300,8 @@ function startDiscardFlight(scene: Scene, next: BiribaVisualGame, flight: MeldFl
   const { card, actorSeat } = flight;
   cancelDiscardFlight(scene);
   scene.activeDiscardId = card.id;
+  scene.activeDiscardRevision = next.revision;
+  scene.activeLocalDiscardFlight = local?.card.id === card.id ? local : null;
   const token = scene.discardToken;
   const artwork = biribaCardArtwork(card);
   const from = local?.card.id === card.id
@@ -308,12 +318,16 @@ function startDiscardFlight(scene: Scene, next: BiribaVisualGame, flight: MeldFl
       sprite.visible = delayMs === 0;
       scene.stage.addChild(sprite);
       scene.cards.set("flight:discard", { sprite, artwork, request: 0, loaded: true });
-      if (local?.card.id === card.id) onStart?.();
       let elapsed = -delayMs;
+      let started = false;
       const tick: Tick = ({ deltaMS }) => {
         elapsed += deltaMS;
         if (elapsed < 0) return;
         sprite.visible = true;
+        if (!started) {
+          started = true;
+          if (local?.card.id === card.id) onStart?.();
+        }
         const progress = dealProgress(Math.min(1, elapsed / 320));
         const pose = dealtCardPose(from, to, 0, 0, progress);
         sprite.position.set(pose.point.x, pose.point.y);
@@ -329,6 +343,8 @@ function startDiscardFlight(scene: Scene, next: BiribaVisualGame, flight: MeldFl
         sprite.position.set(to.x, to.y);
         scene.cards.set("discard:top", { sprite, artwork, request: 0, loaded: true });
         scene.activeDiscardId = null;
+        scene.activeDiscardRevision = null;
+        scene.activeLocalDiscardFlight = null;
         syncCards(scene, next);
         if (local?.card.id === card.id) onComplete?.();
       };
@@ -338,12 +354,80 @@ function startDiscardFlight(scene: Scene, next: BiribaVisualGame, flight: MeldFl
     .catch(() => {
       if (scene.disposed || scene.discardToken !== token) return;
       scene.activeDiscardId = null;
+      scene.activeDiscardRevision = null;
+      scene.activeLocalDiscardFlight = null;
       syncCards(scene, next);
       if (local?.card.id === card.id) onComplete?.();
     });
 }
+
+/** Public actions can contain several bot turns in one authoritative revision. */
+function startBatchedDiscardFlights(scene: Scene, next: BiribaVisualGame, flights: readonly MeldFlight[],
+  local: LocalDiscardFlight | null | undefined, onStart?: () => void, onComplete?: () => void) {
+  cancelDiscardFlight(scene);
+  scene.activeDiscardRevision = next.revision;
+  scene.activeDiscardId = next.discards.at(-1)?.id ?? flights.at(-1)?.card.id ?? null;
+  scene.activeLocalDiscardFlight = local ?? null;
+  const token = scene.discardToken;
+  const ordered = [...flights].sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+  void Promise.all(ordered.map(async flight => {
+    try { return { flight, texture: (await Assets.load(biribaCardArtwork(flight.card))) as Texture }; }
+    catch { return { flight, texture: null }; }
+  })).then(prepared => {
+    if (scene.disposed || scene.discardToken !== token) return;
+    let remaining = prepared.length;
+    const settle = () => {
+      if (--remaining !== 0 || scene.discardToken !== token) return;
+      for (const id of [...scene.cards.keys()]) if (id.startsWith("flight:discard:")) removeCard(scene, id);
+      scene.activeDiscardId = null;
+      scene.activeDiscardRevision = null;
+      scene.activeLocalDiscardFlight = null;
+      syncCards(scene, next);
+    };
+    for (const [index, { flight, texture }] of prepared.entries()) {
+      const isLocal = local?.card.id === flight.card.id;
+      if (!texture) {
+        if (isLocal) { scene.activeLocalDiscardFlight = null; onComplete?.(); }
+        settle();
+        continue;
+      }
+      const id = `flight:discard:${flight.sequence ?? index}`;
+      const from = isLocal && local ? { x: local.source.x, y: local.source.y } : discardOrigin(next, flight.actorSeat);
+      const to = { x: 548 + (index % 3 - 1) * 1.5, y: 395 + (index % 2) * 1.5 };
+      const sprite = new Sprite(texture);
+      sprite.width = isLocal && local ? local.source.width : 68.44;
+      sprite.height = isLocal && local ? local.source.height : 100.3;
+      sprite.position.set(from.x, from.y);
+      sprite.visible = false;
+      scene.stage.addChild(sprite);
+      scene.cards.set(id, { sprite, artwork: biribaCardArtwork(flight.card), request: 0, loaded: true });
+      let elapsed = -Math.min(600, (flight.order ?? index) * 90);
+      let started = false;
+      const tick: Tick = ({ deltaMS }) => {
+        elapsed += deltaMS;
+        if (elapsed < 0) return;
+        sprite.visible = true;
+        if (!started) { started = true; if (isLocal) onStart?.(); }
+        const progress = dealProgress(Math.min(1, elapsed / 320));
+        const pose = dealtCardPose(from, to, 0, 0, progress);
+        sprite.position.set(pose.point.x, pose.point.y);
+        if (isLocal && local) {
+          sprite.width = local.source.width + (68.44 - local.source.width) * progress;
+          sprite.height = local.source.height + (100.3 - local.source.height) * progress;
+        }
+        if (elapsed < 320) return;
+        removeTick(scene, tick);
+        scene.motions.delete(id);
+        if (isLocal) { scene.activeLocalDiscardFlight = null; onComplete?.(); }
+        settle();
+      };
+      scene.motions.set(id, tick);
+      addTick(scene, tick);
+    }
+  });
+}
 function startLocalDrawFlight(scene: Scene, flight: LocalDrawFlight, target: HTMLElement | null,
-  parent: HTMLElement | null, onComplete: () => void) {
+  parent: HTMLElement | null, onStart: () => void, onComplete: () => void) {
   cancelDrawFlight(scene);
   const token = scene.drawToken;
   if (!target || !parent || reducedMotion()) { onComplete(); return; }
@@ -353,8 +437,17 @@ function startLocalDrawFlight(scene: Scene, flight: LocalDrawFlight, target: HTM
   const to = { x: ((cardRect.left - tableRect.left) / tableRect.width) * 1280,
     y: ((cardRect.top - tableRect.top) / tableRect.height) * 720 };
   const from = { x: 440, y: 395 };
-  void Promise.all([Assets.load(BACK_ARTWORK), Assets.load(biribaCardArtwork(flight.card))])
-    .then(([back, face]) => {
+  scene.activeLocalDrawFlight = flight;
+  // Stock backs are already in the scene. The private face can load during the
+  // flight; waiting for it here delayed the very first visible frame.
+  const existingBack = [...scene.cards.values()].find(entry => entry.artwork === BACK_ARTWORK && entry.loaded)?.sprite.texture;
+  let face: Texture | null = null;
+  let faceFailed = false;
+  void Assets.load(biribaCardArtwork(flight.card))
+    .then((texture: Texture) => { if (!scene.disposed && scene.drawToken === token) face = texture; })
+    .catch(() => { if (!scene.disposed && scene.drawToken === token) faceFailed = true; });
+  void (existingBack ? Promise.resolve(existingBack) : Assets.load(BACK_ARTWORK))
+    .then((back: Texture) => {
       if (scene.disposed || scene.drawToken !== token) return;
       const sprite = new Sprite(back as Texture);
       sprite.width = 68.44;
@@ -363,22 +456,36 @@ function startLocalDrawFlight(scene: Scene, flight: LocalDrawFlight, target: HTM
       scene.stage.addChild(sprite);
       scene.cards.set("flight:draw", { sprite, artwork: BACK_ARTWORK, request: 0, loaded: true });
       let elapsed = 0;
+      let flipElapsed = 0;
+      let started = false;
       const tick: Tick = ({ deltaMS }) => {
         elapsed += deltaMS;
+        if (!started) { started = true; onStart(); }
         const progress = dealProgress(Math.min(1, elapsed / 320));
         const pose = dealtCardPose(from, to, 0, 0, progress);
         sprite.position.set(pose.point.x, pose.point.y);
         sprite.width = 68.44 + (cardRect.width / tableRect.width * 1280 - 68.44) * progress;
         sprite.height = 100.3 + (cardRect.height / tableRect.height * 720 - 100.3) * progress;
         if (elapsed < 320) return;
+        if (faceFailed) {
+          removeTick(scene, tick);
+          scene.motions.delete("flight:draw");
+          removeCard(scene, "flight:draw");
+          scene.activeLocalDrawFlight = null;
+          onComplete();
+          return;
+        }
+        if (!face) return;
         const faceWidth = cardRect.width / tableRect.width * 1280;
-        const flip = Math.min(1, (elapsed - 320) / 130);
+        flipElapsed += Math.min(deltaMS, Math.max(0, elapsed - 320));
+        const flip = Math.min(1, flipElapsed / 130);
         sprite.width = Math.max(1, faceWidth * Math.abs(Math.cos(Math.PI * flip)));
         sprite.x = to.x + (faceWidth - sprite.width) / 2;
-        if (flip >= 0.5 && sprite.texture !== face) sprite.texture = face as Texture;
+        if (flip >= 0.5 && sprite.texture !== face) sprite.texture = face;
         if (flip < 1) return;
         removeTick(scene, tick);
         scene.motions.delete("flight:draw");
+        scene.activeLocalDrawFlight = null;
         onComplete();
         // Keep the settled face until React commits the newly revealed hand card.
         schedule(scene, () => {
@@ -388,7 +495,11 @@ function startLocalDrawFlight(scene: Scene, flight: LocalDrawFlight, target: HTM
       scene.motions.set("flight:draw", tick);
       addTick(scene, tick);
     })
-    .catch(() => { if (scene.drawToken === token) onComplete(); });
+    .catch(() => {
+      if (scene.drawToken !== token) return;
+      scene.activeLocalDrawFlight = null;
+      onComplete();
+    });
 }
 function cancelDeal(scene: Scene) {
   cancelDiscardFlight(scene);
@@ -524,8 +635,10 @@ export function BiribaPixiPreview({
   onMeldFlightComplete,
   localDiscardFlight,
   localDrawFlight,
+  resumeEpoch = 0,
   onLocalDiscardStart,
   onLocalDiscardComplete,
+  onLocalDrawStart,
   onLocalDrawComplete,
 }: {
   animateDeal?: boolean;
@@ -539,9 +652,11 @@ export function BiribaPixiPreview({
   onMeldFlightComplete?: (id: string) => void;
   localDiscardFlight?: LocalDiscardFlight | null;
   localDrawFlight?: LocalDrawFlight | null;
-  onLocalDiscardStart?: () => void;
-  onLocalDiscardComplete?: () => void;
-  onLocalDrawComplete?: () => void;
+  resumeEpoch?: number;
+  onLocalDiscardStart?: (flight: LocalDiscardFlight) => void;
+  onLocalDiscardComplete?: (flight: LocalDiscardFlight) => void;
+  onLocalDrawStart?: (flight: LocalDrawFlight) => void;
+  onLocalDrawComplete?: (flight: LocalDrawFlight) => void;
 }) {
   const mount = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<Scene | null>(null);
@@ -552,8 +667,11 @@ export function BiribaPixiPreview({
   const meldCallback = useRef(onMeldFlightComplete);
   const discardStartCallback = useRef(onLocalDiscardStart);
   const discardCompleteCallback = useRef(onLocalDiscardComplete);
+  const drawStartCallback = useRef(onLocalDrawStart);
   const drawCompleteCallback = useRef(onLocalDrawComplete);
+  const latestDiscardFlight = useRef(localDiscardFlight);
   const latestDrawFlight = useRef(localDrawFlight);
+  const resumeEpochRef = useRef(resumeEpoch);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   latestGame.current = game;
@@ -565,8 +683,11 @@ export function BiribaPixiPreview({
   meldCallback.current = onMeldFlightComplete;
   discardStartCallback.current = onLocalDiscardStart;
   discardCompleteCallback.current = onLocalDiscardComplete;
+  drawStartCallback.current = onLocalDrawStart;
   drawCompleteCallback.current = onLocalDrawComplete;
+  latestDiscardFlight.current = localDiscardFlight;
   latestDrawFlight.current = localDrawFlight;
+  resumeEpochRef.current = resumeEpoch;
 
   useEffect(() => {
     const parent = mount.current;
@@ -594,8 +715,8 @@ export function BiribaPixiPreview({
         callback.current?.(latestDealKey.current);
       }
       for (const flight of latestMeldFlights.current) meldCallback.current?.(flight.card.id);
-      if (latestDrawFlight.current) drawCompleteCallback.current?.();
-      discardCompleteCallback.current?.();
+      if (latestDrawFlight.current) drawCompleteCallback.current?.(latestDrawFlight.current);
+      if (latestDiscardFlight.current) discardCompleteCallback.current?.(latestDiscardFlight.current);
     };
     document.addEventListener("visibilitychange", background);
     void (async () => {
@@ -639,9 +760,13 @@ export function BiribaPixiPreview({
         discardToken: 0,
         drawToken: 0,
         activeDiscardId: null,
+        activeDiscardRevision: null,
+        activeLocalDiscardFlight: null,
+        activeLocalDrawFlight: null,
         meldToken: 0,
         meldCleanups: new Map(),
         hydrateNextProjection: false,
+        resumeEpoch: resumeEpochRef.current,
       };
       sceneRef.current = scene;
       parent.appendChild(app.canvas);
@@ -681,7 +806,7 @@ export function BiribaPixiPreview({
     if (failed) for (const flight of meldFlights) meldCallback.current?.(flight.card.id);
   }, [failed, meldFlights]);
   useEffect(() => {
-    if (failed) { if (localDrawFlight) drawCompleteCallback.current?.(); if (localDiscardFlight) discardCompleteCallback.current?.(); }
+    if (failed) { if (localDrawFlight) drawCompleteCallback.current?.(localDrawFlight); if (localDiscardFlight) discardCompleteCallback.current?.(localDiscardFlight); }
   }, [failed, localDrawFlight, localDiscardFlight]);
 
   const projectionKey = game
@@ -716,6 +841,14 @@ export function BiribaPixiPreview({
           }
         : null);
     if (!visual) return;
+    if (scene.resumeEpoch !== resumeEpoch) {
+      scene.resumeEpoch = resumeEpoch;
+      scene.hydrateNextProjection = false;
+    }
+    // A route timeout or interruption has released visual ownership. Invalidate
+    // any late texture result or ticker before it can reappear over newer state.
+    if (!localDrawFlight && scene.activeLocalDrawFlight) cancelDrawFlight(scene);
+    if (!localDiscardFlight && scene.activeLocalDiscardFlight) cancelDiscardFlight(scene);
     const key = game ? biribaDealKey(roomCode ?? "room", game.roundNumber, game.seat) : null;
     if (scene.dealKey !== key) {
       cancelDeal(scene);
@@ -761,7 +894,7 @@ export function BiribaPixiPreview({
     }
     const previous = scene.lastProjection;
     if (
-      scene.activeDiscardId === visual.discards.at(-1)?.id &&
+      scene.activeDiscardRevision === visual.revision &&
       previous?.revision === visual.revision
     )
       return;
@@ -789,18 +922,21 @@ export function BiribaPixiPreview({
             })()
           : newDiscardFromPublicActions(previous, visual)
         : null;
-    if (discard && previous) {
+    const publicDiscards = animate && previous && game?.publicActionSequence !== undefined
+      ? newDiscardFlightsFromPublicActions(previous, visual) : [];
+    const discardFlights: MeldFlight[] = publicDiscards.length ? publicDiscards : discard ? [discard] : [];
+    if (discardFlights.length && previous) {
       syncCards(scene, { ...visual, discards: previous.discards }, animate);
       scene.lastProjection = visual;
-      const publicOrder = publicActionsSince(previous, visual).map((action) => action.sequence);
-      const sequence =
-        "sequence" in discard && typeof discard.sequence === "number"
-          ? discard.sequence
-          : undefined;
-      const delay =
-        sequence === undefined ? 0 : Math.min(600, Math.max(0, publicOrder.indexOf(sequence)) * 90);
-      startDiscardFlight(scene, visual, discard, delay,
-        localDiscardFlight, () => discardStartCallback.current?.(), () => discardCompleteCallback.current?.());
+      const onStart = () => { if (localDiscardFlight) discardStartCallback.current?.(localDiscardFlight); };
+      const onComplete = () => { if (localDiscardFlight) discardCompleteCallback.current?.(localDiscardFlight); };
+      if (discardFlights.length > 1) {
+        startBatchedDiscardFlights(scene, visual, discardFlights, localDiscardFlight, onStart, onComplete);
+      } else {
+        const single = discardFlights[0]!;
+        const delay = Math.min(600, (single.order ?? 0) * 90);
+        startDiscardFlight(scene, visual, single, delay, localDiscardFlight, onStart, onComplete);
+      }
     } else {
       if (scene.activeDiscardId) cancelDiscardFlight(scene);
       syncCards(scene, visual, animate);
@@ -810,11 +946,12 @@ export function BiribaPixiPreview({
       const target = [...document.querySelectorAll<HTMLElement>("[data-biriba-hand-card]")]
         .find(node => node.dataset["biribaHandCard"] === localDrawFlight.card.id) ?? null;
       startLocalDrawFlight(scene, localDrawFlight, target, mount.current,
-        () => drawCompleteCallback.current?.());
+        () => drawStartCallback.current?.(localDrawFlight),
+        () => drawCompleteCallback.current?.(localDrawFlight));
     }
     // projectionKey excludes timer, scores, chat and other unrelated updates.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, failed, projectionKey, revealComplete, roomCode, animateDeal, localDiscardFlight, localDrawFlight]);
+  }, [ready, failed, projectionKey, revealComplete, roomCode, animateDeal, localDiscardFlight, localDrawFlight, resumeEpoch]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -843,7 +980,7 @@ export function BiribaPixiPreview({
     <div
       ref={mount}
       className="absolute inset-0 pointer-events-none"
-      style={{ zIndex: 24 }}
+      style={{ zIndex: 36 }}
       role="img"
       aria-label="Τραπέζι Μπιρίμπας με ζώνες ομάδων, κεντρικές στοίβες και φύλλα"
     >

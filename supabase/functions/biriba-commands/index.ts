@@ -64,17 +64,23 @@ Deno.serve(async(req)=>{
    const result=await rpc("start",{p_state:state});
    return reply(result.data,result.error);
   }
+  const commandStart=performance.now();
+  const loadStart=performance.now();
   const loaded=await rpc("load");
+  const loadMs=performance.now()-loadStart;
   if(loaded.error||!loaded.data?.ok)return reply(loaded.data,loaded.error);
   const seat=loaded.data.seat as number;
   const revision=loaded.data.revision as number;
   const original=loaded.data.state as BiribaMatch;
   let match=original;
   if(action==="get_game")match=recoverUnclaimedBiribaPacket(match);
+  const roomStart=performance.now();
   const room=await rpc("get");
+  const roomMs=performance.now()-roomStart;
   if(room.error||!room.data?.ok)return json({ok:false,code:"SERVICE_UNAVAILABLE"},503);
   const seats=room.data.room.seats as Array<{index:number;occupant:string;name:string;botId?:string;tier?:number}>;
   const now=Date.now();
+  let actionMs=0,botMs=0,saveMs=0;
   if(!match.clock)return json({ok:false,code:"INVALID_STATE"},503);
   if(action==="next_round"){
    if(seat!==0||!match.roundScored||match.matchFinished)return json({ok:false,code:"NEXT_ROUND_DENIED"},409);
@@ -101,9 +107,12 @@ Deno.serve(async(req)=>{
       return json({ok:false,code:"TURN_EXPIRED"},409);
      const move=body.move as BiribaAction|undefined;
      if(!move||!actions.has(String(move.type)))return json({ok:false,code:"INVALID_MOVE"},400);
+     const actionStart=performance.now();
      try{match=recordBiribaPublicActions(match,biribaAction(match,seat,move),seat);}catch{return json({ok:false,code:"ILLEGAL_MOVE"},400);}
+     actionMs=performance.now()-actionStart;
     }
     // Make pending bot moves in one bounded pass; never expose their private hands.
+    const botStart=performance.now();
     for(let count=0;count<60&&!match.roundEnded;count++){
      const bot=seats.find(s=>s.index===match.turn&&(s.occupant==="bot"||match.clock.botTakeovers.includes(s.index)));
      if(!bot)break;
@@ -111,6 +120,7 @@ Deno.serve(async(req)=>{
      if(changed===match)break;
      match=recordBiribaPublicActions(match,changed,bot.index);
     }
+    botMs=performance.now()-botStart;
    }
   }
   // Server-authoritative round handoff. All clients poll get_game; none
@@ -126,14 +136,19 @@ Deno.serve(async(req)=>{
     }
   }
   if(JSON.stringify(match)!==JSON.stringify(original)){
+   const saveStart=performance.now();
    const saved=await rpc("save",{p_state:match,p_revision:revision});
+   saveMs=performance.now()-saveStart;
    if(saved.error||!saved.data?.ok)return reply(saved.data,saved.error);
   }
   const {hands,packets,stock,...publicState}=match;
   const view={...publicState,stockCount:stock.length,handCounts:hands.map(h=>h.length),
    myHand:hands[seat],packetCounts:packets.map(p=>p.length),seat,revision:JSON.stringify(match)===JSON.stringify(original)?revision:revision+1,
    currentPlayerName:seats.find(s=>s.index===match.turn)?.name,roomSeats:seats};
-  return json({ok:true,game:view});
+  // Durations contain no card, room, player, or session data. The client uses
+  // them only for opt-in diagnostic telemetry on its own accepted move.
+  const timing=action==="move"?{edgeMs:performance.now()-commandStart,loadMs,roomMs,actionMs,botMs,saveMs}:undefined;
+  return json({ok:true,game:view,...(timing?{timing}:{})});
  }catch(err){
   console.error("BIRIBA_EDGE",err instanceof Error?err.name:"unknown");
   return json({ok:false,code:"SERVICE_UNAVAILABLE"},503);

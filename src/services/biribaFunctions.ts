@@ -25,19 +25,24 @@ export type BiribaGameView={
  scoreHistory:Array<{round:number;teamTotals:[number,number];breakdown:Array<{cards:number;bonuses:number;closing:number;penalty:number;held:number;total:number}>;playerPoints:Array<{seat:number;cards:number;held:number}>}>;
  publicActionSequence?:number;publicActions?:BiribaPublicAction[];
 };
+export type BiribaCommandTiming={edgeMs:number;loadMs:number;roomMs:number;actionMs:number;botMs:number;saveMs:number;proxyMs?:number};
 export type BiribaResponse={ok:true;room:BiribaRoomView}|{ok:true;rooms:Array<{code:string;capacity:2|4;target:number;timerEnabled:boolean;hostName:string;occupied:number}>}|
  {ok:true;membership:{code:string;lifecycle:string}|null}|{ok:true;cancelled:boolean}|
- {ok:true;started:boolean}|{ok:true;updated:boolean}|{ok:true;game:BiribaGameView}|{ok:false;code:string};
+ {ok:true;started:boolean}|{ok:true;updated:boolean}|{ok:true;game:BiribaGameView;timing?:BiribaCommandTiming}|{ok:false;code:string};
 export const biribaCommand=createServerFn({method:"POST"}).validator(request).handler(async({data}):Promise<BiribaResponse>=>{
  const sessionToken=getCookie("__Host-joker_session");
  if(!sessionToken)return {ok:false,code:"NOT_AUTHENTICATED"};
  try{
+  const proxyStart=performance.now();
   const response=await fetch(`${EXTERNAL_SUPABASE_URL}/functions/v1/biriba-commands`,{
    method:"POST",headers:{apikey:EXTERNAL_SUPABASE_PUBLISHABLE_KEY,"Content-Type":"application/json"},
    body:JSON.stringify({...data,sessionToken})
   });
   const result=await response.json() as BiribaResponse;
-  if(result&&typeof result==="object"&&typeof result.ok==="boolean")return result;
+  if(result&&typeof result==="object"&&typeof result.ok==="boolean")
+   return result.ok&&"game" in result&&result.timing
+    ? {...result,timing:{...result.timing,proxyMs:performance.now()-proxyStart}}
+    :result;
  }catch{/* Server transport error, no leaking implementation details. */}
  return {ok:false,code:"SERVICE_UNAVAILABLE"};
 });

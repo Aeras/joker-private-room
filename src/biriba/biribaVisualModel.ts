@@ -150,7 +150,7 @@ export function newDiscardFromSingleMove(
     : null;
 }
 
-export type MeldFlight = { card: BiribaCard; actorSeat: number; sequence?: number };
+export type MeldFlight = { card: BiribaCard; actorSeat: number; sequence?: number; order?: number };
 
 /** A missing event means the client was offline or the bounded journal rolled over. */
 export function publicActionsSince(
@@ -188,12 +188,21 @@ export function newMeldCardsFromPublicActions(
     next.melds?.flatMap((meld) => meld.cards.map(({ card }) => card.id)) ?? [],
   );
   return publicActionsSince(previous, next)
-    .filter((action) => action.kind === "meld")
-    .flatMap((action) =>
+    .flatMap((action, order) => action.kind === "meld" ?
       action.cards
         .filter((card) => visible.has(card.id))
-        .map((card) => ({ card, actorSeat: action.actorSeat, sequence: action.sequence })),
-    );
+        .map((card) => ({ card, actorSeat: action.actorSeat, sequence: action.sequence, order })) : []);
+}
+
+/** Preserve every confirmed public discard in a batched bot turn. */
+export function newDiscardFlightsFromPublicActions(
+  previous: BiribaVisualGame | null,
+  next: BiribaVisualGame,
+): MeldFlight[] {
+  return publicActionsSince(previous, next)
+    .flatMap((action, order) => action.kind === "discard"
+      ? action.cards.map(card => ({ card, actorSeat: action.actorSeat, sequence: action.sequence, order }))
+      : []);
 }
 
 export function newDiscardFromPublicActions(
