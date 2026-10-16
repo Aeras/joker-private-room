@@ -18,6 +18,8 @@ import { biribaMeldDisplayLayout, sortedBiribaHand } from "@/biriba/handAndMeldP
 import { BiribaTrumpIndicator } from "@/biriba/BiribaTrumpIndicator";
 import { createAfterFinishedGame } from "@/biriba/finishedGameActions";
 import { localHandCardPresentation } from "@/biriba/localHandPresentation";
+import { BiribaFlightRecorder } from "@/biriba/flightRecorder";
+import { biribaDiagnostics } from "@/services/biribaDiagnostics";
 import { createBiribaPollGate } from "@/biriba/pollGate";
 import { confirmedLocalDiscard, confirmedLocalDraw, projectCardRect, type LocalDiscardFlight, type LocalDrawFlight, type TableRect } from "@/biriba/localCardMotion";
 import "@/biriba/biribaReferenceTable.css";
@@ -107,6 +109,59 @@ function BiribaContent({ playerId }: { playerId: string }) {
   >([]);
   const [game, setGame] = useState<BiribaGameView | null>(null);
   const gameRef = useRef<BiribaGameView | null>(null);
+  const recorder = useRef<BiribaFlightRecorder | null>(null);
+  const loggedSequence = useRef(0);
+  const [debugAdmin, setDebugAdmin] = useState(false);
+  const [captureEnabled, setCaptureEnabled] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const check = () => void biribaDiagnostics({ data: { action: "status" } })
+      .then(result => {
+        if (alive && result.ok) {
+          setDebugAdmin(result.isAdmin === true);
+          setCaptureEnabled(result.enabled === true);
+        }
+      }).catch(() => {});
+    check();
+    const timer = setInterval(check, 120000);
+    return () => { alive = false; clearInterval(timer); };
+  }, []);
+  useEffect(() => {
+    if (!captureEnabled || !room?.code || room.lifecycle === "waiting") {
+      recorder.current?.stop();
+      recorder.current = null;
+      loggedSequence.current = 0;
+      return;
+    }
+    const active = new BiribaFlightRecorder(room.code);
+    recorder.current = active;
+    return () => {
+      active.stop();
+      if (recorder.current === active) recorder.current = null;
+    };
+  }, [captureEnabled, room?.code, room?.lifecycle === "waiting"]);
+  useEffect(() => {
+    if (!game || !recorder.current) return;
+    recorder.current.record("revision", {
+      revision: game.revision, round: game.roundNumber, phase: game.phase,
+      seat: game.seat, turn: game.turn, handSize: game.myHand.length,
+      stockCount: game.stockCount, discardCount: game.discards.length,
+      publicSequence: game.publicActionSequence ?? 0,
+    });
+    for (const action of game.publicActions ?? []) {
+      if (action.sequence <= loggedSequence.current) continue;
+      recorder.current.record("revision", {
+        publicAction: action.kind, actionSequence: action.sequence,
+        actorSeat: action.actorSeat, round: action.round, cardCount: action.cards.length,
+      });
+    }
+    loggedSequence.current = Math.max(loggedSequence.current, game.publicActionSequence ?? 0);
+    if (game.matchFinished) {
+      recorder.current.record("match_finished", { revision: game.revision, round: game.roundNumber });
+      void recorder.current.flush();
+    }
+  }, [game]);
+
   const pendingLocalMove = useRef<{ type: "draw" | "discard"; cardId: string | undefined; source: TableRect | undefined; round: number; revision: number } | null>(null);
   const handRects = useRef(new Map<string, DOMRect>());
   const discardGhost = useRef<HTMLImageElement | null>(null);
@@ -171,7 +226,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
       if (pending.type === "draw") {
         const card = confirmedLocalDraw(previous, next);
         if (card && animateLocal)
-          setLocalDrawFlight({ card, revision: next.revision });
+          { recorder.current?.record("animation_start", { action: "draw", revision: next.revision }); setLocalDrawFlight({ card, revision: next.revision }); }
         if (card || next.roundNumber !== pending.round) pendingLocalMove.current = null;
       } else if (pending.cardId && pending.source) {
         const card = confirmedLocalDiscard(previous, next, pending.cardId);
@@ -187,6 +242,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
             discardGhost.current?.remove();
             discardGhost.current = ghost;
           }
+          recorder.current?.record("animation_start", { action: "discard", revision: next.revision });
           setLocalDiscardFlight({ card, source: pending.source, revision: next.revision });
         }
         if (card || next.roundNumber !== pending.round) pendingLocalMove.current = null;
@@ -208,24 +264,35 @@ function BiribaContent({ playerId }: { playerId: string }) {
     });
   }, []);
   const onLocalDiscardStart = useCallback(() => {
+    recorder.current?.record("animation_start", { action: "discard_first_sprite" });
     discardGhost.current?.remove();
     discardGhost.current = null;
   }, []);
   const onLocalDiscardComplete = useCallback(() => {
+    recorder.current?.record("animation_end", { action: "discard" });
     discardGhost.current?.remove();
     discardGhost.current = null;
     setLocalDiscardFlight(null);
   }, []);
-  const onLocalDrawComplete = useCallback(() => setLocalDrawFlight(null), []);
+  const onLocalDrawComplete = useCallback(() => {
+    recorder.current?.record("animation_end", { action: "draw" });
+    setLocalDrawFlight(null);
+  }, []);
   useEffect(() => () => { discardGhost.current?.remove(); }, []);
   useEffect(() => {
     if (!localDiscardFlight) return;
-    const fallback = setTimeout(onLocalDiscardComplete, 1200);
+    const fallback = setTimeout(() => {
+      recorder.current?.record("animation_timeout", { action: "discard", timeoutMs: 1200 });
+      onLocalDiscardComplete();
+    }, 1200);
     return () => clearTimeout(fallback);
   }, [localDiscardFlight, onLocalDiscardComplete]);
   useEffect(() => {
     if (!localDrawFlight) return;
-    const fallback = setTimeout(onLocalDrawComplete, 1200);
+    const fallback = setTimeout(() => {
+      recorder.current?.record("animation_timeout", { action: "draw", timeoutMs: 1200 });
+      onLocalDrawComplete();
+    }, 1200);
     return () => clearTimeout(fallback);
   }, [localDrawFlight, onLocalDrawComplete]);
   useLayoutEffect(() => {
@@ -424,10 +491,14 @@ function BiribaContent({ playerId }: { playerId: string }) {
         : null;
       pendingLocalMove.current = { type: local.type, cardId: local.id, source: source ?? undefined, round: game.roundNumber, revision: game.revision };
     }
+    const startedAt = performance.now();
+    recorder.current?.record("action_start", { action: String(local.type ?? "unknown"), revision: game?.revision ?? 0 });
     setError("");
     setBusy(true);
     try {
       const result = await biribaCommand({ data: { action: "move", code, move } });
+      recorder.current?.record("action_end", { action: String(local.type ?? "unknown"), durationMs: performance.now() - startedAt, success: result.ok });
+      if (performance.now() - startedAt > 500) recorder.current?.record("warning", { category: "slow_action", durationMs: performance.now() - startedAt, action: String(local.type ?? "unknown") });
       if (!result.ok) {
         reconcile = result.code === "SERVICE_UNAVAILABLE";
         if (reconcile && local.type === "discard") uncertainDiscard.current = local.id ?? null;
@@ -443,6 +514,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
         setSelected([]);
       }
     } catch {
+      recorder.current?.record("error", { category: "action_request", action: String(local.type ?? "unknown"), durationMs: performance.now() - startedAt });
       reconcile = true;
       if (local.type === "discard") uncertainDiscard.current = local.id ?? null;
       pendingLocalMove.current = null;
@@ -509,11 +581,13 @@ function BiribaContent({ playerId }: { playerId: string }) {
       const winners = winningTeam === null ? [] : room.seats.filter(seat => biribaTeamOf(seat.index, game.seats) === winningTeam && seat.occupant !== "empty");
       const goHome = async () => {
         setBusy(true);
+        await recorder.current?.flush();
         try { await biribaCommand({ data: { action: "leave", code: room.code } }); }
         finally { window.location.assign("/"); }
       };
       const newGame = async () => {
         setBusy(true);
+        await recorder.current?.flush();
         setError("");
         try {
           const created = await createAfterFinishedGame(room, biribaCommand);
@@ -698,6 +772,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
 
         {/* 5. TOP BAR & UTILITIES */}
         <BiribaRoomControls isHost={isHost} busy={busy} error={error} onEndGame={endGame}>
+          {debugAdmin && <a href="/biriba-debug" aria-label="Διαγνωστικά Admin" className="flex h-10 items-center rounded-xl border border-amber-400/50 bg-black/80 px-3 text-xs font-bold text-amber-300">Black Box</a>}
           <button
             type="button"
             aria-label="Αναλυτική βαθμολογία"
@@ -840,6 +915,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
       headerActions={room ? <BiribaRoomControls isHost={isHost} busy={busy} error={error} onEndGame={endGame} /> : undefined}
     >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 rounded-xl border border-primary/25 p-2">
+        {debugAdmin && <a href="/biriba-debug" className="self-end rounded-md border border-amber-400/50 px-3 py-1 text-xs text-amber-200">BIRIBA Black Box · Admin</a>}
         {error && <p role="alert" className="text-red-400">{error}</p>}
         {!room && (
           <div className="grid grid-cols-2 gap-2">

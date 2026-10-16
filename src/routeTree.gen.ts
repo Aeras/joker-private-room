@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BotLabRouteImport } from './routes/bot-lab'
 import { Route as BiribaPreviewRouteImport } from './routes/biriba-preview'
 import { Route as BiribaRouteImport } from './routes/biriba'
+import { Route as BiribaDebugRouteImport } from './routes/biriba-debug'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as DurakRouteImport } from './routes/durak'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -25,6 +26,11 @@ import { Route as TableRouteImport } from './routes/table'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BiribaDebugRoute = BiribaDebugRouteImport.update({
+  id: '/biriba-debug',
+  path: '/biriba-debug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BiribaRoute = BiribaRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/bot-lab': typeof BotLabRoute
   '/biriba-preview': typeof BiribaPreviewRoute
   '/biriba': typeof BiribaRoute
+  '/biriba-debug': typeof BiribaDebugRoute
   '/create': typeof CreateRoute
   '/durak': typeof DurakRoute
   '/history': typeof HistoryRoute
@@ -133,6 +140,7 @@ export interface FileRouteTypes {
     | '/bot-lab'
     | '/biriba-preview'
     | '/biriba'
+    | '/biriba-debug'
     | '/create'
     | '/durak'
     | '/history'
@@ -147,6 +155,7 @@ export interface FileRouteTypes {
     | '/bot-lab'
     | '/biriba-preview'
     | '/biriba'
+    | '/biriba-debug'
     | '/create'
     | '/durak'
     | '/history'
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/bot-lab'
     | '/biriba-preview'
     | '/biriba'
+    | '/biriba-debug'
     | '/create'
     | '/durak'
     | '/history'
@@ -176,6 +186,7 @@ export interface RootRouteChildren {
   BotLabRoute: typeof BotLabRoute
   BiribaPreviewRoute: typeof BiribaPreviewRoute
   BiribaRoute: typeof BiribaRoute
+  BiribaDebugRoute: typeof BiribaDebugRoute
   CreateRoute: typeof CreateRoute
   DurakRoute: typeof DurakRoute
   HistoryRoute: typeof HistoryRoute
@@ -200,6 +211,13 @@ declare module '@tanstack/react-router' {
       path: '/biriba'
       fullPath: '/biriba'
       preLoaderRoute: typeof BiribaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/biriba-debug': {
+      id: '/biriba-debug'
+      path: '/biriba-debug'
+      fullPath: '/biriba-debug'
+      preLoaderRoute: typeof BiribaDebugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/biriba-preview': {
@@ -280,6 +298,7 @@ const rootRouteChildren: RootRouteChildren = {
   BotLabRoute: BotLabRoute,
   BiribaPreviewRoute: BiribaPreviewRoute,
   BiribaRoute: BiribaRoute,
+  BiribaDebugRoute: BiribaDebugRoute,
   CreateRoute: CreateRoute,
   DurakRoute: DurakRoute,
   HistoryRoute: HistoryRoute,

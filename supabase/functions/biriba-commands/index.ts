@@ -9,7 +9,7 @@ import {CANONICAL_BOTS} from "../_shared/bot-catalog.ts";
 import {recoverUnclaimedBiribaPacket} from "./recoverPacket.ts";
 import {recordBiribaPublicActions} from "./presentation.ts";
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
-const allowed=new Set(["create","join","list","get","membership","leave","bot_add","bot_remove","start","get_game","move","pause","resume","reclaim","next_round","end_game"]);
+const allowed=new Set(["create","join","list","get","membership","leave","bot_add","bot_remove","start","get_game","move","pause","resume","reclaim","next_round","end_game","diag_status","diag_ingest","diag_list","diag_export","diag_purge","diag_toggle"]);
 const actions=new Set(["draw","pickup","meld","extend","discard"]);
 const number=(v:unknown)=>typeof v==="number"&&Number.isInteger(v);
 Deno.serve(async(req)=>{
@@ -21,12 +21,22 @@ Deno.serve(async(req)=>{
   if(!/^[a-f0-9]{64}$/i.test(token))return json({ok:false,code:"NOT_AUTHENTICATED"},401);
   if(!allowed.has(action))return json({ok:false,code:"INVALID_ACTION"},400);
   const code=String(body.code??"").toUpperCase();
-  if(!["create","list","membership"].includes(action)&&!/^[A-Z0-9]{6}$/.test(code))return json({ok:false,code:"INVALID_CODE"},400);
+  if(!["create","list","membership","diag_status","diag_list","diag_export","diag_purge","diag_toggle"].includes(action)&&!/^[A-Z0-9]{6}$/.test(code))return json({ok:false,code:"INVALID_CODE"},400);
   if(action==="create"&&(![2,4].includes(Number(body.capacity))||![1000,2000,5000,10000].includes(Number(body.target))|| (body.timerEnabled!==undefined&&typeof body.timerEnabled!=="boolean")))
    return json({ok:false,code:"INVALID_OPTIONS"},400);
   const url=Deno.env.get("SUPABASE_URL"),key=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if(!url||!key)return json({ok:false,code:"SERVICE_UNAVAILABLE"},503);
   const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+  // Dedicated diagnostic RPC: authenticates the Joker session and enforces admin
+  // access within PostgreSQL, never trusting a client-supplied player ID.
+  if(action.startsWith("diag_")){
+   const {data,error}=await admin.rpc("biriba_debug_internal",{
+    p_session_token:token,p_action:action.slice(5),p_code:code||null,
+    p_room_id:typeof body.roomId==="string"?body.roomId:null,
+    p_payload:body.payload&&typeof body.payload==="object"?body.payload:{}
+   });
+   return error?json({ok:false,code:"SERVICE_UNAVAILABLE"},503):json(data,data?.ok?200:403);
+  }
   const rpc=async(a:string,over:Record<string,unknown>={})=>
    admin.rpc("biriba_room_command_internal",{
     p_session_token:token,p_action:a,p_code:code||null,
