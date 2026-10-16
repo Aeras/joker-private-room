@@ -12,7 +12,7 @@ const schema = z.object({
 
 export type DebugMatch = {
   roomId: string; code: string | null; first_event: string; last_event: string;
-  eventCount: number; playerCount: number; warningCount: number; players: string[];
+  eventCount: number; playerCount: number; deviceCount: number; warningCount: number; players: string[];
 };
 export type DebugEvent = {
   id: number; player: string; playerId: string; sessionKey: string; at: string;
