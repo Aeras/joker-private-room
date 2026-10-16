@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { biribaDiagnostics, type DebugEvent, type DebugMatch } from "@/services/biribaDiagnostics";
 import { createDiagnosticZip } from "@/biriba/diagnosticsZip";
@@ -109,14 +109,14 @@ function BiribaDiagnosticsPage() {
     } finally { setBusy(false); }
   };
   if (authorized === null) return <main className="mx-auto max-w-4xl p-8 text-white">Έλεγχος πρόσβασης…</main>;
-  if (!authorized) return <main className="mx-auto max-w-4xl p-8 text-white"><h1>Μη εξουσιοδοτημένη πρόσβαση</h1><Link to="/biriba">Επιστροφή</Link></main>;
+  if (!authorized) return <main className="mx-auto max-w-4xl p-8 text-white"><h1>Μη εξουσιοδοτημένη πρόσβαση</h1><a href="/biriba">Επιστροφή</a></main>;
 
   return (
     <main className="min-h-screen bg-[#10191a] p-4 text-white sm:p-7">
       <div className="mx-auto max-w-6xl space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div><h1 className="text-2xl font-bold">BIRIBA Black Box</h1><p className="text-sm text-white/60">Ιδιωτικά διαγνωστικά — πρόσβαση μόνο Admin</p></div>
-          <Link className="rounded-lg border border-white/40 px-4 py-2" to="/biriba">Επιστροφή στη Μπιρίμπα</Link>
+          <a className="rounded-lg border border-white/40 px-4 py-2" href="/biriba">Επιστροφή στη Μπιρίμπα</a>
         </header>
         <section className="flex flex-wrap items-center gap-3 rounded-xl border border-white/20 p-4">
           <span className="text-sm">Καταγραφή: <b>{enabled ? "Ενεργή" : "Ανενεργή"}</b></span>
