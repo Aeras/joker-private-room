@@ -151,7 +151,7 @@ function BiribaDiagnosticsPage() {
                   className={`w-full rounded-xl border p-3 text-left text-sm ${selected === item.roomId ? "border-amber-400" : "border-white/20"}`}>
                   <div className="flex justify-between gap-2"><b>{item.code ?? "Παρτίδα"}</b><span>{item.eventCount} γεγονότα</span></div>
                   <div className="mt-1 text-white/70">{item.players.join(", ")}</div>
-                  <div className="mt-1 text-xs text-white/60">{new Date(item.last_event).toLocaleString("el-GR")} · {item.playerCount} συσκευές · {item.warningCount} προειδοποιήσεις</div>
+                  <div className="mt-1 text-xs text-white/60">{new Date(item.last_event).toLocaleString("el-GR")} · {item.deviceCount} συσκευές · {item.warningCount} προειδοποιήσεις</div>
                 </button>
               ))}
             </div>
