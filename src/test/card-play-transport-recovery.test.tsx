@@ -121,7 +121,11 @@ it.each(["accepted", "rejected", "same-version", "tail", "settled-pruned"])(
     });
     expect(props.onCommand).toHaveBeenCalledOnce();
     act(() => vi.advanceTimersByTime(1000));
-    expect(v.container.querySelector('[data-local-flight-status="submitted"]')).not.toBeNull();
+    if (outcome === "settled-pruned") {
+      expect(v.container.querySelector('[data-local-flight-status="rejected"]')).toBeNull();
+    } else {
+      expect(v.container.querySelector('[data-local-flight-status="submitted"]')).not.toBeNull();
+    }
     const next = structuredClone(projection);
     if (outcome !== "same-version") next.stateVersion++;
     if (outcome === "accepted") {
