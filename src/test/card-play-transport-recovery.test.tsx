@@ -62,7 +62,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
-it.each(["accepted", "rejected", "same-version", "tail"])(
+it.each(["accepted", "rejected", "same-version", "tail", "settled-pruned"])(
   "lost transport response recovers safely: %s",
   async (outcome) => {
     const state = reconciliationFixture();
@@ -117,6 +117,13 @@ it.each(["accepted", "rejected", "same-version", "tail"])(
     if (outcome === "accepted") {
       next.cards.ownHand = [];
       next.cards.currentTrick = [{ seatIndex: 0, card }];
+    }
+    // Reconciliation can advance beyond the trick before the original
+    // transport response arrives. Its authoritative hand no longer has the card.
+    if (outcome === "settled-pruned") {
+      next.cards.ownHand = [];
+      next.cards.currentTrick = [];
+      next.cards.completedTricks = [];
     }
     if (outcome === "tail") {
       next.progression.dealNumber++;
