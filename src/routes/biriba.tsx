@@ -722,6 +722,10 @@ function BiribaContent({ playerId }: { playerId: string }) {
         {/* 2. LABELS FOR CENTRAL PILES */}
         <div className="biriba-pile-labels">
           <span className="biriba-pile-label">ΚΛΕΙΣΤΗ ΤΡΑΠΟΥΛΑ</span>
+          <button type="button" className="biriba-pile-label cursor-pointer" onClick={() => setDiscardsMode("inspect")} aria-label="Προβολή όλων των πεταμένων φύλλων">ΠΕΤΑΜΕΝΑ · {game?.discards.length ?? 0} <span aria-hidden="true">⌕</span></button>
+          <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 1</span>
+          <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 2</span>
+        </div>
           {game && (
             <output
               className="biriba-stock-counter"
@@ -732,10 +736,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
               <span className="biriba-stock-counter-total">/ 108</span>
             </output>
           )}
-          <button type="button" className="biriba-pile-label cursor-pointer" onClick={() => setDiscardsMode("inspect")} aria-label="Προβολή όλων των πεταμένων φύλλων">ΠΕΤΑΜΕΝΑ · {game?.discards.length ?? 0} <span aria-hidden="true">⌕</span></button>
-          <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 1</span>
-          <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 2</span>
-        </div>
+
 
         {discardsMode !== null && (
           <BiribaDiscardsDialog cards={game?.discards ?? []} onClose={() => setDiscardsMode(null)}>
