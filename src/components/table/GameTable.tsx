@@ -204,12 +204,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       if (!current || current.status !== "submitted" || projection.gameId !== current.gameId || projection.stateVersion <= current.sourceStateVersion) return current;
       const sameDeal = projection.progression.dealNumber === current.dealNumber;
       const confirmed = projectionContainsPendingCard(current, sameDeal ? projection.cards.currentTrick : [], [...(sameDeal ? projection.cards.completedTricks : []), ...(projection.cards.presentationTail ?? []).filter(trick => trick.dealNumber === current.dealNumber)]);
-      // A settled projection can have already collected the trick; the card then
-      // disappears from the local hand even if the bounded trick history no longer
-      // includes it. Never roll an accepted card back solely for that reason.
-      if (confirmed || (sameDeal && !projection.cards.ownHand.some(card => card.id === current.cardId))) {
-        return { ...current, status: "accepted", acceptedStateVersion: projection.stateVersion };
-      }
+      if (confirmed) return { ...current, status: "accepted", acceptedStateVersion: projection.stateVersion };
       // Transport loss alone is ambiguous; reject only when a newer canonical
       // snapshot still contains the card in the player's hand.
       if (uncertainPlay === current.cardId && sameDeal && projection.cards.ownHand.some(card => card.id === current.cardId)) return { ...current, status: "rejected" };
@@ -246,7 +241,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       // A confirmed command may be followed by several bot moves before its
       // projection reaches the browser. The card leaving this deal's hand is
       // authoritative evidence even after the original trick is pruned.
-      const removedFromHand = sameDeal && authoritative != null && !authoritative.cards.ownHand.some(candidate => candidate.id === cardId);
+      const removedFromHand = response != null && sameDeal && authoritative != null && !authoritative.cards.ownHand.some(candidate => candidate.id === cardId);
       if (!authoritative || !presentation || authoritative.gameId !== presentation.gameId || authoritative.progression.dealNumber < presentation.dealNumber || authoritative.stateVersion <= presentation.sourceStateVersion || (!visibleInTricks && !removedFromHand)) {
         setLocalPlayPresentation((current) => current && current.cardId === cardId && current.status === "submitted" ? { ...current, status: "rejected" } : current); return;
       }
