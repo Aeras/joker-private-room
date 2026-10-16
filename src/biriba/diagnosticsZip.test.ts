@@ -8,7 +8,13 @@ describe("Biriba Black Box ZIP export", () => {
       "timeline.json": '[{"kind":"action_start"}]',
     });
     expect(zip.type).toBe("application/zip");
-    const bytes = new Uint8Array(await zip.arrayBuffer());
+    const buffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(zip);
+    });
+    const bytes = new Uint8Array(buffer);
     const view = new DataView(bytes.buffer);
     expect(view.getUint32(0, true)).toBe(0x04034b50);
     expect(view.getUint32(bytes.length - 22, true)).toBe(0x06054b50);
