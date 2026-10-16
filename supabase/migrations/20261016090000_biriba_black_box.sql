@@ -101,6 +101,7 @@ begin
        select e.room_id as "roomId",r.code as "code", max(e.created_at) as last_event,
          min(e.created_at) as first_event, count(*) as "eventCount",
          count(distinct e.player_id) as "playerCount",
+         count(distinct e.session_key) as "deviceCount",
          count(*) filter(where e.kind in ('error','warning','long_task','slow_action','animation_timeout')) as "warningCount",
          jsonb_agg(distinct p.display_name) as players
        from public.biriba_debug_events e
