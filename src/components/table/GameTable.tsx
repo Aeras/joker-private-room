@@ -204,8 +204,14 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       if (!current || current.status !== "submitted" || projection.gameId !== current.gameId || projection.stateVersion <= current.sourceStateVersion) return current;
       const sameDeal = projection.progression.dealNumber === current.dealNumber;
       const confirmed = projectionContainsPendingCard(current, sameDeal ? projection.cards.currentTrick : [], [...(sameDeal ? projection.cards.completedTricks : []), ...(projection.cards.presentationTail ?? []).filter(trick => trick.dealNumber === current.dealNumber)]);
-      if (confirmed) return { ...current, status: "accepted", acceptedStateVersion: projection.stateVersion };
-      // An ambiguous transport failure is not a rejection. Wait for canonical evidence.
+      // A settled projection can have already collected the trick; the card then
+      // disappears from the local hand even if the bounded trick history no longer
+      // includes it. Never roll an accepted card back solely for that reason.
+      if (confirmed || (sameDeal && !projection.cards.ownHand.some(card => card.id === current.cardId))) {
+        return { ...current, status: "accepted", acceptedStateVersion: projection.stateVersion };
+      }
+      // Transport loss alone is ambiguous; reject only when a newer canonical
+      // snapshot still contains the card in the player's hand.
       if (uncertainPlay === current.cardId && sameDeal && projection.cards.ownHand.some(card => card.id === current.cardId)) return { ...current, status: "rejected" };
       return current;
     });
@@ -235,7 +241,13 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       const response = jokerSemantic ? await onCommand({ type: "play_card", cardId, jokerSemantic }) : await onCommand({ type: "play_card", cardId });
       const polled = latestProjection.current;
       const authoritative = response && response.stateVersion >= polled.stateVersion ? response : polled;
-      if (!authoritative || !presentation || authoritative.gameId !== presentation.gameId || authoritative.progression.dealNumber < presentation.dealNumber || authoritative.stateVersion <= presentation.sourceStateVersion || !projectionContainsPendingCard(presentation, authoritative.progression.dealNumber === presentation.dealNumber ? authoritative.cards.currentTrick : [], [...(authoritative.progression.dealNumber === presentation.dealNumber ? authoritative.cards.completedTricks : []), ...(authoritative.cards.presentationTail ?? []).filter(trick => trick.dealNumber === presentation.dealNumber)])) {
+      const sameDeal = authoritative?.progression.dealNumber === presentation?.dealNumber;
+      const visibleInTricks = authoritative && presentation && projectionContainsPendingCard(presentation, sameDeal ? authoritative.cards.currentTrick : [], [...(sameDeal ? authoritative.cards.completedTricks : []), ...(authoritative.cards.presentationTail ?? []).filter(trick => trick.dealNumber === presentation.dealNumber)]);
+      // A confirmed command may be followed by several bot moves before its
+      // projection reaches the browser. The card leaving this deal's hand is
+      // authoritative evidence even after the original trick is pruned.
+      const removedFromHand = sameDeal && authoritative != null && !authoritative.cards.ownHand.some(candidate => candidate.id === cardId);
+      if (!authoritative || !presentation || authoritative.gameId !== presentation.gameId || authoritative.progression.dealNumber < presentation.dealNumber || authoritative.stateVersion <= presentation.sourceStateVersion || (!visibleInTricks && !removedFromHand)) {
         setLocalPlayPresentation((current) => current && current.cardId === cardId && current.status === "submitted" ? { ...current, status: "rejected" } : current); return;
       }
       setLocalPlayPresentation((current) => current && current.cardId === cardId && current.sourceStateVersion === presentation.sourceStateVersion ? { ...current, status: "accepted", acceptedStateVersion: authoritative.stateVersion } : current);
