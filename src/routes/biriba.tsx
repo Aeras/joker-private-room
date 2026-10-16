@@ -722,6 +722,16 @@ function BiribaContent({ playerId }: { playerId: string }) {
         {/* 2. LABELS FOR CENTRAL PILES */}
         <div className="biriba-pile-labels">
           <span className="biriba-pile-label">ΚΛΕΙΣΤΗ ΤΡΑΠΟΥΛΑ</span>
+          {game && (
+            <output
+              className="biriba-stock-counter"
+              aria-label={`Κλειστή τράπουλα: ${game.stockCount} από 108 φύλλα απομένουν`}
+              title={`Απομένουν ${game.stockCount} φύλλα στην κλειστή τράπουλα`}
+            >
+              <span className="biriba-stock-counter-current">{game.stockCount}</span>
+              <span className="biriba-stock-counter-total">/ 108</span>
+            </output>
+          )}
           <button type="button" className="biriba-pile-label cursor-pointer" onClick={() => setDiscardsMode("inspect")} aria-label="Προβολή όλων των πεταμένων φύλλων">ΠΕΤΑΜΕΝΑ · {game?.discards.length ?? 0} <span aria-hidden="true">⌕</span></button>
           <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 1</span>
           <span className="biriba-pile-label">ΜΠΙΡΙΜΠΑΚΙ 2</span>
