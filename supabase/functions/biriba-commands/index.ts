@@ -8,6 +8,7 @@ import {pauseBiribaClock,resumeBiribaClock,timeoutBiribaClock,reclaimBiribaClock
 import {CANONICAL_BOTS} from "../_shared/bot-catalog.ts";
 import {recoverUnclaimedBiribaPacket} from "./recoverPacket.ts";
 import {recordBiribaPublicActions} from "./presentation.ts";
+import {retryTimedOutRead} from "./readOnlyRetry.ts";
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
 const allowed=new Set(["create","join","list","get","membership","leave","bot_add","bot_remove","start","get_game","move","pause","resume","reclaim","next_round","end_game","diag_status","diag_ingest","diag_list","diag_export","diag_purge","diag_toggle"]);
 const actions=new Set(["draw","pickup","meld","extend","discard"]);
@@ -37,8 +38,8 @@ Deno.serve(async(req)=>{
    });
    return error?json({ok:false,code:"SERVICE_UNAVAILABLE"},503):json(data,data?.ok?200:403);
   }
-  const rpc=async(a:string,over:Record<string,unknown>={})=>
-   admin.rpc("biriba_room_command_internal",{
+  const rpc=(a:string,over:Record<string,unknown>={},signal?:AbortSignal)=>{
+   const request=admin.rpc("biriba_room_command_internal",{
     p_session_token:token,p_action:a,p_code:code||null,
     p_capacity:action==="create"?body.capacity:null,
     p_target:action==="create"?body.target:null,
@@ -48,6 +49,8 @@ Deno.serve(async(req)=>{
     p_catalog:CANONICAL_BOTS,
     p_state:null,p_revision:null,...over
    });
+   return signal?request.abortSignal(signal):request;
+  };
   const reply=(data:unknown,error:unknown)=>error?json({ok:false,code:"SERVICE_UNAVAILABLE"},503):json(data,(data as {ok?:boolean}|null)?.ok?200:400);
   if(["create","join","list","get","membership","leave","bot_add","bot_remove","end_game"].includes(action)){
    if(action==="bot_add"&&body.botId!==undefined&&!CANONICAL_BOTS.some(b=>b.id===body.botId))return json({ok:false,code:"INVALID_BOT"},400);
@@ -66,7 +69,9 @@ Deno.serve(async(req)=>{
   }
   const commandStart=performance.now();
   const loadStart=performance.now();
-  const loaded=await rpc("load");
+  // load only reads the authorized state. If its gateway request stalls, abort
+  // and retry once; never retry the move or the revision-guarded save.
+  const {result:loaded,attempts:loadAttempts}=await retryTimedOutRead(async signal=>await rpc("load",{},signal));
   const loadMs=performance.now()-loadStart;
   if(loaded.error||!loaded.data?.ok)return reply(loaded.data,loaded.error);
   const seat=loaded.data.seat as number;
@@ -147,7 +152,7 @@ Deno.serve(async(req)=>{
    currentPlayerName:seats.find(s=>s.index===match.turn)?.name,roomSeats:seats};
   // Durations contain no card, room, player, or session data. The client uses
   // them only for opt-in diagnostic telemetry on its own accepted move.
-  const timing=action==="move"?{edgeMs:performance.now()-commandStart,loadMs,roomMs,actionMs,botMs,saveMs}:undefined;
+  const timing=action==="move"?{edgeMs:performance.now()-commandStart,loadMs,loadAttempts,roomMs,actionMs,botMs,saveMs}:undefined;
   return json({ok:true,game:view,...(timing?{timing}:{})});
  }catch(err){
   console.error("BIRIBA_EDGE",err instanceof Error?err.name:"unknown");

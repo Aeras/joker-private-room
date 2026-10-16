@@ -25,7 +25,7 @@ export type BiribaGameView={
  scoreHistory:Array<{round:number;teamTotals:[number,number];breakdown:Array<{cards:number;bonuses:number;closing:number;penalty:number;held:number;total:number}>;playerPoints:Array<{seat:number;cards:number;held:number}>}>;
  publicActionSequence?:number;publicActions?:BiribaPublicAction[];
 };
-export type BiribaCommandTiming={edgeMs:number;loadMs:number;roomMs:number;actionMs:number;botMs:number;saveMs:number;proxyMs?:number};
+export type BiribaCommandTiming={edgeMs:number;loadMs:number;loadAttempts?:number;roomMs:number;actionMs:number;botMs:number;saveMs:number;proxyMs?:number};
 export type BiribaResponse={ok:true;room:BiribaRoomView}|{ok:true;rooms:Array<{code:string;capacity:2|4;target:number;timerEnabled:boolean;hostName:string;occupied:number}>}|
  {ok:true;membership:{code:string;lifecycle:string}|null}|{ok:true;cancelled:boolean}|
  {ok:true;started:boolean}|{ok:true;updated:boolean}|{ok:true;game:BiribaGameView;timing?:BiribaCommandTiming}|{ok:false;code:string};
