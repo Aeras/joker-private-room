@@ -106,6 +106,46 @@ describe("Biriba bot strategy", () => {
     if (move?.type === "extend") expect(move.meld.cards).toHaveLength(7);
   });
 
+  it("builds the partner's clean run instead of starting an adjacent run with the same cards", () => {
+    const game = setup();
+    game.turn = 2;
+    game.phase = "meld";
+    game.opened[2] = true;
+    game.melds = [meld(0, "hearts", 3, 5)];
+    game.hands[2] = [
+      card("six", 6, "hearts"),
+      card("seven", 7, "hearts"),
+      card("eight", 8, "hearts"),
+      card("junk", 11, "clubs"),
+      card("junk2", 4, "diamonds"),
+    ];
+    const move = chooseBiribaBotAction(game, 2, 3);
+    expect(move?.type).toBe("extend");
+    if (move?.type === "extend") {
+      expect(move.index).toBe(0);
+      expect(move.meld.cards.map((entry) => entry.value)).toEqual([3, 4, 5, 6]);
+    }
+    const next = chooseBiribaBotStep(game, 2, 3);
+    expect(next.melds).toHaveLength(1);
+    expect(next.melds[0]?.cards.map((entry) => entry.value)).toEqual([3, 4, 5, 6]);
+  });
+
+  it("starts a second clean run once the team's existing run is already a biriba", () => {
+    const game = setup();
+    game.turn = 2;
+    game.phase = "meld";
+    game.opened[2] = true;
+    game.melds = [meld(0, "hearts", 3, 9)];
+    game.hands[2] = [
+      card("ten", 10, "hearts"),
+      card("eleven", 11, "hearts"),
+      card("twelve", 12, "hearts"),
+      card("junk", 4, "diamonds"),
+      card("junk2", 6, "clubs"),
+    ];
+    expect(chooseBiribaBotAction(game, 2, 3)?.type).toBe("meld");
+  });
+
   it("takes the packet after melding its entire hand into a seven-card run", () => {
     const game = setup(2);
     game.phase = "meld";

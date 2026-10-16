@@ -104,8 +104,13 @@ function extensions(match: BiribaMatch, seat: number, cards: readonly BiribaCard
       for (const side of [-1, 1]) {
         const value =
           side < 0 ? old.cards[0]!.value - 1 : old.cards[old.cards.length - 1]!.value + 1;
-        const promoteAce = side > 0 && value === 14 && !old.highAce &&
-          !old.cards.some(p => p.value === 1) && !card.joker && card.rank === 1;
+        const promoteAce =
+          side > 0 &&
+          value === 14 &&
+          !old.highAce &&
+          !old.cards.some((p) => p.value === 1) &&
+          !card.joker &&
+          card.rank === 1;
         if (value < 1 || value > (old.highAce || promoteAce ? 14 : 13)) continue;
         const meld: BiribaMeld = {
           ...old,
@@ -155,6 +160,11 @@ function meldScore(match: BiribaMatch, seat: number, meld: BiribaMeld, index?: n
   const additions = meld.cards.filter((placement) => !priorIds.has(placement.card.id));
   const beforeBonus = old ? biribaMeldBonus(old, match.trump) : 0;
   const bonusGain = biribaMeldBonus(meld, match.trump) - beforeBonus;
+  // A new three-card run used to outscore a natural one-card extension (30 vs 10),
+  // even when both moves used the same sequence and the extension advanced a
+  // teammate's unfinished clean biriba. Reward that shared progress explicitly.
+  const cleanBiribaProgress =
+    old && old.cards.length < 7 && !biribaMeldDirty(old) && !biribaMeldDirty(meld) ? 24 : 0;
   const wildAdded = additions.some((placement) =>
     isWildPlacement(placement.card, meld.suit, placement.value),
   );
@@ -169,6 +179,7 @@ function meldScore(match: BiribaMatch, seat: number, meld: BiribaMeld, index?: n
   const emptyForPacket = packetOpportunity && spentFromHand === ownHand.length;
   return (
     additions.length * 10 +
+    cleanBiribaProgress +
     Math.max(-110, Math.min(160, bonusGain * 0.36)) +
     (meld.cards.length >= 7 && (old?.cards.length ?? 0) < 7 ? 70 : 0) +
     (emptyForPacket ? 95 : 0) +
