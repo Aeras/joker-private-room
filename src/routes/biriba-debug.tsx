@@ -99,8 +99,8 @@ function BiribaDiagnosticsPage() {
       const data = event.details.data ?? {};
       sessions.set(event.sessionKey, {
         id: event.sessionKey, playerId: event.playerId, name: event.player,
-        label: String(data.os ?? "Άγνωστο") + " · " + String(data.browser ?? "Browser") +
-          " · " + String(data.width ?? "?") + "×" + String(data.height ?? "?"),
+        label: String(data["os"] ?? "Άγνωστο") + " · " + String(data["browser"] ?? "Browser") +
+          " · " + String(data["width"] ?? "?") + "×" + String(data["height"] ?? "?"),
       });
     }
     return [...sessions.values()];
