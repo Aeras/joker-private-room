@@ -16,7 +16,7 @@ export type DebugMatch = {
 };
 export type DebugEvent = {
   id: number; player: string; playerId: string; sessionKey: string; at: string;
-  kind: string; details: { t?: number; data?: Record<string, unknown> };
+  kind: string; details: { t?: number; data?: Record<string, string | number | boolean | null> };
 };
 export type DebugResponse =
   | { ok: true; enabled?: boolean; isAdmin?: boolean; matches?: DebugMatch[]; events?: DebugEvent[]; accepted?: number; limit?: boolean }
