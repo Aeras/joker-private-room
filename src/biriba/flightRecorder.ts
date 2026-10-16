@@ -6,7 +6,7 @@
 import { biribaDiagnostics } from "@/services/biribaDiagnostics";
 
 export type DiagnosticKind =
-  | "device" | "revision" | "action_start" | "action_end" | "animation_start"
+  | "device" | "revision" | "action_start" | "action_end" | "action_timing" | "animation_start"
   | "animation_end" | "animation_timeout" | "warning" | "error"
   | "long_task" | "frame_gap" | "visibility" | "match_finished";
 export type DiagnosticEntry = { kind: DiagnosticKind; t: number; data: Record<string, string | number | boolean | null> };

@@ -40,6 +40,11 @@ export type TableRect = TablePoint & { width: number; height: number };
 export type LocalDiscardFlight = { card: BiribaCard; source: TableRect; revision: number };
 export type LocalDrawFlight = { card: BiribaCard; revision: number };
 
+/** A foreground refresh can confirm that nothing changed while the tab slept. */
+export function isSameBiribaProjection(before: BiribaGameView | null, after: BiribaGameView): boolean {
+  return before !== null && before.roundNumber === after.roundNumber && before.revision === after.revision;
+}
+
 export function projectCardRect(card: DOMRect, table: DOMRect): TableRect | null {
   if (card.width <= 0 || card.height <= 0 || table.width <= 0 || table.height <= 0)
     return null;

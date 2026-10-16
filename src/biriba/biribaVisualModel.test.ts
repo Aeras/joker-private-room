@@ -4,6 +4,7 @@ import {
   biribaDealKey,
   biribaVisualCards,
   newDiscardFromSingleMove,
+  newDiscardFlightsFromPublicActions,
   newMeldCardsFromSingleMove,
   shouldAnimateFreshDeal,
   visibleOpponentSides,
@@ -91,6 +92,22 @@ describe("Biriba Pixi authoritative projection", () => {
     expect(newDiscardFromSingleMove(previous, { ...next, discards: [] })).toBeNull();
     expect(newDiscardFromSingleMove({ ...previous, phase: "draw" }, next)).toBeNull();
     expect(newDiscardFromSingleMove({ ...previous, turn: 1 }, next)).toBeNull();
+  });
+
+  it("keeps all authorized discards in a batched public sequence in play order", () => {
+    const first: BiribaCard = { id: "first", suit: "hearts", rank: 9 };
+    const second: BiribaCard = { id: "second", suit: "clubs", rank: 10 };
+    const before = { ...game(), publicActionSequence: 2, publicActions: [] };
+    const after = { ...before, revision: 8, publicActionSequence: 5, discards: [second], publicActions: [
+      { sequence: 3, round: 1, actorSeat: 0, kind: "discard" as const, cards: [first] },
+      { sequence: 4, round: 1, actorSeat: 1, kind: "meld" as const, cards: [] },
+      { sequence: 5, round: 1, actorSeat: 1, kind: "discard" as const, cards: [second] },
+    ] };
+    expect(newDiscardFlightsFromPublicActions(before, after)).toEqual([
+      { card: first, actorSeat: 0, sequence: 3, order: 0 },
+      { card: second, actorSeat: 1, sequence: 5, order: 2 },
+    ]);
+    expect(newDiscardFlightsFromPublicActions(before, { ...after, publicActions: after.publicActions.slice(1) })).toEqual([]);
   });
 
   it("detects public meld additions from the authoritative next revision", () => {

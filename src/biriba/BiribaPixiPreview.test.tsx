@@ -136,11 +136,13 @@ describe("Biriba Pixi scene lifecycle", () => {
     view.rerender(<BiribaPixiPreview game={next} roomCode="local-flight" revealComplete
       localDiscardFlight={{ card: played, source: { x: 610, y: 580, width: 108, height: 160 }, revision: 2 }}
       onLocalDiscardStart={started} onLocalDiscardComplete={completed} />);
-    await waitFor(() => expect(started).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mock.sprites).toHaveLength(42));
     const flight = mock.sprites.at(-1) as typeof mock.sprites[number] & { x: number; y: number };
     expect([flight.x, flight.y]).toEqual([610, 580]);
+    expect(started).not.toHaveBeenCalled();
     expect(completed).not.toHaveBeenCalled();
     act(() => { for (const tick of [...mock.apps[0]!.ticks]) tick({ deltaMS: 340 }); });
+    expect(started).toHaveBeenCalledTimes(1);
     expect(completed).toHaveBeenCalledTimes(1);
     expect(flight.destroyed).toBe(false);
     view.unmount();
@@ -444,6 +446,58 @@ describe("Biriba Pixi scene lifecycle", () => {
     expect(flight.destroyed).toBe(true);
     expect(mock.sprites).toHaveLength(42);
     view.unmount();
+  });
+
+  it("shows each authorized discard from a batched bot response and settles the final pile once", async () => {
+    const firstCard = { id: "batched-local", suit: "hearts", rank: 9 } as BiribaCard;
+    const secondCard = { id: "batched-bot", suit: "clubs", rank: 10 } as BiribaCard;
+    const before = { ...game(), publicActionSequence: 0, publicActions: [] };
+    const started = vi.fn();
+    const completed = vi.fn();
+    const view = render(<BiribaPixiPreview game={before} roomCode="batched-room" revealComplete />);
+    await waitFor(() => expect(mock.sprites).toHaveLength(41));
+    const after = { ...before, revision: 3, discards: [secondCard], publicActionSequence: 2, publicActions: [
+      { sequence: 1, round: 1, actorSeat: 0, kind: "discard" as const, cards: [firstCard] },
+      { sequence: 2, round: 1, actorSeat: 1, kind: "discard" as const, cards: [secondCard] },
+    ] };
+    const local = { card: firstCard, source: { x: 610, y: 580, width: 108, height: 160 }, revision: 3 };
+    view.rerender(<BiribaPixiPreview game={after} roomCode="batched-room" revealComplete
+      localDiscardFlight={local} onLocalDiscardStart={started} onLocalDiscardComplete={completed} />);
+    await waitFor(() => expect(mock.sprites).toHaveLength(43));
+    const flights = mock.sprites.slice(-2) as Array<typeof mock.sprites[number] & { x: number; y: number }>;
+    expect([flights[0]!.x, flights[0]!.y]).toEqual([610, 580]);
+    expect([flights[1]!.x, flights[1]!.y]).toEqual([80, 280]);
+    act(() => { for (const tick of [...mock.apps[0]!.ticks]) tick({ deltaMS: 320 }); });
+    expect(started).toHaveBeenCalledTimes(1);
+    expect(completed).toHaveBeenCalledTimes(1);
+    expect(flights[0]!.destroyed).toBe(false);
+    act(() => { for (const tick of [...mock.apps[0]!.ticks]) tick({ deltaMS: 320 }); });
+    expect(flights.every(sprite => sprite.destroyed)).toBe(true);
+    expect(completed).toHaveBeenCalledTimes(1);
+    view.unmount();
+  });
+
+  it("resumes new flights after an unchanged foreground reconciliation", async () => {
+    const visible = Object.getOwnPropertyDescriptor(document, "visibilityState");
+    const before = { ...game(), publicActionSequence: 0, publicActions: [] };
+    const view = render(<BiribaPixiPreview game={before} roomCode="resume-room" revealComplete />);
+    try {
+      await waitFor(() => expect(mock.sprites).toHaveLength(41));
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+      act(() => document.dispatchEvent(new Event("visibilitychange")));
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+      view.rerender(<BiribaPixiPreview game={before} roomCode="resume-room" revealComplete resumeEpoch={1} />);
+      const card = { id: "after-resume", suit: "hearts", rank: 8 } as BiribaCard;
+      const next = { ...before, revision: 2, discards: [...before.discards, card], publicActionSequence: 1,
+        publicActions: [{ sequence: 1, round: 1, actorSeat: 1, kind: "discard" as const, cards: [card] }] };
+      view.rerender(<BiribaPixiPreview game={next} roomCode="resume-room" revealComplete resumeEpoch={1} />);
+      await waitFor(() => expect(mock.sprites).toHaveLength(42));
+      expect((mock.sprites[41] as unknown as { x: number }).x).toBe(80);
+    } finally {
+      view.unmount();
+      if (visible) Object.defineProperty(document, "visibilityState", visible);
+      else Reflect.deleteProperty(document, "visibilityState");
+    }
   });
 
   it("keeps a confirmed meld card in Pixi until its hidden DOM destination is revealed", async () => {

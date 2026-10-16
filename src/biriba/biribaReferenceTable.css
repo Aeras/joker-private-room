@@ -496,7 +496,9 @@
   transform-origin: 50% 140%;
   transition:
     transform 0.26s cubic-bezier(0.22, 0.72, 0.2, 1),
-    box-shadow 0.26s ease;
+    box-shadow 0.26s ease,
+    translate 0.12s ease-out,
+    filter 0.12s ease-out;
   touch-action: manipulation;
   opacity: 1;
 }
@@ -511,6 +513,13 @@
   box-shadow:
     0 0 0 2px #fbbf24,
     0 10px 18px #000a;
+}
+.biriba-fan-card--submitting {
+  translate: 0 -6px;
+  filter: brightness(1.06);
+}
+@media (prefers-reduced-motion: reduce) {
+  .biriba-fan-card--submitting { translate: none; }
 }
 .biriba-hand-lip {
   position: absolute;

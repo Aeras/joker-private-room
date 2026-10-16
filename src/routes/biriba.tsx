@@ -6,6 +6,7 @@ import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { PlayerAvatar } from "@/components/joker/PlayerAvatar";
 import { ScreenShell } from "@/components/joker/ScreenShell";
 import { BiribaPixiPreview, BIRIBA_DEAL_BEAT_MS } from "@/biriba/BiribaPixiPreview";
+import { prewarmBiribaCardTexture } from "@/biriba/cardTexturePrewarm";
 import { admitBiribaRevision, biribaDealKey, newMeldCardsFromPublicActions, newMeldCardsFromSingleMove, type MeldFlight } from "@/biriba/biribaVisualModel";
 import { BiribaRoomControls } from "@/biriba/BiribaRoomControls";
 import { BiribaFinishedScreen } from "@/biriba/BiribaFinishedScreen";
@@ -21,7 +22,7 @@ import { localHandCardPresentation } from "@/biriba/localHandPresentation";
 import { BiribaFlightRecorder } from "@/biriba/flightRecorder";
 import { biribaDiagnostics } from "@/services/biribaDiagnostics";
 import { createBiribaPollGate } from "@/biriba/pollGate";
-import { confirmedLocalDiscard, confirmedLocalDraw, projectCardRect, type LocalDiscardFlight, type LocalDrawFlight, type TableRect } from "@/biriba/localCardMotion";
+import { confirmedLocalDiscard, confirmedLocalDraw, isSameBiribaProjection, projectCardRect, type LocalDiscardFlight, type LocalDrawFlight, type TableRect } from "@/biriba/localCardMotion";
 import "@/biriba/biribaReferenceTable.css";
 import {
   biribaCommand,
@@ -167,8 +168,12 @@ function BiribaContent({ playerId }: { playerId: string }) {
   const discardGhost = useRef<HTMLImageElement | null>(null);
   const [localDiscardFlight, setLocalDiscardFlight] = useState<LocalDiscardFlight | null>(null);
   const [localDrawFlight, setLocalDrawFlight] = useState<LocalDrawFlight | null>(null);
+  const activeDiscardFlight = useRef<LocalDiscardFlight | null>(null);
+  const activeDrawFlight = useRef<LocalDrawFlight | null>(null);
+  const [resumeEpoch, setResumeEpoch] = useState(0);
   useEffect(() => { gameRef.current = game; }, [game]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [pendingVisualCardId, setPendingVisualCardId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const commandPending = useRef(false);
   const uncertainDiscard = useRef<string | null>(null);
@@ -207,8 +212,19 @@ function BiribaContent({ playerId }: { playerId: string }) {
   }, []);
   const receiveGame = useCallback((code: string, next: BiribaGameView) => {
     const previous = gameRef.current;
-    if (!admitBiribaRevision(previous, next)) return;
+    if (!admitBiribaRevision(previous, next)) {
+      // The first successful foreground fetch may be the same revision. It is
+      // still a completed reconciliation, so the next *new* move may animate.
+      if (hydrateNextProjection.current && document.visibilityState === "visible" &&
+          isSameBiribaProjection(previous, next)) {
+        hydrateNextProjection.current = false;
+        setResumeEpoch(value => value + 1);
+      }
+      return;
+    }
     gameRef.current = next;
+    const hydrating = hydrateNextProjection.current;
+    if (document.visibilityState === "visible") hydrateNextProjection.current = false;
     if (uncertainDiscard.current && !next.myHand.some(card => card.id === uncertainDiscard.current)) {
       uncertainDiscard.current = null;
       setError("");
@@ -218,7 +234,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
       return ids.every(id => held.has(id)) ? ids : ids.filter(id => held.has(id));
     });
     const pending = pendingLocalMove.current;
-    const animateLocal = !hydrateNextProjection.current &&
+    const animateLocal = !hydrating &&
       (next.publicActionSequence !== undefined || (previous && next.revision === previous.revision + 1)) &&
       document.visibilityState === "visible" &&
       !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -226,32 +242,51 @@ function BiribaContent({ playerId }: { playerId: string }) {
       if (pending.type === "draw") {
         const card = confirmedLocalDraw(previous, next);
         if (card && animateLocal)
-          { recorder.current?.record("animation_start", { action: "draw", revision: next.revision }); setLocalDrawFlight({ card, revision: next.revision }); }
+          {
+            const flight = { card, revision: next.revision };
+            activeDrawFlight.current = flight;
+            recorder.current?.record("animation_start", { action: "draw", revision: next.revision });
+            setLocalDrawFlight(flight);
+          }
+        else if (card) recorder.current?.record("warning", { category: "draw_animation_skipped", revision: next.revision, hydrating });
         if (card || next.roundNumber !== pending.round) pendingLocalMove.current = null;
       } else if (pending.cardId && pending.source) {
         const card = confirmedLocalDiscard(previous, next, pending.cardId);
         if (card && animateLocal) {
           const original = [...document.querySelectorAll<HTMLButtonElement>("[data-biriba-hand-card]")]
             .find(node => node.dataset["biribaHandCard"] === card.id);
+          const table = document.querySelector<HTMLElement>(".biriba-table-container");
+          // The selected card can lift while the command is pending. Use its
+          // current pose for the actual flight rather than a stale tap rect.
+          const source = original && table
+            ? projectCardRect(original.getBoundingClientRect(), table.getBoundingClientRect()) ?? pending.source
+            : pending.source;
           const image = original?.querySelector("img");
           if (image) {
             const rect = original!.getBoundingClientRect();
             const ghost = image.cloneNode(true) as HTMLImageElement;
-            Object.assign(ghost.style, { position: "fixed", left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`, zIndex: "100", pointerEvents: "none", transform: getComputedStyle(original!).transform, transformOrigin: "50% 140%" });
+            // getBoundingClientRect already includes the hand card's transform.
+            // Applying it again to the fixed snapshot makes the card jump.
+            Object.assign(ghost.style, { position: "fixed", left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`, zIndex: "100", pointerEvents: "none", transform: "none" });
             document.body.appendChild(ghost);
             discardGhost.current?.remove();
             discardGhost.current = ghost;
           }
           recorder.current?.record("animation_start", { action: "discard", revision: next.revision });
-          setLocalDiscardFlight({ card, source: pending.source, revision: next.revision });
+          const flight = { card, source, revision: next.revision };
+          activeDiscardFlight.current = flight;
+          setLocalDiscardFlight(flight);
         }
+        else if (card) recorder.current?.record("warning", { category: "discard_animation_skipped", revision: next.revision, hydrating });
+        else recorder.current?.record("warning", { category: "discard_confirmation_missing", revision: next.revision });
         if (card || next.roundNumber !== pending.round) pendingLocalMove.current = null;
+      } else if (pending.type === "discard") {
+        recorder.current?.record("warning", { category: "discard_source_missing", revision: next.revision });
       }
     }
     setGame(previousState => {
       if (previousState && previousState.revision > next.revision) return previousState;
-      const skipMotion = hydrateNextProjection.current || document.visibilityState !== "visible";
-      hydrateNextProjection.current = false;
+      const skipMotion = hydrating || document.visibilityState !== "visible";
       const flights = skipMotion ? [] : next.publicActionSequence === undefined
         ? newMeldCardsFromSingleMove(previous, next)
         : newMeldCardsFromPublicActions(previous, next);
@@ -263,19 +298,28 @@ function BiribaContent({ playerId }: { playerId: string }) {
       return next;
     });
   }, []);
-  const onLocalDiscardStart = useCallback(() => {
-    recorder.current?.record("animation_start", { action: "discard_first_sprite" });
+  const onLocalDiscardStart = useCallback((flight: LocalDiscardFlight) => {
+    if (activeDiscardFlight.current !== flight) return;
+    recorder.current?.record("animation_start", { action: "discard_first_frame", revision: flight.revision });
     discardGhost.current?.remove();
     discardGhost.current = null;
   }, []);
-  const onLocalDiscardComplete = useCallback(() => {
-    recorder.current?.record("animation_end", { action: "discard" });
+  const onLocalDiscardComplete = useCallback((flight: LocalDiscardFlight) => {
+    if (activeDiscardFlight.current !== flight) return;
+    activeDiscardFlight.current = null;
+    recorder.current?.record("animation_end", { action: "discard", revision: flight.revision });
     discardGhost.current?.remove();
     discardGhost.current = null;
     setLocalDiscardFlight(null);
   }, []);
-  const onLocalDrawComplete = useCallback(() => {
-    recorder.current?.record("animation_end", { action: "draw" });
+  const onLocalDrawStart = useCallback((flight: LocalDrawFlight) => {
+    if (activeDrawFlight.current === flight)
+      recorder.current?.record("animation_start", { action: "draw_first_frame", revision: flight.revision });
+  }, []);
+  const onLocalDrawComplete = useCallback((flight: LocalDrawFlight) => {
+    if (activeDrawFlight.current !== flight) return;
+    activeDrawFlight.current = null;
+    recorder.current?.record("animation_end", { action: "draw", revision: flight.revision });
     setLocalDrawFlight(null);
   }, []);
   useEffect(() => () => { discardGhost.current?.remove(); }, []);
@@ -283,7 +327,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
     if (!localDiscardFlight) return;
     const fallback = setTimeout(() => {
       recorder.current?.record("animation_timeout", { action: "discard", timeoutMs: 1200 });
-      onLocalDiscardComplete();
+      onLocalDiscardComplete(localDiscardFlight);
     }, 1200);
     return () => clearTimeout(fallback);
   }, [localDiscardFlight, onLocalDiscardComplete]);
@@ -291,7 +335,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
     if (!localDrawFlight) return;
     const fallback = setTimeout(() => {
       recorder.current?.record("animation_timeout", { action: "draw", timeoutMs: 1200 });
-      onLocalDrawComplete();
+      onLocalDrawComplete(localDrawFlight);
     }, 1200);
     return () => clearTimeout(fallback);
   }, [localDrawFlight, onLocalDrawComplete]);
@@ -471,7 +515,11 @@ function BiribaContent({ playerId }: { playerId: string }) {
     };
   }, [visualGame]);
 
-  const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((v) => v !== id) : [...s, id]));
+  const toggle = (id: string) => {
+    const card = gameRef.current?.myHand.find(item => item.id === id);
+    if (card) prewarmBiribaCardTexture(card);
+    setSelected(s => s.includes(id) ? s.filter(value => value !== id) : [...s, id]);
+  };
 
   const play = async (move: unknown) => {
     if (!code || commandPending.current) return;
@@ -479,6 +527,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
     let reconcile = false;
     const local = move as { type?: string; id?: string };
     uncertainDiscard.current = null;
+    setPendingVisualCardId(local.type === "discard" ? local.id ?? null : null);
     if (game && (local.type === "draw" || local.type === "discard")) {
       const nodes = [...document.querySelectorAll<HTMLButtonElement>("[data-biriba-hand-card]")];
       handRects.current = new Map(nodes.map(node => [node.dataset["biribaHandCard"] ?? "", node.getBoundingClientRect()]));
@@ -498,6 +547,10 @@ function BiribaContent({ playerId }: { playerId: string }) {
     try {
       const result = await biribaCommand({ data: { action: "move", code, move } });
       recorder.current?.record("action_end", { action: String(local.type ?? "unknown"), durationMs: performance.now() - startedAt, success: result.ok });
+      if (result.ok && "game" in result && result.timing)
+        recorder.current?.record("action_timing", {
+          action: String(local.type ?? "unknown"), ...result.timing,
+        });
       if (performance.now() - startedAt > 500) recorder.current?.record("warning", { category: "slow_action", durationMs: performance.now() - startedAt, action: String(local.type ?? "unknown") });
       if (!result.ok) {
         reconcile = result.code === "SERVICE_UNAVAILABLE";
@@ -523,6 +576,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
     } finally {
       commandPending.current = false;
       setBusy(false);
+      setPendingVisualCardId(null);
       if (reconcile) refreshAfterCommand.current?.();
     }
   };
@@ -635,8 +689,10 @@ function BiribaContent({ playerId }: { playerId: string }) {
           onMeldFlightComplete={onMeldFlightComplete}
           localDiscardFlight={localDiscardFlight}
           localDrawFlight={localDrawFlight}
+          resumeEpoch={resumeEpoch}
           onLocalDiscardStart={onLocalDiscardStart}
           onLocalDiscardComplete={onLocalDiscardComplete}
+          onLocalDrawStart={onLocalDrawStart}
           onLocalDrawComplete={onLocalDrawComplete}
           redTeam={redTeamIndex}
         />
@@ -836,7 +892,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
           {error && <p role="alert" className="mb-2 text-center text-xs font-semibold text-red-300 drop-shadow">{error}</p>}
           {mine && game?.phase === "draw" && (
             <button className="rounded-lg bg-emerald-600 font-bold shadow-lg hover:bg-emerald-500"
-              disabled={busy} onClick={() => void play({ type: "draw" })}>Τράβηγμα</button>
+              disabled={busy} onClick={() => void play({ type: "draw" })}>{busy ? "Τραβάω…" : "Τράβηγμα"}</button>
           )}
           {mine && game?.phase === "meld" && (
             <>
@@ -881,7 +937,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
                     ...pose,
                     visibility: localDrawFlight?.card.id === card.id ? "hidden" : undefined,
                   }}
-                  className="biriba-fan-card"
+                  className={`biriba-fan-card ${pendingVisualCardId === card.id ? "biriba-fan-card--submitting" : ""}`}
                   aria-hidden={localDrawFlight?.card.id === card.id ? true : undefined}
                 >
                   <img
