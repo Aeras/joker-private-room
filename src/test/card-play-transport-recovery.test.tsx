@@ -91,6 +91,16 @@ it.each(["accepted", "rejected", "same-version", "tail", "settled-pruned"])(
       busy: false,
       error: null,
       onCommand: vi.fn(async () => {
+        if (outcome === "settled-pruned") {
+          const committed = structuredClone(projection);
+          committed.stateVersion++;
+          committed.cards.ownHand = [];
+          // The server confirms success, but the trick is no longer in its
+          // bounded history when the response is delivered.
+          committed.cards.currentTrick = [];
+          committed.cards.completedTricks = [];
+          return committed;
+        }
         throw new Error("Transport lost response");
       }),
       onReclaim: vi.fn(),
