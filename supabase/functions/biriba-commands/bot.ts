@@ -9,6 +9,7 @@ import {
   biribaTeamOf,
   type BiribaCard,
   type BiribaMeld,
+  type BiribaRank,
   type BiribaSuit,
 } from "./rules.ts";
 
@@ -279,7 +280,7 @@ function publicUnseenPool(match: BiribaMatch, seat: number): BiribaCard[] {
       Array.from({ length: 13 }, (_, index) => ({
         id: `biriba-${copy}-${suit}-${index + 1}`,
         suit,
-        rank: (index + 1) as BiribaCard extends { rank: infer R } ? R : never,
+        rank: (index + 1) as BiribaRank,
       } as BiribaCard)),
     ),
   ).flat();
@@ -312,7 +313,7 @@ function monteCarloPlanValue(match: BiribaMatch, seat: number, candidate: Candid
     const future = [...(match.hands[seat] ?? [])];
     const spentIds = new Set(candidate.meld.cards.map((p) => p.card.id));
     const nextHand = future.filter((card) => !spentIds.has(card.id));
-    nextHand.push(...shuffled.slice(0, draws));
+    const stockOffset = Math.max(0, shuffled.length - match.stock.length);\n    nextHand.push(...shuffled.slice(stockOffset, stockOffset + draws));
     // Estimate natural clean-run completion potential after plausible draws.
     const potential = cleanPotential(nextHand, seat);
     const remainingWilds = nextHand.filter((card) => card.joker || (card.rank === 2 && card.suit !== candidate.meld.suit)).length;
