@@ -77,6 +77,38 @@ describe("Biriba bot strategy", () => {
     }
   });
 
+  it("preserves a wildcard rather than turning a clean six-card run into a dirty biriba", () => {
+    const game = setup();
+    game.phase = "meld";
+    game.opened[0] = true;
+    game.melds = [meld(0, "spades", 3, 8)];
+    game.hands[0] = [
+      { id: "joker-in-hand", joker: true },
+      card("unrelated", 12, "clubs"),
+      card("another-unrelated", 4, "diamonds"),
+    ];
+    const move = chooseBiribaBotAction(game, 0, 3);
+    expect(move?.type).toBe("discard");
+    if (move?.type === "discard") expect(move.id).not.toBe("joker-in-hand");
+    expect(game.melds[0]?.cards).toHaveLength(6);
+  });
+
+  it("keeps natural cards that form a one-card-away clean run plan", () => {
+    const game = setup();
+    game.phase = "meld";
+    game.hands[0] = [
+      card("five-hearts", 5, "hearts"),
+      card("six-hearts", 6, "hearts"),
+      card("seven-hearts", 7, "hearts"),
+      card("discard-junk", 12, "clubs"),
+      card("discard-junk-two", 4, "diamonds"),
+    ];
+    const move = chooseBiribaBotAction(game, 0, 3);
+    expect(move?.type).toBe("discard");
+    if (move?.type === "discard")
+      expect(["five-hearts", "six-hearts", "seven-hearts"]).not.toContain(move.id);
+  });
+
   it("does not expose a card that directly extends an opponent meld when a safe discard exists", () => {
     const game = setup();
     game.phase = "meld";
