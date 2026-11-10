@@ -154,6 +154,73 @@ function canLeaveHand(
   return remaining >= (canClose ? 1 : 2);
 }
 
+/**
+ * Evaluate natural clean-run plans that are not playable yet.
+ * The bot deliberately values holding cards that are one or two natural
+ * draws away from a clean biriba instead of spending a wildcard immediately.
+ */
+function cleanRunPlans(match: BiribaMatch, seat: number): Array<{ ids: string[]; missing: number; probability: number; length: number }> {
+  const hand = match.hands[seat] ?? [];
+  const publicCards = [
+    ...match.discards,
+    ...match.melds.flatMap((meld) => meld.cards.map((placement) => placement.card)),
+  ];
+  const known = new Set([...hand, ...publicCards].map((card) => card.id));
+  const deck = Array.from({ length: 2 }, (_, copy) =>
+    BIRIBA_SUITS.flatMap((suit) =>
+      Array.from({ length: 13 }, (_, index) => ({
+        id: `biriba-${copy}-${suit}-${index + 1}`,
+        suit,
+        rank: index + 1,
+      })),
+    ),
+  ).flat();
+  const remainingByKey = new Map<string, number>();
+  for (const card of deck) {
+    const key = `${card.suit}:${card.rank}`;
+    if (!known.has(card.id)) remainingByKey.set(key, (remainingByKey.get(key) ?? 0) + 1);
+  }
+  const unknownCount = Math.max(1, 108 - known.size);
+  const plans: Array<{ ids: string[]; missing: number; probability: number; length: number }> = [];
+  for (const suit of BIRIBA_SUITS) {
+    for (const highAce of [false, true]) {
+      const min = highAce ? 3 : 1;
+      const max = highAce ? 14 : 13;
+      const valueOf = (card: BiribaCard) => card.rank === 1 && highAce ? 14 : card.rank;
+      for (let first = min; first <= max - 3; first++) {
+        for (let last = first + 3; last <= Math.min(max, first + 7); last++) {
+          const held = hand.filter((card) => natural(card) && card.suit === suit &&
+            valueOf(card) >= first && valueOf(card) <= last);
+          if (held.length < 2) continue;
+          const values = new Set(held.map(valueOf));
+          let missing = 0;
+          let available = 0;
+          for (let value = first; value <= last; value++) {
+            if (values.has(value)) continue;
+            missing++;
+            const rank = value === 14 ? 1 : value;
+            available += remainingByKey.get(`${suit}:${rank}`) ?? 0;
+          }
+          if (missing < 1 || missing > 2 || available < missing) continue;
+          const draws = Math.min(6, Math.max(1, Math.ceil(match.stock.length / Math.max(1, match.seats))));
+          const probability = 1 - Math.pow(1 - available / unknownCount, draws);
+          plans.push({ ids: held.map((card) => card.id), missing, probability, length: last - first + 1 });
+        }
+      }
+    }
+  }
+  return plans.sort((a, b) => b.probability * b.length - a.probability * a.length);
+}
+
+function cleanPlanHoldValue(match: BiribaMatch, seat: number, card: BiribaCard, tier: 1 | 2 | 3): number {
+  if (!natural(card)) return 0;
+  const best = cleanRunPlans(match, seat)
+    .filter((plan) => plan.ids.includes(card.id))
+    .reduce((score, plan) => Math.max(score,
+      plan.probability * (plan.length * 5 + 18) * (plan.missing === 1 ? 1.35 : 1)), 0);
+  return best * (tier === 3 ? 1 : tier === 2 ? 0.78 : 0.55);
+}
+
 function meldScore(match: BiribaMatch, seat: number, meld: BiribaMeld, index?: number): number {
   const old = index === undefined ? undefined : match.melds[index];
   const priorIds = new Set(old?.cards.map((placement) => placement.card.id) ?? []);
@@ -184,8 +251,8 @@ function meldScore(match: BiribaMatch, seat: number, meld: BiribaMeld, index?: n
     (meld.cards.length >= 7 && (old?.cards.length ?? 0) < 7 ? 70 : 0) +
     (emptyForPacket ? 95 : 0) +
     (meld.suit === match.trump ? 5 : 0) -
-    (wildAdded ? (meld.cards.length < 7 ? 29 : 9) : 0) -
-    (old && !biribaMeldDirty(old) && biribaMeldDirty(meld) ? 65 : 0)
+    (wildAdded ? (meld.cards.length < 7 ? 92 : 58) : 0) -
+    (old && !biribaMeldDirty(old) && biribaMeldDirty(meld) ? 105 : 0)
   );
 }
 
@@ -286,12 +353,14 @@ function bestPickup(match: BiribaMatch, seat: number, tier: 1 | 2 | 3): Candidat
   return best && (match.stock.length === 0 || best.score >= threshold) ? best : null;
 }
 
-function discardCost(match: BiribaMatch, seat: number, card: BiribaCard): number {
+function discardCost(match: BiribaMatch, seat: number, card: BiribaCard, tier: 1 | 2 | 3): number {
   if (card.joker) return 110;
   const hand = match.hands[seat] ?? [];
   const team = biribaTeamOf(seat, match.seats);
   let cost = card.rank === 2 ? 75 : -biribaCardPoints(card) * 0.35;
   if (card.suit === match.trump) cost += 4;
+  // Retain natural cards that are part of a credible future clean-biriba plan.
+  cost += cleanPlanHoldValue(match, seat, card, tier);
   for (const other of hand) {
     if (other.id === card.id || !natural(other) || other.suit !== card.suit) continue;
     const distance = Math.abs(other.rank - card.rank);
@@ -324,7 +393,7 @@ export function chooseBiribaBotAction(
   const meld = bestMeld(match, seat, tier);
   if (meld) return meld.action;
   const card = [...hand].sort(
-    (a, b) => discardCost(match, seat, a) - discardCost(match, seat, b) || a.id.localeCompare(b.id),
+    (a, b) => discardCost(match, seat, a, tier) - discardCost(match, seat, b, tier) || a.id.localeCompare(b.id),
   )[0];
   return card ? { type: "discard", id: card.id } : null;
 }
