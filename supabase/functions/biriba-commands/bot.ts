@@ -256,6 +256,89 @@ function meldScore(match: BiribaMatch, seat: number, meld: BiribaMeld, index?: n
   );
 }
 
+/**
+ * Bounded Monte-Carlo evaluation for strategic decisions.
+ * Unknown cards are sampled from the unseen 108-card pack; opponent hands and
+ * stock order are never read. Samples are deterministic for a given public state.
+ */
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function publicUnseenPool(match: BiribaMatch, seat: number): BiribaCard[] {
+  const known = new Set<string>();
+  for (const card of match.hands[seat] ?? []) known.add(card.id);
+  for (const card of match.discards) known.add(card.id);
+  for (const meld of match.melds) for (const p of meld.cards) known.add(p.card.id);
+  const deck: BiribaCard[] = Array.from({ length: 2 }, (_, copy) =>
+    BIRIBA_SUITS.flatMap((suit) =>
+      Array.from({ length: 13 }, (_, index) => ({
+        id: `biriba-${copy}-${suit}-${index + 1}`,
+        suit,
+        rank: (index + 1) as BiribaCard extends { rank: infer R } ? R : never,
+      } as BiribaCard)),
+    ),
+  ).flat();
+  for (let j = 0; j < 4; j++) deck.push({ id: `biriba-joker-${j}`, joker: true });
+  return deck.filter((card) => !known.has(card.id));
+}
+
+function cleanPotential(cards: readonly BiribaCard[], seat: number): number {
+  const cleanRuns = runs(cards, seat).filter((meld) => !biribaMeldDirty(meld));
+  return cleanRuns.reduce((best, meld) => Math.max(best,
+    meld.cards.length >= 7 ? 90 + meld.cards.length * 7 : meld.cards.length * 5), 0);
+}
+
+function monteCarloPlanValue(match: BiribaMatch, seat: number, candidate: Candidate, tier: 1 | 2 | 3): number {
+  if (tier === 1) return 0;
+  const pool = publicUnseenPool(match, seat);
+  if (pool.length < 4) return 0;
+  const samples = tier === 3 ? 32 : 12;
+  const draws = Math.min(tier === 3 ? 5 : 3, Math.max(1, Math.ceil(match.stock.length / Math.max(1, match.seats))));
+  const seedText = [...(match.hands[seat] ?? []).map((c) => c.id), ...candidate.meld.cards.map((p) => p.card.id)].sort().join("|");
+  const seed = [...seedText].reduce((value, char) => Math.imul(value ^ char.charCodeAt(0), 16777619) >>> 0, 2166136261);
+  const random = seededRandom(seed);
+  const scores: number[] = [];
+  for (let sample = 0; sample < samples; sample++) {
+    const shuffled = pool.slice();
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+    }
+    const future = [...(match.hands[seat] ?? [])];
+    const spentIds = new Set(candidate.meld.cards.map((p) => p.card.id));
+    const nextHand = future.filter((card) => !spentIds.has(card.id));
+    nextHand.push(...shuffled.slice(0, draws));
+    // Estimate natural clean-run completion potential after plausible draws.
+    const potential = cleanPotential(nextHand, seat);
+    const remainingWilds = nextHand.filter((card) => card.joker || (card.rank === 2 && card.suit !== candidate.meld.suit)).length;
+    scores.push(potential - remainingWilds * 2);
+  }
+  scores.sort((a, b) => a - b);
+  const mean = scores.reduce((sum, value) => sum + value, 0) / scores.length;
+  const lowerQuartile = scores[Math.floor(scores.length * 0.25)] ?? mean;
+  // Risk-adjusted value: reward repeatable plans, not just lucky samples.
+  return (mean * 0.65 + lowerQuartile * 0.35) * (tier === 3 ? 0.42 : 0.25);
+}
+
+function opponentThreatPenalty(match: BiribaMatch, seat: number, meld: BiribaMeld): number {
+  const opponents = Array.from({ length: match.seats }, (_, index) => index)
+    .filter((index) => biribaTeamOf(index, match.seats) !== biribaTeamOf(seat, match.seats));
+  const exposed = opponents.reduce((sum, opponent) => {
+    const teamMelds = match.melds.filter((item) => biribaTeamOf(item.ownerSeat, match.seats) === biribaTeamOf(opponent, match.seats));
+    return sum + teamMelds.reduce((value, item) => value + (item.cards.length >= 6 ? 12 : item.cards.length >= 4 ? 6 : 0), 0);
+  }, 0);
+  const opponentHasPacket = opponents.some((opponent) => match.packetTaken[biribaTeamOf(opponent, match.seats)]);
+  const nearingClose = opponents.some((opponent) => match.packetTaken[biribaTeamOf(opponent, match.seats)] &&
+    match.packetPlayed[biribaTeamOf(opponent, match.seats)]);
+  const dirtyPenalty = biribaMeldDirty(meld) ? 0 : -Math.min(10, exposed * 0.12);
+  return dirtyPenalty + (opponentHasPacket ? -5 : 0) + (nearingClose ? -12 : 0);
+}
+
 function bestMeld(match: BiribaMatch, seat: number, tier: 1 | 2 | 3): Candidate | null {
   if (match.forcedDiscardSeat === seat) return null;
   const hand = match.hands[seat] ?? [];
@@ -279,7 +362,9 @@ function bestMeld(match: BiribaMatch, seat: number, tier: 1 | 2 | 3): Candidate 
     })
     .map((candidate) => ({
       ...candidate,
-      score: meldScore(match, seat, candidate.meld, candidate.index),
+      score: meldScore(match, seat, candidate.meld, candidate.index) +
+        monteCarloPlanValue(match, seat, candidate, tier) +
+        opponentThreatPenalty(match, seat, candidate.meld),
     }))
     .sort((a, b) => b.score - a.score || b.meld.cards.length - a.meld.cards.length);
   const best = valid[0];
@@ -343,7 +428,9 @@ function bestPickup(match: BiribaMatch, seat: number, tier: 1 | 2 | 3): Candidat
       score: pickupScore(
         match,
         seat,
-        { ...candidate, score: meldScore(match, seat, candidate.meld, candidate.index) },
+        { ...candidate, score: meldScore(match, seat, candidate.meld, candidate.index) +
+          monteCarloPlanValue(match, seat, candidate, tier) +
+          opponentThreatPenalty(match, seat, candidate.meld) },
         pileIds,
       ),
     }))
