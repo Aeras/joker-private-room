@@ -313,7 +313,7 @@ function monteCarloPlanValue(match: BiribaMatch, seat: number, candidate: Candid
   if (tier === 1) return 0;
   const pool = publicUnseenPool(match, seat);
   if (pool.length < 4) return 0;
-  const samples = tier === 3 ? 12 : 6;
+  const samples = tier === 3 ? 4 : 2;
   const draws = Math.min(tier === 3 ? 5 : 3, Math.max(1, Math.ceil(match.stock.length / Math.max(1, match.seats))));
   const seedText = [...(match.hands[seat] ?? []).map((c) => c.id), ...candidate.meld.cards.map((p) => p.card.id)].sort().join("|");
   const seed = [...seedText].reduce((value, char) => Math.imul(value ^ char.charCodeAt(0), 16777619) >>> 0, 2166136261);
@@ -385,7 +385,7 @@ function bestMeld(match: BiribaMatch, seat: number, tier: 1 | 2 | 3): Candidate 
         opponentThreatPenalty(match, seat, candidate.meld),
     }))
     .sort((a, b) => b.score - a.score || b.meld.cards.length - a.meld.cards.length)
-    .slice(0, tier === 3 ? 3 : tier === 2 ? 2 : 1);
+    .slice(0, tier === 3 ? 2 : tier === 2 ? 1 : 1);
   const valid = ranked
     .map((candidate) => ({
       ...candidate,
