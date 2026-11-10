@@ -57,6 +57,26 @@ describe("BIRIBA independent gameplay turn engine",()=>{
   expect(n.turn).toBe(0);
   expect(n.roundEnded).toBe(false);
  });
+ it("forces a stock draw and discard when the player melds their last card after taking the packet",()=>{
+  const m=beginBiribaMatch(4,()=>0.12);
+  m.phase="meld";
+  m.packetTaken[0]=true;
+  m.packetPlayed[0]=true;
+  const first=[c("meld-3",3),c("meld-4",4),c("meld-5",5)];
+  m.melds=[meld(first,0)];
+  m.hands[0]=[c("last-card",6)];
+  const extended={...m.melds[0]!,cards:[...m.melds[0]!.cards,{card:m.hands[0]![0]!,value:6}]};
+  const n=biribaAction(m,0,{type:"extend",index:0,meld:extended});
+  expect(n.hands[0]).toHaveLength(1);
+  expect(n.hands[0]![0]!.id).toBe(m.stock.at(-1)!.id);
+  expect(n.forcedDiscardSeat).toBe(0);
+  expect(n.phase).toBe("meld");
+  expect(()=>biribaAction(n,0,{type:"meld",meld:meld([n.hands[0]![0]!],0)})).toThrow("MUST_DISCARD_DRAWN_CARD");
+  const next=biribaAction(n,0,{type:"discard",id:n.hands[0]![0]!.id});
+  expect(next.turn).toBe(1);
+  expect(next.phase).toBe("draw");
+  expect(next.forcedDiscardSeat).toBeNull();
+ });
  it("allows the last-card discard when the team has not yet met the two-biriba closing requirement",()=>{
   const m=beginBiribaMatch(4,()=>0.12);
   m.phase="meld";
