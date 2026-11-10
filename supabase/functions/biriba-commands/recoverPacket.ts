@@ -15,6 +15,21 @@ export function recoverUnclaimedBiribaPacket(match: BiribaMatch): BiribaMatch {
     return match;
   const seat = match.turn;
   const team = biribaTeamOf(seat, match.seats);
+  // Recover a legacy state where the active player melded their last card
+  // after the team had already taken its packet. They must draw one card
+  // and discard it; never leave an empty hand in an active meld phase.
+  if (
+    match.hands[seat]?.length === 0 &&
+    match.packetTaken[team] === true &&
+    match.forcedDiscardSeat === null
+  ) {
+    const stock = [...match.stock];
+    const top = stock.pop();
+    if (!top) return { ...match, stock, roundEnded: true, phase: "ended" };
+    const hands = match.hands.map((hand) => [...hand]);
+    hands[seat] = [top];
+    return { ...match, hands, stock, forcedDiscardSeat: seat };
+  }
   const packet = match.packets[team];
   if (
     match.hands[seat]?.length !== 0 ||
