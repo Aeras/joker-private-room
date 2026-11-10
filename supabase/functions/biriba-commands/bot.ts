@@ -288,17 +288,32 @@ function publicUnseenPool(match: BiribaMatch, seat: number): BiribaCard[] {
   return deck.filter((card) => !known.has(card.id));
 }
 
-function cleanPotential(cards: readonly BiribaCard[], seat: number): number {
-  const cleanRuns = runs(cards, seat).filter((meld) => !biribaMeldDirty(meld));
-  return cleanRuns.reduce((best, meld) => Math.max(best,
-    meld.cards.length >= 7 ? 90 + meld.cards.length * 7 : meld.cards.length * 5), 0);
+function cleanPotential(cards: readonly BiribaCard[], _seat: number): number {
+  let best = 0;
+  for (const suit of BIRIBA_SUITS) {
+    for (const highAce of [false, true]) {
+      const values = new Set(cards
+        .filter((card): card is Extract<BiribaCard, { joker?: false }> =>
+          !card.joker && card.suit === suit && card.rank !== 2)
+        .map((card) => card.rank === 1 && highAce ? 14 : card.rank)
+        .filter((value) => highAce ? value >= 3 : value <= 13));
+      let run = 0;
+      let previous = -2;
+      for (const value of [...values].sort((a, b) => a - b)) {
+        run = value === previous + 1 ? run + 1 : 1;
+        previous = value;
+        if (run >= 3) best = Math.max(best, run >= 7 ? 90 + run * 7 : run * 5);
+      }
+    }
+  }
+  return best;
 }
 
 function monteCarloPlanValue(match: BiribaMatch, seat: number, candidate: Candidate, tier: 1 | 2 | 3): number {
   if (tier === 1) return 0;
   const pool = publicUnseenPool(match, seat);
   if (pool.length < 4) return 0;
-  const samples = tier === 3 ? 32 : 12;
+  const samples = tier === 3 ? 12 : 6;
   const draws = Math.min(tier === 3 ? 5 : 3, Math.max(1, Math.ceil(match.stock.length / Math.max(1, match.seats))));
   const seedText = [...(match.hands[seat] ?? []).map((c) => c.id), ...candidate.meld.cards.map((p) => p.card.id)].sort().join("|");
   const seed = [...seedText].reduce((value, char) => Math.imul(value ^ char.charCodeAt(0), 16777619) >>> 0, 2166136261);
@@ -370,7 +385,7 @@ function bestMeld(match: BiribaMatch, seat: number, tier: 1 | 2 | 3): Candidate 
         opponentThreatPenalty(match, seat, candidate.meld),
     }))
     .sort((a, b) => b.score - a.score || b.meld.cards.length - a.meld.cards.length)
-    .slice(0, tier === 3 ? 6 : tier === 2 ? 4 : 1);
+    .slice(0, tier === 3 ? 3 : tier === 2 ? 2 : 1);
   const valid = ranked
     .map((candidate) => ({
       ...candidate,
