@@ -140,7 +140,10 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   const endsHand=hand.length===1;
   const eligible=next.packetTaken[team]&&next.packetPlayed[team]&&biribaCanFinish(
    next.melds.filter(md=>biribaTeamOf(md.ownerSeat,next.seats)===team),true,true);
-  if(endsHand&&next.packetTaken[team]&&!eligible)throw new Error("CANNOT_FINISH_WITHOUT_BIRIBAS");
+  // Two biribas (including at least one clean) are required to CLOSE the round,
+  // not to discard the last card. If the team is not eligible, the player may
+  // empty their hand and draw again on their next turn; draw() already handles
+  // this state and enforces the forced-discard rule when the team has no biriba.
   if(next.forcedDiscardSeat===seat&&hand.length!==1)throw new Error("MUST_DISCARD_DRAWN_CARD");
   next.discards.push(hand.splice(index,1)[0]!);
   next.forcedDiscardSeat=null;
