@@ -99,14 +99,14 @@ describe("Biriba bot strategy", () => {
     game.hands[0] = [
       card("five-hearts", 5, "hearts"),
       card("six-hearts", 6, "hearts"),
-      card("seven-hearts", 7, "hearts"),
+      card("eight-hearts", 8, "hearts"),
       card("discard-junk", 12, "clubs"),
       card("discard-junk-two", 4, "diamonds"),
     ];
     const move = chooseBiribaBotAction(game, 0, 3);
     expect(move?.type).toBe("discard");
     if (move?.type === "discard")
-      expect(["five-hearts", "six-hearts", "seven-hearts"]).not.toContain(move.id);
+      expect(["five-hearts", "six-hearts", "eight-hearts"]).not.toContain(move.id);
   });
 
   it("uses deterministic bounded strategic sampling without inspecting hidden hands or stock order", () => {
