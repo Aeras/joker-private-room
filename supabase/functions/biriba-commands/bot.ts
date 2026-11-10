@@ -352,7 +352,7 @@ function bestMeld(match: BiribaMatch, seat: number, tier: 1 | 2 | 3): Candidate 
     })),
     ...extensions(match, seat, hand),
   ];
-  const valid = candidates
+  const ranked = candidates
     .filter((candidate) => {
       const oldIds = new Set(
         match.melds[candidate.index ?? -1]?.cards.map((placement) => placement.card.id) ?? [],
@@ -365,8 +365,14 @@ function bestMeld(match: BiribaMatch, seat: number, tier: 1 | 2 | 3): Candidate 
     .map((candidate) => ({
       ...candidate,
       score: meldScore(match, seat, candidate.meld, candidate.index) +
-        monteCarloPlanValue(match, seat, candidate, tier) +
         opponentThreatPenalty(match, seat, candidate.meld),
+    }))
+    .sort((a, b) => b.score - a.score || b.meld.cards.length - a.meld.cards.length)
+    .slice(0, tier === 3 ? 6 : tier === 2 ? 4 : 0);
+  const valid = ranked
+    .map((candidate) => ({
+      ...candidate,
+      score: candidate.score + monteCarloPlanValue(match, seat, candidate, tier),
     }))
     .sort((a, b) => b.score - a.score || b.meld.cards.length - a.meld.cards.length);
   const best = valid[0];
@@ -431,10 +437,15 @@ function bestPickup(match: BiribaMatch, seat: number, tier: 1 | 2 | 3): Candidat
         match,
         seat,
         { ...candidate, score: meldScore(match, seat, candidate.meld, candidate.index) +
-          monteCarloPlanValue(match, seat, candidate, tier) +
           opponentThreatPenalty(match, seat, candidate.meld) },
         pileIds,
       ),
+    }))
+    .sort((a, b) => b.score - a.score || b.meld.cards.length - a.meld.cards.length)
+    .slice(0, tier === 3 ? 6 : tier === 2 ? 4 : 0)
+    .map((candidate) => ({
+      ...candidate,
+      score: candidate.score + monteCarloPlanValue(match, seat, candidate, tier),
     }))
     .sort((a, b) => b.score - a.score || b.meld.cards.length - a.meld.cards.length);
   const best = candidates[0];
