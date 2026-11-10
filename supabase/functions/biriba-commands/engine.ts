@@ -52,7 +52,15 @@ export function biribaAction(m:BiribaMatch,seat:number,action:BiribaAction):Biri
   }
  };
  const assessEmpty=()=>{
-  if(hand.length!==0||next.packetTaken[team])return;
+  if(hand.length!==0)return;
+  if(next.packetTaken[team]){
+   // The team has already used its packet. A player who melds their last
+   // card must draw one stock card and discard it; melding cannot close a round.
+   const top=next.stock.pop();
+   if(!top){next.roundEnded=true;next.phase="ended";return;}
+   hand.push(top);next.forcedDiscardSeat=seat;
+   return;
+  }
   if(next.packets[team]?.length!==BIRIBA_PACKET_SIZE||next.packetOwner[team]!==null||
      next.pendingPacket[team]!==null||next.packetPlayed[team])throw new Error("INVALID_PACKET_STATE");
   // The first packet is collected when the hand is emptied, independently
