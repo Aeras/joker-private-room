@@ -187,7 +187,7 @@ function cleanRunPlans(match: BiribaMatch, seat: number): Array<{ ids: string[];
     for (const highAce of [false, true]) {
       const min = highAce ? 3 : 1;
       const max = highAce ? 14 : 13;
-      const valueOf = (card: BiribaCard) => card.rank === 1 && highAce ? 14 : card.rank;
+      const valueOf = (card: Extract<BiribaCard, { joker?: false }>) => card.rank === 1 && highAce ? 14 : card.rank;
       for (let first = min; first <= max - 3; first++) {
         for (let last = first + 3; last <= Math.min(max, first + 7); last++) {
           const held = hand.filter((card) => natural(card) && card.suit === suit &&
