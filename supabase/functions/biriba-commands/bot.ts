@@ -294,7 +294,7 @@ function cleanPotential(cards: readonly BiribaCard[], _seat: number): number {
     for (const highAce of [false, true]) {
       const values = new Set(cards
         .filter((card): card is Extract<BiribaCard, { joker?: false }> =>
-          !card.joker && card.suit === suit && card.rank !== 2)
+          !card.joker && card.suit === suit)
         .map((card) => card.rank === 1 && highAce ? 14 : card.rank)
         .filter((value) => highAce ? value >= 3 : value <= 13));
       let run = 0;
