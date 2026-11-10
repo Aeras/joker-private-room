@@ -313,7 +313,8 @@ function monteCarloPlanValue(match: BiribaMatch, seat: number, candidate: Candid
     const future = [...(match.hands[seat] ?? [])];
     const spentIds = new Set(candidate.meld.cards.map((p) => p.card.id));
     const nextHand = future.filter((card) => !spentIds.has(card.id));
-    const stockOffset = Math.max(0, shuffled.length - match.stock.length);\n    nextHand.push(...shuffled.slice(stockOffset, stockOffset + draws));
+    const stockOffset = Math.max(0, shuffled.length - match.stock.length);
+    nextHand.push(...shuffled.slice(stockOffset, stockOffset + draws));
     // Estimate natural clean-run completion potential after plausible draws.
     const potential = cleanPotential(nextHand, seat);
     const remainingWilds = nextHand.filter((card) => card.joker || (card.rank === 2 && card.suit !== candidate.meld.suit)).length;
