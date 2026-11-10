@@ -328,15 +328,17 @@ function monteCarloPlanValue(match: BiribaMatch, seat: number, candidate: Candid
 }
 
 function opponentThreatPenalty(match: BiribaMatch, seat: number, meld: BiribaMeld): number {
-  const opponents = Array.from({ length: match.seats }, (_, index) => index)
-    .filter((index) => biribaTeamOf(index, match.seats) !== biribaTeamOf(seat, match.seats));
-  const exposed = opponents.reduce((sum, opponent) => {
-    const teamMelds = match.melds.filter((item) => biribaTeamOf(item.ownerSeat, match.seats) === biribaTeamOf(opponent, match.seats));
+  const ownTeam = biribaTeamOf(seat, match.seats);
+  const opponentTeams = [...new Set(
+    Array.from({ length: match.seats }, (_, index) => biribaTeamOf(index, match.seats))
+      .filter((team) => team !== ownTeam),
+  )];
+  const exposed = opponentTeams.reduce((sum, opponentTeam) => {
+    const teamMelds = match.melds.filter((item) => biribaTeamOf(item.ownerSeat, match.seats) === opponentTeam);
     return sum + teamMelds.reduce((value, item) => value + (item.cards.length >= 6 ? 12 : item.cards.length >= 4 ? 6 : 0), 0);
   }, 0);
-  const opponentHasPacket = opponents.some((opponent) => match.packetTaken[biribaTeamOf(opponent, match.seats)]);
-  const nearingClose = opponents.some((opponent) => match.packetTaken[biribaTeamOf(opponent, match.seats)] &&
-    match.packetPlayed[biribaTeamOf(opponent, match.seats)]);
+  const opponentHasPacket = opponentTeams.some((team) => match.packetTaken[team]);
+  const nearingClose = opponentTeams.some((team) => match.packetTaken[team] && match.packetPlayed[team]);
   const dirtyPenalty = biribaMeldDirty(meld) ? 0 : -Math.min(10, exposed * 0.12);
   return dirtyPenalty + (opponentHasPacket ? -5 : 0) + (nearingClose ? -12 : 0);
 }
