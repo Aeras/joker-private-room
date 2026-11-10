@@ -109,6 +109,26 @@ describe("Biriba bot strategy", () => {
       expect(["five-hearts", "six-hearts", "seven-hearts"]).not.toContain(move.id);
   });
 
+  it("uses deterministic bounded strategic sampling without inspecting hidden hands or stock order", () => {
+    const game = setup();
+    game.phase = "meld";
+    game.hands[0] = [
+      card("three", 3),
+      card("four", 4),
+      card("five", 5),
+      card("six", 6),
+      card("junk", 12, "clubs"),
+      card("junk2", 9, "hearts"),
+    ];
+    const first = chooseBiribaBotAction(game, 0, 3);
+    const second = chooseBiribaBotAction(game, 0, 3);
+    expect(second).toEqual(first);
+    const altered = structuredClone(game);
+    altered.hands[1] = [{ id: "secret-opponent-joker", joker: true }];
+    altered.stock.reverse();
+    expect(chooseBiribaBotAction(altered, 0, 3)).toEqual(first);
+  });
+
   it("does not expose a card that directly extends an opponent meld when a safe discard exists", () => {
     const game = setup();
     game.phase = "meld";
