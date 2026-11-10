@@ -57,6 +57,24 @@ describe("BIRIBA independent gameplay turn engine",()=>{
   expect(n.turn).toBe(0);
   expect(n.roundEnded).toBe(false);
  });
+ it("allows the last-card discard when the team has not yet met the two-biriba closing requirement",()=>{
+  const m=beginBiribaMatch(4,()=>0.12);
+  m.phase="meld";
+  m.turn=0;
+  m.packetTaken[0]=true;
+  m.packetPlayed[0]=true;
+  // One dirty seven-card biriba is not enough to close, but it must not
+  // prevent the player from discarding and continuing the round.
+  const dirtyCards=Array.from({length:7},(_,i)=>c(`dirty-${i}`,i+3));
+  m.melds=[meld(dirtyCards,0)];
+  m.hands[0]=[c("last-card",4)];
+  const n=biribaAction(m,0,{type:"discard",id:"last-card"});
+  expect(n.hands[0]).toHaveLength(0);
+  expect(n.roundEnded).toBe(false);
+  expect(n.phase).toBe("draw");
+  expect(n.turn).toBe(1);
+  expect(n.closedBy).toBeNull();
+ });
  it("collects a packet after discarding the final card without an existing biriba",()=>{
   const m=beginBiribaMatch(2,()=>0.12);
   m.phase="meld";
