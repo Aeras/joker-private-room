@@ -1,12 +1,6 @@
 name: JK-002 DB Integration
 on:
   workflow_call:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'supabase/migrations/20261004183758_jk002_ephemeral_table_messages.sql'
-      - 'tests/integration/table-messages*'
-      - '.github/workflows/jk002-db-integration.yml'
 jobs:
   messages:
     runs-on: ubuntu-latest
