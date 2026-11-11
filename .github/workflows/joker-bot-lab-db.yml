@@ -1,16 +1,5 @@
 name: JOKER Bot Lab Database
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      [
-        "supabase/migrations/*bot_lab*",
-        "supabase/tests/bot-lab/**",
-        "supabase/functions/bot-lab*/**",
-        "src/server/botLab/**",
-        "scripts/bot-lab-db-e2e.ts",
-        ".github/workflows/joker-bot-lab-db.yml",
-      ]
   workflow_dispatch:
 jobs:
   database:
