@@ -1,9 +1,6 @@
 name: Optimize JOKER reactions
 on:
-  pull_request:
-    paths:
-      - "public/emojis/joker/original/**"
-      - ".github/workflows/optimize-joker-reactions.yml"
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
