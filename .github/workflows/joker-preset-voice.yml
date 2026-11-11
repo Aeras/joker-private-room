@@ -1,15 +1,5 @@
 name: JOKER Preset Voice Gate
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'supabase/migrations/*preset_voice*'
-      - 'supabase/functions/room-commands/**'
-      - 'supabase/tests/preset-voice/**'
-      - 'scripts/preset-voice-db-test.mjs'
-      - 'src/domain/dialoguePolicy*'
-      - 'src/test/preset-bot-voice-controls.test.tsx'
-      - '.github/workflows/joker-preset-voice.yml'
   workflow_dispatch:
 jobs:
   verify:
