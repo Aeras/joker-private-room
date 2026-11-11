@@ -1,10 +1,6 @@
 name: Generate Joker emoji picker thumbnails
 on:
-  pull_request:
-    paths:
-      - "src/components/table/EmojiPicker.tsx"
-      - "public/emojis/joker/*.webp"
-      - ".github/workflows/joker-emoji-thumbnails.yml"
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
