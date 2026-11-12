@@ -240,6 +240,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
         onSettlingChangeRef.current?.(false);
         setBeats([]);
         setVisibleIndex(-1);
+        onActiveChangeRef.current?.(false);
       } else {
         clearPresentation();
       }
