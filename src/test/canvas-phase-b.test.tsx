@@ -349,8 +349,9 @@ it("keeps nine-card retained piles through choice, then deals the remaining 24 b
     />,
   );
   await tick();
+  // 9 retained seat cards + 3 retained dealer deck stack layers = 12 sprites
   expect(view.container.querySelector("canvas")?.getAttribute("data-canvas-sprite-count")).toBe(
-    "9",
+    "12",
   );
   expect(view.container.querySelector("canvas")).toBe(sameDealCanvas);
   view.rerender(

@@ -319,14 +319,16 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   const displayDealerPos = beats.length ? runDealerPos : visualPosition(projection.viewerSeat, projection.progression.dealerSeat as SeatIndex);
   const canvasOwnsDeal = canvasPrepared === true && canvasFailedScope !== canvasScope && displayGeometry != null;
   const canvasSprites = canvasOwnsDeal && displayGeometry ? cards.map(beat => dealSprite(beat,displayGeometry,displayViewerSeat,displayDealerPos,canvasWidth,"deal",settling && (stage !== "initial" || beat.seat === chooserSeat),!visibleIds.has(beat.id),reducedCanvas)) : [];
-  if(canvasOwnsDeal && displayGeometry && beats.length>0 && !trumpMotionActive && !trumpPlaced) {
+  const showDeck = Boolean(displayGeometry && (beats.length > 0 || retainInitial) && !trumpMotionActive && !trumpPlaced);
+  const deckFades = settling && stage !== "initial";
+  if(canvasOwnsDeal && showDeck && displayGeometry) {
     const source=dealSource(displayGeometry,displayDealerPos);
-    for(const layer of [2,1,0]) canvasSprites.push({id:`deck:${layer}`,url:assets.cardBack,layer:48,phase:settling?"fade":"rest",duration:settling?NORMAL_DEAL_HANDOFF_FADE_DELAY_MS+NORMAL_DEAL_HANDOFF_FADE_MS:0,
-      sample:t=>({x:source.x+layer*3,y:source.y-layer*2,width:canvasWidth*1.22,height:canvasWidth*1.4*1.22,rotation:dealerCardOrientation(displayDealerPos),opacity:settling?1-Math.max(0,Math.min(1,(t*(NORMAL_DEAL_HANDOFF_FADE_DELAY_MS+NORMAL_DEAL_HANDOFF_FADE_MS)-NORMAL_DEAL_HANDOFF_FADE_DELAY_MS)/NORMAL_DEAL_HANDOFF_FADE_MS)):1,flip:0,shadowBlur:14,shadowOffsetY:12,shadowOffsetX:-3})});
+    for(const layer of [2,1,0]) canvasSprites.push({id:`deck:${layer}`,url:assets.cardBack,layer:48,phase:deckFades?"fade":"rest",duration:deckFades?NORMAL_DEAL_HANDOFF_FADE_DELAY_MS+NORMAL_DEAL_HANDOFF_FADE_MS:0,
+      sample:t=>({x:source.x+layer*3,y:source.y-layer*2,width:canvasWidth*1.22,height:canvasWidth*1.4*1.22,rotation:dealerCardOrientation(displayDealerPos),opacity:deckFades?1-Math.max(0,Math.min(1,(t*(NORMAL_DEAL_HANDOFF_FADE_DELAY_MS+NORMAL_DEAL_HANDOFF_FADE_MS)-NORMAL_DEAL_HANDOFF_FADE_DELAY_MS)/NORMAL_DEAL_HANDOFF_FADE_MS)):1,flip:0,shadowBlur:8,shadowOffsetY:8,shadowOffsetX:-2})});
   }
   return <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true" data-deal-settling={settling} data-deal-geometry-epoch={runGeometry?.epoch ?? 0} data-dealer-visual-pos={runDealerPos}>
     {canvasOwnsDeal && <CanvasPresentation key={canvasScope} sprites={canvasSprites} name="deal" onFailure={()=>failCanvas(canvasScope)}/>}
-    {!canvasOwnsDeal && beats.length > 0 && !trumpMotionActive && !trumpPlaced && <DealerDeckStack geometry={displayGeometry} dealerPos={displayDealerPos} settling={settling} />}
+    {!canvasOwnsDeal && showDeck && <DealerDeckStack geometry={displayGeometry} dealerPos={displayDealerPos} settling={deckFades} />}
     {trumpMotionActive && exposedCard && <TrumpDeckMotion key={stageKey ?? "trump"} card={exposedCard}
       source={displayGeometry ? dealerSourcePoint(displayGeometry, displayDealerPos) : { x: window.innerWidth * Number.parseFloat(FALLBACK_DEALER_SOURCE[displayDealerPos].left) / 100, y: window.innerHeight * Number.parseFloat(FALLBACK_DEALER_SOURCE[displayDealerPos].top) / 100 }}
       rotation={SEAT_ROTATION[displayDealerPos]} targetRef={trumpTargetRef} onPlaced={runs.current.guard(completeTrumpMotion)} />}
