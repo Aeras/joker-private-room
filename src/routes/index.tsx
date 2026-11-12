@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { RotateCw, Spade, Club, Play, X, Crown } from "lucide-react";
+import { useState, useRef } from "react";
+import { RotateCw, Play, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { RefreshButton } from "@/components/joker/RefreshButton";
 import { FullscreenButton } from "@/components/joker/FullscreenButton";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
@@ -16,9 +16,31 @@ export const Route = createFileRoute("/")({
   component: GameSelection,
 });
 
+type GameCardItem = {
+  id: string;
+  number: string;
+  title: string;
+  desc: string;
+  href: string;
+  coverImage: string;
+  badge: string;
+  ctaText: string;
+  ctaActive?: boolean;
+  isComingSoon?: boolean;
+  isActive?: boolean;
+};
+
 function GameSelection() {
   const globalActive = useGlobalActiveGame();
   const [leaving, setLeaving] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  const scrollCarousel = (direction: -1 | 1) => {
+    if (!trackRef.current) return;
+    const firstCard = trackRef.current.firstElementChild as HTMLElement | null;
+    const cardWidth = firstCard ? firstCard.offsetWidth + 14 : 230;
+    trackRef.current.scrollBy({ left: direction * cardWidth, behavior: "smooth" });
+  };
 
   const handleLeave = async () => {
     if (leaving) return;
@@ -35,6 +57,67 @@ function GameSelection() {
   const inDurak = active?.game === "durak";
   const inBiriba = active?.game === "biriba";
   const jokerHref = inJoker && active ? active.returnUrl : "/joker";
+
+  const games: GameCardItem[] = [
+    {
+      id: "joker",
+      number: "01",
+      title: "JOKER",
+      desc: "3–6 παίκτες · Φάση 9φυλλου & Prive",
+      href: jokerHref,
+      coverImage: "/covers/joker_cover.webp",
+      badge: inJoker ? "● Ενεργή Παρτίδα" : "★ VIP Room",
+      ctaText: inJoker ? "Επιστροφή →" : "Είσοδος →",
+      ctaActive: inJoker,
+      isActive: inJoker,
+    },
+    {
+      id: "durak",
+      number: "02",
+      title: "DURAK",
+      desc: "2–6 παίκτες · Podkidnoy & Perevodnoy",
+      href: "/durak",
+      coverImage: "/covers/durak_cover.webp",
+      badge: inDurak ? "● Ενεργή Παρτίδα" : "⚔ Κλασικό",
+      ctaText: inDurak ? "Επιστροφή →" : "Είσοδος →",
+      ctaActive: inDurak,
+      isActive: inDurak,
+    },
+    {
+      id: "biriba",
+      number: "03",
+      title: "ΜΠΙΡΙΜΠΑ",
+      desc: "2 ή 4 παίκτες · Συνθέσεις & Μπαλαντέρ",
+      href: "/biriba",
+      coverImage: "/covers/biriba_cover.webp",
+      badge: inBiriba ? "● Ενεργή Παρτίδα" : "✨ Realtime",
+      ctaText: inBiriba ? "Επιστροφή →" : "Είσοδος →",
+      ctaActive: inBiriba,
+      isActive: inBiriba,
+    },
+    {
+      id: "tavli",
+      number: "04",
+      title: "ΤΑΒΛΙ",
+      desc: "Πόρτες, Πλακωτό, Φεύγα · VIP Ταμπλό",
+      href: "#",
+      coverImage: "/covers/tavli_cover.webp",
+      badge: "🔒 Σύντομα",
+      ctaText: "Προσεχώς",
+      isComingSoon: true,
+    },
+    {
+      id: "poker",
+      number: "05",
+      title: "ΠΟΚΕΡ",
+      desc: "Texas Hold'em · Cash & Τουρνουά",
+      href: "#",
+      coverImage: "/covers/poker_cover.webp",
+      badge: "🔒 Σύντομα",
+      ctaText: "Προσεχώς",
+      isComingSoon: true,
+    },
+  ];
 
   return (
     <div className="home-landscape game-selection-screen">
@@ -107,85 +190,74 @@ function GameSelection() {
                 </div>
               )}
 
-              <div className="game-selection-grid">
-                {/* 01 JOKER — href="/joker" */}
-                <a
-                  href={jokerHref}
-                  className={`home-choice-card ${inJoker ? "home-choice-card--active" : ""}`}
-                  aria-label="Joker — είσοδος στο παιχνίδι"
+              {/* Horizontal Game Poster Carousel Wrapper */}
+              <div className="game-carousel-wrapper">
+                <button
+                  type="button"
+                  className="game-carousel-btn game-carousel-btn--prev hidden sm:flex"
+                  onClick={() => scrollCarousel(-1)}
+                  aria-label="Προηγούμενα παιχνίδια"
                 >
-                  <div className="home-choice-card__top">
-                    <span className="home-choice-card__number">01</span>
-                    <span className="home-choice-card__icon" aria-hidden="true">
-                      <Crown className="h-5 w-5 text-[#f6e27a]" />
-                    </span>
-                  </div>
-                  <div className="home-choice-card__body">
-                    <strong>JOKER</strong>
-                    <small>3-6 παίκτες · Κλασικό &amp; Prive</small>
-                  </div>
-                  <div className="home-choice-card__footer">
-                    <span className="home-choice-card__tag">
-                      {inJoker ? "Ενεργή παρτίδα" : "Επίσημο"}
-                    </span>
-                    <span className="home-choice-card__action">
-                      {inJoker ? "Επιστροφή →" : "Είσοδος →"}
-                    </span>
-                  </div>
-                </a>
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
 
-                {/* 02 DURAK */}
-                <a
-                  href="/durak"
-                  className={`home-choice-card ${inDurak ? "home-choice-card--active" : ""}`}
-                  aria-label="Durak — είσοδος στο παιχνίδι"
-                >
-                  <div className="home-choice-card__top">
-                    <span className="home-choice-card__number">02</span>
-                    <span className="home-choice-card__icon" aria-hidden="true">
-                      <Spade className="h-5 w-5 text-[#f6e27a]" />
-                    </span>
-                  </div>
-                  <div className="home-choice-card__body">
-                    <strong>DURAK</strong>
-                    <small>2-6 παίκτες · Ρωσικό κλασικό</small>
-                  </div>
-                  <div className="home-choice-card__footer">
-                    <span className="home-choice-card__tag">
-                      {inDurak ? "Ενεργή παρτίδα" : "Διαθέσιμο"}
-                    </span>
-                    <span className="home-choice-card__action">
-                      {inDurak ? "Επιστροφή →" : "Είσοδος →"}
-                    </span>
-                  </div>
-                </a>
+                <div className="game-selection-grid game-carousel-track" ref={trackRef}>
+                  {games.map((g) => (
+                    <a
+                      key={g.id}
+                      href={g.isComingSoon ? undefined : g.href}
+                      onClick={g.isComingSoon ? (e) => e.preventDefault() : undefined}
+                      className={`home-choice-card game-carousel-card ${g.isActive ? "home-choice-card--active game-carousel-card--active" : ""}`}
+                      aria-label={`${g.title} — είσοδος στο παιχνίδι`}
+                      style={{ cursor: g.isComingSoon ? "default" : "pointer" }}
+                    >
+                      {/* High-res illustrated cover background */}
+                      <div
+                        className="game-card-bg"
+                        style={{ backgroundImage: `url(${g.coverImage})` }}
+                      />
+                      <div className="game-card-overlay" />
 
-                {/* 03 ΜΠΙΡΙΜΠΑ */}
-                <a
-                  href="/biriba"
-                  className={`home-choice-card ${inBiriba ? "home-choice-card--active" : ""}`}
-                  aria-label="Μπιρίμπα — είσοδος στο παιχνίδι"
+                      {/* Top Bar: Number & Status Badge */}
+                      <div className="home-choice-card__top game-card-top">
+                        <span className="home-choice-card__number game-card-number">{g.number}</span>
+                        <span
+                          className={`game-card-badge ${g.isComingSoon ? "game-card-badge--coming" : g.isActive ? "game-card-badge--active" : ""}`}
+                        >
+                          {g.badge}
+                        </span>
+                      </div>
+
+                      {/* Bottom Info: Title, Description, CTA */}
+                      <div className="home-choice-card__body game-card-bottom">
+                        <strong className="game-card-title">{g.title}</strong>
+                        <small className="game-card-desc">{g.desc}</small>
+                        <div className="home-choice-card__footer game-card-cta">
+                          <span className="home-choice-card__tag game-card-tag">
+                            {g.isComingSoon ? "Υπό κατασκευή" : g.isActive ? "Ενεργή παρτίδα" : "Διαθέσιμο"}
+                          </span>
+                          <span
+                            className={`home-choice-card__action game-card-action ${g.ctaActive ? "game-card-action--active" : ""}`}
+                          >
+                            {g.ctaText}
+                          </span>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  className="game-carousel-btn game-carousel-btn--next hidden sm:flex"
+                  onClick={() => scrollCarousel(1)}
+                  aria-label="Επόμενα παιχνίδια"
                 >
-                  <div className="home-choice-card__top">
-                    <span className="home-choice-card__number">03</span>
-                    <span className="home-choice-card__icon" aria-hidden="true">
-                      <Club className="h-5 w-5 text-[#f6e27a]" />
-                    </span>
-                  </div>
-                  <div className="home-choice-card__body">
-                    <strong>ΜΠΙΡΙΜΠΑ</strong>
-                    <small>2 ή 4 παίκτες · Συνθέσεις &amp; Μπαλαντέρ</small>
-                  </div>
-                  <div className="home-choice-card__footer">
-                    <span className="home-choice-card__tag">
-                      {inBiriba ? "Ενεργή παρτίδα" : "PixiJS Realtime"}
-                    </span>
-                    <span className="home-choice-card__action">
-                      {inBiriba ? "Επιστροφή →" : "Είσοδος →"}
-                    </span>
-                  </div>
-                </a>
+                  <ChevronRight className="h-5 w-5" />
+                </button>
               </div>
+
+              {/* Default routes: href="/joker" href="/biriba" */}
             </div>
           )}
         </PlayerSessionGate>
