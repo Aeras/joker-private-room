@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RotateCw, Spade, Club } from "lucide-react";
+import { useState } from "react";
+import { RotateCw, Spade, Club, Play, X, Crown } from "lucide-react";
 import { RefreshButton } from "@/components/joker/RefreshButton";
 import { FullscreenButton } from "@/components/joker/FullscreenButton";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
-import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
+import { useGlobalActiveGame } from "@/hooks/useGlobalActiveGame";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Επιλέξτε το παιχνίδι" },
+      { title: "Επιλέξτε το παιχνίδι | Joker Club" },
       { name: "description", content: "Ιδιωτικά παιχνίδια καρτών με φίλους." },
     ],
   }),
@@ -16,48 +17,180 @@ export const Route = createFileRoute("/")({
 });
 
 function GameSelection() {
-  const active = useCurrentActiveGame();
-  const inJoker = active.status === "waiting" || active.status === "active";
+  const globalActive = useGlobalActiveGame();
+  const [leaving, setLeaving] = useState(false);
+
+  const handleLeave = async () => {
+    if (leaving) return;
+    setLeaving(true);
+    try {
+      await globalActive.leave();
+    } finally {
+      setLeaving(false);
+    }
+  };
+
+  const active = globalActive.active;
+  const inJoker = active?.game === "joker";
+  const inDurak = active?.game === "durak";
+  const inBiriba = active?.game === "biriba";
+  const jokerHref = inJoker && active ? active.returnUrl : "/joker";
+
   return (
     <div className="home-landscape game-selection-screen">
       <div className="home-topbar">
-        <div className="home-wordmark">ΠΑΙΧΝΙΔΙΑ</div>
-        <div className="flex items-center gap-2"><FullscreenButton /><RefreshButton /></div>
+        <div className="flex items-center gap-2.5">
+          <div className="home-wordmark text-[#e8ce96] tracking-widest font-extrabold text-sm sm:text-base">
+            JOKER CLUB
+          </div>
+          <span className="hidden sm:inline-block rounded-full border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.08)] px-2 py-0.5 text-[0.65rem] font-semibold text-[#f6e27a] tracking-wide uppercase">
+            Private Club
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <FullscreenButton />
+          <RefreshButton />
+        </div>
       </div>
+
       <main className="home-landscape__content">
-        <header className="game-selection-heading"><h1>Επιλέξτε το παιχνίδι</h1></header>
-        <section className="home-menu" aria-label="Διαθέσιμα παιχνίδια">
-          <PlayerSessionGate
-            allowLogout={!inJoker && active.status !== "loading" && active.status !== "error"}
-            onAuthenticated={() => { void active.refresh(); }}
-          >
-            {() => (
-              <div className="home-main-actions game-selection-grid">
-                <a href="/joker" className="home-choice-card" aria-label="Joker — είσοδος στο παιχνίδι">
-                  <span className="home-choice-card__number">01</span>
-                  <strong>JOKER</strong>
-                  <small>{inJoker ? "Επιστροφή στην παρτίδα" : "Δημιουργία ή συμμετοχή"}</small>
+        <PlayerSessionGate
+          allowLogout={!active}
+          onAuthenticated={() => {
+            void globalActive.refresh();
+          }}
+          hideConnectedBanner
+        >
+          {(player) => (
+            <div className="game-selection-container">
+              <header className="game-selection-heading flex items-center justify-between px-1">
+                <div className="hidden sm:block w-20" />
+                <h1>Επιλέξτε το παιχνίδι</h1>
+                <div className="text-right text-[0.72rem] text-[rgba(245,234,213,0.7)] truncate max-w-[14rem]">
+                  <span className="hidden sm:inline">Συνδεδεμένος: </span>
+                  <strong className="text-[#f6e27a] font-semibold">{player.displayName}</strong>
+                </div>
+              </header>
+
+              {active && (
+                <div className="home-active-banner" role="region" aria-label="Ενεργό παιχνίδι">
+                  <div className="home-active-banner__info">
+                    <span className="home-active-banner__pulse" aria-hidden="true" />
+                    <div className="home-active-banner__title">
+                      Ενεργή παρτίδα: <strong>{active.gameTitle}</strong>
+                      <span className="opacity-75 text-xs ml-1.5 font-mono">#{active.roomCode}</span>
+                      <span className="ml-2 text-xs text-[#cb9b51] hidden sm:inline">
+                        ({active.lifecycle === "playing" ? "Σε εξέλιξη" : "Αναμονή παικτών"})
+                      </span>
+                    </div>
+                  </div>
+                  <div className="home-active-banner__actions">
+                    <a
+                      href={active.returnUrl}
+                      className="home-active-btn home-active-btn--return"
+                      aria-label={`Επιστροφή στο ${active.gameTitle}`}
+                    >
+                      <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                      <span>Επιστροφή στο παιχνίδι</span>
+                    </a>
+                    <button
+                      type="button"
+                      className="home-active-btn home-active-btn--leave"
+                      disabled={leaving}
+                      onClick={() => void handleLeave()}
+                      aria-label="Έξοδος από το παιχνίδι"
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{leaving ? "Έξοδος…" : "Έξοδος"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="game-selection-grid">
+                {/* 01 JOKER — href="/joker" */}
+                <a
+                  href={jokerHref}
+                  className={`home-choice-card ${inJoker ? "home-choice-card--active" : ""}`}
+                  aria-label="Joker — είσοδος στο παιχνίδι"
+                >
+                  <div className="home-choice-card__top">
+                    <span className="home-choice-card__number">01</span>
+                    <span className="home-choice-card__icon" aria-hidden="true">
+                      <Crown className="h-5 w-5 text-[#f6e27a]" />
+                    </span>
+                  </div>
+                  <div className="home-choice-card__body">
+                    <strong>JOKER</strong>
+                    <small>3-6 παίκτες · Κλασικό &amp; Prive</small>
+                  </div>
+                  <div className="home-choice-card__footer">
+                    <span className="home-choice-card__tag">
+                      {inJoker ? "Ενεργή παρτίδα" : "Επίσημο"}
+                    </span>
+                    <span className="home-choice-card__action">
+                      {inJoker ? "Επιστροφή →" : "Είσοδος →"}
+                    </span>
+                  </div>
                 </a>
-                <a href="/durak" className="home-choice-card" aria-label="Durak — είσοδος στο παιχνίδι">
-                  <span className="home-choice-card__number">02</span>
-                  <strong><Spade className="inline-block h-5 w-5" aria-hidden="true" /> DURAK</strong>
-                  <small>Δημιουργία ή συμμετοχή</small>
+
+                {/* 02 DURAK */}
+                <a
+                  href="/durak"
+                  className={`home-choice-card ${inDurak ? "home-choice-card--active" : ""}`}
+                  aria-label="Durak — είσοδος στο παιχνίδι"
+                >
+                  <div className="home-choice-card__top">
+                    <span className="home-choice-card__number">02</span>
+                    <span className="home-choice-card__icon" aria-hidden="true">
+                      <Spade className="h-5 w-5 text-[#f6e27a]" />
+                    </span>
+                  </div>
+                  <div className="home-choice-card__body">
+                    <strong>DURAK</strong>
+                    <small>2-6 παίκτες · Ρωσικό κλασικό</small>
+                  </div>
+                  <div className="home-choice-card__footer">
+                    <span className="home-choice-card__tag">
+                      {inDurak ? "Ενεργή παρτίδα" : "Διαθέσιμο"}
+                    </span>
+                    <span className="home-choice-card__action">
+                      {inDurak ? "Επιστροφή →" : "Είσοδος →"}
+                    </span>
+                  </div>
                 </a>
-                <a href="/biriba" className="home-choice-card" aria-label="Μπιρίμπα — δοκιμαστική δημιουργία παιχνιδιού">
-                  <span className="home-choice-card__number">03</span>
-                  <strong><Club className="inline-block h-5 w-5" aria-hidden="true" /> ΜΠΙΡΙΜΠΑ</strong>
-                  <small>Δοκιμαστικό μοίρασμα · PixiJS</small>
+
+                {/* 03 ΜΠΙΡΙΜΠΑ */}
+                <a
+                  href="/biriba"
+                  className={`home-choice-card ${inBiriba ? "home-choice-card--active" : ""}`}
+                  aria-label="Μπιρίμπα — είσοδος στο παιχνίδι"
+                >
+                  <div className="home-choice-card__top">
+                    <span className="home-choice-card__number">03</span>
+                    <span className="home-choice-card__icon" aria-hidden="true">
+                      <Club className="h-5 w-5 text-[#f6e27a]" />
+                    </span>
+                  </div>
+                  <div className="home-choice-card__body">
+                    <strong>ΜΠΙΡΙΜΠΑ</strong>
+                    <small>2 ή 4 παίκτες · Συνθέσεις &amp; Μπαλαντέρ</small>
+                  </div>
+                  <div className="home-choice-card__footer">
+                    <span className="home-choice-card__tag">
+                      {inBiriba ? "Ενεργή παρτίδα" : "PixiJS Realtime"}
+                    </span>
+                    <span className="home-choice-card__action">
+                      {inBiriba ? "Επιστροφή →" : "Είσοδος →"}
+                    </span>
+                  </div>
                 </a>
-                {active.status === "error" && (
-                  <p role="alert" className="col-span-full text-center text-sm text-negative">
-                    Δεν ήταν δυνατός ο έλεγχος ενεργής παρτίδας. Μπορείς να μπεις στο Joker για επανάληψη.
-                  </p>
-                )}
               </div>
-            )}
-          </PlayerSessionGate>
-        </section>
+            </div>
+          )}
+        </PlayerSessionGate>
       </main>
+
       <div className="pregame-portrait-gate" role="status" aria-live="polite">
         <RefreshButton className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(.55rem,env(safe-area-inset-top))]" />
         <RotateCw className="h-10 w-10" />

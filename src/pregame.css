@@ -464,54 +464,231 @@
   justify-content: flex-end;
 }
 
-/* Game catalogue: discreet single-line heading and expandable card grid. */
+/* Game catalogue: Zero-scroll fixed layout for mobile landscape */
+.game-selection-screen {
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+}
 .game-selection-screen .home-landscape__content {
-  justify-content: flex-start;
-  align-content: start;
-  gap: clamp(.7rem, 2vh, 1.1rem);
-  padding-top: clamp(.45rem, 2vh, 1rem);
-  overflow-y: auto;
+  height: calc(100dvh - 3rem) !important;
+  max-height: calc(100dvh - 3rem) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: stretch !important;
+  gap: clamp(0.35rem, 1.4vh, 0.75rem) !important;
+  padding: 0.25rem 0 max(0.45rem, env(safe-area-inset-bottom)) !important;
+  overflow: hidden !important;
 }
 .game-selection-heading {
   text-align: center;
   flex-shrink: 0;
+  margin-bottom: 0;
 }
 .game-selection-heading h1 {
   margin: 0;
-  font-family: "Commissioner", system-ui, sans-serif;
-  font-size: clamp(1rem, 2.1vw, 1.55rem);
-  font-weight: 600;
-  letter-spacing: .075em;
-  line-height: 1.35;
+  font-family: var(--font-display), "Commissioner", system-ui, sans-serif;
+  font-size: clamp(0.95rem, 1.8vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: .08em;
+  line-height: 1.25;
   white-space: nowrap;
-  color: #eeddbd;
+  background: linear-gradient(135deg, #f6e27a 0%, #cb9b51 50%, #8a6524 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
-.game-selection-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(.55rem, 1.4vw, .95rem);
+.game-selection-container {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.4rem, 1.4vh, 0.75rem);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  justify-content: center;
 }
-.game-selection-grid .home-choice-card {
-  min-height: clamp(5.9rem, 20vh, 8rem);
-  padding: clamp(.7rem, 1.5vw, 1rem);
-  border-radius: .9rem;
-}
-.game-selection-grid .home-choice-card strong {
-  font-family: "Commissioner", system-ui, sans-serif;
-  font-size: clamp(.92rem, 1.7vw, 1.14rem);
-  letter-spacing: .04em;
+
+/* Active Game Banner */
+.home-active-banner {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: .25rem;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: linear-gradient(135deg, rgba(32, 16, 24, 0.9) 0%, rgba(14, 7, 12, 0.95) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.38);
+  border-radius: 0.75rem;
+  padding: clamp(0.3rem, 0.9vh, 0.5rem) clamp(0.65rem, 1.8vw, 1.15rem);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
-.game-selection-grid .home-choice-card__number { font-size: 1.15rem; top: .55rem; right: .8rem; }
-.game-selection-grid .home-choice-card small { font-size: clamp(.65rem, 1.1vw, .78rem); }
-.game-selection-unavailable { opacity: .55; cursor: not-allowed; }
-.game-selection-unavailable:hover { filter: none; border-color: rgba(214,175,96,.28); }
-.game-selection-unavailable:active { transform: none; }
+.home-active-banner__info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.home-active-banner__pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2ecc71;
+  box-shadow: 0 0 8px #2ecc71;
+  flex-shrink: 0;
+  animation: banner-pulse 2s infinite;
+}
+@keyframes banner-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+.home-active-banner__title {
+  font-size: clamp(0.72rem, 1.3vw, 0.85rem);
+  color: rgba(245, 234, 213, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-active-banner__title strong {
+  color: #f6e27a;
+  letter-spacing: 0.04em;
+}
+.home-active-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+.home-active-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.75rem;
+  font-size: clamp(0.7rem, 1.15vw, 0.8rem);
+  font-weight: 700;
+  border-radius: 0.5rem;
+  transition: all 140ms ease;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.home-active-btn--return {
+  background: linear-gradient(135deg, #f6e27a 0%, #cb9b51 50%, #9a7028 100%);
+  color: #120902;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.25);
+}
+.home-active-btn--return:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.home-active-btn--leave {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ff9e9e;
+  border: 1px solid rgba(255, 75, 75, 0.35);
+}
+.home-active-btn--leave:hover {
+  background: rgba(255, 60, 60, 0.15);
+  border-color: rgba(255, 75, 75, 0.6);
+}
+
+/* 3 Cards Container */
+.game-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(0.45rem, 1.3vw, 0.85rem);
+  flex: 1;
+  min-height: 0;
+  max-height: clamp(140px, 46vh, 210px);
+}
+.game-selection-grid .home-choice-card {
+  height: 100%;
+  min-height: 0;
+  padding: clamp(0.5rem, 1.4vw, 0.85rem);
+  border-radius: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  background: linear-gradient(160deg, rgba(34, 18, 26, 0.82) 0%, rgba(14, 7, 11, 0.94) 100%);
+  box-shadow: 0 10px 25px -10px rgba(0, 0, 0, 0.7);
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  text-decoration: none;
+}
+.game-selection-grid .home-choice-card:hover {
+  border-color: rgba(212, 175, 55, 0.55);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -8px rgba(212, 175, 55, 0.15);
+}
+.game-selection-grid .home-choice-card--active {
+  border-color: rgba(46, 204, 113, 0.5) !important;
+  background: linear-gradient(160deg, rgba(20, 38, 28, 0.85) 0%, rgba(10, 20, 15, 0.95) 100%) !important;
+  box-shadow: 0 0 15px rgba(46, 204, 113, 0.18) !important;
+}
+.home-choice-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.game-selection-grid .home-choice-card__number {
+  position: static;
+  font-family: var(--font-display), serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(212, 175, 55, 0.75);
+  background: rgba(212, 175, 55, 0.1);
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+.home-choice-card__icon {
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+  filter: drop-shadow(0 2px 6px rgba(212, 175, 55, 0.3));
+}
+.home-choice-card__body {
+  margin: clamp(0.15rem, 0.5vh, 0.35rem) 0;
+}
+.game-selection-grid .home-choice-card strong {
+  font-family: var(--font-display), "Commissioner", system-ui, sans-serif;
+  font-size: clamp(0.95rem, 1.8vw, 1.22rem);
+  letter-spacing: .06em;
+  color: #f7ede2;
+  display: block;
+}
+.game-selection-grid .home-choice-card small {
+  display: block;
+  font-size: clamp(0.64rem, 1vw, 0.75rem);
+  color: rgba(245, 234, 213, 0.6);
+  margin-top: 0.15rem;
+  line-height: 1.25;
+}
+.home-choice-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: clamp(0.25rem, 0.6vh, 0.45rem);
+}
+.home-choice-card__tag {
+  font-size: clamp(0.62rem, 0.95vw, 0.72rem);
+  color: rgba(245, 234, 213, 0.45);
+}
+.home-choice-card__action {
+  font-size: clamp(0.66rem, 1vw, 0.76rem);
+  font-weight: 700;
+  color: #f3e5ab;
+  display: flex;
+  align-items: center;
+}
+.home-choice-card--active .home-choice-card__action {
+  color: #2ecc71;
+}
+
 @media (orientation: landscape) and (max-height: 520px) {
-  .game-selection-screen .home-landscape__content { gap: .55rem; padding-top: .3rem; }
-  .game-selection-heading h1 { font-size: clamp(.92rem, 2vw, 1.15rem); }
-  .game-selection-grid .home-choice-card { min-height: 5.3rem; padding: .65rem; }
+  .game-selection-screen .home-landscape__content { gap: 0.35rem !important; padding-top: 0.15rem !important; }
+  .game-selection-heading h1 { font-size: clamp(0.88rem, 1.8vw, 1.05rem); }
+  .game-selection-grid .home-choice-card { padding: 0.45rem 0.65rem; }
 }
 @media (max-width: 460px) {
   .game-selection-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

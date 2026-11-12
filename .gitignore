@@ -40,4 +40,6 @@ android-alpha/local.properties
 
 # Local conversation notes & ideas (ignored by git, stays strictly local)
 notes/
+scratch/
+*.mp4
 

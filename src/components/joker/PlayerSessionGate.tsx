@@ -6,7 +6,19 @@ import { authFailureMessage } from "@/lib/auth-feedback";
 import { JButton } from "./JButton";
 
 /** Login once using the existing httpOnly server session; no PIN is persisted client-side. */
-export function PlayerSessionGate({ children, onAuthenticated, allowLogout = true, hideConnectedBanner = false }: { children: (player: PublicPlayer) => React.ReactNode; onAuthenticated?: () => void; allowLogout?: boolean; hideConnectedBanner?: boolean }) {
+export function PlayerSessionGate({
+  children,
+  onAuthenticated,
+  allowLogout = true,
+  hideConnectedBanner = false,
+  className,
+}: {
+  children: (player: PublicPlayer) => React.ReactNode;
+  onAuthenticated?: () => void;
+  allowLogout?: boolean;
+  hideConnectedBanner?: boolean;
+  className?: string;
+}) {
   const [player, setPlayer] = useState<PublicPlayer | null>(null);
   const [choices, setChoices] = useState<PublicPlayer[]>([]);
   const [selected, setSelected] = useState("");
@@ -61,7 +73,7 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
     finally { setBusy(false); }
   }
   if (loading) return <p role="status" className="text-center">Έλεγχος σύνδεσης…</p>;
-  if (player) return <div className={hideConnectedBanner ? "h-dvh min-h-0 overflow-hidden" : undefined}>
+  if (player) return <div className={className ?? (hideConnectedBanner ? "contents" : undefined)}>
     {!hideConnectedBanner && <div className="mb-3 flex justify-center items-center gap-3 text-sm">
       <span>Συνδεδεμένος: <strong>{player.displayName}</strong></span>
       {allowLogout && <button className="underline text-muted-foreground" type="button" disabled={busy} onClick={() => void disconnect()}>Αποσύνδεση</button>}
