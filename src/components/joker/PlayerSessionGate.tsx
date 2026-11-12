@@ -20,8 +20,13 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
     let mounted = true;
     void (async () => {
       try {
-        // Existing sessions must not depend on loading the directory of players.
-        const current = await getCurrentPlayer();
+        let current: PublicPlayer | null = null;
+        try {
+          // Existing sessions must not depend on loading the directory of players.
+          current = await getCurrentPlayer();
+        } catch {
+          current = null;
+        }
         if (!mounted) return;
         if (current) {
           setPlayer(current);
@@ -80,20 +85,43 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
     {children(player)}
   </div>;
   return <form onSubmit={connect} className="panel mx-auto max-w-sm space-y-3 p-4">
-    <h2 className="text-lg font-semibold">Σύνδεση παίκτη</h2>
-    <label className="block text-sm">Παίκτης
-      <select aria-label="Παίκτης" className="mt-1 w-full rounded-lg bg-secondary p-3" value={selected} onChange={e => setSelected(e.target.value)}>
-        {choices.map(p => <option key={p.id} value={p.id}>{p.displayName}</option>)}
+    <h2 className="text-lg font-semibold text-foreground">Σύνδεση παίκτη</h2>
+    <label className="block text-sm text-foreground">Παίκτης
+      <select
+        aria-label="Παίκτης"
+        className="mt-1 w-full rounded-lg bg-secondary p-3 text-foreground font-medium border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+        value={selected}
+        onChange={e => setSelected(e.target.value)}
+      >
+        {choices.length === 0 && <option value="" disabled className="bg-secondary text-foreground">Επιλέξτε παίκτη…</option>}
+        {choices.map(p => (
+          <option key={p.id} value={p.id} className="bg-secondary text-foreground">
+            {p.displayName}
+          </option>
+        ))}
       </select>
     </label>
-    <label className="block text-sm">Προσωπικό PIN
-      <input type="password" inputMode="numeric" autoComplete="off" aria-label="Προσωπικό PIN" value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} className="mt-1 w-full rounded-lg bg-secondary p-3" />
+    <label className="block text-sm text-foreground">Προσωπικό PIN
+      <input
+        type="password"
+        inputMode="numeric"
+        autoComplete="off"
+        aria-label="Προσωπικό PIN"
+        value={pin}
+        onChange={e => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+        className="mt-1 w-full rounded-lg bg-secondary p-3 text-foreground font-medium border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+      />
     </label>
     {allowCardFormatSelection && choices.some(p => p.id === selected && isCardImageAdmin(p)) && (
-      <label className="block text-sm">Μορφή εικόνων τράπουλας (μόνο για δοκιμή)
-        <select aria-label="Μορφή εικόνων τράπουλας" className="mt-1 w-full rounded-lg bg-secondary p-3" value={format} onChange={e => setFormat(e.target.value as CardImageFormat)}>
-          <option value="png">PNG (αρχική)</option>
-          <option value="webp">WebP (δοκιμαστική)</option>
+      <label className="block text-sm text-foreground">Μορφή εικόνων τράπουλας (μόνο για δοκιμή)
+        <select
+          aria-label="Μορφή εικόνων τράπουλας"
+          className="mt-1 w-full rounded-lg bg-secondary p-3 text-foreground border border-border"
+          value={format}
+          onChange={e => setFormat(e.target.value as CardImageFormat)}
+        >
+          <option value="png" className="bg-secondary text-foreground">PNG (αρχική)</option>
+          <option value="webp" className="bg-secondary text-foreground">WebP (δοκιμαστική)</option>
         </select>
       </label>
     )}
