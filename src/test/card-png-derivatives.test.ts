@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { inflateSync } from "node:zlib";
 import { expect, it } from "vitest";
 import { CARD_ASSET_URLS } from "@/assets/cardPreload";
