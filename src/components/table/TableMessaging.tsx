@@ -96,11 +96,13 @@ export function TableMessaging({
 
   return (
     <>
-      <div className="absolute right-[max(.75rem,env(safe-area-inset-right))] bottom-[max(.75rem,env(safe-area-inset-bottom))] z-[70]">
+      <div className="absolute right-[max(.75rem,env(safe-area-inset-right))] bottom-[max(.75rem,env(safe-area-inset-bottom))] z-[75]">
         <JButton
           variant="outlineGold"
-          className="min-h-11 min-w-11 bg-black/70"
+          size="sm"
+          className="h-11 w-11 min-w-11 touch-manipulation px-0 bg-black/60 rounded-xl"
           aria-label={t.chat}
+          title={t.chat}
           onClick={() => {
             setError(null);
             setOpen(true);

@@ -9,13 +9,13 @@ export function SoundToggle() {
     <JButton
       variant="outlineGold"
       size="sm"
-      className="min-h-11 min-w-11 bg-black/60 px-2"
+      className="h-11 w-11 min-w-11 touch-manipulation px-0 bg-black/60 rounded-xl"
       aria-label={t.sound}
+      title={t.sound}
       aria-pressed={enabled}
       onClick={() => setSoundEnabled(!enabled)}
     >
       {enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-      <span className="hidden lg:inline">{t.sound}</span>
     </JButton>
   );
 }
