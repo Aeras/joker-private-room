@@ -1,0 +1,164 @@
+import fs from "node:fs";
+import path from "node:path";
+
+const SUIT_PATHS = {
+  hearts: "M32 54C26 48 8 35 8 21C8 8 24 6 32 18C40 6 56 8 56 21C56 35 38 48 32 54Z",
+  diamonds: "M32 6L51 32L32 58L13 32Z",
+  clubs: "M32 8C19 8 17 22 23 28C9 22 4 39 14 45C20 49 27 45 30 40C30 47 27 52 23 56H41C37 52 34 47 34 40C37 45 44 49 50 45C60 39 55 22 41 28C47 22 45 8 32 8Z",
+  spades: "M32 6C27 15 9 27 9 38C9 50 25 51 30 40C30 47 27 52 23 56H41C37 52 34 47 34 40C39 51 55 50 55 38C55 27 37 15 32 6Z",
+};
+
+const TRUMP_VARIANTS = [
+  { key: "spades", label: "ΜΠΑΣΤΟΥΝΙΑ", isRed: false },
+  { key: "hearts", label: "ΚΟΥΠΕΣ", isRed: true },
+  { key: "diamonds", label: "ΚΑΡΟ", isRed: true },
+  { key: "clubs", label: "ΣΠΑΘΙΑ", isRed: false },
+  { key: "notrump", label: "ΧΩΡΙΣ ΑΤΟΥ", isRed: false, isNoTrump: true },
+];
+
+function generateTrumpSVG({ key, label, isRed, isNoTrump }) {
+  const symbolElement = isNoTrump
+    ? `<g filter="url(#symbolShadow)" stroke="url(#goldText)" stroke-width="16" stroke-linecap="round">
+        <line x1="145" y1="205" x2="215" y2="275" />
+        <line x1="215" y1="205" x2="145" y2="275" />
+       </g>`
+    : `<g transform="translate(180, 240) scale(2.65) translate(-32, -32)" filter="url(#symbolShadow)">
+        <path d="${SUIT_PATHS[key]}" fill="${isRed ? 'url(#rubyGrad)' : 'url(#blackGrad)'}" stroke="${isRed ? '#ff99aa' : '#efd27e'}" stroke-width="0.8" stroke-linejoin="round" />
+       </g>`;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 503" width="360" height="503">
+  <defs>
+    <!-- Metallic Gold Outer Bevel -->
+    <linearGradient id="goldBevel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff0c0"/>
+      <stop offset="25%" stop-color="#e2bc52"/>
+      <stop offset="50%" stop-color="#8a6312"/>
+      <stop offset="75%" stop-color="#d8b240"/>
+      <stop offset="100%" stop-color="#553a06"/>
+    </linearGradient>
+
+    <!-- Metallic Gold Gleam for Inset Rings -->
+    <linearGradient id="goldGleam" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#fdf4d2"/>
+      <stop offset="30%" stop-color="#d4af37"/>
+      <stop offset="70%" stop-color="#7a550d"/>
+      <stop offset="100%" stop-color="#edd17a"/>
+    </linearGradient>
+
+    <!-- Rich Gold Text Gradient -->
+    <linearGradient id="goldText" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff8db"/>
+      <stop offset="45%" stop-color="#f4cf64"/>
+      <stop offset="85%" stop-color="#b68924"/>
+      <stop offset="100%" stop-color="#8c6413"/>
+    </linearGradient>
+
+    <!-- Card Background: Deep Velvet Carbon -->
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e211b"/>
+      <stop offset="40%" stop-color="#121410"/>
+      <stop offset="80%" stop-color="#0a0c09"/>
+      <stop offset="100%" stop-color="#050604"/>
+    </linearGradient>
+
+    <!-- Coin Medallion Core Radial -->
+    <radialGradient id="coinBg" cx="42%" cy="36%" r="68%">
+      <stop offset="0%" stop-color="#2a2e26"/>
+      <stop offset="55%" stop-color="#131511"/>
+      <stop offset="100%" stop-color="#060705"/>
+    </radialGradient>
+
+    <!-- 3D Glossy Black Suit Gradient -->
+    <linearGradient id="blackGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#464a42"/>
+      <stop offset="40%" stop-color="#222520"/>
+      <stop offset="85%" stop-color="#0c0d0b"/>
+      <stop offset="100%" stop-color="#040403"/>
+    </linearGradient>
+
+    <!-- 3D Glossy Ruby Red Suit Gradient -->
+    <linearGradient id="rubyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff4460"/>
+      <stop offset="45%" stop-color="#d6112f"/>
+      <stop offset="85%" stop-color="#8e0015"/>
+      <stop offset="100%" stop-color="#55000c"/>
+    </linearGradient>
+
+    <!-- Shadow Filters -->
+    <filter id="cardShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.85"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+
+    <filter id="coinShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.9"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#ffffff" flood-opacity="0.15"/>
+    </filter>
+
+    <filter id="symbolShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#000000" flood-opacity="0.95"/>
+    </filter>
+  </defs>
+
+  <!-- Base Card Rect with Outer Shadow -->
+  <g filter="url(#cardShadow)">
+    <rect x="4" y="4" width="352" height="495" rx="26" ry="26" fill="url(#cardBg)" stroke="url(#goldBevel)" stroke-width="3"/>
+  </g>
+
+  <!-- Inner Gold Pinstripe -->
+  <rect x="12" y="12" width="336" height="479" rx="20" ry="20" fill="none" stroke="url(#goldGleam)" stroke-width="1.2" stroke-opacity="0.55"/>
+
+  <!-- Corner Gold Ornamental Accents -->
+  <circle cx="20" cy="20" r="2.5" fill="url(#goldBevel)" />
+  <circle cx="340" cy="20" r="2.5" fill="url(#goldBevel)" />
+  <circle cx="20" cy="483" r="2.5" fill="url(#goldBevel)" />
+  <circle cx="340" cy="483" r="2.5" fill="url(#goldBevel)" />
+
+  <!-- Top Header 'ΑΤΟΥ' with Ornamental Wings -->
+  <g transform="translate(0, 0)">
+    <!-- Left Wing -->
+    <line x1="85" y1="56" x2="135" y2="56" stroke="url(#goldGleam)" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="85" cy="56" r="2" fill="url(#goldGleam)"/>
+    
+    <!-- Word ΑΤΟΥ -->
+    <text x="180" y="63" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="20" letter-spacing="6" fill="url(#goldText)">ΑΤΟΥ</text>
+    
+    <!-- Right Wing -->
+    <line x1="225" y1="56" x2="275" y2="56" stroke="url(#goldGleam)" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="275" cy="56" r="2" fill="url(#goldGleam)"/>
+  </g>
+
+  <!-- Center Gold Casino Medallion (from Proposal 3) -->
+  <g filter="url(#coinShadow)">
+    <!-- Outer Heavy Beveled Gold Rim -->
+    <circle cx="180" cy="238" r="114" fill="url(#goldBevel)" stroke="#3a2503" stroke-width="1.5"/>
+    
+    <!-- Outer Inset Groove -->
+    <circle cx="180" cy="238" r="108" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="2"/>
+    
+    <!-- Inner Fine Gold Ring -->
+    <circle cx="180" cy="238" r="104" fill="none" stroke="url(#goldGleam)" stroke-width="1.5"/>
+    
+    <!-- Medallion Dark Inset Core -->
+    <circle cx="180" cy="238" r="101" fill="url(#coinBg)" stroke="#000000" stroke-width="1.5"/>
+  </g>
+
+  <!-- Large Center Embossed Suit Symbol -->
+  ${symbolElement}
+
+  <!-- Bottom Suit Label Plaque Bar -->
+  <g filter="url(#cardShadow)">
+    <rect x="36" y="406" width="288" height="58" rx="14" ry="14" fill="#0d0f0c" stroke="url(#goldBevel)" stroke-width="1.8"/>
+    <rect x="40" y="410" width="280" height="50" rx="10" ry="10" fill="none" stroke="url(#goldGleam)" stroke-width="0.8" stroke-opacity="0.45"/>
+    <text x="180" y="443" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="21" letter-spacing="3" fill="url(#goldText)">${label}</text>
+  </g>
+</svg>`;
+}
+
+const outDir = path.resolve("public/cards/trump");
+for (const variant of TRUMP_VARIANTS) {
+  const svg = generateTrumpSVG(variant);
+  const filePath = path.join(outDir, `trump_${variant.key}.svg`);
+  fs.writeFileSync(filePath, svg, "utf8");
+  console.log(`Generated: ${filePath}`);
+}

@@ -31,15 +31,13 @@ export function TrumpIndicator({ trump, exposedTrumpCard }: {
   if (trump.status !== "resolved") return null;
 
   if (trump.suit == null) {
-    return <div className="flex aspect-[180/265] w-[var(--card-w)] flex-col items-center justify-center rounded-[8%] border border-neutral-300 bg-white px-[10%] text-center shadow-lg" data-trump-indicator="no-trump">
-      <span className="text-[2.1em] font-black leading-none text-red-600">✕</span>
-      <span className="mt-1 text-[clamp(6.5px,calc(var(--card-w)*.11),14px)] font-semibold leading-tight text-neutral-800">Χωρίς ατού</span>
+    return <div className="relative aspect-[180/265] w-[var(--card-w)] drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]" data-trump-indicator="no-trump">
+      <img src={assets.trumpPlaque(null)} alt="Χωρίς ατού" className="h-full w-full object-contain select-none" draggable={false} />
     </div>;
   }
 
   const meta = SUIT_META[trump.suit];
-  return <div className="flex aspect-[180/265] w-[var(--card-w)] flex-col items-center justify-center rounded-[8%] border border-neutral-300 bg-white px-[10%] text-center shadow-lg" data-trump-indicator={trump.suit}>
-    <SuitSymbol suit={trump.suit} className={`w-[68%] shrink-0 drop-shadow-[0_1px_1px_#0002] ${meta.tone}`} />
-    <span className="mt-1 block w-full whitespace-nowrap text-[clamp(6.5px,calc(var(--card-w)*.11),14px)] font-semibold leading-tight text-neutral-800">{meta.label}</span>
+  return <div className="relative aspect-[180/265] w-[var(--card-w)] drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]" data-trump-indicator={trump.suit}>
+    <img src={assets.trumpPlaque(trump.suit)} alt={meta.label} className="h-full w-full object-contain select-none" draggable={false} />
   </div>;
 }

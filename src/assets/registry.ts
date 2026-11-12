@@ -70,6 +70,7 @@ export const assets = {
   cardArtwork,
   tableAvatar,
   cardFace: canonicalCardFace,
+  trumpPlaque: (suit: Suit | null): string => `/cards/trump/trump_${suit ?? "notrump"}.svg`,
   avatar: (_id: string, displayName?: string): string | undefined => {
     const key = displayName?.trim().toLowerCase();
     return key ? avatarByName[key] : undefined;

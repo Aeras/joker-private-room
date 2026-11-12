@@ -29,6 +29,7 @@ import { TableSurface } from "./TableSurface";
 import { TableUtilityMenu } from "./TableUtilityMenu";
 import { TrickPresentation } from "./TrickPresentation";
 import { TrumpIndicator, trumpAnnouncementLabel } from "./TrumpIndicator";
+import { NineCardTrumpFlight } from "./NineCardTrumpFlight";
 import { useTableGeometry, type CardReleaseRect } from "./useTableGeometry";
 import { useCriticalCardArtwork } from "./useCriticalCardArtwork";
 
@@ -331,7 +332,11 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
   const forcedEnd = projection.termination?.kind === "host_ended";
   const finalRows = projection.lifecycle === "complete" && !forcedEnd ? projection.score.finalPlacements.map((placement, seat) => ({ seat, placement, score: projection.score.cumulativeTotals[seat] ?? 0 })).sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99) || b.score - a.score) : [];
   const handPresented = !startupPresentationActive || (!dealerIntroActive && (dealSettling || (!dealPresentationActive && revealedHands.current.has(`${projection.gameId}:${projection.progression.dealNumber}:${projection.cards.ownHand.length}`))));
-  const showTrumpIndicator = (!startupPresentationActive || placedTrumpKey === `${projection.gameId}:${projection.progression.dealNumber}`) && (projection.cards.exposedTrumpCard != null || projection.trump.status === "resolved");
+  const chooserSeat = (projection.trump.status === "resolved" ? (projection.trump.chooserSeat ?? projection.progression.firstDeclarerSeat) : projection.trump.chooserSeat) ?? projection.progression.firstDeclarerSeat ?? 0;
+  const chooserPos = ((chooserSeat - localSeat + SEAT_COUNT) % SEAT_COUNT) as Pos;
+  const nineCardTrumpKey = `${projection.gameId}:${projection.progression.dealNumber}:nine-trump`;
+  const isNineCardDeal = projection.cards.exposedTrumpCard == null && projection.trump.status === "resolved";
+  const showTrumpIndicator = (!startupPresentationActive || (isNineCardDeal ? placedTrumpKey === nineCardTrumpKey : placedTrumpKey === `${projection.gameId}:${projection.progression.dealNumber}`)) && (projection.cards.exposedTrumpCard != null || projection.trump.status === "resolved");
 
   return <div ref={tableRootRef} className="joker-room relative h-dvh w-full overflow-hidden supports-[overflow:clip]:overflow-clip bg-[#090b09]">
     <TableSurface />
@@ -344,6 +349,16 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     </header>
     <main className="absolute inset-x-[5vw] top-[10vh] bottom-[27vh]"><div ref={tableGeometry.feltRef} className="relative h-full w-full"><div ref={tableGeometry.topSeatRef} className="joker-remote-seat joker-remote-seat-top">{seatBlock(2, "horizontal")}</div><div ref={tableGeometry.leftSeatRef} className="joker-remote-seat joker-remote-seat-left">{seatBlock(1, "vertical")}</div><div ref={tableGeometry.rightSeatRef} className="joker-remote-seat joker-remote-seat-right">{seatBlock(3, "vertical")}</div><DealerSelectionPresentation projection={projection} geometry={tableGeometry.geometry} onActiveChange={setDealerIntroActive} />{<TrickPresentation key={projection.gameId} projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} pendingJokerChoice={pendingJokerChoice} onLocalFlightSettled={clearLocalFlight} onBusyChange={setTrickPresentationBusy} onScorePresentationActiveChange={trackScorePresentation} onCollectionComplete={refreshDisplayedScore} onPresentationReady={completeVisibleTurn} />}</div></main>
     {!interactionPresentationActive && trumpAction && <TrumpChoicePicker suits={trumpAction.suits} busy={busy} onSelect={(suit) => void onCommand({ type: "choose_trump", suit })} />}
+    {projection.progression.phase === "NINE_CARD_REMAINING_DEAL" && isNineCardDeal && placedTrumpKey !== nineCardTrumpKey && (
+      <NineCardTrumpFlight
+        key={nineCardTrumpKey}
+        suit={projection.trump.suit}
+        chooserPos={chooserPos}
+        geometry={tableGeometry.geometry}
+        targetRef={trumpCardRef}
+        onPlaced={() => setPlacedTrumpKey(nineCardTrumpKey)}
+      />
+    )}
     {(projection.cards.exposedTrumpCard != null || projection.trump.status === "resolved") && <div style={{ visibility: showTrumpIndicator ? "visible" : "hidden" }} className="joker-trump-indicator pointer-events-none absolute left-[72%] top-[10vh] z-30 -translate-x-1/2 [--card-w:var(--desktop-trump-card-w,clamp(3.2rem,6.4vw,5rem))]"><div className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Ατού</div><div ref={trumpCardRef} className="w-fit"><TrumpIndicator trump={projection.trump} exposedTrumpCard={projection.cards.exposedTrumpCard} /></div></div>}
     {trumpAnnouncement && <div className="pointer-events-none absolute left-1/2 top-1/2 z-[65] -translate-x-1/2 -translate-y-[4.8rem] rounded-xl border border-primary/55 bg-black/90 px-5 py-2.5 text-center text-base font-semibold text-white shadow-2xl backdrop-blur" role="status" aria-live="polite" data-trump-announcement>{trumpAnnouncement}</div>}
     <DealPresentation projection={projection} trumpTargetRef={trumpCardRef} onTrumpPlaced={setPlacedTrumpKey} geometry={tableGeometry.geometry} paused={dealerIntroActive || trickPresentationBusy} onActiveChange={setDealPresentationActive} onSettlingChange={setDealSettling} onPresentationComplete={handleDealPresentationComplete} />
