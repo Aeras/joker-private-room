@@ -233,7 +233,16 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     recordTimingDiagnostic("deal_sequence_settling", { stage: presentationStage, settleMs });
     timers.current.push(window.setTimeout(runs.current.guard(() => {
       recordTimingDiagnostic("deal_sequence_complete", { stage: presentationStage });
-      markPresented(key); notifyCompletion(key, presentationStage, startup); clearPresentation();
+      markPresented(key);
+      notifyCompletion(key, presentationStage, startup);
+      if (presentationStage === "initial") {
+        setSettling(false);
+        onSettlingChangeRef.current?.(false);
+        setBeats([]);
+        setVisibleIndex(-1);
+      } else {
+        clearPresentation();
+      }
     }), settleMs + tailMs));
   }, [clearPresentation, notifyCompletion]);
   const completeTrumpMotion = useCallback(() => {
@@ -246,7 +255,10 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   useLayoutEffect(() => {
     if (previousGameId.current !== projection.gameId) { clearPresentation(); previousGameId.current = projection.gameId; previousStageKey.current = null; acknowledgedStageKey.current = null; }
     if (paused || interrupted) { clearPresentation(); if (stageKey) previousStageKey.current = null; return; }
-    if (!stage || !stageKey || sequence.length === 0) { clearPresentation(); return; }
+    if (!stage || !stageKey || sequence.length === 0) {
+      if (!retainInitial) clearPresentation();
+      return;
+    }
     const presentationStage: DealPresentationStage = stage;
     const startup = projection.progression.phase === "DEAL_SETUP";
     if (running.current && stageKey === previousStageKey.current) {

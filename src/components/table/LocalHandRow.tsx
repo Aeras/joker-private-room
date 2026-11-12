@@ -92,7 +92,7 @@ export function LocalHandRow({
   // Detach only from presentation immediately; the canonical hand stays server-owned.
   const presentedCards = cards.filter(card => card.id !== pendingCardId);
   const cardOverlap = presentedCards.length <= 3 ? 0.18 : presentedCards.length <= 5 ? 0.28 : presentedCards.length <= 7 ? 0.36 : 0.42;
-  const revealOverlap = reduced || entranceSettled ? cardOverlap : 0.86;
+  const revealOverlap = cardOverlap;
 
   const handLayoutRef = useHandReflow(JSON.stringify(presentedCards.map(card => card.id)), !canvasOwned && visible && entranceSettled && !revealing);
   const layoutEpoch=JSON.stringify([presentedCards.map(card=>card.id),geometry?.epoch,entranceSettled,canvasOwned]);
