@@ -37,3 +37,7 @@ android-alpha/build/
 android-alpha/app/build/
 android-alpha/app/src/local/assets/public/
 android-alpha/local.properties
+
+# Local conversation notes & ideas (ignored by git, stays strictly local)
+notes/
+

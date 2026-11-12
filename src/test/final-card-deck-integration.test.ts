@@ -49,7 +49,7 @@ describe("JK-001 final card deck integration", () => {
         const card: Card = { kind: "standard", id: `${rank}-${suit}`, suit, rank };
         const expected = `/cards/runtime-png/faces/${suit}_${rankAssetName[rank]}.png`;
         expect(assets.cardFace(card)).toBe(expected);
-        expect(assets.cardArtwork(expected)).toBe(expected.replace("/runtime-png/", "/optimized-png/"));
+        expect(assets.cardArtwork(expected)).toBe(expected.replace("/runtime-png/", "/webp/").replace(/\.png$/, ".webp"));
         expect(existsSync(publicPath(expected))).toBe(true);
       }
     }
@@ -70,7 +70,7 @@ describe("JK-001 final card deck integration", () => {
       expect(face, card.id).toBeTruthy();
       if (!face) throw new Error(`Missing face: ${card.id}`);
       expect(existsSync(publicPath(face)), card.id).toBe(true);
-      expect(assets.cardArtwork(face)).toBe(face.replace("/runtime-png/", "/optimized-png/"));
+      expect(assets.cardArtwork(face)).toBe(face.replace("/runtime-png/", "/webp/").replace(/\.png$/, ".webp"));
     }
   });
 
@@ -83,7 +83,8 @@ describe("JK-001 final card deck integration", () => {
     expect(createDeck("popular36")).toHaveLength(36);
     expect(createDeck("classic38")).toHaveLength(38);
     expect(CARD_ASSET_URLS).toHaveLength(39);
-    for (const url of CARD_ASSET_URLS) expect(assets.cardArtwork(url)).toBe(url.replace("/runtime-png/", "/optimized-png/"));
+    expect(assets.cardArtwork(assets.cardBack)).toBe("/cards/webp/backs/blue_back.webp");
+    for (const url of CARD_ASSET_URLS) expect(assets.cardArtwork(url)).toBe(url.replace("/runtime-png/", "/webp/").replace(/\.png$/, ".webp"));
   });
 
   it("routes hand, trick and dealing/back rendering through PlayingCard and the shared registry", () => {

@@ -39,11 +39,11 @@ export function biribaDealKey(roomCode: string, roundNumber: number, seat: numbe
 }
 
 export function biribaCardArtwork(card: BiribaCard): string {
-  if (card.joker) return "/cards/optimized-png/faces/joker_red.png";
+  if (card.joker) return "/cards/webp/faces/joker_red.webp";
   const rank =
     ({ 1: "ace", 11: "jack", 12: "queen", 13: "king" } as Record<number, string>)[card.rank] ??
     card.rank;
-  return `/cards/optimized-png/faces/${card.suit}_${rank}.png`;
+  return `/cards/webp/faces/${card.suit}_${rank}.webp`;
 }
 
 export function visibleOpponentSides(

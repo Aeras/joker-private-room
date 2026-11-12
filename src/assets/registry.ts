@@ -60,8 +60,7 @@ function tableAvatar(url: string | undefined): string | undefined {
 }
 function cardArtwork(url: string): string {
   if (!url.startsWith(`${RUNTIME_CARD_ROOT}/`)) return url;
-  if (cardImageFormat() === "webp") return url.replace(RUNTIME_CARD_ROOT, "/cards/webp").replace(/\.png$/, ".webp");
-  return url.replace(RUNTIME_CARD_ROOT, "/cards/optimized-png");
+  return url.replace(RUNTIME_CARD_ROOT, "/cards/webp").replace(/\.png$/, ".webp");
 }
 
 export const assets = {

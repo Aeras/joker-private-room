@@ -50,5 +50,9 @@ it("all 55 PNG derivatives preserve every original pixel, dimension and registry
     expect([b.width, b.height]).toEqual([a.width, a.height]);
     expect(b.pixels.equals(a.pixels)).toBe(true);
   }
-  for (const url of CARD_ASSET_URLS) expect(manifest.some(item => item.source === url && item.derivative === assets.cardArtwork(url))).toBe(true);
+  for (const url of CARD_ASSET_URLS) {
+    const artwork = assets.cardArtwork(url);
+    expect(artwork.endsWith(".webp")).toBe(true);
+    expect(existsSync("public" + artwork)).toBe(true);
+  }
 }, 30_000);

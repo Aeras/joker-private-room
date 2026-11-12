@@ -19,9 +19,9 @@ describe("Biriba discarded pile inspection", () => {
     const cards = [...view.container.querySelectorAll(".biriba-discard-dialog-card")] as HTMLImageElement[];
     expect(cards).toHaveLength(3);
     expect(cards.map(card => card.getAttribute("src"))).toEqual([
-      "/cards/optimized-png/faces/diamonds_6.png",
-      "/cards/optimized-png/faces/spades_king.png",
-      "/cards/optimized-png/faces/joker_red.png",
+      "/cards/webp/faces/diamonds_6.webp",
+      "/cards/webp/faces/spades_king.webp",
+      "/cards/webp/faces/joker_red.webp",
     ]);
     expect(cards.map(card => card.getAttribute("alt"))).toEqual([
       "6 καρό", "13 μπαστούνι", "Τζόκερ",

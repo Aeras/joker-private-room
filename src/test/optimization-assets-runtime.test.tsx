@@ -127,13 +127,12 @@ describe("decoded artwork readiness and slow-device recovery", () => {
     const recovered = cache.preloadCardAsset("/fail.png"); image("/fail.png").resolve();
     expect(await recovered).toBe(true);
   });
-  it("optimized PNG failure falls back to the preserved original", async () => {
+  it("optimized artwork failure falls back to the preserved original", async () => {
     const cache = await import("@/assets/cardPreload"); const url = "/cards/runtime-png/backs/blue_back.png";
     const request = cache.preloadCardAsset(url);
-    image("/cards/optimized-png/backs/blue_back.png").onerror!();
+    image("/cards/webp/backs/blue_back.webp").onerror!();
     await vi.advanceTimersByTimeAsync(250); image(url).resolve();
     expect(await request).toBe(true); expect(cache.resolvedCardArtwork(url)).toBe(url);
-    expect(images.some(item => item.src.endsWith(".webp"))).toBe(false);
   });
   it("background warming starts only two requests; critical artwork bypasses warming", async () => {
     const cache = await import("@/assets/cardPreload");
