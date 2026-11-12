@@ -102,7 +102,7 @@ export class CanvasCardAssets {
     this.entries.clear();
   }
 }
-export const canvasCardAssets = new CanvasCardAssets();
+export const canvasCardAssets = new CanvasCardAssets(32);
 export function canvasFlightAvailable() {
   return (
     import.meta.env["VITE_JOKER_FLIGHT_RENDERER"] !== "dom" &&

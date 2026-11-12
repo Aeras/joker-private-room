@@ -156,10 +156,11 @@ export class CardCanvasEngine {
         ctx.scale(Math.max(0.001, Math.abs(side)), 1);
         const left = -p.width / 2,
           top = -p.height / 2,
-          cornerRadius = Math.min(8, p.width * 0.1);
-        ctx.shadowColor = p.emphasis ? "rgba(212,175,55,.9)" : "rgba(0,0,0,.28)";
-        ctx.shadowBlur = p.emphasis ? 14 : 9;
-        ctx.shadowOffsetY = 3;
+          cornerRadius = Math.min(3, p.width * 0.05);
+        ctx.shadowColor = p.shadowColor ?? (p.emphasis ? "rgba(212,175,55,.9)" : "rgba(0,0,0,.55)");
+        ctx.shadowBlur = p.shadowBlur ?? (p.emphasis ? 14 : 9);
+        ctx.shadowOffsetX = p.shadowOffsetX ?? 0;
+        ctx.shadowOffsetY = p.shadowOffsetY ?? 3;
         ctx.fillStyle = "#fff";
         ctx.beginPath();
         ctx.moveTo(left + cornerRadius, top);
@@ -180,6 +181,7 @@ export class CardCanvasEngine {
         ctx.fill();
         ctx.clip();
         ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
         const blend = sprite.backImage ? (p.backBlend ?? 0) : 0;
         ctx.globalAlpha = p.opacity * (1 - blend);

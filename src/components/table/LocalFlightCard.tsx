@@ -76,6 +76,7 @@ function DomLocalFlightCard({ presentation, geometry, viewerSeat, reducedMotion,
     { x: destinationX, y: destinationY }, frozen.release.rotation ?? 0, rotation),
     [frozen, width, height, targetWidth, destinationX, destinationY, rotation]);
   return <div className="fixed left-0 top-0 z-40 transition-[transform,opacity] ease-out" style={{
+    willChange: "transform",
     "--card-w": `${width}px`, opacity: motionReduced && !atTarget ? 0 : 1, transitionDuration: `${duration}ms`,
     ...(curved ? { animationName: flightId, animationDuration: `${duration}ms`, animationTimingFunction: "linear", animationFillMode: "both", transitionProperty: "opacity" } : {}),
     ...(fromBelow ? { transitionTimingFunction: "ease-in-out", zIndex: fallbackPose?.layer === 0 ? 0 : 40 } : {}),

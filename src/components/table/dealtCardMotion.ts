@@ -45,3 +45,25 @@ export function dealtCardFrames(start: Point, end: Point, startRotation: number,
     return `${time * 100}%{transform:translate(calc(-50% + ${pose.point.x - start.x}px),calc(-50% + ${pose.point.y - start.y}px)) scale(${pose.scale}) rotate(${pose.rotation}deg)}`;
   }).join("");
 }
+
+/** 3D Parabolic Deal Flight with Dynamic Altitude Shadow & Scale Curve. */
+export function dealtCard3DFlightFrames(start: Point, end: Point, startRotation: number, endRotation: number) {
+  const dx = end.x - start.x, dy = end.y - start.y;
+
+  return Array.from({ length: 25 }, (_, index) => {
+    const time = index / 24;
+    const t = dealProgress(time);
+    const arc = 4 * t * (1 - t);
+    const px = start.x + dx * t;
+    const py = start.y + dy * t;
+    const scale = 1.0 + 0.22 * (1 - t) + 0.16 * arc;
+    const rotation = startRotation + (endRotation - startRotation) * t;
+
+    const shadowY = 3 + 24 * arc + 6 * (1 - t);
+    const shadowX = -3 * (1 - t);
+    const shadowBlur = 4 + 20 * arc + 6 * (1 - t);
+    const shadowOpacity = 0.38 + 0.20 * arc + 0.08 * (1 - t);
+
+    return `${(time * 100).toFixed(1)}%{transform:translate(calc(-50% + ${px - start.x}px),calc(-50% + ${py - start.y}px)) scale(${scale.toFixed(3)}) rotate(${rotation.toFixed(2)}deg);filter:drop-shadow(${shadowX.toFixed(1)}px ${shadowY.toFixed(1)}px ${shadowBlur.toFixed(1)}px rgba(0,0,0,${shadowOpacity.toFixed(2)}))}`;
+  }).join("");
+}

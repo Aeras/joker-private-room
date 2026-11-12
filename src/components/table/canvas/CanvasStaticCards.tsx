@@ -66,7 +66,7 @@ export function CanvasStaticCards({
           ctx.translate(x + w / 2, y + h / 2);
           ctx.rotate(angle);
           ctx.beginPath();
-          const radius = Math.min(8, w / 9);
+          const radius = Math.min(3, w * 0.05);
           ctx.roundRect(-w / 2, -h / 2, w, h, radius);
           ctx.clip();
           ctx.drawImage(image, -w / 2, -h / 2, w, h);

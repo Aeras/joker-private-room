@@ -51,6 +51,9 @@ export function trickSpriteMotion(
     scale = 1,
     opacity = 1,
     flip = 0,
+    shadowBlur?: number,
+    shadowOffsetY?: number,
+    shadowOffsetX?: number,
   ): SpritePose => ({
     x: geometry.feltRect.left + point.x,
     y: geometry.feltRect.top + point.y,
@@ -59,6 +62,9 @@ export function trickSpriteMotion(
     rotation: angle,
     opacity,
     flip,
+    shadowBlur,
+    shadowOffsetY,
+    shadowOffsetX,
   });
   const exit = trickExitPoint(target, winnerPos, {
     ...geometry,
@@ -86,11 +92,16 @@ export function trickSpriteMotion(
         const pose = cardFlightPose(
           geometry.seatOrigins[pos],
           landing,
-          rotation - 6,
+          rotation - 4,
           rotation,
           eased,
         );
-        return absolute(pose.point, pose.rotation, 0.92 + 0.08 * eased);
+        const arc = 4 * eased * (1 - eased);
+        const scale = 1.0 + 0.16 * arc;
+        const shadowBlur = Math.round(4 + 18 * arc);
+        const shadowOffsetY = Math.round(3 + 22 * arc);
+        const shadowOffsetX = Math.round(-2 * arc);
+        return absolute(pose.point, pose.rotation, scale, 1, 0, shadowBlur, shadowOffsetY, shadowOffsetX);
       }
       if (reduced)
         return {

@@ -49,8 +49,6 @@ export function PlayerSessionGate({ children, onAuthenticated, allowLogout = tru
       if (!result.ok) { setError(authFailureMessage(result)); return; }
       saveCardImageFormat(isCardImageAdmin(result.player) ? format : "png");
       setPlayer(result.player); setPin(""); onAuthenticated?.();
-      // Ensure preload and Canvas texture caches use the same format consistently.
-      window.location.reload();
     } catch { setError("Αδυναμία σύνδεσης. Δοκίμασε ξανά."); }
     finally { setBusy(false); }
   }

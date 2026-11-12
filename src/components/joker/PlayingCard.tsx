@@ -31,7 +31,7 @@ export function PlayingCard({
   className?: string;
 }) {
   const base = cn(
-    "relative aspect-[5/7] w-[var(--card-w,4.5rem)] shrink-0 rounded-[0.5rem] shadow-card transition-transform duration-150",
+    "relative aspect-[5/7] w-[var(--card-w,4.5rem)] shrink-0 rounded-[3px] shadow-card transition-transform duration-150",
     onClick && "cursor-pointer",
     selected && "-translate-y-4 ring-gold",
     className,
@@ -42,9 +42,9 @@ export function PlayingCard({
     return (
       <div className={cn(base, "overflow-hidden border border-primary/30 bg-card-face")} aria-label="Κλειστό φύλλο">
         {back ? (
-          <CardArtwork key={back} artwork={back} alt="" fallback={<div className="card-back-pattern absolute inset-[3px] rounded-[0.35rem]" />} />
+          <CardArtwork key={back} artwork={back} alt="" fallback={<div className="card-back-pattern absolute inset-[2px] rounded-[2px]" />} />
         ) : (
-          <div className="card-back-pattern absolute inset-[3px] rounded-[0.35rem]" />
+          <div className="card-back-pattern absolute inset-[2px] rounded-[2px]" />
         )}
       </div>
     );

@@ -5,12 +5,12 @@ export function cardFlightPose(start: Point, end: Point, startRotation: number, 
   const t = Math.max(0, Math.min(1, progress));
   const dx = end.x - start.x, dy = end.y - start.y;
   const length = Math.hypot(dx, dy);
-  const bow = Math.min(32, length * 0.075);
+  const bow = Math.min(1.2, length * 0.005);
   const normal = length ? { x: -dy / length, y: dx / length } : { x: 0, y: 0 };
   const arc = 4 * t * (1 - t);
   return {
     point: { x: start.x + dx * t + normal.x * bow * arc, y: start.y + dy * t + normal.y * bow * arc },
-    rotation: startRotation + (endRotation - startRotation) * t + Math.sin(Math.PI * t) * 7,
+    rotation: startRotation + (endRotation - startRotation) * t,
   };
 }
 

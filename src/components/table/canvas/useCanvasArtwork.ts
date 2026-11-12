@@ -42,7 +42,7 @@ export function useCanvasArtwork(urls: readonly (string | undefined)[], scope: s
       decision.current = { scope, enabled };
       setResult(decision.current);
     };
-    const timer = window.setTimeout(() => finish(false, "timeout"), 120);
+    const timer = window.setTimeout(() => finish(false, "timeout"), 2500);
     void pending.then(
       (images) => {
         window.clearTimeout(timer);

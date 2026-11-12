@@ -9,7 +9,12 @@ import {
 } from "@/integrations/external-supabase/client";
 
 const SESSION_COOKIE = "__Host-joker_session";
+const FALLBACK_COOKIE = "joker_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+
+function getStoredToken(): string | null {
+  return getCookie(SESSION_COOKIE) ?? getCookie(FALLBACK_COOKIE) ?? null;
+}
 
 export type AuthFailureCode =
   | "INVALID_CREDENTIALS"
@@ -31,23 +36,53 @@ type EdgePayload = {
 };
 
 function setSessionCookie(token: string) {
-  setCookie(SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
+  try {
+    setCookie(SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: SESSION_MAX_AGE_SECONDS,
+    });
+  } catch {
+    // ignore
+  }
+  try {
+    setCookie(FALLBACK_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: SESSION_MAX_AGE_SECONDS,
+    });
+  } catch {
+    // ignore
+  }
 }
 
 function clearSessionCookie() {
-  setCookie(SESSION_COOKIE, "", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
+  try {
+    setCookie(SESSION_COOKIE, "", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+  } catch {
+    // ignore
+  }
+  try {
+    setCookie(FALLBACK_COOKIE, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+  } catch {
+    // ignore
+  }
 }
 
 async function callAuthEdge(body: Record<string, unknown>) {
@@ -79,7 +114,7 @@ export const authenticatePlayer = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }): Promise<AuthenticateResult> => {
     try {
-      const currentSessionToken = getCookie(SESSION_COOKIE) ?? null;
+      const currentSessionToken = getStoredToken();
       const { response, payload } = await callAuthEdge({
         action: "authenticate",
         playerId: data.playerId,
@@ -114,7 +149,7 @@ export const authenticatePlayer = createServerFn({ method: "POST" })
 
 export const getCurrentPlayer = createServerFn({ method: "GET" }).handler(
   async (): Promise<PublicPlayer | null> => {
-    const token = getCookie(SESSION_COOKIE);
+    const token = getStoredToken();
     if (!token) return null;
 
     try {
@@ -131,7 +166,7 @@ export const getCurrentPlayer = createServerFn({ method: "GET" }).handler(
 );
 
 export const logoutPlayer = createServerFn({ method: "POST" }).handler(async () => {
-  const token = getCookie(SESSION_COOKIE);
+  const token = getStoredToken();
   try {
     if (token) await callAuthEdge({ action: "revoke", sessionToken: token });
   } finally {

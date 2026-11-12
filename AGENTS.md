@@ -9,7 +9,18 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-## Architecture rules
+# Joker / Biriba — Project Context & Operational Boundaries
+
+## 1. Project Boundaries & Strict Isolation
+- **Local Workspace**: C:/Users/nkary/Documents/GitHub/joker-private-room
+- **GitHub Remote**: https://github.com/Aeras/joker-private-room.git (branch: main)
+- **Exclusive Supabase Backend**:
+  - **MCP Server**: Use **supabase-tzoker** exclusively.
+  - **Project Ref**: wubrgnzbvtrzbvvqalfw
+  - **Project URL**: https://wubrgnzbvtrzbvvqalfw.supabase.co
+- **Cross-Project Isolation**: Do NOT query, inspect, or modify other projects (e.g. PromptBeats qwlksrcsovbncmretjdt or supabase_mcp). All database, schema, and API operations for this project must target supabase-tzoker only.
+
+## 2. Architecture rules
 - `src/domain/` holds pure, UI-free game logic (cards, gameConfig, scoring, rulesets, scoreSheet, engine types); components never duplicate rules or hardcode deal/phase numbers — why: single source of truth, testable.
 - Ruleset differences go through `Ruleset` in `src/domain/rulesets.ts` (e.g. `calculatePhaseBonus`); undocumented rules stay as empty extension points — why: never guess rules.
 - Bots: strategy (`src/bots/strategy.ts`) receives only `PlayerView`; personality/reactions are separate and never affect play — why: strong but fair bots.

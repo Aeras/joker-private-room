@@ -194,7 +194,7 @@ function Lobby() {
       variant="pregame"
       contentClassName="!overflow-y-auto !min-h-0"
     >
-      <section className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-2 py-2">
+      <section className="pregame-lobby-grid mx-auto flex w-full max-w-6xl flex-col gap-3 px-2 py-2">
         <h2 className="text-center text-sm font-semibold text-primary">Δωμάτιο αναμονής — {room.rulesetId === "popular" ? "Popular" : (room.rulesetName ?? publicRulesetName(room.rulesetId))}</h2>
         <div className="grid grid-cols-4 gap-2 sm:gap-3" aria-label="Παίκτες">
           {room.seats.map(seat=><LobbySeat key={seat.index} seat={seat} hostId={room.hostId}

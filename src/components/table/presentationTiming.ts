@@ -1,6 +1,6 @@
 /** Client presentation only. These values never select actors or advance game rules.
- * Keep the approved normal pacing unchanged; CSS and completion fallbacks import
- * the same durations. Server scheduling/timeout policy remains server-owned.
+ * Snappy, fluid pacing matching verified reference cadence. CSS and completion
+ * fallbacks import the same durations. Server scheduling/timeout policy remains server-owned.
  */
 export const LOCAL_FLIGHT_MS = 300;
 export const REDUCED_LOCAL_FLIGHT_MS = 75;
@@ -39,8 +39,8 @@ export const DEALER_SELECTION_STAGGER_MS = 350;
 export const DEALER_SELECTION_CARD_TRAVEL_MS = 308;
 export const DEALER_SELECTION_WINNER_HOLD_MS = 490;
 export const NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS = 1_800;
-export const TRUMP_FLIP_MS = 400;
-export const TRUMP_DECK_MOVE_MS = 500;
+export const TRUMP_FLIP_MS = 280;
+export const TRUMP_DECK_MOVE_MS = 320;
 export const HAND_REVEAL_SPREAD_MS = 520;
 export const HAND_REFLOW_MS = 250;
 export const REDUCED_MOTION_DISTANCE_PX = 12;

@@ -43,6 +43,22 @@ describe("legacy Biriba packet recovery", () => {
         expect(recoverUnclaimedBiribaPacket(fixed)).toBe(fixed);
       });
     }
+
+  it("recovers an active player whose hand emptied after the packet was taken by assigning a forced stock draw", () => {
+    const match = beginBiribaMatch(4, () => 0.12);
+    match.phase = "meld";
+    match.hands[0] = [];
+    match.opened[0] = true;
+    match.packetTaken[0] = true;
+    match.packetPlayed[0] = true;
+    const topCard = match.stock.at(-1)!;
+    const fixed = recoverUnclaimedBiribaPacket(match);
+    expect(fixed).not.toBe(match);
+    expect(fixed.hands[0]).toEqual([topCard]);
+    expect(fixed.forcedDiscardSeat).toBe(0);
+    expect(recoverUnclaimedBiribaPacket(fixed)).toBe(fixed);
+  });
+
   it("refuses ambiguous or already resolved states", () => {
     const base = beginBiribaMatch(4, () => 0.12);
     base.phase = "meld";
@@ -66,6 +82,7 @@ describe("legacy Biriba packet recovery", () => {
       },
       (m: typeof base) => {
         m.packetTaken[0] = true;
+        m.forcedDiscardSeat = 0;
       },
       (m: typeof base) => {
         m.packetPlayed[0] = true;

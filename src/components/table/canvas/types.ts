@@ -10,6 +10,10 @@ export interface SpritePose {
   backBlend?: number;
   shade?: number;
   emphasis?: number;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowColor?: string;
 }
 export interface CardSprite {
   id: string;
@@ -30,13 +34,22 @@ export const browserFrames: FrameDriver = {
 };
 export function validPose(p: SpritePose): boolean {
   return (
-    Object.values(p).every(Number.isFinite) &&
+    Number.isFinite(p.x) &&
+    Number.isFinite(p.y) &&
+    Number.isFinite(p.width) &&
+    Number.isFinite(p.height) &&
+    Number.isFinite(p.rotation) &&
+    Number.isFinite(p.opacity) &&
+    Number.isFinite(p.flip) &&
     p.width > 0 &&
     p.height > 0 &&
     p.opacity >= 0 &&
     p.opacity <= 1 &&
     (p.backBlend == null || (p.backBlend >= 0 && p.backBlend <= 1)) &&
     (p.shade == null || (p.shade >= 0 && p.shade <= 1)) &&
-    (p.emphasis == null || (p.emphasis >= 0 && p.emphasis <= 1))
+    (p.emphasis == null || (p.emphasis >= 0 && p.emphasis <= 1)) &&
+    (p.shadowBlur == null || Number.isFinite(p.shadowBlur)) &&
+    (p.shadowOffsetX == null || Number.isFinite(p.shadowOffsetX)) &&
+    (p.shadowOffsetY == null || Number.isFinite(p.shadowOffsetY))
   );
 }

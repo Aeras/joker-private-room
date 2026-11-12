@@ -28,7 +28,7 @@ export function handTrackPose(track: HandTrack, time: number): SpritePose {
   const out = { ...a.to };
   for (const key of ["x", "y", "width", "height", "rotation", "opacity"] as const)
     out[key] = a.from[key] + (a.to[key] - a.from[key]) * t;
-  out.flip = b.from.flip + (b.to.flip - b.from.flip) * bezierProgress(f,.22,1,.36,1);
+  out.flip = b.from.flip + (b.to.flip - b.from.flip) * bezierProgress(f, 0.4, 0.0, 0.2, 1);
   return out;
 }
 export function updateHandTrack(
