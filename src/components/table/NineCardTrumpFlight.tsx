@@ -46,7 +46,7 @@ export function NineCardTrumpFlight({
   const targetRect = targetRef?.current?.getBoundingClientRect();
   const targetX = targetRect && targetRect.width > 0 ? targetRect.left + targetRect.width / 2 : window.innerWidth * 0.72;
   const targetY = targetRect && targetRect.height > 0 ? targetRect.top + targetRect.height / 2 : window.innerHeight * 0.05 + 25;
-  const targetW = targetRect?.width || Math.max(60, Math.min(window.innerWidth * 0.078, 92));
+  const targetW = targetRect?.width || Math.max(76, Math.min(window.innerWidth * 0.098, 122));
   const targetH = targetW * (265 / 180);
 
   const deltaX = targetX - source.x;

@@ -345,7 +345,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
     <header className="joker-table-header absolute inset-x-0 top-0 z-50 flex items-center gap-1 px-[max(.35rem,env(safe-area-inset-left))] pt-[max(.25rem,env(safe-area-inset-top))]">
       <Link to="/lobby" search={{ code: room.code }} aria-label="Πίσω" className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white/75 backdrop-blur"><ArrowLeft className="h-4 w-4" /></Link>
       <div aria-label={compactRoundProgress(projection.progression.dealNumber)} className="ml-1 max-w-[28vw] truncate rounded-lg bg-black/60 px-2 py-1 text-xs text-white/75 backdrop-blur">{compactRoundProgress(projection.progression.dealNumber)}</div>
-      <div className="ml-auto flex items-center gap-1 pr-[max(0rem,env(safe-area-inset-right))]"><SoundToggle /><JButton variant="outlineGold" size="sm" className="h-11 min-w-11 touch-manipulation px-2 bg-black/60" onClick={() => setScoreOpen(true)} aria-label="Σκορ"><Trophy className="h-4 w-4" /><span className="hidden lg:inline">Σκορ</span></JButton><TableUtilityMenu isHost={isHost} disabled={(busy && projection.lifecycle !== "starting") || projection.lifecycle === "complete"} onEndGame={onEndGame} /><JButton variant="outlineGold" size="sm" className="h-11 min-w-11 touch-manipulation px-2 bg-black/60" onClick={toggleFullscreen} aria-label={fullscreen ? "Έξοδος από πλήρη οθόνη" : "Πλήρης οθόνη"}>{fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}</JButton></div>
+      <div className="ml-auto flex items-center gap-1 pr-[max(0rem,env(safe-area-inset-right))]"><TableUtilityMenu isHost={isHost} disabled={(busy && projection.lifecycle !== "starting") || projection.lifecycle === "complete"} onEndGame={onEndGame} /><SoundToggle /><JButton variant="outlineGold" size="sm" className="h-11 min-w-11 touch-manipulation px-2 bg-black/60" onClick={toggleFullscreen} aria-label={fullscreen ? "Έξοδος από πλήρη οθόνη" : "Πλήρης οθόνη"}>{fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}</JButton></div>
     </header>
     <main className="absolute inset-x-[5vw] top-[10vh] bottom-[27vh]"><div ref={tableGeometry.feltRef} className="relative h-full w-full"><div ref={tableGeometry.topSeatRef} className="joker-remote-seat joker-remote-seat-top">{seatBlock(2, "horizontal")}</div><div ref={tableGeometry.leftSeatRef} className="joker-remote-seat joker-remote-seat-left">{seatBlock(1, "vertical")}</div><div ref={tableGeometry.rightSeatRef} className="joker-remote-seat joker-remote-seat-right">{seatBlock(3, "vertical")}</div><DealerSelectionPresentation projection={projection} geometry={tableGeometry.geometry} onActiveChange={setDealerIntroActive} />{<TrickPresentation key={projection.gameId} projection={projection} geometry={tableGeometry.geometry} localPlayPresentation={localPlayPresentation} pendingJokerChoice={pendingJokerChoice} onLocalFlightSettled={clearLocalFlight} onBusyChange={setTrickPresentationBusy} onScorePresentationActiveChange={trackScorePresentation} onCollectionComplete={refreshDisplayedScore} onPresentationReady={completeVisibleTurn} />}</div></main>
     {!interactionPresentationActive && trumpAction && <TrumpChoicePicker suits={trumpAction.suits} busy={busy} onSelect={(suit) => void onCommand({ type: "choose_trump", suit })} />}
@@ -359,7 +359,7 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
         onPlaced={() => setPlacedTrumpKey(nineCardTrumpKey)}
       />
     )}
-    {(projection.cards.exposedTrumpCard != null || projection.trump.status === "resolved") && <div style={{ visibility: showTrumpIndicator ? "visible" : "hidden" }} className="joker-trump-indicator pointer-events-none absolute left-[72%] top-[5vh] z-30 -translate-x-1/2 [--card-w:var(--desktop-trump-card-w,clamp(3.8rem,7.8vw,5.8rem))]"><div ref={trumpCardRef} className="w-fit"><TrumpIndicator trump={projection.trump} exposedTrumpCard={projection.cards.exposedTrumpCard} /></div></div>}
+    {(projection.cards.exposedTrumpCard != null || projection.trump.status === "resolved") && <div style={{ visibility: showTrumpIndicator ? "visible" : "hidden" }} className="joker-trump-indicator pointer-events-none absolute left-[72%] top-[5vh] z-30 -translate-x-1/2 [--card-w:var(--desktop-trump-card-w,clamp(4.8rem,9.8vw,7.6rem))]"><div ref={trumpCardRef} className="w-fit"><TrumpIndicator trump={projection.trump} exposedTrumpCard={projection.cards.exposedTrumpCard} /></div></div>}
     {trumpAnnouncement && <div className="pointer-events-none absolute left-1/2 top-1/2 z-[65] -translate-x-1/2 -translate-y-[4.8rem] rounded-xl border border-primary/55 bg-black/90 px-5 py-2.5 text-center text-base font-semibold text-white shadow-2xl backdrop-blur" role="status" aria-live="polite" data-trump-announcement>{trumpAnnouncement}</div>}
     <DealPresentation projection={projection} trumpTargetRef={trumpCardRef} onTrumpPlaced={setPlacedTrumpKey} geometry={tableGeometry.geometry} paused={dealerIntroActive || trickPresentationBusy} onActiveChange={setDealPresentationActive} onSettlingChange={setDealSettling} onPresentationComplete={handleDealPresentationComplete} />
     <footer className="absolute inset-x-0 bottom-[max(.15rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center">
@@ -375,6 +375,17 @@ export function GameTable({ room, projection, busy, error, onCommand, onReclaim,
       <EmojiPicker open={emojiOpen} onToggle={() => setEmojiOpen(v => !v)}
         busy={Boolean(emojiBusy)} onSelect={slug => { setEmojiOpen(false); onEmojiSend(slug); }} />
     )}
+    <div className={`absolute bottom-[max(1rem,env(safe-area-inset-bottom))] ${onEmojiSend && projection.lifecycle === "active" && room.seats[localSeat]?.occupant.type === "human" ? "right-[calc(max(.75rem,env(safe-area-inset-right))+6.6rem)]" : "right-[calc(max(.75rem,env(safe-area-inset-right))+3.4rem)]"} z-[75]`}>
+      <button
+        type="button"
+        onClick={() => setScoreOpen(true)}
+        aria-label="Σκορ"
+        title="Πίνακας σκορ"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/55 bg-black/80 text-primary shadow-lg hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary transition-colors"
+      >
+        <Trophy className="h-4 w-4" />
+      </button>
+    </div>
     <div className="relative z-[120]"><Scoreboard open={scoreOpen} onClose={() => setScoreOpen(false)} playerNames={names} projection={projection} /></div>
   </div>;
 }
