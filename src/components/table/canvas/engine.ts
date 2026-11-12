@@ -18,6 +18,7 @@ export class CardCanvasEngine {
   private paused = false;
   private batchDepth = 0;
   private dirty = false;
+  private renderQueue: CardSprite[] = [];
   private counters = { frames: 0, maxFrameGapMs: 0, draws: 0, paintMs: 0 };
   constructor(
     private canvas: HTMLCanvasElement,
@@ -132,9 +133,14 @@ export class CardCanvasEngine {
     const ctx = this.context;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.width, this.height);
-    for (const sprite of [...this.sprites.values()].sort(
+    this.renderQueue.length = 0;
+    for (const sprite of this.sprites.values()) {
+      this.renderQueue.push(sprite);
+    }
+    this.renderQueue.sort(
       (a, b) => (a.pose.layer ?? a.layer) - (b.pose.layer ?? b.layer),
-    )) {
+    );
+    for (const sprite of this.renderQueue) {
       const p = sprite.pose;
       if (!validPose(p)) throw new Error("INVALID_SPRITE_POSE");
       const radius = Math.hypot(p.width, p.height) / 2 + 16;
@@ -158,7 +164,8 @@ export class CardCanvasEngine {
           top = -p.height / 2,
           cornerRadius = Math.min(3, p.width * 0.05);
         ctx.shadowColor = p.shadowColor ?? (p.emphasis ? "rgba(212,175,55,.9)" : "rgba(0,0,0,.55)");
-        ctx.shadowBlur = p.shadowBlur ?? (p.emphasis ? 14 : 9);
+        const rawBlur = p.shadowBlur ?? (p.emphasis ? 10 : 6);
+        ctx.shadowBlur = Math.min(rawBlur, 8);
         ctx.shadowOffsetX = p.shadowOffsetX ?? 0;
         ctx.shadowOffsetY = p.shadowOffsetY ?? 3;
         ctx.fillStyle = "#fff";

@@ -196,9 +196,9 @@ export function dealSprite(
       const angle = startRotation + (rotation - startRotation) * p;
       // Scale: starts at 1.22x, lifts to ~1.35x at apex, descends smoothly to 1.0x at landing
       const scale = p === 1 ? 1 : 1.22 - 0.22 * p + 0.16 * arc;
-      // 3D Dynamic Altitude Shadow: separates deep below (up to 30px) and diffuses softly, snaps tight on landing
-      const shadowBlur = Math.round(4 + 20 * arc + 6 * (1 - p));
-      const shadowOffsetY = Math.round(3 + 24 * arc + 6 * (1 - p));
+      // 3D Altitude Shadow: separates below (offset & scale) while keeping blur bounded for mobile GPU efficiency
+      const shadowBlur = Math.round(3 + 3 * arc + 2 * (1 - p));
+      const shadowOffsetY = Math.round(3 + 18 * arc + 4 * (1 - p));
       const shadowOffsetX = Math.round(-3 * (1 - p));
       const flip = mode === "selection" ? Math.max(0, (1 - p * 2) * 180) : 0;
       return base(point, angle, scale, 1, shadowBlur, shadowOffsetY, shadowOffsetX, flip, finalAce && p === 1);

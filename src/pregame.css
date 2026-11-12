@@ -165,9 +165,8 @@
 .pregame-shell .panel,
 .pregame-glass-panel {
   border: 1px solid rgba(214,175,96,.22);
-  background: linear-gradient(180deg, rgba(48,17,23,.82), rgba(22,9,12,.92));
+  background: linear-gradient(180deg, rgba(48,17,23,.94), rgba(22,9,12,.97));
   box-shadow: 0 20px 48px -25px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.035);
-  backdrop-filter: blur(12px);
 }
 
 .pregame-shell input,
@@ -181,9 +180,8 @@
 
 .pregame-fullscreen-button {
   border-color: rgba(214,175,96,.28);
-  background: rgba(20,9,11,.76);
+  background: rgba(20,9,11,.92);
   color: #e8ce96;
-  backdrop-filter: blur(8px);
 }
 .pregame-fullscreen-button:hover { border-color: rgba(214,175,96,.55); background: rgba(40,16,21,.86); }
 
@@ -352,8 +350,7 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgba(0,0,0,.62);
-  backdrop-filter: blur(5px);
+  background: rgba(0,0,0,.76);
 }
 
 .pregame-bot-modal {
