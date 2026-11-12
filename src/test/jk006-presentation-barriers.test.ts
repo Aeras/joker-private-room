@@ -71,7 +71,7 @@ describe("JK-006 presentation barriers", () => {
   it("keeps the approved trump location while supporting suit and no-trump indicators", () => {
     const table = read("src/components/table/GameTable.tsx");
     const indicator = read("src/components/table/TrumpIndicator.tsx");
-    expect(table).toContain('left-[72%] top-[10vh]');
+    expect(table).toContain('left-[72%] top-[5vh]');
     expect(indicator).toContain("Χωρίς ατού");
     expect(indicator).toContain('data-trump-indicator="no-trump"');
     expect(indicator).toContain("exposedTrumpCard");

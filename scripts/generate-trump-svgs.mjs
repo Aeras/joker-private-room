@@ -9,78 +9,79 @@ const SUIT_PATHS = {
 };
 
 const TRUMP_VARIANTS = [
-  { key: "spades", label: "ΜΠΑΣΤΟΥΝΙΑ", isRed: false },
-  { key: "hearts", label: "ΚΟΥΠΕΣ", isRed: true },
-  { key: "diamonds", label: "ΚΑΡΟ", isRed: true },
-  { key: "clubs", label: "ΣΠΑΘΙΑ", isRed: false },
-  { key: "notrump", label: "ΧΩΡΙΣ ΑΤΟΥ", isRed: false, isNoTrump: true },
+  { key: "spades", label: "ΜΠΑΣΤΟΥΝΙΑ", fontSize: 23, spacing: 2.5, isRed: false },
+  { key: "hearts", label: "ΚΟΥΠΕΣ", fontSize: 26, spacing: 4, isRed: true },
+  { key: "diamonds", label: "ΚΑΡΟ", fontSize: 27, spacing: 5, isRed: true },
+  { key: "clubs", label: "ΣΠΑΘΙΑ", fontSize: 25, spacing: 3.5, isRed: false },
+  { key: "notrump", label: "ΧΩΡΙΣ ΑΤΟΥ", fontSize: 22, spacing: 2, isRed: false, isNoTrump: true },
 ];
 
-function generateTrumpSVG({ key, label, isRed, isNoTrump }) {
+function generateTrumpSVG({ key, label, fontSize, spacing, isRed, isNoTrump }) {
   const symbolElement = isNoTrump
-    ? `<g filter="url(#symbolShadow)" stroke="url(#goldText)" stroke-width="16" stroke-linecap="round">
-        <line x1="145" y1="205" x2="215" y2="275" />
-        <line x1="215" y1="205" x2="145" y2="275" />
+    ? `<g filter="url(#symbolShadow)" stroke="url(#goldText)" stroke-width="18" stroke-linecap="round">
+        <line x1="140" y1="198" x2="220" y2="278" />
+        <line x1="220" y1="198" x2="140" y2="278" />
        </g>`
-    : `<g transform="translate(180, 240) scale(2.65) translate(-32, -32)" filter="url(#symbolShadow)">
-        <path d="${SUIT_PATHS[key]}" fill="${isRed ? 'url(#rubyGrad)' : 'url(#blackGrad)'}" stroke="${isRed ? '#ff99aa' : '#efd27e'}" stroke-width="0.8" stroke-linejoin="round" />
+    : `<g transform="translate(180, 238) scale(2.95) translate(-32, -32)" filter="url(#symbolShadow)">
+        <path d="${SUIT_PATHS[key]}" fill="${isRed ? 'url(#rubyGrad)' : 'url(#blackGrad)'}" stroke="${isRed ? '#ff99aa' : '#efd27e'}" stroke-width="0.9" stroke-linejoin="round" />
        </g>`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 503" width="360" height="503">
   <defs>
     <!-- Metallic Gold Outer Bevel -->
     <linearGradient id="goldBevel" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fff0c0"/>
-      <stop offset="25%" stop-color="#e2bc52"/>
+      <stop offset="0%" stop-color="#fff4cc"/>
+      <stop offset="25%" stop-color="#e8c258"/>
       <stop offset="50%" stop-color="#8a6312"/>
-      <stop offset="75%" stop-color="#d8b240"/>
+      <stop offset="75%" stop-color="#ddb846"/>
       <stop offset="100%" stop-color="#553a06"/>
     </linearGradient>
 
     <!-- Metallic Gold Gleam for Inset Rings -->
     <linearGradient id="goldGleam" x1="20%" y1="0%" x2="80%" y2="100%">
-      <stop offset="0%" stop-color="#fdf4d2"/>
-      <stop offset="30%" stop-color="#d4af37"/>
+      <stop offset="0%" stop-color="#fff9dc"/>
+      <stop offset="30%" stop-color="#dfbc43"/>
       <stop offset="70%" stop-color="#7a550d"/>
-      <stop offset="100%" stop-color="#edd17a"/>
+      <stop offset="100%" stop-color="#f2d784"/>
     </linearGradient>
 
     <!-- Rich Gold Text Gradient -->
     <linearGradient id="goldText" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#fff8db"/>
-      <stop offset="45%" stop-color="#f4cf64"/>
-      <stop offset="85%" stop-color="#b68924"/>
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="20%" stop-color="#fff5cf"/>
+      <stop offset="55%" stop-color="#f6d368"/>
+      <stop offset="85%" stop-color="#be9128"/>
       <stop offset="100%" stop-color="#8c6413"/>
     </linearGradient>
 
     <!-- Card Background: Deep Velvet Carbon -->
     <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1e211b"/>
-      <stop offset="40%" stop-color="#121410"/>
-      <stop offset="80%" stop-color="#0a0c09"/>
-      <stop offset="100%" stop-color="#050604"/>
+      <stop offset="0%" stop-color="#21251e"/>
+      <stop offset="40%" stop-color="#141712"/>
+      <stop offset="80%" stop-color="#0b0d0a"/>
+      <stop offset="100%" stop-color="#060705"/>
     </linearGradient>
 
     <!-- Coin Medallion Core Radial -->
     <radialGradient id="coinBg" cx="42%" cy="36%" r="68%">
-      <stop offset="0%" stop-color="#2a2e26"/>
-      <stop offset="55%" stop-color="#131511"/>
-      <stop offset="100%" stop-color="#060705"/>
+      <stop offset="0%" stop-color="#2e332a"/>
+      <stop offset="55%" stop-color="#151713"/>
+      <stop offset="100%" stop-color="#070806"/>
     </radialGradient>
 
     <!-- 3D Glossy Black Suit Gradient -->
     <linearGradient id="blackGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#464a42"/>
-      <stop offset="40%" stop-color="#222520"/>
-      <stop offset="85%" stop-color="#0c0d0b"/>
+      <stop offset="0%" stop-color="#4e524a"/>
+      <stop offset="40%" stop-color="#252823"/>
+      <stop offset="85%" stop-color="#0e0f0c"/>
       <stop offset="100%" stop-color="#040403"/>
     </linearGradient>
 
     <!-- 3D Glossy Ruby Red Suit Gradient -->
     <linearGradient id="rubyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#ff4460"/>
-      <stop offset="45%" stop-color="#d6112f"/>
-      <stop offset="85%" stop-color="#8e0015"/>
+      <stop offset="0%" stop-color="#ff4d68"/>
+      <stop offset="45%" stop-color="#db1231"/>
+      <stop offset="85%" stop-color="#940017"/>
       <stop offset="100%" stop-color="#55000c"/>
     </linearGradient>
 
@@ -117,40 +118,40 @@ function generateTrumpSVG({ key, label, isRed, isNoTrump }) {
   <!-- Top Header 'ΑΤΟΥ' with Ornamental Wings -->
   <g transform="translate(0, 0)">
     <!-- Left Wing -->
-    <line x1="85" y1="56" x2="135" y2="56" stroke="url(#goldGleam)" stroke-width="1.2" stroke-linecap="round"/>
-    <circle cx="85" cy="56" r="2" fill="url(#goldGleam)"/>
+    <line x1="75" y1="58" x2="128" y2="58" stroke="url(#goldGleam)" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="75" cy="58" r="2.5" fill="url(#goldGleam)"/>
     
-    <!-- Word ΑΤΟΥ -->
-    <text x="180" y="63" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="20" letter-spacing="6" fill="url(#goldText)">ΑΤΟΥ</text>
+    <!-- Word ΑΤΟΥ (larger, bolder, crystal clear) -->
+    <text x="180" y="66" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="25" letter-spacing="7" fill="url(#goldText)">ΑΤΟΥ</text>
     
     <!-- Right Wing -->
-    <line x1="225" y1="56" x2="275" y2="56" stroke="url(#goldGleam)" stroke-width="1.2" stroke-linecap="round"/>
-    <circle cx="275" cy="56" r="2" fill="url(#goldGleam)"/>
+    <line x1="232" y1="58" x2="285" y2="58" stroke="url(#goldGleam)" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="285" cy="58" r="2.5" fill="url(#goldGleam)"/>
   </g>
 
   <!-- Center Gold Casino Medallion (from Proposal 3) -->
   <g filter="url(#coinShadow)">
     <!-- Outer Heavy Beveled Gold Rim -->
-    <circle cx="180" cy="238" r="114" fill="url(#goldBevel)" stroke="#3a2503" stroke-width="1.5"/>
+    <circle cx="180" cy="238" r="115" fill="url(#goldBevel)" stroke="#3a2503" stroke-width="1.5"/>
     
     <!-- Outer Inset Groove -->
-    <circle cx="180" cy="238" r="108" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="2"/>
+    <circle cx="180" cy="238" r="109" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="2"/>
     
     <!-- Inner Fine Gold Ring -->
-    <circle cx="180" cy="238" r="104" fill="none" stroke="url(#goldGleam)" stroke-width="1.5"/>
+    <circle cx="180" cy="238" r="105" fill="none" stroke="url(#goldGleam)" stroke-width="1.5"/>
     
     <!-- Medallion Dark Inset Core -->
-    <circle cx="180" cy="238" r="101" fill="url(#coinBg)" stroke="#000000" stroke-width="1.5"/>
+    <circle cx="180" cy="238" r="102" fill="url(#coinBg)" stroke="#000000" stroke-width="1.5"/>
   </g>
 
   <!-- Large Center Embossed Suit Symbol -->
   ${symbolElement}
 
-  <!-- Bottom Suit Label Plaque Bar -->
+  <!-- Bottom Suit Label Plaque Bar (larger, ultra-clear) -->
   <g filter="url(#cardShadow)">
-    <rect x="36" y="406" width="288" height="58" rx="14" ry="14" fill="#0d0f0c" stroke="url(#goldBevel)" stroke-width="1.8"/>
-    <rect x="40" y="410" width="280" height="50" rx="10" ry="10" fill="none" stroke="url(#goldGleam)" stroke-width="0.8" stroke-opacity="0.45"/>
-    <text x="180" y="443" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="21" letter-spacing="3" fill="url(#goldText)">${label}</text>
+    <rect x="30" y="402" width="300" height="62" rx="15" ry="15" fill="#0b0d0a" stroke="url(#goldBevel)" stroke-width="2"/>
+    <rect x="34" y="406" width="292" height="54" rx="11" ry="11" fill="none" stroke="url(#goldGleam)" stroke-width="0.9" stroke-opacity="0.45"/>
+    <text x="180" y="442" text-anchor="middle" dominant-baseline="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="${fontSize}" letter-spacing="${spacing}" fill="url(#goldText)">${label}</text>
   </g>
 </svg>`;
 }
@@ -160,5 +161,5 @@ for (const variant of TRUMP_VARIANTS) {
   const svg = generateTrumpSVG(variant);
   const filePath = path.join(outDir, `trump_${variant.key}.svg`);
   fs.writeFileSync(filePath, svg, "utf8");
-  console.log(`Generated: ${filePath}`);
+  console.log(`Updated: ${filePath}`);
 }
