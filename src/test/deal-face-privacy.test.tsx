@@ -1,6 +1,7 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DealPresentation, NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS } from "@/components/table/DealPresentation";
+import { DECK_ENTRANCE_MS } from "@/components/table/dealPresentationModel";
 import { assets } from "@/assets/registry";
 import { projectGameForSeat } from "@/domain/projection";
 import { reconciliationFixture } from "./fixtures/reconciliationGame";
@@ -32,7 +33,7 @@ describe("rendered dealing privacy contract", () => {
     const geometry = { ...computeTableGeometry({ feltRect: { left: 0, top: 0, right: 844, bottom: 390, width: 844, height: 390 }, viewportWidth: 844, viewportHeight: 390 }), epoch: 1 };
     const complete = vi.fn();
     const view = render(<DealPresentation projection={projection} geometry={geometry} onPresentationComplete={complete} />);
-    act(() => vi.advanceTimersByTime(50));
+    act(() => vi.advanceTimersByTime(DECK_ENTRANCE_MS + 50));
     const first = view.container.querySelector<HTMLElement>("[data-deal-traveling-card]")!;
     const name = first.style.animationName;
     expect(name).toMatch(/^deal-flight-/);

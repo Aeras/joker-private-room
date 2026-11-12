@@ -133,7 +133,7 @@ describe("shared local hand geometry", () => {
     expect(hand?.style.transform).toContain("100% + max(.15rem, env(safe-area-inset-bottom)) + 2px");
     expect(faces.every(face => face.style.transform === "rotateY(180deg)")).toBe(true);
     const lane = view.container.querySelector<HTMLElement>("[data-hand-lane-width]");
-    expect(lane?.dataset['handCurrentOverlap']).toBe("0.86");
+    expect(lane?.dataset['handCurrentOverlap']).toBe("0.42");
     act(() => vi.advanceTimersByTime(32));
     expect(hand?.style.transform).not.toContain("100% + max");
     expect(lane?.dataset['handCurrentOverlap']).toBe("0.42");

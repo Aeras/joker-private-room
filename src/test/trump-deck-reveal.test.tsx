@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DealPresentation } from "@/components/table/DealPresentation";
 import { TRUMP_FLIP_MS, TRUMP_DECK_MOVE_MS } from "@/components/table/TrumpDeckMotion";
+import { DECK_ENTRANCE_MS } from "@/components/table/dealPresentationModel";
 import { computeTableGeometry } from "@/components/table/useTableGeometry";
 import { projectGameForSeat } from "@/domain/projection";
 import { reconciliationFixture } from "./fixtures/reconciliationGame";
@@ -34,7 +35,7 @@ describe("ordinary deal trump reveal and deck placement", () => {
     const projection = fixture(dealer), placed = vi.fn(), complete = vi.fn(), settling = vi.fn();
     const props = { geometry, projection, onTrumpPlaced: placed, onPresentationComplete: complete, onSettlingChange: settling };
     const view = render(<DealPresentation {...props} />);
-    tick(1357); expect(view.container.querySelector("[data-trump-deck-motion]")).toBeNull();
+    tick(1357 + DECK_ENTRANCE_MS); expect(view.container.querySelector("[data-trump-deck-motion]")).toBeNull();
     tick(1); tick(16);
     const flip = view.container.querySelector<HTMLElement>("[data-trump-flip]")!;
     expect(flip.style.transform).toBe("rotateY(180deg)");
@@ -61,7 +62,7 @@ describe("ordinary deal trump reveal and deck placement", () => {
   it("uses bounded completion fallbacks when native motion events are absent", () => {
     const placed = vi.fn(), complete = vi.fn();
     const view = render(<DealPresentation projection={fixture()} geometry={geometry} onTrumpPlaced={placed} onPresentationComplete={complete} />);
-    tick(1358); tick(16); tick(TRUMP_FLIP_MS + 120);
+    tick(1358 + DECK_ENTRANCE_MS); tick(16); tick(TRUMP_FLIP_MS + 120);
     expect(view.container.querySelector("[data-trump-deck-motion]")?.getAttribute("data-trump-deck-motion")).toBe("moving");
     tick(TRUMP_DECK_MOVE_MS + 119); expect(placed).not.toHaveBeenCalled();
     tick(1); expect(placed).toHaveBeenCalledOnce(); tick(1472); expect(complete).toHaveBeenCalledOnce();
@@ -69,10 +70,10 @@ describe("ordinary deal trump reveal and deck placement", () => {
   it.each(["flipping", "moving"])("cancelled %s cannot acknowledge; same-key resume finishes once", stage => {
     const complete = vi.fn(), placed = vi.fn(); const projection = fixture();
     const view = render(<DealPresentation projection={projection} geometry={geometry} onTrumpPlaced={placed} onPresentationComplete={complete} />);
-    tick(1358); tick(16); if (stage === "moving") finish(view.container.querySelector("[data-trump-flip]"));
+    tick(1358 + DECK_ENTRANCE_MS); tick(16); if (stage === "moving") finish(view.container.querySelector("[data-trump-flip]"));
     fireEvent.blur(window); tick(10000); expect(placed).not.toHaveBeenCalled(); expect(complete).not.toHaveBeenCalled();
     view.rerender(<DealPresentation projection={structuredClone(projection)} geometry={{ ...geometry, epoch: 9 }} onTrumpPlaced={placed} onPresentationComplete={complete} />);
-    fireEvent.focus(window); tick(1358); tick(16); finish(view.container.querySelector("[data-trump-flip]")); finish(view.container.querySelector("[data-trump-deck-motion]"));
+    fireEvent.focus(window); tick(1358 + DECK_ENTRANCE_MS); tick(16); finish(view.container.querySelector("[data-trump-flip]")); finish(view.container.querySelector("[data-trump-deck-motion]"));
     tick(1472); expect(complete).toHaveBeenCalledOnce(); expect(placed).toHaveBeenCalledOnce();
   });
   it("startup waits for trump placement, then canonical hand visibility, before handoff", () => {
@@ -80,7 +81,7 @@ describe("ordinary deal trump reveal and deck placement", () => {
     const sequence = vi.fn(), complete = vi.fn();
     const props = { geometry, onSequenceComplete: sequence, onPresentationComplete: complete };
     const view = render(<DealPresentation {...props} projection={projection} />);
-    tick(1358); tick(16); expect(sequence).not.toHaveBeenCalled(); finish(view.container.querySelector("[data-trump-flip]"));
+    tick(1358 + DECK_ENTRANCE_MS); tick(16); expect(sequence).not.toHaveBeenCalled(); finish(view.container.querySelector("[data-trump-flip]"));
     expect(sequence).not.toHaveBeenCalled(); finish(view.container.querySelector("[data-trump-deck-motion]"));
     expect(sequence).toHaveBeenCalledOnce(); expect(view.container.querySelector("[data-deal-settling]")?.getAttribute("data-deal-settling")).toBe("false");
     const next = structuredClone(projection); next.lifecycle = "active"; next.progression.phase = "DEAL_PRESENTATION"; next.cards.ownHandVisible = true; next.cards.ownHand = [{ id: "own", kind: "standard", suit: "spades", rank: "A" }];
@@ -91,11 +92,11 @@ describe("ordinary deal trump reveal and deck placement", () => {
   it("hides the prior placed deck when an interrupted handoff replays", () => {
     const placed = vi.fn(), complete = vi.fn(), projection = fixture();
     const view = render(<DealPresentation projection={projection} geometry={geometry} onTrumpPlaced={placed} onPresentationComplete={complete} />);
-    tick(1358); tick(16); finish(view.container.querySelector("[data-trump-flip]")); finish(view.container.querySelector("[data-trump-deck-motion]"));
+    tick(1358 + DECK_ENTRANCE_MS); tick(16); finish(view.container.querySelector("[data-trump-flip]")); finish(view.container.querySelector("[data-trump-deck-motion]"));
     expect(placed).toHaveBeenLastCalledWith(`${projection.gameId}:2`);
     tick(200); fireEvent.blur(window); tick(3000); expect(complete).not.toHaveBeenCalled();
     fireEvent.focus(window); expect(placed).toHaveBeenLastCalledWith(null);
-    tick(1358); tick(16); finish(view.container.querySelector("[data-trump-flip]")); finish(view.container.querySelector("[data-trump-deck-motion]"));
+    tick(1358 + DECK_ENTRANCE_MS); tick(16); finish(view.container.querySelector("[data-trump-flip]")); finish(view.container.querySelector("[data-trump-deck-motion]"));
     expect(placed.mock.calls.map(call => call[0])).toEqual([`${projection.gameId}:2`, null, `${projection.gameId}:2`]);
     tick(1472); expect(complete).toHaveBeenCalledOnce();
   });

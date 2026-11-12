@@ -62,6 +62,31 @@ export function dealSource(geometry: TableGeometry, dealer: VisualSeat) {
     y: geometry.feltRect.top + origin.y + (dy / length) * distance,
   };
 }
+export function dealDeckEntranceStart(geometry: TableGeometry, dealer: VisualSeat, cardW: number, cardH: number) {
+  const source = dealSource(geometry, dealer);
+  const viewportBottom = geometry.dealExitTargets?.[0]
+    ? geometry.feltRect.top + geometry.dealExitTargets[0].y
+    : geometry.feltRect.top + geometry.feltRect.height + cardH * 0.5;
+  const viewportRight = geometry.dealExitTargets?.[3]
+    ? geometry.feltRect.left + geometry.dealExitTargets[3].x
+    : geometry.feltRect.left + geometry.feltRect.width + cardH * 0.5;
+
+  if (dealer === 0) {
+    const startY = Math.max(viewportBottom + cardH * 1.5, (geometry.viewportHeight || 0) + cardH * 1.2);
+    return { x: source.x, y: startY };
+  }
+  if (dealer === 2) {
+    return { x: source.x, y: -cardH * 1.5 };
+  }
+  if (dealer === 1) {
+    return { x: -cardW * 1.5, y: source.y };
+  }
+  if (dealer === 3) {
+    const startX = Math.max(viewportRight + cardW * 1.5, (geometry.viewportWidth || 0) + cardW * 1.2);
+    return { x: startX, y: source.y };
+  }
+  return source;
+}
 export function dealSprite(
   beat: CanvasDealBeat,
   geometry: TableGeometry,

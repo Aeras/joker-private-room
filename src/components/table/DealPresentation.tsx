@@ -1,7 +1,7 @@
 import {useCanvasArtwork,presentationWidth} from "./canvas/useCanvasArtwork";
 import { dealtCardFrames, dealtCard3DFlightFrames, DEAL_FLIGHT_EASING, DEAL_LAUNCH_SCALE } from "./dealtCardMotion";
 import { CanvasPresentation } from "./canvas/CanvasPresentation";
-import { dealSprite, dealSource, dealRotation } from "./canvas/dealSceneMotion";
+import { dealSprite, dealSource, dealRotation, dealDeckEntranceStart } from "./canvas/dealSceneMotion";
 import { useReducedMotion } from "./useReducedMotion";
 import { REDUCED_MOTION_DISTANCE_PX } from "./presentationTiming";
 import { PresentationRun } from "./presentationRun";
@@ -21,6 +21,7 @@ import {
   NORMAL_DEAL_HANDOFF_TRAVEL_MS,
   NORMAL_DEAL_HANDOFF_FADE_DELAY_MS,
   NORMAL_DEAL_HANDOFF_FADE_MS,
+  DECK_ENTRANCE_MS,
   dealPresentationStageKey,
   dealPresentationStorageKey,
   dealPresentationTiming,
@@ -134,16 +135,31 @@ function pileExitOffset(pos: VisualSeat, stackIndex: number, fallback?: { left: 
   const distance = `calc(${remaining} + var(--card-w) * 0.7 + ${stackIndex * 6 + 24}px)`;
   return pos === 0 ? `translateY(${distance})` : pos === 2 ? `translateY(calc(-1 * ${distance}))` : pos === 1 ? `translateX(calc(-1 * ${distance}))` : `translateX(${distance})`;
 }
-function DealerDeckStack({ geometry, dealerPos, settling }: { geometry: TableGeometry | null; dealerPos: VisualSeat; settling: boolean }) {
+function DealerDeckStack({ geometry, dealerPos, settling, entering = false }: { geometry: TableGeometry | null; dealerPos: VisualSeat; settling: boolean; entering?: boolean }) {
   const rotation = SEAT_ROTATION[dealerPos];
+  const [landed, setLanded] = useState(!entering);
+  useLayoutEffect(() => {
+    if (!entering) { setLanded(true); return; }
+    setLanded(false);
+    const frame = window.requestAnimationFrame(() => setLanded(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [entering]);
+
   if (!geometry) {
     const fallback = FALLBACK_DEALER_SOURCE[dealerPos];
-    return <div data-dealer-deck-stack data-dealer-pos={dealerPos} className="absolute [--card-w:var(--desktop-deal-card-w,clamp(3.4rem,8vw,5.5rem))]" style={{ opacity: settling ? 0 : 1, transition: `opacity ${NORMAL_DEAL_HANDOFF_FADE_MS}ms ease-out ${settling ? NORMAL_DEAL_HANDOFF_FADE_DELAY_MS : 0}ms`, left: fallback.left, top: fallback.top, transform: `translate(-50%, -50%) rotate(${rotation}deg) scale(1.22)`, filter: "drop-shadow(0 14px 14px rgba(0,0,0,0.45))", zIndex: 48 }}>
+    const offscreenY = dealerPos === 0 ? "150%" : dealerPos === 2 ? "-150%" : "-50%";
+    const offscreenX = dealerPos === 1 ? "-150%" : dealerPos === 3 ? "150%" : "-50%";
+    return <div data-dealer-deck-stack data-dealer-pos={dealerPos} className="absolute [--card-w:var(--desktop-deal-card-w,clamp(3.4rem,8vw,5.5rem))] transition-[transform,opacity]" style={{ opacity: settling ? 0 : 1, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${DECK_ENTRANCE_MS}ms`, transitionDelay: settling ? `${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)", left: fallback.left, top: fallback.top, transform: !landed && entering ? `translate(${offscreenX}, ${offscreenY}) rotate(${rotation}deg) scale(1.22)` : `translate(-50%, -50%) rotate(${rotation}deg) scale(1.22)`, filter: "drop-shadow(0 14px 14px rgba(0,0,0,0.45))", zIndex: 48 }}>
       {[2, 1, 0].map((layer) => <div key={layer} className="absolute left-0 top-0" style={{ transform: `translate(${layer * 3}px, ${layer * -2}px)` }}><PlayingCard faceDown /></div>)}
     </div>;
   }
   const source = dealerSourcePoint(geometry, dealerPos);
-  return <div data-dealer-deck-stack data-dealer-pos={dealerPos} className="absolute [--card-w:var(--desktop-deal-card-w,clamp(3.4rem,8vw,5.5rem))]" style={{ opacity: settling ? 0 : 1, transition: `opacity ${NORMAL_DEAL_HANDOFF_FADE_MS}ms ease-out ${settling ? NORMAL_DEAL_HANDOFF_FADE_DELAY_MS : 0}ms`, left: source.x, top: source.y, transform: `translate(-50%, -50%) rotate(${rotation}deg) scale(1.22)`, filter: "drop-shadow(0 14px 14px rgba(0,0,0,0.45))", zIndex: 48 }}>
+  const cardW = geometry.trickCardSize.width * 1.22;
+  const cardH = geometry.trickCardSize.height * 1.22;
+  const start = dealDeckEntranceStart(geometry, dealerPos, cardW, cardH);
+  const deltaX = !landed && entering ? start.x - source.x : 0;
+  const deltaY = !landed && entering ? start.y - source.y : 0;
+  return <div data-dealer-deck-stack data-dealer-pos={dealerPos} className="absolute [--card-w:var(--desktop-deal-card-w,clamp(3.4rem,8vw,5.5rem))] transition-[transform,opacity]" style={{ opacity: settling ? 0 : 1, transitionDuration: settling ? `${NORMAL_DEAL_HANDOFF_FADE_MS}ms` : `${DECK_ENTRANCE_MS}ms`, transitionDelay: settling ? `${NORMAL_DEAL_HANDOFF_FADE_DELAY_MS}ms` : "0ms", transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)", left: source.x, top: source.y, transform: `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px)) rotate(${rotation}deg) scale(1.22)`, filter: "drop-shadow(0 14px 14px rgba(0,0,0,0.45))", zIndex: 48 }}>
     {[2, 1, 0].map((layer) => <div key={layer} className="absolute left-0 top-0" style={{ transform: `translate(${layer * 3}px, ${layer * -2}px)` }}><PlayingCard faceDown /></div>)}
   </div>;
 }
@@ -284,7 +300,7 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
     setRunGeometry(frozenGeometry); setRunViewerSeat(frozenViewerSeat); setRunDealerPos(frozenDealerPos); setBeats(frozenSequence); setVisibleIndex(-1);
     if (presentationStage !== "remaining") playGameSound("shuffle", `${projection.gameId}:${projection.progression.dealNumber}`);
     const { staggerMs, settleMs, tailMs } = dealPresentationTiming(false);
-    const leadInMs = presentationStage === "remaining" ? NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS : 0;
+    const leadInMs = presentationStage === "remaining" ? NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS : DECK_ENTRANCE_MS;
     recordTimingDiagnostic("deal_sequence_start", { browserReducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false, gameplayReducedMotionOverride: false, stage: presentationStage, dealNumber: projection.progression.dealNumber, dealerSeat: projection.progression.dealerSeat ?? -1, cardCount: frozenSequence.length, staggerMs, travelMs: NORMAL_DEAL_TRAVEL_MS, settleMs, tailMs, leadInMs, frozenGeometryEpoch: frozenGeometry?.epoch ?? 0, dealCenterX: frozenGeometry?.dealCenter.x ?? null, dealCenterY: frozenGeometry?.dealCenter.y ?? null });
     frozenSequence.forEach((beat, index) => {
       const scheduledOffsetMs = leadInMs + index * staggerMs;
@@ -334,14 +350,47 @@ export function DealPresentation({ projection, geometry = null, paused = false, 
   const canvasSprites = canvasOwnsDeal && displayGeometry ? cards.map(beat => dealSprite(beat,displayGeometry,displayViewerSeat,displayDealerPos,canvasWidth,"deal",settling && (stage !== "initial" || beat.seat === chooserSeat),!visibleIds.has(beat.id),reducedCanvas)) : [];
   const showDeck = Boolean(displayGeometry && (beats.length > 0 || retainInitial) && !trumpMotionActive && !trumpPlaced);
   const deckFades = settling && stage !== "initial";
+  const deckEntering = beats.length > 0 && stage !== "remaining" && !retainInitial;
   if(canvasOwnsDeal && showDeck && displayGeometry) {
-    const source=dealSource(displayGeometry,displayDealerPos);
-    for(const layer of [2,1,0]) canvasSprites.push({id:`deck:${layer}`,url:assets.cardBack,layer:48,phase:deckFades?"fade":"rest",duration:deckFades?NORMAL_DEAL_HANDOFF_FADE_DELAY_MS+NORMAL_DEAL_HANDOFF_FADE_MS:0,
-      sample:t=>({x:source.x+layer*3,y:source.y-layer*2,width:canvasWidth*1.22,height:canvasWidth*1.4*1.22,rotation:dealerCardOrientation(displayDealerPos),opacity:deckFades?1-Math.max(0,Math.min(1,(t*(NORMAL_DEAL_HANDOFF_FADE_DELAY_MS+NORMAL_DEAL_HANDOFF_FADE_MS)-NORMAL_DEAL_HANDOFF_FADE_DELAY_MS)/NORMAL_DEAL_HANDOFF_FADE_MS)):1,flip:0,shadowBlur:8,shadowOffsetY:8,shadowOffsetX:-2})});
+    const source = dealSource(displayGeometry, displayDealerPos);
+    const startPoint = dealDeckEntranceStart(displayGeometry, displayDealerPos, canvasWidth * 1.22, canvasWidth * 1.4 * 1.22);
+    const phase = deckFades ? "fade" : deckEntering ? "enter" : "rest";
+    const duration = deckFades ? NORMAL_DEAL_HANDOFF_FADE_DELAY_MS + NORMAL_DEAL_HANDOFF_FADE_MS : deckEntering ? DECK_ENTRANCE_MS : 0;
+    for(const layer of [2, 1, 0]) canvasSprites.push({
+      id: `deck:${layer}`,
+      url: assets.cardBack,
+      layer: 48,
+      phase,
+      duration,
+      sample: t => {
+        let currX = source.x;
+        let currY = source.y;
+        if (phase === "enter") {
+          const progress = 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
+          currX = startPoint.x + (source.x - startPoint.x) * progress;
+          currY = startPoint.y + (source.y - startPoint.y) * progress;
+        }
+        const opacity = deckFades
+          ? 1 - Math.max(0, Math.min(1, (t * (NORMAL_DEAL_HANDOFF_FADE_DELAY_MS + NORMAL_DEAL_HANDOFF_FADE_MS) - NORMAL_DEAL_HANDOFF_FADE_DELAY_MS) / NORMAL_DEAL_HANDOFF_FADE_MS))
+          : 1;
+        return {
+          x: currX + layer * 3,
+          y: currY - layer * 2,
+          width: canvasWidth * 1.22,
+          height: canvasWidth * 1.4 * 1.22,
+          rotation: dealerCardOrientation(displayDealerPos),
+          opacity,
+          flip: 0,
+          shadowBlur: 8,
+          shadowOffsetY: 8,
+          shadowOffsetX: -2,
+        };
+      },
+    });
   }
   return <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true" data-deal-settling={settling} data-deal-geometry-epoch={runGeometry?.epoch ?? 0} data-dealer-visual-pos={runDealerPos}>
     {canvasOwnsDeal && <CanvasPresentation key={canvasScope} sprites={canvasSprites} name="deal" onFailure={()=>failCanvas(canvasScope)}/>}
-    {!canvasOwnsDeal && showDeck && <DealerDeckStack geometry={displayGeometry} dealerPos={displayDealerPos} settling={deckFades} />}
+    {!canvasOwnsDeal && showDeck && <DealerDeckStack geometry={displayGeometry} dealerPos={displayDealerPos} settling={deckFades} entering={deckEntering} />}
     {trumpMotionActive && exposedCard && <TrumpDeckMotion key={stageKey ?? "trump"} card={exposedCard}
       source={displayGeometry ? dealerSourcePoint(displayGeometry, displayDealerPos) : { x: window.innerWidth * Number.parseFloat(FALLBACK_DEALER_SOURCE[displayDealerPos].left) / 100, y: window.innerHeight * Number.parseFloat(FALLBACK_DEALER_SOURCE[displayDealerPos].top) / 100 }}
       rotation={SEAT_ROTATION[displayDealerPos]} targetRef={trumpTargetRef} onPlaced={runs.current.guard(completeTrumpMotion)} />}

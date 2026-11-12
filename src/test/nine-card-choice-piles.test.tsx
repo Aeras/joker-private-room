@@ -1,7 +1,7 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DealPresentation, NINE_CARD_TRUMP_ANNOUNCEMENT_LEAD_IN_MS } from "@/components/table/DealPresentation";
-import { NORMAL_DEAL_STAGGER_MS, NORMAL_DEAL_TRAVEL_MS, dealPresentationTiming } from "@/components/table/dealPresentationModel";
+import { NORMAL_DEAL_STAGGER_MS, NORMAL_DEAL_TRAVEL_MS, DECK_ENTRANCE_MS, dealPresentationTiming } from "@/components/table/dealPresentationModel";
 import { projectGameForSeat } from "@/domain/projection";
 import { reconciliationFixture } from "./fixtures/reconciliationGame";
 import { computeTableGeometry } from "@/components/table/useTableGeometry";
@@ -12,7 +12,7 @@ vi.mock("@/lib/gameAudio", () => ({ playGameSound: vi.fn() }));
 vi.mock("@/lib/timingDiagnostics", () => ({ recordTimingDiagnostic: vi.fn(), startTimingDiagnosticSession: vi.fn() }));
 const tick = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 const geometry = { ...computeTableGeometry({ feltRect: { left: 40, top: 40, right: 760, bottom: 290, width: 720, height: 250 }, viewportWidth: 800, viewportHeight: 400 }), epoch: 1 };
-const initialSettleAt = 11 * NORMAL_DEAL_STAGGER_MS + NORMAL_DEAL_TRAVEL_MS;
+const initialSettleAt = DECK_ENTRANCE_MS + 11 * NORMAL_DEAL_STAGGER_MS + NORMAL_DEAL_TRAVEL_MS;
 const { settleMs, tailMs } = dealPresentationTiming(false);
 function initial(viewer: SeatIndex) {
   const projection = projectGameForSeat(reconciliationFixture(), viewer);
