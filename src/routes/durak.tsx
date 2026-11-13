@@ -9,6 +9,25 @@ import type { PublicPlayer } from "@/domain/players";
 import { DurakWaitingSeats } from "@/durak/DurakWaitingSeats";
 import { durakLobbyText, durakTableText } from "@/i18n/durak.el";
 
+const VARIANT_DESCRIPTIONS: Record<DurakVariant, { sub: string; desc: string }> = {
+  podkidnoy: {
+    sub: "Подкидной",
+    desc: "Ο επιτιθέμενος ρίχνει, οι υπόλοιποι παίκτες προσθέτουν φύλλα ίδιας αξίας.",
+  },
+  perevodnoy: {
+    sub: "Переводной",
+    desc: "Ο αμυνόμενος μπορεί να μεταβιβάσει την άμυνα ρίχνοντας φύλλο ίδιου βαθμού.",
+  },
+};
+
+const PLAYER_COUNT_LABELS: Record<number, string> = {
+  2: "Duel",
+  3: "Trio",
+  4: "Classic",
+  5: "Table",
+  6: "Full",
+};
+
 export const Route = createFileRoute("/durak")({
   head: () => ({ meta: [{ title: "DURAK — Επιλογή παιχνιδιού" }] }),
   component: DurakHome,
@@ -133,49 +152,272 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
         onEndGame={room.hostPlayerId===player.id?()=>endGame(room.code):undefined}/>;
   }
   return (
-    <ScreenShell title="DURAK" variant="pregame" contentClassName="!overflow-y-auto !min-h-0 pb-8">
-      <div className="mx-auto w-full max-w-2xl space-y-3">
-          <section className="panel space-y-3 p-3 sm:p-4" aria-label="DURAK">
-            <DurakMemberAutoResume onMembership={setMembership} />
+    <ScreenShell
+      title="DURAK"
+      variant="pregame"
+      contentClassName="!overflow-y-auto !min-h-0 pb-6 flex flex-col justify-center"
+      headerActions={
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 border border-primary/20 text-xs">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-muted-foreground">Συνδεδεμένος:</span>
+          <strong className="text-foreground">{player.name}</strong>
+        </div>
+      }
+    >
+      <div className="mx-auto w-full max-w-4xl my-auto">
+        <section
+          className="rounded-2xl border border-primary/35 bg-black/60 backdrop-blur-md p-4 sm:p-5 shadow-[0_12px_45px_rgba(0,0,0,0.85)] space-y-4"
+          aria-label="DURAK"
+        >
+          <DurakMemberAutoResume onMembership={setMembership} />
 
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" aria-pressed={mode === "create"} onClick={() => setMode("create")} className={`rounded-lg border p-3 font-semibold ${mode === "create" ? "border-primary bg-secondary" : "border-border"}`}>Δημιουργία</button>
-              <button type="button" aria-pressed={mode === "join"} onClick={() => { setMode("join"); if (!listLoaded) void run("list"); }} className={`rounded-lg border p-3 font-semibold ${mode === "join" ? "border-primary bg-secondary" : "border-border"}`}>Συμμετοχή</button>
+          {/* Top Switcher (Δημιουργία / Συμμετοχή) */}
+          <div className="flex items-center justify-between gap-3 border-b border-primary/20 pb-3">
+            <div className="flex items-center gap-1.5 bg-black/50 p-1 rounded-xl border border-primary/25 w-full sm:w-80 shadow-inner">
+              <button
+                type="button"
+                aria-pressed={mode === "create"}
+                onClick={() => setMode("create")}
+                className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all ${
+                  mode === "create"
+                    ? "bg-gradient-to-r from-[#ffe599] via-[#d4af37] to-[#9a6f1a] text-[#1a050a] font-bold shadow-[0_2px_10px_rgba(212,175,55,0.35)]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                }`}
+              >
+                Δημιουργία
+              </button>
+              <button
+                type="button"
+                aria-pressed={mode === "join"}
+                onClick={() => {
+                  setMode("join");
+                  if (!listLoaded) void run("list");
+                }}
+                className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all ${
+                  mode === "join"
+                    ? "bg-gradient-to-r from-[#ffe599] via-[#d4af37] to-[#9a6f1a] text-[#1a050a] font-bold shadow-[0_2px_10px_rgba(212,175,55,0.35)]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                }`}
+              >
+                Συμμετοχή
+              </button>
             </div>
-            {membershipCode && !room && (
-              <button type="button" disabled={busy || loadingMembership} onClick={() => void returnToGame()}
-                className="w-full rounded-lg border border-primary bg-primary/15 p-3 font-semibold">
-                Επιστροφή στο παιχνίδι μου
-              </button>
-            )}
-            {error && <p role="alert" className="text-sm text-negative">{errorMessages[error] ?? "Η ενέργεια δεν ολοκληρώθηκε. Δοκίμασε ξανά."}</p>}
-            {room ? <div className="space-y-3 rounded-lg border border-primary p-3" aria-label="Δωμάτιο DURAK"><h2 className="font-semibold">Δωμάτιο DURAK</h2><p className="text-sm">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p><DurakWaitingSeats seats={room.seats} host={room.hostPlayerId===player.id && room.lifecycle==="waiting"} busy={busy} onSelect={(seat,botId)=>gameAction("bot_add",room.code,seat,botId)} onRemove={seat=>gameAction("bot_remove",room.code,seat)} /><div className="flex flex-wrap gap-2">
-              {room.lifecycle==="waiting" && room.hostPlayerId===player.id && <button type="button" disabled={busy} onClick={()=>void gameAction("start",room.code)} className="rounded-lg border border-primary bg-primary/20 px-4 py-2 font-bold">Έναρξη παρτίδας</button>}
-              <button type="button" disabled={busy} onClick={() => void run("get",room.code)} className="rounded-lg border p-2">Ανανέωση</button><button type="button" disabled={busy} onClick={() => void run("leave",room.code)} className="rounded-lg border p-2">Έξοδος</button></div><p className="text-sm text-muted-foreground">{durakLobbyText.help}</p></div> : mode === "create" ? <>
-              <label className="block space-y-2 text-sm font-semibold">Παραλλαγή
-                <select className="w-full rounded-lg border border-border bg-secondary p-3" value={variant} onChange={e => setVariant(e.target.value as DurakVariant)}>
-                  {Object.entries(VARIANT_NAMES).map(([id,label]) => <option key={id} value={id}>{label}</option>)}
-                </select>
-              </label>
-              <label className="block space-y-2 text-sm font-semibold">Αριθμός παικτών
-                <select className="w-full rounded-lg border border-border bg-secondary p-3" value={playerCount} onChange={e => setPlayerCount(Number(e.target.value))}>
-                  {PLAYER_COUNTS.map(count => <option key={count} value={count}>{count} παίκτες</option>)}
-                </select>
-              </label>
-              <button type="button" disabled={busy || Boolean(membershipCode)} onClick={() => void run("create")}
-                className="w-full rounded-lg border border-primary bg-primary/15 px-4 py-3 font-semibold">
-                {busy ? "Παρακαλώ περίμενε…" : "Δημιουργία παιχνιδιού"}
-              </button>
-              {membershipCode && <p className="text-sm text-muted-foreground">Έχεις ήδη ενεργό δωμάτιο. Επίλεξε «Επιστροφή στο παιχνίδι μου».</p>}
-            </> : <>
-              <h2 className="font-semibold">Διαθέσιμα παιχνίδια DURAK</h2>
-              <button type="button" disabled={busy} onClick={() => void run("list")} className="rounded-lg border p-2">Ανανέωση λίστας</button>
-              {listLoaded && available.length === 0 && <p className="text-sm text-muted-foreground">Δεν εμφανίζονται διαθέσιμα δωμάτια DURAK.</p>}
-              {available.map(item => <div key={item.code} className="flex items-center justify-between gap-2 rounded-lg border p-3"><span>{item.hostName} · {VARIANT_NAMES[item.variant]} · {item.occupied}/{item.capacity}</span><button type="button" disabled={busy} onClick={() => void run("join",item.code)} className="rounded-lg bg-secondary p-2">Συμμετοχή</button></div>)}
-            </>}
 
-          </section>
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-primary font-medium tracking-wider">
+              <span>♦</span>
+              <span className="uppercase font-display tracking-widest text-[11px]">Private Club Room</span>
+              <span>♦</span>
+            </div>
+          </div>
 
+          {membershipCode && !room && (
+            <button
+              type="button"
+              disabled={busy || loadingMembership}
+              onClick={() => void returnToGame()}
+              className="w-full rounded-xl border border-primary bg-primary/20 p-3 font-semibold text-primary-foreground hover:bg-primary/30 transition shadow-sm"
+            >
+              Επιστροφή στο παιχνίδι μου
+            </button>
+          )}
+
+          {error && (
+            <p role="alert" className="text-sm text-negative font-medium">
+              {errorMessages[error] ?? "Η ενέργεια δεν ολοκληρώθηκε. Δοκίμασε ξανά."}
+            </p>
+          )}
+
+          {room ? (
+            <div className="space-y-3 rounded-xl border border-primary/40 bg-black/40 p-4 shadow-inner" aria-label="Δωμάτιο DURAK">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-display font-bold text-foreground">Δωμάτιο DURAK</h2>
+                  <p className="text-xs text-muted-foreground">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p>
+                </div>
+                <span className="text-xs font-mono font-bold text-primary px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/30">
+                  #{room.code}
+                </span>
+              </div>
+              <DurakWaitingSeats
+                seats={room.seats}
+                host={room.hostPlayerId === player.id && room.lifecycle === "waiting"}
+                busy={busy}
+                onSelect={(seat, botId) => gameAction("bot_add", room.code, seat, botId)}
+                onRemove={(seat) => gameAction("bot_remove", room.code, seat)}
+              />
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40">
+                {room.lifecycle === "waiting" && room.hostPlayerId === player.id && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void gameAction("start", room.code)}
+                    className="rounded-xl bg-gradient-to-r from-primary via-[#e5c158] to-[#9a6f1a] text-[#1a050a] px-5 py-2.5 text-xs font-display font-bold uppercase tracking-wider hover:brightness-105 active:scale-95 transition shadow-md"
+                  >
+                    Έναρξη παρτίδας
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void run("get", room.code)}
+                  className="rounded-xl border border-border/80 bg-black/40 hover:bg-black/60 px-3 py-2 text-xs font-medium text-foreground transition"
+                >
+                  Ανανέωση
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void run("leave", room.code)}
+                  className="rounded-xl border border-destructive/40 bg-destructive/10 hover:bg-destructive/20 px-3 py-2 text-xs font-medium text-destructive-foreground transition"
+                >
+                  Έξοδος
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">{durakLobbyText.help}</p>
+            </div>
+          ) : mode === "create" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
+              {/* Left Column: Variant Selection (Interactive Cards) */}
+              <div className="flex flex-col justify-between space-y-2">
+                <label className="text-xs font-display font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                  <span>♠</span> Παραλλαγή Παιχνιδιού
+                </label>
+
+                <div className="flex flex-col gap-2.5">
+                  {Object.entries(VARIANT_NAMES).map(([id, label]) => {
+                    const active = variant === id;
+                    const meta = VARIANT_DESCRIPTIONS[id as DurakVariant];
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setVariant(id as DurakVariant)}
+                        className={`text-left p-3 rounded-xl border transition-all ${
+                          active
+                            ? "border-primary bg-gradient-to-r from-primary/25 to-primary/10 shadow-[0_0_15px_rgba(212,175,55,0.25)] ring-1 ring-primary"
+                            : "border-border/60 bg-black/40 hover:border-primary/50 opacity-75 hover:opacity-100"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm font-display font-bold text-foreground">
+                            {label}
+                          </span>
+                          {active && (
+                            <span className="text-[10px] font-bold text-primary bg-primary/20 border border-primary/40 px-2 py-0.5 rounded-full">
+                              Επιλεγμένο
+                            </span>
+                          )}
+                        </div>
+                        {meta && (
+                          <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                            {meta.desc}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Column: Player Count Chips + Big 3D Gold Action Button */}
+              <div className="flex flex-col justify-between space-y-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-display font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                      <span>♦</span> Αριθμός Παικτών
+                    </label>
+                    <span className="text-xs font-bold text-foreground">
+                      {playerCount} παίκτες ({PLAYER_COUNT_LABELS[playerCount] ?? "Custom"})
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-2">
+                    {PLAYER_COUNTS.map((count) => {
+                      const active = playerCount === count;
+                      return (
+                        <button
+                          key={count}
+                          type="button"
+                          onClick={() => setPlayerCount(count)}
+                          className={`py-2.5 rounded-xl border text-center transition-all ${
+                            active
+                              ? "border-primary bg-gradient-to-b from-primary/30 to-primary/10 shadow-[0_0_14px_rgba(212,175,55,0.35)] ring-1 ring-primary text-primary"
+                              : "border-border/60 bg-black/40 hover:border-primary/40 text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <div className="text-sm font-bold font-display">{count}</div>
+                          <div className="text-[9px] uppercase tracking-wider opacity-75">
+                            {PLAYER_COUNT_LABELS[count]}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-1">
+                  <button
+                    type="button"
+                    disabled={busy || Boolean(membershipCode)}
+                    onClick={() => void run("create")}
+                    className="w-full py-3.5 sm:py-4 rounded-xl font-display font-bold text-xs sm:text-sm tracking-[0.15em] uppercase text-[#1a050a] bg-gradient-to-b from-[#ffe599] via-[#d4af37] to-[#8c6416] hover:brightness-105 active:scale-[0.99] transition shadow-[0_4px_20px_rgba(212,175,55,0.4)] disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {busy ? "Παρακαλώ περίμενε…" : "Δημιουργία παιχνιδιού"}
+                  </button>
+                  {membershipCode && (
+                    <p className="text-[11px] text-center text-muted-foreground">
+                      Έχεις ήδη ενεργό δωμάτιο. Επίλεξε «Επιστροφή στο παιχνίδι μου».
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-display font-bold text-primary">Διαθέσιμα παιχνίδια DURAK</h2>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void run("list")}
+                  className="rounded-xl border border-primary/30 bg-black/40 hover:bg-black/60 px-3 py-1.5 text-xs text-primary transition"
+                >
+                  Ανανέωση λίστας
+                </button>
+              </div>
+
+              {listLoaded && available.length === 0 && (
+                <div className="p-6 text-center text-sm text-muted-foreground border border-border/40 rounded-xl bg-black/30">
+                  Δεν εμφανίζονται διαθέσιμα δωμάτια DURAK.
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                {available.map((item) => (
+                  <div
+                    key={item.code}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-black/40 p-3 hover:border-primary/40 transition"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-foreground truncate">{item.hostName}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {VARIANT_NAMES[item.variant]} · {item.occupied}/{item.capacity} παίκτες
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void run("join",item.code)}
+                      className="rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-3 py-1.5 text-xs font-bold hover:brightness-110 active:scale-95 transition shrink-0"
+                    >
+                      Συμμετοχή
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
       </div>
     </ScreenShell>
   );
