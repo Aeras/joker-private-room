@@ -48,19 +48,30 @@ export type PresentationCompletionResult =
 async function call(action: string, gameId: string, extra: Record<string, unknown> = {}) {
   const sessionToken = getCookie(SESSION_COOKIE);
   if (!sessionToken) return { ok: false, code: "NOT_AUTHENTICATED" } as const;
-  try {
-    const response = await fetch(GAME_STATE_ENDPOINT, {
-      method: "POST",
-      headers: {
-        apikey: EXTERNAL_SUPABASE_PUBLISHABLE_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ action, gameId, sessionToken, ...extra }),
-    });
-    const payload = await response.json();
-    if (payload && typeof payload === "object" && "ok" in payload) return payload;
-  } catch {
-    // Stable failure below.
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch(GAME_STATE_ENDPOINT, {
+        method: "POST",
+        headers: {
+          apikey: EXTERNAL_SUPABASE_PUBLISHABLE_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action, gameId, sessionToken, ...extra }),
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (response.status >= 500 && attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 250));
+        continue;
+      }
+      const payload = await response.json();
+      if (payload && typeof payload === "object" && "ok" in payload) return payload;
+    } catch {
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 250));
+        continue;
+      }
+    }
   }
   return { ok: false, code: "SERVICE_UNAVAILABLE" } as const;
 }

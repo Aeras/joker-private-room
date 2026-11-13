@@ -511,6 +511,18 @@ function TablePage() {
     if (automaticActorPending && document.visibilityState === "visible") void refreshAll(true);
   }, [automaticActorPending, projection?.stateVersion, refreshAll]);
 
+  // Bot stall watchdog: if automaticActorPending stays active without stateVersion update for > 4.5s,
+  // re-trigger an immediate follow-up refresh to prevent stalling if a poll was dropped or timed out.
+  useEffect(() => {
+    if (!automaticActorPending || document.visibilityState !== "visible") return;
+    const watchdogTimer = window.setTimeout(() => {
+      if (mounted.current && document.visibilityState === "visible") {
+        void refreshAll(true);
+      }
+    }, 4500);
+    return () => window.clearTimeout(watchdogTimer);
+  }, [automaticActorPending, projection?.stateVersion, refreshAll]);
+
   // Receive-only wakeups preserve the existing authorized single-flight/admission path.
   const realtimeGameId = projection?.gameId;
   const realtimeClosed = projection?.lifecycle === "complete";
@@ -781,7 +793,8 @@ function TablePage() {
     }
   };
 
-  if (returnSync.pending || connectionStatus !== "ready" || projection?.gameId !== gameId) {
+  const isInitialOrLost = !projection || !room || projection?.gameId !== gameId;
+  if (returnSync.pending || connectionStatus === "failed" || (isInitialOrLost && connectionStatus !== "ready")) {
     return (
       <div className="surface-wood flex h-dvh items-center justify-center p-6" role="status" aria-live="polite">
         <div className="rounded-2xl border border-primary/30 bg-black/70 px-6 py-5 text-center shadow-2xl backdrop-blur">
@@ -816,6 +829,12 @@ function TablePage() {
   return (
     <div id="table-fullscreen-root" className="relative h-dvh overflow-hidden bg-[#090b09]">
       <LandscapeTableGuard>
+      {connectionStatus === "reconnecting" && (
+        <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-2 rounded-full border border-amber-400/40 bg-black/85 px-4 py-1.5 text-xs font-semibold text-amber-200 shadow-xl backdrop-blur-md animate-pulse">
+          <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
+          <span>Επανασύνδεση με το τραπέζι…</span>
+        </div>
+      )}
       <GameTable key={`${projection.gameId}:${tableEpoch}`} room={room} projection={tableProjection} busy={busy || uncertain || waitingForPlay} error={error} onCommand={submit} onReclaim={reclaim} onEndGame={endGame} onTurnPresentationComplete={completeTurn} onNineCardPresentationComplete={completeNineCardStage} emojiBySeat={emojiBySeat} onEmojiSend={sendEmoji} emojiBusy={emojiBusy} chatMessages={tableMessages} />
       <TableMessaging key={projection.gameId} room={room} projection={projection} onMessagesChange={setTableMessages} />
       <DialogueOverlay room={room} messages={messages} busy={dialogueBusy} feedback={dialogueFeedback} onSend={sendDialogue} />
