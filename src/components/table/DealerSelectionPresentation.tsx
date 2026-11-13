@@ -348,12 +348,10 @@ export function DealerSelectionPresentation({
             if (isFastOrResumed) {
               setIntroPhase("dealing");
               setOpeningVisible(true);
-              playGameSound("shuffle", `${projection.gameId}:dealer-selection`);
             } else {
               setIntroPhase("slide-in");
               setDomSlideArrived(false);
               window.requestAnimationFrame(() => setDomSlideArrived(true));
-              playGameSound("shuffle", `${projection.gameId}:dealer-intro-slide`);
 
               timers.current.push(
                 window.setTimeout(

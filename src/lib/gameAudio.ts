@@ -17,6 +17,8 @@ const decoded = new Map<GameSound, AudioBuffer>();
 const pending = new Map<GameSound, Promise<void>>();
 const active = new Map<GameSound, AudioBufferSourceNode>();
 let context: AudioContext | null = null;
+let lastShufflePlayedAt = 0;
+const SHUFFLE_MIN_INTERVAL_MS = 5000;
 
 function remember(eventId: string): boolean {
   if (seen.has(eventId)) return false;
@@ -82,6 +84,11 @@ function stopPreviousDeal(): void {
 export function playGameSound(kind: GameSound, eventId: string): void {
   if (!eventId || !remember(`${kind}:${eventId}`)) return;
   if (!getSoundEnabled()) return;
+  if (kind === "shuffle") {
+    const now = Date.now();
+    if (now - lastShufflePlayedAt < SHUFFLE_MIN_INTERVAL_MS) return;
+    lastShufflePlayedAt = now;
+  }
   try {
     if (kind === "deal") stopPreviousDeal();
     const ctx = audioContext();
@@ -127,6 +134,7 @@ export function resetGameAudioForTests(): void {
   cursor.clear();
   decoded.clear();
   pending.clear();
+  lastShufflePlayedAt = 0;
   const previous = context;
   context = null;
   if (previous) void previous.close().catch(() => undefined);
