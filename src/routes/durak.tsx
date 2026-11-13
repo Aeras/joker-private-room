@@ -221,13 +221,13 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
           )}
 
           {room ? (
-            <div className="space-y-3 rounded-xl border border-primary/40 bg-black/40 p-4 shadow-inner" aria-label="Δωμάτιο DURAK">
-              <div className="flex items-center justify-between">
+            <div className="space-y-2.5 rounded-2xl border border-primary/35 bg-black/60 backdrop-blur-md p-3 sm:p-3.5 shadow-inner" aria-label="Δωμάτιο DURAK">
+              <div className="flex items-center justify-between border-b border-primary/20 pb-1.5">
                 <div>
-                  <h2 className="font-display font-bold text-foreground">Δωμάτιο DURAK</h2>
-                  <p className="text-xs text-muted-foreground">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p>
+                  <h2 className="font-display font-bold text-foreground text-xs sm:text-sm">Δωμάτιο DURAK</h2>
+                  <p className="text-[10px] text-muted-foreground">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p>
                 </div>
-                <span className="text-xs font-mono font-bold text-primary px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/30">
+                <span className="text-[11px] font-mono font-bold text-primary px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/30">
                   #{room.code}
                 </span>
               </div>
@@ -238,35 +238,37 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                 onSelect={(seat, botId) => gameAction("bot_add", room.code, seat, botId)}
                 onRemove={(seat) => gameAction("bot_remove", room.code, seat)}
               />
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40">
-                {room.lifecycle === "waiting" && room.hostPlayerId === player.id && (
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/30">
+                <div className="flex items-center gap-2">
+                  {room.lifecycle === "waiting" && room.hostPlayerId === player.id && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void gameAction("start", room.code)}
+                      className="rounded-xl bg-gradient-to-r from-[#ffe599] via-[#d4af37] to-[#9a6f1a] text-[#1a050a] px-4 py-2 text-xs font-display font-black uppercase tracking-wider hover:brightness-105 active:scale-95 transition shadow-md"
+                    >
+                      Έναρξη παρτίδας
+                    </button>
+                  )}
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => void gameAction("start", room.code)}
-                    className="rounded-xl bg-gradient-to-r from-primary via-[#e5c158] to-[#9a6f1a] text-[#1a050a] px-5 py-2.5 text-xs font-display font-bold uppercase tracking-wider hover:brightness-105 active:scale-95 transition shadow-md"
+                    onClick={() => void run("get", room.code)}
+                    className="rounded-xl border border-border/80 bg-black/40 hover:bg-black/60 px-3 py-1.5 text-xs font-medium text-foreground transition"
                   >
-                    Έναρξη παρτίδας
+                    Ανανέωση
                   </button>
-                )}
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void run("get", room.code)}
-                  className="rounded-xl border border-border/80 bg-black/40 hover:bg-black/60 px-3 py-2 text-xs font-medium text-foreground transition"
-                >
-                  Ανανέωση
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void run("leave", room.code)}
-                  className="rounded-xl border border-destructive/40 bg-destructive/10 hover:bg-destructive/20 px-3 py-2 text-xs font-medium text-destructive-foreground transition"
-                >
-                  Έξοδος
-                </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void run("leave", room.code)}
+                    className="rounded-xl border border-destructive/40 bg-destructive/10 hover:bg-destructive/20 px-3 py-1.5 text-xs font-medium text-destructive-foreground transition"
+                  >
+                    Έξοδος
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">{durakLobbyText.help}</p>
               </div>
-              <p className="text-xs text-muted-foreground">{durakLobbyText.help}</p>
             </div>
           ) : mode === "create" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 items-stretch">
