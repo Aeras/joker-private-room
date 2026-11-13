@@ -12,14 +12,14 @@ export function opponentFanPose(
   const shown = Math.max(1, Math.min(count, 14));
   const offset = index - (shown - 1) / 2;
   if (side === "top") {
-    return { x: 640 + offset * 17, y: 84 + Math.abs(offset) * 1.5, angle: offset * 1.5 };
+    return { x: 640 + offset * 17, y: 88 + Math.abs(offset) * 1.4, angle: offset * 1.5 };
   }
-  // Lay the side cards horizontally from the local player's viewpoint. Their
-  // outer ends spread apart while their inner ends converge near the avatar;
-  // the centers also follow the oval rim as the hand grows or shrinks.
-  const bend = offset * offset * 0.9;
+  // Lay the side cards in an elegant curve that hugs the table's golden-brown wooden rail.
+  // The apex is vertically centered with the table oval (y ~ 350), with a smooth,
+  // gentle arc and tight angular spread so the cards remain compact and uniform.
+  const bend = offset * offset * 0.65;
   if (side === "left") {
-    return { x: 72 + bend, y: 322 + offset * 14, angle: 90 - offset * 2.5 };
+    return { x: 68 + bend, y: 350 + offset * 13, angle: 90 - offset * 1.8 };
   }
-  return { x: 1208 - bend, y: 322 + offset * 14, angle: -90 + offset * 2.5 };
+  return { x: 1212 - bend, y: 350 + offset * 13, angle: -90 + offset * 1.8 };
 }

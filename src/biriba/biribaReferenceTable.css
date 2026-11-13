@@ -219,7 +219,7 @@
 }
 .biriba-seat {
   position: absolute;
-  z-index: 25;
+  z-index: 45;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -231,12 +231,12 @@
   transform: translateX(-50%);
 }
 .biriba-seat--left {
-  top: 39%;
-  left: 0.8%;
+  top: 13%;
+  left: clamp(8px, 1.8vw, 24px);
 }
 .biriba-seat--right {
-  top: 39%;
-  right: 0.8%;
+  top: 13%;
+  right: clamp(8px, 1.8vw, 24px);
 }
 .biriba-seat--local {
   bottom: 1.5%;
@@ -255,11 +255,9 @@
 .biriba-seat--right .biriba-seat-avatar {
   border-color: #f24357;
 }
-.biriba-seat--left .biriba-seat-avatar {
-  transform: translateX(-2vw);
-}
+.biriba-seat--left .biriba-seat-avatar,
 .biriba-seat--right .biriba-seat-avatar {
-  transform: translateX(2vw);
+  transform: none;
 }
 .biriba-seat--local .biriba-seat-avatar {
   border-color: #20e3a4;
@@ -702,10 +700,12 @@
     font-size: 11px;
   }
   .biriba-seat--left {
-    left: 0.8%;
+    top: 11%;
+    left: 8px;
   }
   .biriba-seat--right {
-    right: 0.8%;
+    top: 11%;
+    right: 8px;
   }
 }
 
@@ -776,7 +776,7 @@
 
 /* Six fixed meld slots per team: 3 columns by 2 rows, never expand team bounds. */
 .biriba-meld-grid {
-  touch-action: none;
+  touch-action: pan-y;
   position: absolute;
   inset: 10% 2% 16%;
   display: grid;

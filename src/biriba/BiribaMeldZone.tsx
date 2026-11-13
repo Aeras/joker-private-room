@@ -13,6 +13,8 @@ export function BiribaMeldZone({ melds, teamName, hiddenCardIds, highlightedIndi
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [anchor, setAnchor] = useState<{ x: number; y: number; above: boolean } | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const swipeOrigin = useRef<{ x: number; y: number } | null>(null);
   const swipeConsumed = useRef(false);
   const pages = Math.max(1, Math.ceil(melds.length / 6));
@@ -34,24 +36,60 @@ export function BiribaMeldZone({ melds, teamName, hiddenCardIds, highlightedIndi
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [expanded]);
-  const onSwipeEnd = (x: number, y: number) => {
-    const from = swipeOrigin.current;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    if (t) {
+      swipeOrigin.current = { x: t.clientX, y: t.clientY };
+      swipeConsumed.current = false;
+      setIsDragging(true);
+      setDragOffset(0);
+    }
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!swipeOrigin.current) return;
+    const t = e.touches[0];
+    if (!t) return;
+    const dx = t.clientX - swipeOrigin.current.x;
+    if (pages > 1) {
+      const resistance = (current === 0 && dx > 0) || (current === pages - 1 && dx < 0) ? 0.35 : 1;
+      setDragOffset(dx * resistance);
+      if (Math.abs(dx) > 8) swipeConsumed.current = true;
+    }
+  };
+
+  const onTouchEnd = () => {
+    const offset = dragOffset;
     swipeOrigin.current = null;
-    if (!from || pages < 2) return;
-    const dx = x - from.x;
-    const dy = y - from.y;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 35) return;
-    swipeConsumed.current = true;
-    const delta = Math.abs(dy) > Math.abs(dx) ? dy : dx;
-    setPage(old => Math.max(0, Math.min(pages - 1, old + (delta < 0 ? 1 : -1))));
+    setIsDragging(false);
+    setDragOffset(0);
+    if (pages < 2) return;
+    if (offset < -35 && current < pages - 1) {
+      setPage(current + 1);
+    } else if (offset > 35 && current > 0) {
+      setPage(current - 1);
+    }
   };
 
   return <>
     <div className="biriba-meld-grid" aria-label={`Χεριές ${teamName}`}
-      onTouchStart={e => { const t = e.touches[0]; if (t) { swipeOrigin.current = { x: t.clientX, y: t.clientY }; swipeConsumed.current = false; } }}
-      onTouchEnd={e => { const t = e.changedTouches[0]; if (t) onSwipeEnd(t.clientX, t.clientY); }}
-      onTouchCancel={() => { swipeOrigin.current = null; }}
-      onWheel={e => { if (pages > 1 && Math.abs(e.deltaY) > 12) setPage(old => Math.max(0, Math.min(pages - 1, old + (e.deltaY > 0 ? 1 : -1)))); }}
+      style={{
+        transform: dragOffset ? `translateX(${dragOffset}px)` : undefined,
+        transition: isDragging ? "none" : "transform 0.28s cubic-bezier(0.22, 0.72, 0.2, 1)",
+      }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={() => { swipeOrigin.current = null; setIsDragging(false); setDragOffset(0); }}
+      onWheel={e => {
+        if (pages > 1) {
+          const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+          if (Math.abs(delta) > 15) {
+            setPage(old => Math.max(0, Math.min(pages - 1, old + (delta > 0 ? 1 : -1))));
+          }
+        }
+      }}
     >
       {melds.slice(current * 6, current * 6 + 6).map((meld, index) => {
         const fullIndex = current * 6 + index;
