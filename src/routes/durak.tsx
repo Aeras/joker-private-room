@@ -50,8 +50,8 @@ function DurakMemberAutoResume({ onMembership }: { onMembership: (code: string |
 }
 
 function DurakHome() {
-  // Keep the authenticated gate mounted across lobby/table transitions.
-  return <PlayerSessionGate allowLogout={false}>
+  // Keep the authenticated gate mounted across lobby/table transitions without duplicate top banner.
+  return <PlayerSessionGate allowLogout={false} hideConnectedBanner={true}>
     {(player) => <DurakAuthenticatedHome player={player} />}
   </PlayerSessionGate>;
 }
@@ -155,30 +155,23 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
     <ScreenShell
       title="DURAK"
       variant="pregame"
-      contentClassName="!overflow-y-auto !min-h-0 pb-6 flex flex-col justify-center"
-      headerActions={
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 border border-primary/20 text-xs">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-muted-foreground">Συνδεδεμένος:</span>
-          <strong className="text-foreground">{player.name}</strong>
-        </div>
-      }
+      contentClassName="!overflow-y-auto !min-h-0 py-1 flex flex-col justify-center"
     >
       <div className="mx-auto w-full max-w-4xl my-auto">
         <section
-          className="rounded-2xl border border-primary/35 bg-black/60 backdrop-blur-md p-4 sm:p-5 shadow-[0_12px_45px_rgba(0,0,0,0.85)] space-y-4"
+          className="rounded-2xl border border-primary/35 bg-black/60 backdrop-blur-md p-3 sm:p-4 shadow-[0_12px_45px_rgba(0,0,0,0.85)] space-y-2.5"
           aria-label="DURAK"
         >
           <DurakMemberAutoResume onMembership={setMembership} />
 
           {/* Top Switcher (Δημιουργία / Συμμετοχή) */}
-          <div className="flex items-center justify-between gap-3 border-b border-primary/20 pb-3">
+          <div className="flex items-center justify-between gap-3 border-b border-primary/20 pb-2">
             <div className="flex items-center gap-1.5 bg-black/50 p-1 rounded-xl border border-primary/25 w-full sm:w-80 shadow-inner">
               <button
                 type="button"
                 aria-pressed={mode === "create"}
                 onClick={() => setMode("create")}
-                className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all ${
+                className={`flex-1 py-1.5 rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all ${
                   mode === "create"
                     ? "bg-gradient-to-r from-[#ffe599] via-[#d4af37] to-[#9a6f1a] text-[#1a050a] font-bold shadow-[0_2px_10px_rgba(212,175,55,0.35)]"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/5"
@@ -193,7 +186,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                   setMode("join");
                   if (!listLoaded) void run("list");
                 }}
-                className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all ${
+                className={`flex-1 py-1.5 rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all ${
                   mode === "join"
                     ? "bg-gradient-to-r from-[#ffe599] via-[#d4af37] to-[#9a6f1a] text-[#1a050a] font-bold shadow-[0_2px_10px_rgba(212,175,55,0.35)]"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/5"
@@ -276,14 +269,14 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
               <p className="text-xs text-muted-foreground">{durakLobbyText.help}</p>
             </div>
           ) : mode === "create" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 items-stretch">
               {/* Left Column: Variant Selection (Interactive Cards) */}
-              <div className="flex flex-col justify-between space-y-2">
+              <div className="flex flex-col justify-between space-y-1.5">
                 <label className="text-xs font-display font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
                   <span>♠</span> Παραλλαγή Παιχνιδιού
                 </label>
 
-                <div className="flex flex-col gap-2.5">
+                <div className="flex flex-col gap-2">
                   {Object.entries(VARIANT_NAMES).map(([id, label]) => {
                     const active = variant === id;
                     const meta = VARIANT_DESCRIPTIONS[id as DurakVariant];
@@ -292,7 +285,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                         key={id}
                         type="button"
                         onClick={() => setVariant(id as DurakVariant)}
-                        className={`text-left p-3 rounded-xl border transition-all ${
+                        className={`text-left p-2.5 rounded-xl border transition-all ${
                           active
                             ? "border-primary bg-gradient-to-r from-primary/25 to-primary/10 shadow-[0_0_15px_rgba(212,175,55,0.25)] ring-1 ring-primary"
                             : "border-border/60 bg-black/40 hover:border-primary/50 opacity-75 hover:opacity-100"
@@ -309,7 +302,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                           )}
                         </div>
                         {meta && (
-                          <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                          <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
                             {meta.desc}
                           </p>
                         )}
@@ -320,8 +313,8 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
               </div>
 
               {/* Right Column: Player Count Chips + Big 3D Gold Action Button */}
-              <div className="flex flex-col justify-between space-y-3">
-                <div className="space-y-1.5">
+              <div className="flex flex-col justify-between space-y-2.5">
+                <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-display font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
                       <span>♦</span> Αριθμός Παικτών
@@ -331,7 +324,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                     {PLAYER_COUNTS.map((count) => {
                       const active = playerCount === count;
                       return (
@@ -339,7 +332,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                           key={count}
                           type="button"
                           onClick={() => setPlayerCount(count)}
-                          className={`py-2.5 rounded-xl border text-center transition-all ${
+                          className={`py-1.5 sm:py-2 rounded-xl border text-center transition-all ${
                             active
                               ? "border-primary bg-gradient-to-b from-primary/30 to-primary/10 shadow-[0_0_14px_rgba(212,175,55,0.35)] ring-1 ring-primary text-primary"
                               : "border-border/60 bg-black/40 hover:border-primary/40 text-muted-foreground hover:text-foreground"
@@ -355,17 +348,17 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                   </div>
                 </div>
 
-                <div className="space-y-1.5 pt-1">
+                <div className="space-y-1 pt-0.5">
                   <button
                     type="button"
                     disabled={busy || Boolean(membershipCode)}
                     onClick={() => void run("create")}
-                    className="w-full py-3.5 sm:py-4 rounded-xl font-display font-bold text-xs sm:text-sm tracking-[0.15em] uppercase text-[#1a050a] bg-gradient-to-b from-[#ffe599] via-[#d4af37] to-[#8c6416] hover:brightness-105 active:scale-[0.99] transition shadow-[0_4px_20px_rgba(212,175,55,0.4)] disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full py-2.5 sm:py-3 rounded-xl font-display font-bold text-xs sm:text-sm tracking-[0.15em] uppercase text-[#1a050a] bg-gradient-to-b from-[#ffe599] via-[#d4af37] to-[#8c6416] hover:brightness-105 active:scale-[0.99] transition shadow-[0_4px_20px_rgba(212,175,55,0.4)] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {busy ? "Παρακαλώ περίμενε…" : "Δημιουργία παιχνιδιού"}
                   </button>
                   {membershipCode && (
-                    <p className="text-[11px] text-center text-muted-foreground">
+                    <p className="text-[10px] text-center text-muted-foreground">
                       Έχεις ήδη ενεργό δωμάτιο. Επίλεξε «Επιστροφή στο παιχνίδι μου».
                     </p>
                   )}
