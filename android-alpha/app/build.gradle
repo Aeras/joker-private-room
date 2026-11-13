@@ -8,8 +8,8 @@ android {
         applicationId 'app.joker.alpha'
         minSdk 26
         targetSdk 35
-        versionCode 4
-        versionName '0.2.2-alpha'
+        versionCode 5
+        versionName '0.2.3-alpha'
     }
     buildFeatures { buildConfig true }
     flavorDimensions 'content'
@@ -17,13 +17,13 @@ android {
         web {
             dimension 'content'
             applicationIdSuffix '.web'
-            resValue 'string', 'app_name', 'Joker Web Alpha'
+            resValue 'string', 'app_name', 'Τζόκερ'
             buildConfigField 'boolean', 'USE_LOCAL_ASSETS', 'false'
         }
         local {
             dimension 'content'
             applicationIdSuffix '.local'
-            resValue 'string', 'app_name', 'Joker Local Alpha'
+            resValue 'string', 'app_name', 'Τζόκερ'
             buildConfigField 'boolean', 'USE_LOCAL_ASSETS', 'true'
         }
     }
