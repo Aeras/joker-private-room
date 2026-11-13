@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { RotateCw } from "lucide-react";
 import { durakRoomCommand, type DurakRoomView, type DurakWaitingRoom } from "@/services/durakRoomFunctions";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { ScreenShell } from "@/components/joker/ScreenShell";
@@ -67,9 +68,19 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
   const [membershipCode, setMembershipCode] = useState<string | null>(null);
   const [loadingMembership, setLoadingMembership] = useState(false);
   const [listLoaded, setListLoaded] = useState(false);
+  const [refreshingList, setRefreshingList] = useState(false);
   const setMembership = useCallback((code: string | null) => { setMembershipCode(code); }, []);
   const waitingRoomCode = room?.code;
   const waitingRoomLifecycle = room?.lifecycle;
+
+  async function refreshList() {
+    setRefreshingList(true);
+    try {
+      await run("list");
+    } finally {
+      setTimeout(() => setRefreshingList(false), 400);
+    }
+  }
   useEffect(() => {
     if (!waitingRoomCode || waitingRoomLifecycle !== "waiting") return;
     let active = true;
@@ -374,11 +385,12 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                 <h2 className="text-sm font-display font-bold text-primary">Διαθέσιμα παιχνίδια DURAK</h2>
                 <button
                   type="button"
-                  disabled={busy}
-                  onClick={() => void run("list")}
-                  className="rounded-xl border border-primary/30 bg-black/40 hover:bg-black/60 px-3 py-1.5 text-xs text-primary transition"
+                  disabled={busy || refreshingList}
+                  onClick={() => void refreshList()}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-primary/35 bg-black/40 hover:bg-black/60 hover:border-primary px-3 py-1.5 text-xs font-semibold text-primary transition active:scale-95 disabled:opacity-60"
                 >
-                  Ανανέωση λίστας
+                  <RotateCw className={`h-3.5 w-3.5 ${refreshingList ? "animate-spin text-primary" : "text-primary/70"}`} />
+                  <span>{refreshingList ? "Ανανέωση…" : "Ανανέωση λίστας"}</span>
                 </button>
               </div>
 
