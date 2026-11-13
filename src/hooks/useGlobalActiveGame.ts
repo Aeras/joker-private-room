@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getCurrentActiveGame, getCurrentRoomMembership, leaveWaitingRoom } from "@/services/roomFunctions";
 import { durakRoomCommand } from "@/services/durakRoomFunctions";
 import { biribaCommand } from "@/services/biribaFunctions";
-import { terminateProjectedGame } from "@/services/gameProjectionFunctions";
+import { getProjectedGameState, terminateProjectedGame } from "@/services/gameProjectionFunctions";
 
 export type ActiveGameInfo = {
   game: "joker" | "durak" | "biriba";
@@ -11,6 +11,7 @@ export type ActiveGameInfo = {
   lifecycle: "waiting" | "playing";
   returnUrl: string;
   gameId?: string;
+  stateVersion?: number;
 };
 
 export type GlobalActiveGameState = {
@@ -44,6 +45,7 @@ export function useGlobalActiveGame(): GlobalActiveGameState {
           lifecycle: "playing",
           returnUrl: `/table?code=${ag.roomCode}&gameId=${ag.gameId}`,
           gameId: ag.gameId,
+          stateVersion: typeof ag.stateVersion === "number" ? ag.stateVersion : undefined,
         };
         setActive(info);
         setLoading(false);
@@ -131,13 +133,38 @@ export function useGlobalActiveGame(): GlobalActiveGameState {
         if (active.lifecycle === "waiting") {
           await leaveWaitingRoom({ data: { code: active.roomCode } });
         } else if (active.gameId) {
-          await terminateProjectedGame({
+          let version = typeof active.stateVersion === "number" ? active.stateVersion : 0;
+          if (version === 0) {
+            try {
+              const stateRes = await getProjectedGameState({ data: { gameId: active.gameId } });
+              if (stateRes.ok && stateRes.projection) {
+                version = stateRes.projection.stateVersion;
+              }
+            } catch {
+              // fallback
+            }
+          }
+          const termRes = await terminateProjectedGame({
             data: {
               gameId: active.gameId,
               actionId: crypto.randomUUID(),
-              expectedStateVersion: 0,
+              expectedStateVersion: version,
             },
           });
+          if (!termRes.ok && termRes.code === "STALE_STATE" && typeof termRes.currentStateVersion === "number") {
+            await terminateProjectedGame({
+              data: {
+                gameId: active.gameId,
+                actionId: crypto.randomUUID(),
+                expectedStateVersion: termRes.currentStateVersion,
+              },
+            });
+          }
+          try {
+            await leaveWaitingRoom({ data: { code: active.roomCode } });
+          } catch {
+            // Room might already be deleted
+          }
         }
       }
       await refresh();
