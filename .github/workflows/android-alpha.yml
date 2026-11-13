@@ -2,6 +2,13 @@ name: Android Alpha APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'android-alpha/**'
+      - '.github/workflows/android-alpha.yml'
+      - 'public/**'
 
 permissions:
   contents: read
@@ -36,11 +43,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p android-alpha/app/src/local/assets/public
-          for folder in cards avatars table emojis audio; do
+          for folder in cards avatars table emojis audio sounds covers home; do
             if [[ -d "public/$folder" ]]; then
               cp -a "public/$folder" "android-alpha/app/src/local/assets/public/$folder"
             fi
           done
+          cp -a public/*.png public/*.svg public/*.ico "android-alpha/app/src/local/assets/public/" 2>/dev/null || true
           du -sh android-alpha/app/src/local/assets/public
 
       - name: Build Web and Local debug APKs

@@ -82,12 +82,21 @@ public final class JokerActivity extends Activity {
                 String path = uri.getPath();
                 if (path == null || path.contains("..") || path.contains("\\")) return null;
                 if (!(path.startsWith("/cards/") || path.startsWith("/avatars/") || path.startsWith("/table/")
-                      || path.startsWith("/emojis/") || path.startsWith("/audio/"))) return null;
+                      || path.startsWith("/emojis/") || path.startsWith("/audio/") || path.startsWith("/sounds/")
+                      || path.startsWith("/covers/") || path.startsWith("/home/"))) return null;
                 try {
                     InputStream stream = getAssets().open("public" + path);
                     String ext = MimeTypeMap.getFileExtensionFromUrl(path).toLowerCase(Locale.ROOT);
                     String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
-                    if (mime == null) mime = "application/octet-stream";
+                    if (mime == null) {
+                        if ("webp".equals(ext)) mime = "image/webp";
+                        else if ("svg".equals(ext)) mime = "image/svg+xml";
+                        else if ("mp3".equals(ext)) mime = "audio/mpeg";
+                        else if ("ogg".equals(ext)) mime = "audio/ogg";
+                        else if ("png".equals(ext)) mime = "image/png";
+                        else if ("jpg".equals(ext) || "jpeg".equals(ext)) mime = "image/jpeg";
+                        else mime = "application/octet-stream";
+                    }
                     return new WebResourceResponse(mime, null, stream);
                 } catch (IOException missingAsset) {
                     return null; // Keep online fallback for any resource not packaged.
