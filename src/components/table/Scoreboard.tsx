@@ -272,12 +272,12 @@ export function Scoreboard({
             className="mx-auto grid max-w-[40rem] grid-cols-4 gap-2 border-t-2 border-[#315b96]/70 px-2 pb-1.5 pt-2.5 sm:gap-3"
             aria-label="Τελική κατάταξη"
           >
-            {[1, 2, 3, 4].map((placement) => {
-              const seat = finalPlacements.findIndex((value) => value === placement);
-              if (seat < 0) return null;
+            {playerNames.map((name, seat) => {
+              const placement = finalPlacements[seat];
+              if (placement == null) return null;
               return (
                 <div
-                  key={placement}
+                  key={seat}
                   className="min-w-0 text-center text-[#274f91]"
                   data-final-placement={placement}
                 >
@@ -285,7 +285,7 @@ export function Scoreboard({
                     {romanPlacement(placement)}
                   </div>
                   <div className="mt-1 truncate text-[10px] font-semibold sm:text-xs">
-                    {playerNames[seat]}
+                    {name}
                   </div>
                 </div>
               );

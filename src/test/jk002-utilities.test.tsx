@@ -199,5 +199,15 @@ describe("JK-002 classic score sheet", () => {
     expect(container.querySelector("[data-score-summary='2:cumulative']")?.textContent).toContain("1650");
     expect(container.querySelector("[data-final-placement='1']")?.textContent).toContain("Μιχάλης");
     expect(container.querySelector("[data-final-placement='2']")?.textContent).toContain("Νίκος");
+
+    const placementCards = container.querySelectorAll("[data-final-placement]");
+    expect(placementCards[0]?.textContent).toContain("Νίκος");
+    expect(placementCards[0]?.textContent).toContain("II");
+    expect(placementCards[1]?.textContent).toContain("Μιχάλης");
+    expect(placementCards[1]?.textContent).toContain("I");
+    expect(placementCards[2]?.textContent).toContain("Παναγιώτης");
+    expect(placementCards[2]?.textContent).toContain("IV");
+    expect(placementCards[3]?.textContent).toContain("Bot");
+    expect(placementCards[3]?.textContent).toContain("III");
   });
 });
