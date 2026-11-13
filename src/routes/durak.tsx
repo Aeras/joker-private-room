@@ -155,23 +155,24 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
     <ScreenShell
       title="DURAK"
       variant="pregame"
-      contentClassName="!overflow-y-auto !min-h-0 py-1 flex flex-col justify-center"
+      fixedViewport={true}
+      contentClassName="!overflow-y-auto !min-h-0 !py-0 flex flex-col justify-center"
     >
-      <div className="mx-auto w-full max-w-4xl my-auto">
+      <div className="mx-auto w-full max-w-4xl">
         <section
-          className="rounded-2xl border border-primary/35 bg-black/60 backdrop-blur-md p-3 sm:p-4 shadow-[0_12px_45px_rgba(0,0,0,0.85)] space-y-2.5"
+          className="rounded-2xl border border-primary/35 bg-black/60 backdrop-blur-md p-2.5 sm:p-3 shadow-[0_12px_45px_rgba(0,0,0,0.85)] space-y-2"
           aria-label="DURAK"
         >
           <DurakMemberAutoResume onMembership={setMembership} />
 
           {/* Top Switcher (Δημιουργία / Συμμετοχή) */}
-          <div className="flex items-center justify-between gap-3 border-b border-primary/20 pb-2">
+          <div className="flex items-center justify-between gap-3 border-b border-primary/20 pb-1.5">
             <div className="flex items-center gap-1.5 bg-black/50 p-1 rounded-xl border border-primary/25 w-full sm:w-80 shadow-inner">
               <button
                 type="button"
                 aria-pressed={mode === "create"}
                 onClick={() => setMode("create")}
-                className={`flex-1 py-1.5 rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all ${
+                className={`flex-1 py-1 rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all ${
                   mode === "create"
                     ? "bg-gradient-to-r from-[#ffe599] via-[#d4af37] to-[#9a6f1a] text-[#1a050a] font-bold shadow-[0_2px_10px_rgba(212,175,55,0.35)]"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/5"
@@ -186,7 +187,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                   setMode("join");
                   if (!listLoaded) void run("list");
                 }}
-                className={`flex-1 py-1.5 rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all ${
+                className={`flex-1 py-1 rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all ${
                   mode === "join"
                     ? "bg-gradient-to-r from-[#ffe599] via-[#d4af37] to-[#9a6f1a] text-[#1a050a] font-bold shadow-[0_2px_10px_rgba(212,175,55,0.35)]"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/5"
@@ -208,21 +209,21 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
               type="button"
               disabled={busy || loadingMembership}
               onClick={() => void returnToGame()}
-              className="w-full rounded-xl border border-primary bg-primary/20 p-3 font-semibold text-primary-foreground hover:bg-primary/30 transition shadow-sm"
+              className="w-full rounded-xl border border-primary bg-primary/20 p-2.5 font-semibold text-primary-foreground hover:bg-primary/30 transition shadow-sm"
             >
               Επιστροφή στο παιχνίδι μου
             </button>
           )}
 
           {error && (
-            <p role="alert" className="text-sm text-negative font-medium">
+            <p role="alert" className="text-xs text-negative font-medium">
               {errorMessages[error] ?? "Η ενέργεια δεν ολοκληρώθηκε. Δοκίμασε ξανά."}
             </p>
           )}
 
           {room ? (
-            <div className="space-y-2.5 rounded-2xl border border-primary/35 bg-black/60 backdrop-blur-md p-3 sm:p-3.5 shadow-inner" aria-label="Δωμάτιο DURAK">
-              <div className="flex items-center justify-between border-b border-primary/20 pb-1.5">
+            <div className="space-y-2 rounded-2xl border border-primary/35 bg-black/60 backdrop-blur-md p-2.5 sm:p-3 shadow-inner" aria-label="Δωμάτιο DURAK">
+              <div className="flex items-center justify-between border-b border-primary/20 pb-1">
                 <div>
                   <h2 className="font-display font-bold text-foreground text-xs sm:text-sm">Δωμάτιο DURAK</h2>
                   <p className="text-[10px] text-muted-foreground">{VARIANT_NAMES[room.variant]} · {room.capacity} παίκτες</p>
@@ -245,7 +246,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                       type="button"
                       disabled={busy}
                       onClick={() => void gameAction("start", room.code)}
-                      className="rounded-xl bg-gradient-to-r from-[#ffe599] via-[#d4af37] to-[#9a6f1a] text-[#1a050a] px-4 py-2 text-xs font-display font-black uppercase tracking-wider hover:brightness-105 active:scale-95 transition shadow-md"
+                      className="rounded-xl bg-gradient-to-r from-[#ffe599] via-[#d4af37] to-[#9a6f1a] text-[#1a050a] px-3.5 py-1.5 text-xs font-display font-black uppercase tracking-wider hover:brightness-105 active:scale-95 transition shadow-md"
                     >
                       Έναρξη παρτίδας
                     </button>
@@ -254,7 +255,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                     type="button"
                     disabled={busy}
                     onClick={() => void run("get", room.code)}
-                    className="rounded-xl border border-border/80 bg-black/40 hover:bg-black/60 px-3 py-1.5 text-xs font-medium text-foreground transition"
+                    className="rounded-xl border border-border/80 bg-black/40 hover:bg-black/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition"
                   >
                     Ανανέωση
                   </button>
@@ -262,12 +263,12 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                     type="button"
                     disabled={busy}
                     onClick={() => void run("leave", room.code)}
-                    className="rounded-xl border border-destructive/40 bg-destructive/10 hover:bg-destructive/20 px-3 py-1.5 text-xs font-medium text-destructive-foreground transition"
+                    className="rounded-xl border border-destructive/40 bg-destructive/10 hover:bg-destructive/20 px-2.5 py-1.5 text-xs font-medium text-destructive-foreground transition"
                   >
                     Έξοδος
                   </button>
                 </div>
-                <p className="text-[10px] text-muted-foreground">{durakLobbyText.help}</p>
+                <p className="text-[10px] text-muted-foreground hidden sm:block truncate max-w-sm">{durakLobbyText.help}</p>
               </div>
             </div>
           ) : mode === "create" ? (

@@ -63,22 +63,22 @@ export function DurakWaitingSeats({
 
               <div className="my-0.5 flex items-center justify-center">
                 {isEmpty ? (
-                  <span className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-dashed border-primary/50 text-primary text-xl transition-transform group-hover:scale-105">
+                  <span className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-dashed border-primary/50 text-primary text-base transition-transform group-hover:scale-105">
                     +
                   </span>
                 ) : (
-                  <div className="relative rounded-full ring-2 ring-primary/40 p-0.5">
+                  <div className="relative rounded-full ring-1 ring-primary/40 p-0.5">
                     <PlayerAvatar
                       name={name}
                       imageUrl={assets.tableAvatar(bot?.avatarUrl ?? assets.avatar("", name))}
                       isBot={seat.occupant === "bot"}
-                      size="md"
+                      size="sm"
                     />
                   </div>
                 )}
               </div>
 
-              <span className="max-w-full truncate text-xs font-semibold text-foreground text-center">
+              <span className="max-w-full truncate text-[11px] font-semibold text-foreground text-center">
                 {isEmpty ? "+ Κενή θέση" : name}
               </span>
             </>
@@ -91,14 +91,14 @@ export function DurakWaitingSeats({
               disabled={busy}
               aria-label={text.chooseSeat(seat.index + 1)}
               onClick={() => setSelected(seat.index)}
-              className="group flex flex-col items-center justify-between gap-1 rounded-xl border border-primary/40 bg-black/40 hover:border-primary hover:bg-primary/10 p-2 sm:p-2.5 transition active:scale-[0.98] disabled:cursor-wait focus-visible:ring-2 focus-visible:ring-primary shadow-sm"
+              className="group flex flex-col items-center justify-between gap-0.5 rounded-xl border border-primary/40 bg-black/40 hover:border-primary hover:bg-primary/10 p-1.5 sm:p-2 transition active:scale-[0.98] disabled:cursor-wait focus-visible:ring-2 focus-visible:ring-primary shadow-sm"
             >
               {content}
             </button>
           ) : (
             <div
               key={seat.index}
-              className={`flex flex-col items-center justify-between gap-1 rounded-xl border p-2 sm:p-2.5 shadow-sm ${
+              className={`flex flex-col items-center justify-between gap-0.5 rounded-xl border p-1.5 sm:p-2 shadow-sm ${
                 isHuman
                   ? "border-primary/60 bg-gradient-to-b from-primary/20 via-black/40 to-black/60 ring-1 ring-primary/30"
                   : "border-border/60 bg-black/40"
