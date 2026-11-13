@@ -4,7 +4,8 @@
     <application
         android:allowBackup="false"
         android:label="@string/app_name"
-        android:icon="@drawable/joker_icon"
+        android:icon="@mipmap/joker_icon"
+        android:roundIcon="@mipmap/joker_icon_round"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false"
         android:hardwareAccelerated="true">

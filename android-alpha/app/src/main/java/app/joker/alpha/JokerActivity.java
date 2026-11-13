@@ -8,17 +8,17 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.Display;
 import android.view.View;
+import android.view.WindowManager;
 import android.webkit.CookieManager;
+import android.webkit.MimeTypeMap;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.webkit.WebStorage;
-import android.webkit.MimeTypeMap;
-import android.window.OnBackInvokedDispatcher;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
@@ -44,21 +44,63 @@ public final class JokerActivity extends Activity {
         );
     }
 
+    private void configureDisplayCutoutAndRefreshRate() {
+        // Point A: Full landscape edge-to-edge ignoring camera cutout/notch
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            getWindow().getAttributes().layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+
+        // Point B: Unlock 90Hz / 120Hz high refresh rate if supported by display
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Display display = getDisplay();
+            if (display != null) {
+                Display.Mode[] modes = display.getSupportedModes();
+                Display.Mode bestMode = null;
+                float maxRate = 60.0f;
+                for (Display.Mode mode : modes) {
+                    if (mode.getRefreshRate() > maxRate) {
+                        maxRate = mode.getRefreshRate();
+                        bestMode = mode;
+                    }
+                }
+                if (bestMode != null) {
+                    WindowManager.LayoutParams params = getWindow().getAttributes();
+                    params.preferredDisplayModeId = bestMode.getModeId();
+                    getWindow().setAttributes(params);
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("deprecation")
     @SuppressLint("SetJavaScriptEnabled")
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        configureDisplayCutoutAndRefreshRate();
         immersive();
+
         webView = new WebView(this);
         webView.setBackgroundColor(Color.rgb(29, 25, 22));
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+
+        // Point C: Hardware Acceleration & GPU Layer
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        try {
+            settings.setRenderPriority(WebSettings.RenderPriority.HIGH);
+        } catch (Exception ignored) {}
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
+
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
         webView.setWebChromeClient(new WebChromeClient());
@@ -115,14 +157,25 @@ public final class JokerActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         immersive();
-        if (webView != null) webView.onResume();
+        if (webView != null) {
+            webView.onResume();
+            webView.resumeTimers();
+        }
     }
+
     @Override protected void onPause() {
-        if (webView != null) webView.onPause();
+        if (webView != null) {
+            webView.onPause();
+            webView.pauseTimers();
+        }
         super.onPause();
     }
+
     @Override protected void onDestroy() {
-        if (webView != null) { webView.destroy(); webView = null; }
+        if (webView != null) {
+            webView.destroy();
+            webView = null;
+        }
         super.onDestroy();
     }
 }
