@@ -143,6 +143,7 @@ function GameSelection() {
             void globalActive.refresh();
           }}
           hideConnectedBanner
+          className="flex flex-col flex-1 min-h-0 h-full w-full"
         >
           {(player) => (
             <div className="game-selection-container">
