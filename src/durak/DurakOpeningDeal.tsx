@@ -196,21 +196,21 @@ export function DurakOpeningDeal({
         const shadowBlur = (4 + 16 * arc).toFixed(1);
         flightFrames.push({
           transform: `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px) scale(${scale.toFixed(3)}) rotate(${rot.toFixed(1)}deg)`,
-          filter: `drop-shadow(0px ${shadowY}px ${shadowBlur}px rgba(0,0,0,${(0.3 + 0.18 * arc).toFixed(2)}))`,
-          opacity: s === 0 ? 0 : 1,
+          filter: s === sampleCount ? "none" : `drop-shadow(0px ${shadowY}px ${shadowBlur}px rgba(0,0,0,${(0.3 + 0.18 * arc).toFixed(2)}))`,
+          opacity: 1,
           offset: (DURAK_DEAL_FLIGHT_MS * time) / duration,
         });
       }
       flightFrames.push({
         transform: finalTransform,
-        filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.32))",
+        filter: "none",
         opacity: 1,
         offset: (timing.exitAt - startAt) / duration,
         easing: "cubic-bezier(0.22, 1, 0.36, 1)",
       });
       flightFrames.push({
         transform: `translate(${exitX}px, ${exitY}px) rotate(${targetRotation}deg)`,
-        filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.2))",
+        filter: "none",
         opacity: 1,
       });
 
@@ -218,14 +218,15 @@ export function DurakOpeningDeal({
         element,
         reduced
           ? [
-              { transform: finalTransform, opacity: 0, offset: 0 },
-              { transform: finalTransform, opacity: 1, offset: DURAK_DEAL_FLIGHT_MS / duration },
+              { transform: finalTransform, opacity: 0, filter: "none", offset: 0 },
+              { transform: finalTransform, opacity: 1, filter: "none", offset: DURAK_DEAL_FLIGHT_MS / duration },
               {
                 transform: finalTransform,
                 opacity: 1,
+                filter: "none",
                 offset: (timing.exitAt - startAt) / duration,
               },
-              { transform: `translate(${exitX}px, ${exitY}px) rotate(${targetRotation}deg)`, opacity: 1 },
+              { transform: `translate(${exitX}px, ${exitY}px) rotate(${targetRotation}deg)`, opacity: 1, filter: "none" },
             ]
           : flightFrames,
         duration,
@@ -291,6 +292,14 @@ export function DurakOpeningDeal({
     const bx = back && back.width > 0 ? back.left + back.width / 2 - bounds.left - source.x : dx + 20;
     const by = back && back.height > 0 ? back.top + back.height / 2 - bounds.top - source.y : dy - 10;
     const backScale = back && back.width > 0 ? back.width / origin.width : 0.75;
+    const deckStack = layer.querySelector<HTMLElement>(".durak-deal-deck-stack");
+    animate(
+      deckStack,
+      [{ opacity: 1 }, { opacity: 0 }],
+      300,
+      timing.handAt,
+      "ease-out",
+    );
     const caption = layer.querySelector<HTMLElement>(".durak-deal-caption");
     animate(
       caption,
@@ -351,7 +360,20 @@ export function DurakOpeningDeal({
       data-durak-opening-deal
       aria-label={text.dealing}
     >
-      <div className="durak-deal-origin">
+      <div className="durak-deal-origin" data-durak-dealer-deck>
+        <div className="durak-deal-deck-stack" aria-hidden="true">
+          {[3, 2, 1].map((layer) => (
+            <div
+              key={layer}
+              className="durak-deal-deck-layer"
+              style={{
+                transform: `translate(${layer * 2.5}px, ${layer * -2.5}px)`,
+              }}
+            >
+              <DurakCardBack />
+            </div>
+          ))}
+        </div>
         {Array.from({ length: game.handSizes.length * 6 }, (_, beat) => (
           <div className="durak-deal-card" data-deal-card={beat} key={beat}>
             <DurakCardBack />
