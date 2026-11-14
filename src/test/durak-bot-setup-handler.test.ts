@@ -3,6 +3,7 @@ import ts from "typescript";
 import { expect, it, vi } from "vitest";
 import { beginDurak } from "../../supabase/functions/durak-commands/engine";
 import { startDurakDeal } from "../../supabase/functions/durak-commands/bot-turn";
+import { durakDealTiming } from "../../supabase/functions/durak-commands/dealTiming";
 import {
   CANONICAL_BOTS,
   deterministicBotOrder,
@@ -111,6 +112,6 @@ it("starts through one atomic auto-fill transaction with the real engine deal", 
     }),
   );
   expect(setup.p_state!.hands.map((hand) => hand.length)).toEqual([6, 6, 6, 6]);
-  expect(setup.p_state!.dealReadyAt - setup.p_state!.dealStartedAt).toBe(7950);
+  expect(setup.p_state!.dealReadyAt - setup.p_state!.dealStartedAt).toBe(durakDealTiming(4).duration);
   expect(calls.filter(([name]) => name === "durak_lobby_setup_internal")).toHaveLength(1);
 });

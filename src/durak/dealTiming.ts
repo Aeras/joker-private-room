@@ -1,11 +1,14 @@
-/** DURAK opening: six closed cards per seat, then trump flip and stock placement. */
-export const DURAK_DEAL_STAGGER_MS = 200;
-export const DURAK_DEAL_FLIGHT_MS = 420;
-export const DURAK_TRUMP_FLIP_MS = 550;
-export const DURAK_TRUMP_PLACE_MS = 600;
-export const DURAK_STOCK_PLACE_MS = 600;
-export const DURAK_HAND_EXIT_MS = 400;
-export const DURAK_HAND_ENTRANCE_MS = 420;
+/** DURAK opening: six closed cards per seat, then trump flip and stock placement.
+ * Pipelined deal cadence: stagger is shorter than flight duration, so 2-3 cards
+ * fly concurrently across seats in circular succession before previous cards land.
+ */
+export const DURAK_DEAL_STAGGER_MS = 110;
+export const DURAK_DEAL_FLIGHT_MS = 320;
+export const DURAK_TRUMP_FLIP_MS = 450;
+export const DURAK_TRUMP_PLACE_MS = 500;
+export const DURAK_STOCK_PLACE_MS = 500;
+export const DURAK_HAND_EXIT_MS = 350;
+export const DURAK_HAND_ENTRANCE_MS = 380;
 export function durakDealTiming(players: number) {
   const revealAt = (players * 6 - 1) * DURAK_DEAL_STAGGER_MS + DURAK_DEAL_FLIGHT_MS + 120;
   const exitAt = revealAt + DURAK_TRUMP_FLIP_MS + DURAK_TRUMP_PLACE_MS + DURAK_STOCK_PLACE_MS + 120;

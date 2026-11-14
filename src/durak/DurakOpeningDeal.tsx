@@ -86,7 +86,9 @@ export function DurakOpeningDeal({
           : target
             ? target.top - bounds.top + (position.startsWith("top") ? 45 : 0)
             : 100;
-      const dx = x - source.x + (index - 2.5) * 8;
+      const tilt = [-2.5, 3.2, -1.8, 2.2, -3.0, 1.5][index % 6]!;
+      const targetRotation = seat === initial.seat ? (index - 2.5) * 2.2 + tilt : tilt;
+      const dx = x - source.x + (index - 2.5) * (seat === initial.seat ? 10 : 6);
       const dy = y - source.y;
       const startAt = beat * DURAK_DEAL_STAGGER_MS;
       const duration = timing.handAt - startAt;
@@ -102,7 +104,20 @@ export function DurakOpeningDeal({
           : position.startsWith("top")
             ? -origin.height - source.y
             : dy;
-      const finalTransform = `translate(${dx}px, ${dy}px) rotate(${(index - 2.5) * 2}deg)`;
+      const finalTransform = `translate(${dx}px, ${dy}px) rotate(${targetRotation}deg)`;
+
+      // 3D Parabolic Deal Flight with Dynamic Altitude Shadow & Scale Curve (like Joker).
+      const flightP1 = 0.35;
+      const flightP2 = 0.70;
+      const arc1 = 4 * flightP1 * (1 - flightP1);
+      const arc2 = 4 * flightP2 * (1 - flightP2);
+      const px1 = dx * flightP1;
+      const py1 = dy * flightP1 - arc1 * Math.min(26, Math.hypot(dx, dy) * 0.08);
+      const px2 = dx * flightP2;
+      const py2 = dy * flightP2 - arc2 * Math.min(26, Math.hypot(dx, dy) * 0.08);
+      const rot1 = targetRotation * flightP1 + 3.5;
+      const rot2 = targetRotation * flightP2 + 1.8;
+
       animate(
         element,
         reduced
@@ -114,28 +129,51 @@ export function DurakOpeningDeal({
                 opacity: 1,
                 offset: (timing.exitAt - startAt) / duration,
               },
-              { transform: finalTransform, opacity: 0 },
+              { transform: `translate(${exitX}px, ${exitY}px) rotate(0deg)`, opacity: 1 },
             ]
           : [
-              { transform: "translate(0, 0) rotate(0deg)", opacity: 0, offset: 0 },
-              { transform: "translate(0, 0) rotate(0deg)", opacity: 1, offset: 0.01 },
               {
-                transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 20}px) rotate(5deg)`,
+                transform: "translate(0, 0) scale(0.92) rotate(0deg)",
+                filter: "drop-shadow(0px 2px 3px rgba(0,0,0,0.3))",
+                opacity: 0,
+                offset: 0,
+              },
+              {
+                transform: "translate(0, 0) scale(0.92) rotate(0deg)",
+                filter: "drop-shadow(0px 2px 3px rgba(0,0,0,0.3))",
                 opacity: 1,
-                offset: (DURAK_DEAL_FLIGHT_MS * 0.5) / duration,
+                offset: 0.01,
+              },
+              {
+                transform: `translate(${px1.toFixed(1)}px, ${py1.toFixed(1)}px) scale(${(1.0 + 0.16 * arc1).toFixed(3)}) rotate(${rot1.toFixed(1)}deg)`,
+                filter: `drop-shadow(0px ${(2 + 14 * arc1).toFixed(1)}px ${(4 + 16 * arc1).toFixed(1)}px rgba(0,0,0,0.48))`,
+                opacity: 1,
+                offset: (DURAK_DEAL_FLIGHT_MS * flightP1) / duration,
+              },
+              {
+                transform: `translate(${px2.toFixed(1)}px, ${py2.toFixed(1)}px) scale(${(1.0 + 0.10 * arc2).toFixed(3)}) rotate(${rot2.toFixed(1)}deg)`,
+                filter: `drop-shadow(0px ${(2 + 8 * arc2).toFixed(1)}px ${(4 + 10 * arc2).toFixed(1)}px rgba(0,0,0,0.4))`,
+                opacity: 1,
+                offset: (DURAK_DEAL_FLIGHT_MS * flightP2) / duration,
               },
               {
                 transform: finalTransform,
+                filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.32))",
                 opacity: 1,
                 offset: DURAK_DEAL_FLIGHT_MS / duration,
               },
               {
                 transform: finalTransform,
+                filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.32))",
                 opacity: 1,
                 offset: (timing.exitAt - startAt) / duration,
-                easing: "cubic-bezier(.4,0,.8,1)",
+                easing: "cubic-bezier(.4,0,.2,1)",
               },
-              { transform: `translate(${exitX}px, ${exitY}px) rotate(0deg)`, opacity: 1 },
+              {
+                transform: `translate(${exitX}px, ${exitY}px) rotate(0deg)`,
+                filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.2))",
+                opacity: 1,
+              },
             ],
         duration,
         startAt,
@@ -163,6 +201,7 @@ export function DurakOpeningDeal({
       ],
       DURAK_HAND_ENTRANCE_MS,
       timing.handAt,
+      "cubic-bezier(0.16, 1, 0.3, 1)",
     );
     table?.querySelectorAll<HTMLElement>(".durak-fullscreen-opponent-backs").forEach((element) => {
       const position = element.closest("[data-position]")?.getAttribute("data-position") ?? "top";
@@ -182,6 +221,7 @@ export function DurakOpeningDeal({
         ],
         DURAK_HAND_ENTRANCE_MS,
         timing.handAt,
+        "cubic-bezier(0.16, 1, 0.3, 1)",
       );
     });
     const stock = table?.querySelector("[data-durak-stock-trump] > *")?.getBoundingClientRect();
@@ -198,6 +238,7 @@ export function DurakOpeningDeal({
       [{ transform: "rotateY(0deg)" }, { transform: "rotateY(180deg)" }],
       DURAK_TRUMP_FLIP_MS,
       timing.revealAt,
+      "cubic-bezier(0.2, 0.8, 0.2, 1)",
     );
     animate(
       layer.querySelector<HTMLElement>(".durak-deal-trump"),
@@ -207,6 +248,7 @@ export function DurakOpeningDeal({
       ],
       DURAK_TRUMP_PLACE_MS,
       timing.placeAt,
+      "cubic-bezier(0.16, 1, 0.3, 1)",
     );
     animate(
       layer.querySelector<HTMLElement>(".durak-deal-stock"),
@@ -216,6 +258,7 @@ export function DurakOpeningDeal({
       ],
       DURAK_STOCK_PLACE_MS,
       timing.stockAt,
+      "cubic-bezier(0.16, 1, 0.3, 1)",
     );
     const timer = setTimeout(
       () => complete.current(id),

@@ -357,7 +357,7 @@
 .durak-opening-deal { position:absolute; inset:0; z-index:50; pointer-events:none; --card-w:clamp(38px, 14vh, 70px); perspective:800px; }
 .durak-deal-origin { position:absolute; left:clamp(56px, 12vw, 140px); top:76%; width:var(--card-w); height:calc(var(--card-w) * 1.4); margin-left:calc(var(--card-w) * -.5); margin-top:calc(var(--card-w) * -.7); }
 .durak-deal-card, .durak-deal-trump, .durak-deal-stock { position:absolute; inset:0; }
-.durak-deal-card { z-index:4; will-change:transform; }
+.durak-deal-card { z-index:4; will-change:transform, filter; }
 .durak-deal-trump { z-index:5; }
 .durak-deal-trump-flip { position:absolute; inset:0; transform-style:preserve-3d; }
 .durak-deal-face, .durak-deal-back { position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
