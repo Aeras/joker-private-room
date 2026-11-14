@@ -25,7 +25,11 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame,onNewGame}:{
 }) {
  const { game, flight, collection, landDiscard, finishDiscard, accept: setGame, presenting } = useDurakPresentation(code);
  const [dealComplete,setDealComplete]=useState(0);
+ const [handRevealed,setHandRevealed]=useState(false);
  const dealing=Boolean(game?.dealReadyAt && game.dealReadyAt!==dealComplete && game.dealReadyAt>(game.dealServerNow??game.dealReadyAt));
+ useEffect(() => {
+   if (!dealing) setHandRevealed(false);
+ }, [dealing]);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState("");
  const [closed,setClosed]=useState(false);
@@ -217,13 +221,21 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame,onNewGame}:{
           )}
         </div>
       </div>
-      {dealing && game.dealReadyAt && <DurakOpeningDeal key={game.dealReadyAt} game={game} onComplete={setDealComplete} />}
+      {dealing && game.dealReadyAt && (
+        <DurakOpeningDeal
+          key={game.dealReadyAt}
+          game={game}
+          onComplete={setDealComplete}
+          onHandEntrance={() => setHandRevealed(true)}
+        />
+      )}
       <DurakDiscardFlight collection={collection} onLand={landDiscard} onComplete={finishDiscard} />
       <DurakResults key={code} game={game} playerName={playerName} onNewGame={onNewGame} />
       <DurakFullscreenHand
         cards={game.myHand}
         arriving={collection?.kind === "take" && collection.receiver === game.seat ? collection.cards : []}
-        concealed={dealing}
+        concealed={dealing && !handRevealed}
+        revealing={dealing && handRevealed}
         busy={loading || presenting || dealing}
         canPlay={(card) => playable(card).length > 0}
         onPlay={clickCard}

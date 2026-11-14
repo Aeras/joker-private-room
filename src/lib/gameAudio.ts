@@ -75,7 +75,7 @@ function stopPreviousDeal(): void {
     active.delete("deal");
   }
   for (const audio of pools.get("deal") ?? []) {
-    audio.pause();
+    try { audio.pause(); } catch { /* best effort */ }
     try { audio.currentTime = 0; } catch { /* resource not seekable yet */ }
   }
 }

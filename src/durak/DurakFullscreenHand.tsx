@@ -14,6 +14,7 @@ function durakHandOverlap(count: number) {
 export function DurakFullscreenHand({
   cards,
   concealed = false,
+  revealing = false,
   arriving = [],
   busy,
   canPlay,
@@ -24,6 +25,7 @@ export function DurakFullscreenHand({
 }: {
   cards: readonly DurakCard[];
   concealed?: boolean;
+  revealing?: boolean;
   arriving?: readonly DurakCard[];
   busy: boolean;
   canPlay: (card: DurakCard) => boolean;
@@ -43,15 +45,20 @@ export function DurakFullscreenHand({
   const gesture = useRef<Gesture | null>(null);
   const layout = useHandReflow(cards.map(card => card.suit + ":" + card.rank).join("|"), !concealed);
   const suppressClick = useRef(false);
-  const [faceUp, setFaceUp] = useState(!concealed);
+  const [faceUp, setFaceUp] = useState(!concealed && !revealing);
   useEffect(() => {
-    if (!concealed) {
-      const timer = setTimeout(() => setFaceUp(true), 40);
+    if (revealing) {
+      setFaceUp(false);
+      // Synchronously schedule 3D card flip while rising from below the table
+      const timer = setTimeout(() => setFaceUp(true), 120);
       return () => clearTimeout(timer);
+    }
+    if (!concealed) {
+      setFaceUp(true);
     } else {
       setFaceUp(false);
     }
-  }, [concealed]);
+  }, [concealed, revealing]);
   const [drag, setDrag] = useState<{ card: DurakCard; x: number; y: number; width: number } | null>(
     null,
   );

@@ -12,19 +12,25 @@ import {
 import { DURAK_SEAT_POSITIONS } from "./rules";
 import type { DurakGameView } from "@/services/durakRoomFunctions";
 import { durakTableText as text } from "@/i18n/durak.el";
+import { dealProgress } from "@/components/table/dealtCardMotion";
+import { playGameSound } from "@/lib/gameAudio";
 
 /** Closed-card presentation only: never receives opponents' actual cards. */
 export function DurakOpeningDeal({
   game,
   onComplete,
+  onHandEntrance,
 }: {
   game: DurakGameView;
   onComplete: (id: number) => void;
+  onHandEntrance?: () => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const snapshot = useRef(game);
   const complete = useRef(onComplete);
   complete.current = onComplete;
+  const handEntrance = useRef(onHandEntrance);
+  handEntrance.current = onHandEntrance;
   const id = game.dealReadyAt;
   useLayoutEffect(() => {
     const layer = root.current;
@@ -36,6 +42,7 @@ export function DurakOpeningDeal({
     const elapsed = Math.max(0, timing.duration - (id - (initial.dealServerNow ?? id)));
     const lead = Math.max(0, (initial.dealStartedAt ?? 0) - (initial.dealServerNow ?? id));
     const animations: Animation[] = [];
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const animate = (
       element: HTMLElement | null,
@@ -54,6 +61,15 @@ export function DurakOpeningDeal({
       animation.currentTime = elapsed;
       animations.push(animation);
     };
+
+    if (!reduced) {
+      timeouts.push(
+        setTimeout(
+          () => playGameSound("shuffle", String(id)),
+          Math.max(0, lead - elapsed),
+        ),
+      );
+    }
     // Measure the actual corner anchor, including safe responsive sizing.
     const origin = layer.querySelector(".durak-deal-origin")!.getBoundingClientRect();
     const source = {
@@ -100,6 +116,7 @@ export function DurakOpeningDeal({
       const targetRotation = tilt;
       const dx = x - source.x + scatter.x;
       const dy = y - source.y + scatter.y;
+      const distance = Math.hypot(dx, dy);
       const startAt = beat * DURAK_DEAL_STAGGER_MS;
       const duration = timing.handAt - startAt;
       const exitX =
@@ -116,17 +133,46 @@ export function DurakOpeningDeal({
             : dy;
       const finalTransform = `translate(${dx}px, ${dy}px) rotate(${targetRotation}deg)`;
 
-      // 3D Parabolic Deal Flight with Dynamic Altitude Shadow & Scale Curve (like Joker).
-      const flightP1 = 0.35;
-      const flightP2 = 0.70;
-      const arc1 = 4 * flightP1 * (1 - flightP1);
-      const arc2 = 4 * flightP2 * (1 - flightP2);
-      const px1 = dx * flightP1;
-      const py1 = dy * flightP1 - arc1 * Math.min(26, Math.hypot(dx, dy) * 0.08);
-      const px2 = dx * flightP2;
-      const py2 = dy * flightP2 - arc2 * Math.min(26, Math.hypot(dx, dy) * 0.08);
-      const rot1 = targetRotation * flightP1 + 3.5;
-      const rot2 = targetRotation * flightP2 + 1.8;
+      if (!reduced) {
+        timeouts.push(
+          setTimeout(
+            () => playGameSound("deal", `${id}:${beat}`),
+            Math.max(0, startAt + lead - elapsed),
+          ),
+        );
+      }
+
+      const flightFrames: Keyframe[] = [];
+      const sampleCount = 8;
+      for (let s = 0; s <= sampleCount; s++) {
+        const time = s / sampleCount;
+        const progress = dealProgress(time);
+        const arc = 4 * progress * (1 - progress);
+        const px = dx * progress;
+        const py = dy * progress - arc * Math.min(26, distance * 0.08);
+        const rot = targetRotation * progress + (distance > 0 && progress > 0 && progress < 1 ? Math.sin(Math.PI * progress) * 3 : 0);
+        const scale = s === sampleCount ? 1 : 0.92 + 0.08 * progress + 0.16 * arc;
+        const shadowY = (2 + 14 * arc).toFixed(1);
+        const shadowBlur = (4 + 16 * arc).toFixed(1);
+        flightFrames.push({
+          transform: `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px) scale(${scale.toFixed(3)}) rotate(${rot.toFixed(1)}deg)`,
+          filter: `drop-shadow(0px ${shadowY}px ${shadowBlur}px rgba(0,0,0,${(0.3 + 0.18 * arc).toFixed(2)}))`,
+          opacity: s === 0 ? 0 : 1,
+          offset: (DURAK_DEAL_FLIGHT_MS * time) / duration,
+        });
+      }
+      flightFrames.push({
+        transform: finalTransform,
+        filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.32))",
+        opacity: 1,
+        offset: (timing.exitAt - startAt) / duration,
+        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+      });
+      flightFrames.push({
+        transform: `translate(${exitX}px, ${exitY}px) rotate(${targetRotation}deg)`,
+        filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.2))",
+        opacity: 1,
+      });
 
       animate(
         element,
@@ -141,50 +187,7 @@ export function DurakOpeningDeal({
               },
               { transform: `translate(${exitX}px, ${exitY}px) rotate(${targetRotation}deg)`, opacity: 1 },
             ]
-          : [
-              {
-                transform: "translate(0, 0) scale(0.92) rotate(0deg)",
-                filter: "drop-shadow(0px 2px 3px rgba(0,0,0,0.3))",
-                opacity: 0,
-                offset: 0,
-              },
-              {
-                transform: "translate(0, 0) scale(0.92) rotate(0deg)",
-                filter: "drop-shadow(0px 2px 3px rgba(0,0,0,0.3))",
-                opacity: 1,
-                offset: 0.01,
-              },
-              {
-                transform: `translate(${px1.toFixed(1)}px, ${py1.toFixed(1)}px) scale(${(1.0 + 0.16 * arc1).toFixed(3)}) rotate(${rot1.toFixed(1)}deg)`,
-                filter: `drop-shadow(0px ${(2 + 14 * arc1).toFixed(1)}px ${(4 + 16 * arc1).toFixed(1)}px rgba(0,0,0,0.48))`,
-                opacity: 1,
-                offset: (DURAK_DEAL_FLIGHT_MS * flightP1) / duration,
-              },
-              {
-                transform: `translate(${px2.toFixed(1)}px, ${py2.toFixed(1)}px) scale(${(1.0 + 0.10 * arc2).toFixed(3)}) rotate(${rot2.toFixed(1)}deg)`,
-                filter: `drop-shadow(0px ${(2 + 8 * arc2).toFixed(1)}px ${(4 + 10 * arc2).toFixed(1)}px rgba(0,0,0,0.4))`,
-                opacity: 1,
-                offset: (DURAK_DEAL_FLIGHT_MS * flightP2) / duration,
-              },
-              {
-                transform: finalTransform,
-                filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.32))",
-                opacity: 1,
-                offset: DURAK_DEAL_FLIGHT_MS / duration,
-              },
-              {
-                transform: finalTransform,
-                filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.32))",
-                opacity: 1,
-                offset: (timing.exitAt - startAt) / duration,
-                easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-              },
-              {
-                transform: `translate(${exitX}px, ${exitY}px) rotate(${targetRotation}deg)`,
-                filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.2))",
-                opacity: 1,
-              },
-            ],
+          : flightFrames,
         duration,
         startAt,
         "linear",
@@ -192,6 +195,12 @@ export function DurakOpeningDeal({
     });
     // Real hand surfaces stay mounted/decoded and enter only after the closed piles leave.
     const hand = table?.querySelector<HTMLElement>(".durak-fullscreen-hand-row");
+    timeouts.push(
+      setTimeout(
+        () => handEntrance.current?.(),
+        Math.max(0, timing.handAt + lead - elapsed),
+      ),
+    );
     animate(
       hand ?? null,
       [
@@ -276,6 +285,7 @@ export function DurakOpeningDeal({
     );
     return () => {
       clearTimeout(timer);
+      timeouts.forEach((t) => clearTimeout(t));
       animations.forEach((animation) => animation.cancel());
     };
   }, [id]);
