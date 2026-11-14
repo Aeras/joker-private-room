@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } fr
 import { createPortal } from "react-dom";
 import { durakTableText as text } from "@/i18n/durak.el";
 import { cardLabel } from "@/domain/cards";
-import { cardForArtwork, DurakCardFace } from "./DurakTableVisuals";
+import { cardForArtwork, DurakCardFace, DurakCardBack } from "./DurakTableVisuals";
 import type { DurakCard } from "./rules";
 import { useHandReflow } from "@/components/table/useHandReflow";
 
@@ -43,6 +43,15 @@ export function DurakFullscreenHand({
   const gesture = useRef<Gesture | null>(null);
   const layout = useHandReflow(cards.map(card => card.suit + ":" + card.rank).join("|"), !concealed);
   const suppressClick = useRef(false);
+  const [faceUp, setFaceUp] = useState(!concealed);
+  useEffect(() => {
+    if (!concealed) {
+      const timer = setTimeout(() => setFaceUp(true), 40);
+      return () => clearTimeout(timer);
+    } else {
+      setFaceUp(false);
+    }
+  }, [concealed]);
   const [drag, setDrag] = useState<{ card: DurakCard; x: number; y: number; width: number } | null>(
     null,
   );
@@ -158,7 +167,24 @@ export function DurakFullscreenHand({
                 marginLeft: index ? "calc(var(--durak-hand-step) - var(--durak-hand-card-w))" : 0,
               }}
             >
-              <DurakCardFace card={card} />
+              <div className="relative w-full h-full [perspective:900px] pointer-events-none">
+                <div
+                  className="relative w-full h-full transition-transform [transform-style:preserve-3d]"
+                  style={{
+                    transform: `rotateY(${faceUp ? 0 : 180}deg)`,
+                    transitionDuration: "450ms",
+                    transitionDelay: `${index * 40}ms`,
+                    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+                  }}
+                >
+                  <div className="relative w-full h-full [backface-visibility:hidden]">
+                    <DurakCardFace card={card} />
+                  </div>
+                  <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)]">
+                    <DurakCardBack />
+                  </div>
+                </div>
+              </div>
             </button>
           );
         })}
