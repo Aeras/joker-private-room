@@ -31,7 +31,7 @@ export const Route = createFileRoute("/join")({
 function JoinPage() {
   const activeLookup = useCurrentActiveGame();
   return (
-    <ScreenShell title="Συμμετοχή σε παιχνίδι" variant="pregame" fixedViewport={true} contentClassName="pregame-centered-content">
+    <ScreenShell title="Συμμετοχή σε παιχνίδι" variant="pregame" fixedViewport={true} backTo="/joker" contentClassName="pregame-centered-content">
       <PlayerSessionGate onAuthenticated={() => { void activeLookup.refresh(); }} hideConnectedBanner={true}>
         {(player) => <AvailableRooms player={player} activeLookup={activeLookup} />}
       </PlayerSessionGate>

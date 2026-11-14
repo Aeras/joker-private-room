@@ -234,6 +234,7 @@ export function CreateGame() {
       title={t.createGame}
       variant="pregame"
       fixedViewport={true}
+      backTo="/joker"
       contentClassName="pregame-form-content !py-1 sm:!py-2"
       footer={
         <div className="pregame-create-footer !py-0">

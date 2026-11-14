@@ -34,10 +34,12 @@ export function ScreenShell({
   const handleBack = () => {
     if (onBack) {
       onBack();
+    } else if (backTo) {
+      void router.navigate({ to: backTo });
     } else if (typeof window !== "undefined" && window.history.length > 1) {
       router.history.back();
     } else {
-      void router.navigate({ to: backTo ?? "/joker" });
+      void router.navigate({ to: "/joker" });
     }
   };
 

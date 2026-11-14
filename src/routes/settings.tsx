@@ -16,7 +16,7 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   return (
-    <ScreenShell title={t.settings}>
+    <ScreenShell title={t.settings} backTo="/joker">
       <SectionLabel>{t.demoMode}</SectionLabel>
       <div className="panel p-5 text-sm text-muted-foreground">
         Η εφαρμογή τρέχει τοπικά με δοκιμαστικούς παίκτες. Οι ρυθμίσεις θα προστεθούν σύντομα.

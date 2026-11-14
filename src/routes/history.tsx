@@ -30,7 +30,7 @@ function HistoryPage() {
   }, []);
 
   return (
-    <ScreenShell title="Ιστορικό">
+    <ScreenShell title="Ιστορικό" backTo="/joker">
       <Link to="/" className={jButton({ variant: "ghost", size: "sm", className: "mb-5" })}>← Αρχική</Link>
       {error && <p className="rounded-xl border border-negative/30 bg-negative/10 p-3 text-sm text-negative">{error}</p>}
       {!result && !error && <p className="text-sm text-muted-foreground">Φόρτωση…</p>}
