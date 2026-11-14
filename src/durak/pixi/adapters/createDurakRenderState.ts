@@ -23,10 +23,11 @@ export function createDurakRenderState(
     const knownBot = CANONICAL_BOTS.find(
       (bot) => bot.displayName.toLowerCase() === displayName.trim().toLowerCase()
     );
-    const avatarUrl =
+    const rawAvatarUrl =
       seatInfo?.occupant === "bot"
         ? (knownBot ?? CANONICAL_BOTS[seatIndex % CANONICAL_BOTS.length])?.avatarUrl
         : (assets.avatar("", displayName) ?? knownBot?.avatarUrl);
+    const avatarUrl = assets.tableAvatar(rawAvatarUrl) ?? rawAvatarUrl;
 
     let role: "attacker" | "defender" | "idle" = "idle";
     if (seatIndex === game.attacker) role = "attacker";

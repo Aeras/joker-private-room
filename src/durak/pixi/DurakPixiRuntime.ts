@@ -41,7 +41,7 @@ export class DurakPixiRuntime {
       resolution: initialViewport.dpr,
       autoDensity: true,
       antialias: true,
-      backgroundColor: 0x10261c, // Match deep casino green table felt
+      backgroundColor: 0x060c18, // Match deep midnight blue casino table felt
       powerPreference: "high-performance",
     });
 

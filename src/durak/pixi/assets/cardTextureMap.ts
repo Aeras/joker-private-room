@@ -24,7 +24,8 @@ export function getDurakCardFaceUrl(card: DurakCard): string {
 }
 
 export function getDurakCardBackUrl(): string {
-  return assets.cardArtwork(assets.cardBack);
+  // Use classic blue back for Durak
+  return "/cards/runtime-png/backs/blue_back.png";
 }
 
 export function getDurakTableArtUrl(): string {

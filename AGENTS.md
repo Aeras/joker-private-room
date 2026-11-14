@@ -19,6 +19,7 @@
   - **Project Ref**: wubrgnzbvtrzbvvqalfw
   - **Project URL**: https://wubrgnzbvtrzbvvqalfw.supabase.co
 - **Cross-Project Isolation**: Do NOT query, inspect, or modify other projects (e.g. PromptBeats qwlksrcsovbncmretjdt or supabase_mcp). All database, schema, and API operations for this project must target supabase-tzoker only.
+- **Strict Authorization Rule**: NEVER modify code or database without explicit user command (e.g. "προχώρα", "ξεκίνα", "κάνε την αλλαγή", "κάνε τη διόρθωση"). Discussion, problem reports, and questions do NOT grant permission to edit files.
 
 ## 2. Architecture rules
 - `src/domain/` holds pure, UI-free game logic (cards, gameConfig, scoring, rulesets, scoreSheet, engine types); components never duplicate rules or hardcode deal/phase numbers — why: single source of truth, testable.

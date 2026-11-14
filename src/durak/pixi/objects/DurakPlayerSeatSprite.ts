@@ -8,6 +8,7 @@ export class DurakPlayerSeatSprite extends Container {
   private avatarContainer: Container;
   private avatarSprite: Sprite;
   private avatarMask: Graphics;
+  private initialText: Text;
   private border: Graphics;
   private nameText: Text;
   private roleBadge: Container;
@@ -16,13 +17,14 @@ export class DurakPlayerSeatSprite extends Container {
   private handCountBadge: Container;
   private handCountText: Text;
   private textureManager: DurakTextureManager;
+  private currentAvatarUrl: string | null = null;
 
   constructor(seat: number, textureManager: DurakTextureManager) {
     super();
     this.seat = seat;
     this.textureManager = textureManager;
 
-    // Avatar
+    // Avatar container
     this.avatarContainer = new Container();
 
     // Dark circular background badge
@@ -38,27 +40,30 @@ export class DurakPlayerSeatSprite extends Container {
       fontWeight: "bold",
       fill: 0xf5c15d,
     });
-    const initialText = new Text({ text: "?", style: initialStyle });
-    initialText.anchor.set(0.5);
-    (this as any).initialText = initialText;
-    this.avatarContainer.addChild(initialText);
+    this.initialText = new Text({ text: "?", style: initialStyle });
+    this.initialText.anchor.set(0.5);
+    this.avatarContainer.addChild(this.initialText);
 
+    // Avatar image sprite
     this.avatarSprite = new Sprite();
     this.avatarSprite.anchor.set(0.5);
     this.avatarSprite.width = 64;
     this.avatarSprite.height = 64;
     this.avatarSprite.visible = false;
 
+    // Mask for circular avatar
     this.avatarMask = new Graphics();
     this.avatarMask.circle(0, 0, 32);
     this.avatarMask.fill(0xffffff);
+    // Setting renderable = false lets Pixi 8 use it as a mask without drawing the solid fill
+    this.avatarMask.renderable = false;
+    this.avatarContainer.addChild(this.avatarMask);
     this.avatarSprite.mask = this.avatarMask;
 
     this.border = new Graphics();
     this.border.circle(0, 0, 33);
     this.border.stroke({ color: 0xffffff, width: 2, alpha: 0.6 });
 
-    // Note: Do NOT add avatarMask to container, otherwise Pixi draws it as a solid white circle!
     this.avatarContainer.addChild(this.avatarSprite, this.border);
     this.addChild(this.avatarContainer);
 
@@ -168,23 +173,28 @@ export class DurakPlayerSeatSprite extends Container {
     }
 
     // Set initial fallback letter
-    if ((this as any).initialText) {
-      (this as any).initialText.text = player.displayName ? player.displayName.charAt(0).toUpperCase() : "?";
-    }
+    this.initialText.text = player.displayName ? player.displayName.charAt(0).toUpperCase() : "?";
 
-    // Lazy load avatar image if URL is provided
-    if (player.avatarUrl) {
+    // Load avatar image if URL is provided
+    if (player.avatarUrl && player.avatarUrl !== this.currentAvatarUrl) {
+      this.currentAvatarUrl = player.avatarUrl;
       Assets.load<Texture>(player.avatarUrl)
         .then((tex) => {
-          if (tex) {
+          if (tex && this.currentAvatarUrl === player.avatarUrl) {
             this.avatarSprite.texture = tex;
             this.avatarSprite.visible = true;
-            if ((this as any).initialText) (this as any).initialText.visible = false;
+            this.initialText.visible = false;
           }
         })
         .catch(() => {
           // Keep letter initial fallback
+          this.avatarSprite.visible = false;
+          this.initialText.visible = true;
         });
+    } else if (!player.avatarUrl) {
+      this.currentAvatarUrl = null;
+      this.avatarSprite.visible = false;
+      this.initialText.visible = true;
     }
   }
 }

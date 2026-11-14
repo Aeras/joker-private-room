@@ -12,6 +12,7 @@ export type CardLayoutPose = {
 export type DurakLayoutEngine = {
   getStockPose: () => { x: number; y: number };
   getDiscardPose: () => { x: number; y: number };
+  getDealerPose: () => { x: number; y: number };
   getSeatPose: (position: string) => { x: number; y: number };
   getBattlePairPose: (pairIndex: number, totalPairs: number) => { x: number; y: number };
   getLocalHandPose: (cardIndex: number, totalCards: number, isSelected?: boolean) => CardLayoutPose;
@@ -28,23 +29,28 @@ export const layoutEngine: DurakLayoutEngine = {
     y: 520,
   }),
 
+  getDealerPose: () => ({
+    x: 310,
+    y: 940,
+  }),
+
   getSeatPose: (position: string) => {
     switch (position) {
       case "bottom":
-        return { x: 340, y: 920 };
+        return { x: 180, y: 960 };
       case "left":
-        return { x: 320, y: 380 };
+        return { x: 180, y: 490 };
       case "top-left":
-        return { x: 640, y: 190 };
+        return { x: 520, y: 150 };
       case "top":
       case "top-center":
-        return { x: 960, y: 170 };
+        return { x: 960, y: 150 };
       case "top-right":
-        return { x: 1280, y: 190 };
+        return { x: 1400, y: 150 };
       case "right":
-        return { x: 1600, y: 380 };
+        return { x: 1740, y: 490 };
       default:
-        return { x: 960, y: 170 };
+        return { x: 960, y: 150 };
     }
   },
 
@@ -61,7 +67,7 @@ export const layoutEngine: DurakLayoutEngine = {
 
   getLocalHandPose: (cardIndex: number, totalCards: number, isSelected = false): CardLayoutPose => {
     if (totalCards <= 0) {
-      return { x: LOGICAL_WIDTH / 2, y: 910, rotation: 0, scale: 1, zIndex: 0 };
+      return { x: LOGICAL_WIDTH / 2, y: 990, rotation: 0, scale: 1, zIndex: 0 };
     }
 
     const maxSpreadWidth = 1100;
@@ -73,9 +79,10 @@ export const layoutEngine: DurakLayoutEngine = {
     const normalizedOffset = mid > 0 ? offsetFromMid / mid : 0;
 
     // Natural subtle fan arc
-    const arcLift = Math.abs(normalizedOffset) * 15;
-    const baseY = 910 + arcLift;
-    const y = isSelected ? baseY - 40 : baseY;
+    const arcLift = Math.abs(normalizedOffset) * 12;
+    // 65-70% visible height: bottom edge is y=1080, CARD_HEIGHT=182, center at 990 -> 125px visible (68.7%)
+    const baseY = 990 + arcLift;
+    const y = isSelected ? baseY - 45 : baseY;
     const rotation = normalizedOffset * 0.12; // in radians (~7 degrees max)
 
     return {
