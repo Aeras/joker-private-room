@@ -1,6 +1,6 @@
 .durak-fullscreen {
-  --durak-hand-card-w: clamp(42px, min(7.3vw, 18.8vh), 84px);
-  --durak-hand-visible-h: calc(var(--durak-hand-card-w) * 1.4 * 0.62);
+  --durak-hand-card-w: clamp(54px, min(9vw, 21vh), 96px);
+  --durak-hand-visible-h: calc(var(--durak-hand-card-w) * 1.4 * 0.68);
   position: fixed;
   inset: 0;
   z-index: 90;
@@ -8,7 +8,7 @@
   overflow: clip;
   display: flex;
   flex-direction: column;
-  background: #060c18;
+  background: #10261c;
   color: white;
 }
 .durak-fullscreen-field {
@@ -53,6 +53,15 @@
 .durak-fullscreen-avatar {
   width: clamp(34px, 10.6vh, 58px);
   height: clamp(34px, 10.6vh, 58px);
+}
+.durak-fullscreen-local-seat {
+  position: absolute;
+  left: calc(env(safe-area-inset-left) + 14px);
+  bottom: calc(var(--durak-hand-visible-h) + 12px);
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .durak-fullscreen-opponent-info {
   width: 100%;
