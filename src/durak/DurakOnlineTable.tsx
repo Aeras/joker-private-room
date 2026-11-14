@@ -24,9 +24,23 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame,onNewGame}:{
  code:string;seats:Array<{index:number;name:string|null;occupant:string}>;onBack:(reason?:"closed"|"finished")=>void;onEndGame?:(()=>Promise<void>)|undefined;onNewGame?:(()=>Promise<void>)|undefined;
 }) {
  const { game, flight, collection, landDiscard, finishDiscard, accept: setGame, presenting } = useDurakPresentation(code);
- const [dealComplete,setDealComplete]=useState(0);
- const [handRevealed,setHandRevealed]=useState(false);
- const dealing=Boolean(game?.dealReadyAt && game.dealReadyAt!==dealComplete && game.dealReadyAt>(game.dealServerNow??game.dealReadyAt));
+ const [dealComplete, setDealComplete] = useState(0);
+ const [dealStarted, setDealStarted] = useState<number | null>(null);
+ const [handRevealed, setHandRevealed] = useState(false);
+ const shouldDeal = Boolean(
+   game?.dealReadyAt &&
+   game.dealReadyAt !== dealComplete &&
+   game.round === 1 &&
+   game.pairs.length === 0 &&
+   game.discardCount === 0 &&
+   (dealStarted === game.dealReadyAt || (game.dealServerNow === undefined || game.dealServerNow < game.dealReadyAt)),
+ );
+ useEffect(() => {
+   if (game?.dealReadyAt && shouldDeal && dealStarted !== game.dealReadyAt) {
+     setDealStarted(game.dealReadyAt);
+   }
+ }, [game?.dealReadyAt, shouldDeal, dealStarted]);
+ const dealing = Boolean(game?.dealReadyAt && shouldDeal);
  useEffect(() => {
    if (!dealing) setHandRevealed(false);
  }, [dealing]);
