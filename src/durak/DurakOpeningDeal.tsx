@@ -7,6 +7,7 @@ import {
   DURAK_TRUMP_FLIP_MS,
   DURAK_TRUMP_PLACE_MS,
   DURAK_STOCK_PLACE_MS,
+  DURAK_HAND_EXIT_MS,
   DURAK_HAND_ENTRANCE_MS,
 } from "./dealTiming";
 import { DURAK_SEAT_POSITIONS } from "./rules";
@@ -300,14 +301,18 @@ export function DurakOpeningDeal({
     animate(
       caption,
       [{ opacity: 1 }, { opacity: 0 }],
-      250,
+      300,
       timing.handAt,
       "ease-out",
     );
     const flip = layer.querySelector<HTMLElement>(".durak-deal-trump-flip");
     animate(
       flip,
-      [{ transform: "rotateY(0deg)" }, { transform: "rotateY(180deg)" }],
+      [
+        { transform: "rotateY(0deg) scale(1)", offset: 0 },
+        { transform: "rotateY(90deg) scale(1.15)", offset: 0.45 },
+        { transform: "rotateY(180deg) scale(1.1)", offset: 1 },
+      ],
       DURAK_TRUMP_FLIP_MS,
       timing.revealAt,
       "cubic-bezier(0.2, 0.8, 0.2, 1)",
@@ -315,8 +320,8 @@ export function DurakOpeningDeal({
     animate(
       layer.querySelector<HTMLElement>(".durak-deal-trump"),
       [
-        { transform: "translate(0, 0) rotate(0deg)" },
-        { transform: `translate(${dx}px, ${dy}px) rotate(90deg) scale(${scale})` },
+        { transform: "translate(0, 0) rotate(0deg) scale(1.1)", offset: 0 },
+        { transform: `translate(${dx}px, ${dy}px) rotate(90deg) scale(${scale})`, offset: 1 },
       ],
       DURAK_TRUMP_PLACE_MS,
       timing.placeAt,
@@ -325,8 +330,8 @@ export function DurakOpeningDeal({
     animate(
       layer.querySelector<HTMLElement>(".durak-deal-stock"),
       [
-        { transform: "translate(0, 0)", zIndex: 3 },
-        { transform: `translate(${bx}px, ${by}px) scale(${backScale})`, zIndex: 6 },
+        { transform: "translate(0, 0)", zIndex: 3, offset: 0 },
+        { transform: `translate(${bx}px, ${by}px) scale(${backScale})`, zIndex: 6, offset: 1 },
       ],
       DURAK_STOCK_PLACE_MS,
       timing.stockAt,

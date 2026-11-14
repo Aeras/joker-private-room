@@ -179,9 +179,9 @@ export function DurakFullscreenHand({
                   className="relative w-full h-full transition-transform [transform-style:preserve-3d]"
                   style={{
                     transform: `rotateY(${faceUp ? 0 : 180}deg)`,
-                    transitionDuration: "400ms",
-                    transitionDelay: `${index * 25}ms`,
-                    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+                    transitionDuration: "500ms",
+                    transitionDelay: `${index * 35}ms`,
+                    transitionTimingFunction: "cubic-bezier(0.2, 0.8, 0.2, 1)",
                   }}
                 >
                   <div className="relative w-full h-full [backface-visibility:hidden]">
