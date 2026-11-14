@@ -169,10 +169,10 @@ export function CreateGame() {
   };
 
   if (sessionLoading) {
-    return <ScreenShell title={t.createGame} variant="pregame" contentClassName="pregame-centered-content"><p role="status">{t.sessionLoading}</p></ScreenShell>;
+    return <ScreenShell title={t.createGame} variant="pregame" backTo="/joker" contentClassName="pregame-centered-content"><p role="status">{t.sessionLoading}</p></ScreenShell>;
   }
   if (sessionFailed) {
-    return <ScreenShell title={t.createGame} variant="pregame" contentClassName="pregame-centered-content"><div><p role="alert">{t.sessionLoadFailed}</p><JButton onClick={() => setSessionAttempt(n => n + 1)}>Δοκιμή ξανά</JButton></div></ScreenShell>;
+    return <ScreenShell title={t.createGame} variant="pregame" backTo="/joker" contentClassName="pregame-centered-content"><div><p role="alert">{t.sessionLoadFailed}</p><JButton onClick={() => setSessionAttempt(n => n + 1)}>Δοκιμή ξανά</JButton></div></ScreenShell>;
   }
   if (activeLookup.status === "loading" || activeLookup.status === "active") {
     return <div className="surface-room min-h-dvh" />;
@@ -180,7 +180,7 @@ export function CreateGame() {
 
   if (activeLookup.status === "error") {
     return (
-      <ScreenShell title={t.createGame} variant="pregame" contentClassName="pregame-centered-content">
+      <ScreenShell title={t.createGame} variant="pregame" backTo="/joker" contentClassName="pregame-centered-content">
         <div className="panel max-w-xl space-y-3 p-4">
           <p className="text-sm text-negative">Δεν ήταν δυνατός ο έλεγχος ενεργού παιχνιδιού.</p>
           <JButton className="pregame-primary-button w-full" onClick={() => void activeLookup.refresh()}>Δοκιμή ξανά</JButton>
@@ -191,7 +191,7 @@ export function CreateGame() {
 
   if (!verifiedHost) {
     return (
-      <ScreenShell title={t.createGame} variant="pregame" contentClassName="pregame-centered-content">
+      <ScreenShell title={t.createGame} variant="pregame" backTo="/joker" contentClassName="pregame-centered-content">
         <div className="pregame-auth-card">
           <div className="pregame-auth-block">
             <SectionLabel>Host</SectionLabel>

@@ -977,6 +977,7 @@ function BiribaContent({ playerId }: { playerId: string }) {
       title="ΜΠΙΡΙΜΠΑ"
       variant="pregame"
       fixedViewport
+      backTo="/"
       hideNavigation={Boolean(room)}
       contentClassName="!min-h-0 !overflow-hidden !py-1"
       headerActions={room ? <BiribaRoomControls isHost={isHost} busy={busy} error={error} onEndGame={endGame} /> : undefined}

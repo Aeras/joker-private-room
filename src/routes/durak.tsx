@@ -167,6 +167,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
       title="DURAK"
       variant="pregame"
       fixedViewport={true}
+      backTo="/"
       contentClassName="!overflow-y-auto !min-h-0 !py-0 flex flex-col justify-center"
     >
       <div className="mx-auto w-full max-w-4xl">

@@ -181,9 +181,9 @@ function Lobby() {
   };
 
   const leave = async () => {
-    if (!code || starting || botBusy) return;
-    const result = await leaveWaitingRoom({ data: { code } });
-    if (!result.ok) { setError("Δεν ήταν δυνατή η έξοδος."); return; }
+    if (code) {
+      void leaveWaitingRoom({ data: { code } }).catch(() => {});
+    }
     void navigate({ to: "/joker" });
   };
 
@@ -193,7 +193,8 @@ function Lobby() {
       title={t.lobby}
       variant="pregame"
       fixedViewport={true}
-      onBack={() => void leave()}
+      backTo="/joker"
+      onBack={leave}
       headerActions={
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs font-bold text-[#f5c15d] px-3 py-1 rounded-full bg-[#1e2024] border border-[#f5c15d]/30 shadow-sm">
@@ -204,14 +205,26 @@ function Lobby() {
       contentClassName="flex flex-col items-center justify-center !py-2 sm:!py-3"
     >
       <section className="pregame-lobby-grid mx-auto flex w-full max-w-4xl flex-col items-center justify-center gap-3 px-2 my-auto">
-        <div className="flex items-center justify-between w-full px-1 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="uppercase font-bold tracking-wider text-stone-400 text-[11px]">Θέσεις Παικτών (4/4)</span>
-            <span className="text-[#f5c15d] font-semibold">· {room.rulesetId === "popular" ? "Popular" : (room.rulesetName ?? publicRulesetName(room.rulesetId))}</span>
+        <div className="flex flex-wrap items-center justify-between w-full px-1 text-xs gap-1.5 border-b border-white/10 pb-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="uppercase font-bold tracking-wider text-stone-300 text-[11px]">
+              Θέσεις Παικτών
+            </span>
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-stone-300 border border-white/10">
+              4/4
+            </span>
+            <span className="rounded-full bg-[#f5c15d]/15 px-2.5 py-0.5 text-[10px] font-bold text-[#f5c15d] border border-[#f5c15d]/30">
+              {room.rulesetId === "popular" ? "Popular" : (room.rulesetName ?? publicRulesetName(room.rulesetId))}
+            </span>
           </div>
-          <span className="text-stone-400 text-[11px]">
-            {room.seats.filter(s => s.occupant.type === "human").length} Συνδεδεμένος · {room.seats.filter(s => s.occupant.type !== "human").length} Κενές
-          </span>
+          <div className="flex items-center gap-2 text-[11px] text-stone-400">
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span>{room.seats.filter(s => s.occupant.type === "human").length} Συνδεδεμένος</span>
+            </span>
+            <span>·</span>
+            <span>{room.seats.filter(s => s.occupant.type !== "human").length} Κενές</span>
+          </div>
         </div>
         <div className="grid grid-cols-4 gap-2.5 sm:gap-3.5 w-full" aria-label="Παίκτες">
           {room.seats.map(seat=><LobbySeat key={seat.index} seat={seat} hostId={room.hostId}
@@ -220,7 +233,7 @@ function Lobby() {
         </div>
         {error&&<p role="alert" className="text-center text-xs sm:text-sm text-negative">{error}</p>}
         <div className="flex items-center justify-between w-full pt-2 border-t border-white/10">
-          {room.status==="lobby"&&<JButton size="sm" variant="outlineGold" className="rounded-xl px-4 py-2 border-white/20 text-stone-300 hover:bg-white/5 text-xs font-semibold" onClick={()=>void leave()}>Έξοδος</JButton>}
+          {room.status==="lobby"&&<JButton size="sm" variant="outlineGold" className="rounded-xl px-4 py-2 border-white/20 text-stone-300 hover:bg-white/5 text-xs font-semibold" onClick={leave}>Έξοδος</JButton>}
           <span className="text-[11px] text-stone-400 hidden sm:inline">Οι κενές θέσεις συμπληρώνονται αυτόματα.</span>
           {room.status==="lobby"?<JButton size="sm" className="rounded-xl px-6 py-2.5 pregame-primary-button shadow-lg font-bold text-xs uppercase tracking-wider" disabled={!isHost||starting||botBusy} onClick={start}>Έναρξη παιχνιδιού</JButton>:
             room.gameId?<Link to="/table" search={{code:room.code,gameId:room.gameId}} className={jButton({size:"sm", className: "rounded-xl px-6 py-2.5 pregame-primary-button font-bold text-xs uppercase tracking-wider"})}>Μετάβαση στο τραπέζι</Link>:

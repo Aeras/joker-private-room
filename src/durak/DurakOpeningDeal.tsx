@@ -39,7 +39,14 @@ export function DurakOpeningDeal({
     const table = layer.closest(".durak-fullscreen");
     const bounds = layer.getBoundingClientRect();
     const timing = durakDealTiming(initial.handSizes.length);
-    const elapsed = Math.max(0, timing.duration - (id - (initial.dealServerNow ?? id)));
+    const isLateArrival = Boolean(
+      initial.dealServerNow &&
+        initial.dealStartedAt &&
+        initial.dealServerNow > initial.dealStartedAt,
+    );
+    const elapsed = isLateArrival
+      ? Math.max(0, timing.duration - (id - (initial.dealServerNow ?? id)))
+      : 0;
     const lead = Math.max(0, (initial.dealStartedAt ?? 0) - (initial.dealServerNow ?? id));
     const animations: Animation[] = [];
     const timeouts: ReturnType<typeof setTimeout>[] = [];
@@ -58,7 +65,9 @@ export function DurakOpeningDeal({
         fill: "both",
         easing,
       });
-      animation.currentTime = elapsed;
+      if (isLateArrival && elapsed > 0) {
+        animation.currentTime = elapsed;
+      }
       animations.push(animation);
     };
 
@@ -279,9 +288,12 @@ export function DurakOpeningDeal({
       timing.stockAt,
       "cubic-bezier(0.16, 1, 0.3, 1)",
     );
+    const totalDuration = isLateArrival
+      ? Math.max(0, id - (initial.dealServerNow ?? id))
+      : timing.duration + lead;
     const timer = setTimeout(
       () => complete.current(id),
-      Math.max(0, id - (initial.dealServerNow ?? id)),
+      totalDuration,
     );
     return () => {
       clearTimeout(timer);
