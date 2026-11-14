@@ -25,17 +25,17 @@ export const Route = createFileRoute("/create")({
 
 function Toggle({ checked, disabled, onChange, label }: { checked: boolean; disabled?: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <label className={cn("flex min-h-8 cursor-pointer items-center justify-between gap-3 select-none py-0.5", disabled && "cursor-not-allowed opacity-40")}>
-      <span className="text-xs sm:text-sm text-foreground font-medium">{label}</span>
+    <label className={cn("flex cursor-pointer items-center justify-between gap-2 select-none", disabled && "cursor-not-allowed opacity-40")}>
+      {label ? <span className="text-xs text-stone-300 font-medium">{label}</span> : null}
       <div className="relative inline-flex items-center shrink-0">
         <input type="checkbox" className="peer sr-only" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
         <div className={cn(
-          "w-9 h-5 sm:w-10 sm:h-5 rounded-full transition-colors border",
-          checked ? "bg-primary border-primary" : "bg-black/50 border-white/20"
+          "w-11 h-6 rounded-full transition-colors border",
+          checked ? "bg-[#f5c15d] border-[#f5c15d]" : "bg-black/60 border-white/20"
         )} />
         <div className={cn(
-          "absolute top-0.5 left-0.5 h-4 w-4 rounded-full transition-transform",
-          checked ? "translate-x-4 sm:translate-x-5 bg-background shadow-sm" : "translate-x-0 bg-muted-foreground/70"
+          "absolute top-1 left-1 h-4 w-4 rounded-full transition-transform shadow-sm",
+          checked ? "translate-x-5 bg-[#1a1202]" : "translate-x-0 bg-stone-400"
         )} />
       </div>
     </label>
@@ -245,9 +245,10 @@ export function CreateGame() {
       <div className="pregame-create-grid">
         <section className="flex flex-col">
           <SectionLabel>{t.chooseGame}</SectionLabel>
-          <div role="radiogroup" className="pregame-rules-list">
+          <div role="radiogroup" className="pregame-rules-list space-y-2">
             {options.map((r) => {
               const active = r.id === rulesetId;
+              const isPopular = r.id === "popular";
               return (
                 <button
                   key={r.id}
@@ -255,20 +256,29 @@ export function CreateGame() {
                   aria-checked={active}
                   onClick={() => setRulesetId(r.id)}
                   className={cn(
-                    "panel pregame-rule-card w-full text-left transition-all active:scale-[0.99] rounded-2xl",
-                    active ? "!border-[#f5c15d] !bg-[#f5c15d]/10 ring-2 ring-[#f5c15d]/50 shadow-[0_4px_20px_rgba(245,193,93,0.18)]" : "border-white/10 bg-white/[0.03] hover:border-white/20"
+                    "panel pregame-rule-card w-full text-left transition-all active:scale-[0.99] rounded-2xl p-3 sm:p-3.5 flex items-center justify-between",
+                    active
+                      ? "!border-[#f5c15d] !bg-gradient-to-r !from-[#f5c15d]/15 !to-[#f5c15d]/5 ring-2 ring-[#f5c15d]/50 shadow-[0_4px_20px_rgba(245,193,93,0.18)]"
+                      : "border-white/10 bg-[#1e2024] opacity-80 hover:opacity-100 hover:border-white/30"
                   )}
                 >
-                  <span className={cn(
-                    "flex h-4 w-4 sm:h-5 sm:w-5 shrink-0 items-center justify-center rounded-full border transition-colors",
-                    active ? "border-[#f5c15d] bg-[#f5c15d]" : "border-stone-500/60"
+                  <div className="min-w-0 pr-3 space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="pregame-rule-title font-display font-bold text-white text-xs sm:text-sm">{r.name}</span>
+                      {isPopular && (
+                        <span className="text-[10px] font-bold text-[#f5c15d] bg-[#f5c15d]/20 px-2 py-0.5 rounded-md border border-[#f5c15d]/30">
+                          Προτεινόμενο
+                        </span>
+                      )}
+                    </div>
+                    <span className="pregame-rule-description block text-[11px] sm:text-xs text-stone-300 line-clamp-1">{r.description}</span>
+                  </div>
+                  <div className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                    active ? "bg-[#f5c15d] text-[#1a1202] font-black text-xs" : "border border-white/30"
                   )}>
-                    {active && <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-[#1a1202]" />}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="pregame-rule-title block font-display font-semibold text-foreground text-xs sm:text-sm">{r.name}</span>
-                    <span className="pregame-rule-description block text-[10px] sm:text-xs text-muted-foreground line-clamp-1">{r.description}</span>
-                  </span>
+                    {active ? "✓" : null}
+                  </div>
                 </button>
               );
             })}
@@ -277,59 +287,68 @@ export function CreateGame() {
 
         <section className="flex flex-col">
           <SectionLabel>{t.botBehavior}</SectionLabel>
-          <div className="panel pregame-bot-panel flex flex-col justify-between h-full rounded-2xl">
-            <Toggle checked={botsTalk} onChange={(v) => {
-              setBotsTalk(v);
-              if (!v) {
-                setAllowProfanity(false);
-                setAiEnabled(false);
-                setTtsEnabled(false);
-                setShowDialogueText(true);
-              }
-            }} label={t.botsTalk} />
-            {botsTalk ? (
-              <div className="space-y-1 border-t border-border/40 pt-1">
-                <Toggle checked={allowProfanity} onChange={setAllowProfanity} label={t.allowProfanity} />
-                {verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && (
-                  <div>
-                    <Toggle
-                      checked={aiEnabled}
-                      onChange={setAiEnabled}
-                      label={t.useAiBanter}
-                    />
-                    <div className="ml-6 space-y-0.5">
+          <div className="panel pregame-bot-panel flex flex-col justify-between h-full rounded-2xl bg-[#1e2024] p-3 sm:p-4 border border-white/10 shadow-md">
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#292a2f] border border-white/5">
+                <div>
+                  <span className="text-xs font-bold text-white block">{t.botsTalk}</span>
+                  <span className="text-[11px] text-stone-400 block">Ζωντανές αντιδράσεις σε κάθε μπάζα</span>
+                </div>
+                <Toggle checked={botsTalk} onChange={(v) => {
+                  setBotsTalk(v);
+                  if (!v) {
+                    setAllowProfanity(false);
+                    setAiEnabled(false);
+                    setTtsEnabled(false);
+                    setShowDialogueText(true);
+                  }
+                }} label="" />
+              </div>
+
+              {botsTalk ? (
+                <div className="space-y-1.5 border-t border-white/10 pt-2">
+                  <Toggle checked={allowProfanity} onChange={setAllowProfanity} label={t.allowProfanity} />
+                  {verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && (
+                    <div>
                       <Toggle
-                        checked={ttsEnabled}
-                        onChange={(value) => {
-                          setTtsEnabled(value);
-                          if (!value) setShowDialogueText(true);
-                        }}
-                        label={t.botVoice}
+                        checked={aiEnabled}
+                        onChange={setAiEnabled}
+                        label={t.useAiBanter}
                       />
-                      {ttsEnabled && (
+                      <div className="ml-6 space-y-0.5">
                         <Toggle
-                          checked={showDialogueText}
-                          onChange={setShowDialogueText}
-                          label={t.showBotMessages}
+                          checked={ttsEnabled}
+                          onChange={(value) => {
+                            setTtsEnabled(value);
+                            if (!value) setShowDialogueText(true);
+                          }}
+                          label={t.botVoice}
                         />
-                      )}
+                        {ttsEnabled && (
+                          <Toggle
+                            checked={showDialogueText}
+                            onChange={setShowDialogueText}
+                            label={t.showBotMessages}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="pt-1">
+                    <p className="mb-1 text-[11px] text-stone-400 font-medium">{t.banterIntensity}</p>
+                    <div role="radiogroup" className="grid grid-cols-3 gap-1.5">
+                      {DIALOGUE_INTENSITIES.map((value) => (
+                        <button key={value} type="button" role="radio" aria-checked={intensity === value} onClick={() => setIntensity(value)} className={cn("min-h-8 rounded-lg border px-1.5 py-1 text-[11px] font-medium transition-all active:scale-[0.98]", intensity === value ? "border-[#f5c15d] bg-[#f5c15d]/20 text-[#f5c15d] font-bold" : "border-white/10 bg-[#292a2f] text-stone-300 hover:text-white")}>
+                          {intensityLabels[value]}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                )}
-                <div className="pt-0.5">
-                  <p className="mb-1 text-[11px] text-muted-foreground">{t.banterIntensity}</p>
-                  <div role="radiogroup" className="grid grid-cols-3 gap-1.5">
-                    {DIALOGUE_INTENSITIES.map((value) => (
-                      <button key={value} type="button" role="radio" aria-checked={intensity === value} onClick={() => setIntensity(value)} className={cn("min-h-8 rounded-lg border px-1.5 py-1 text-[11px] font-medium transition-all active:scale-[0.98]", intensity === value ? "border-primary bg-gold-soft text-primary font-semibold" : "border-border/60 text-muted-foreground hover:text-foreground")}>
-                        {intensityLabels[value]}
-                      </button>
-                    ))}
-                  </div>
                 </div>
-              </div>
-            ) : (
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t.botsNote}</p>
-            )}
+              ) : (
+                <p className="text-xs leading-relaxed text-stone-400">{t.botsNote}</p>
+              )}
+            </div>
           </div>
         </section>
       </div>

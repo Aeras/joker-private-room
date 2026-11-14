@@ -195,33 +195,34 @@ function Lobby() {
       fixedViewport={true}
       headerActions={
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-bold text-primary px-2.5 py-1 rounded-full bg-primary/10 border border-primary/25">
+          <span className="font-mono text-xs font-bold text-[#f5c15d] px-3 py-1 rounded-full bg-[#1e2024] border border-[#f5c15d]/30 shadow-sm">
             #{room.code}
           </span>
         </div>
       }
       contentClassName="flex flex-col items-center justify-center !py-2 sm:!py-3"
     >
-      <section className="pregame-lobby-grid mx-auto flex w-full max-w-4xl flex-col items-center justify-center gap-3 sm:gap-4 px-2 my-auto">
-        <div className="flex items-center gap-2">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">Δωμάτιο αναμονής:</span>
-          <span className="text-xs sm:text-sm font-semibold text-primary">{room.rulesetId === "popular" ? "Popular" : (room.rulesetName ?? publicRulesetName(room.rulesetId))}</span>
+      <section className="pregame-lobby-grid mx-auto flex w-full max-w-4xl flex-col items-center justify-center gap-3 px-2 my-auto">
+        <div className="flex items-center justify-between w-full px-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs uppercase font-bold tracking-wider text-stone-400">Θέσεις Παικτών (4/4)</span>
+            <span className="text-xs text-[#f5c15d] font-semibold">· {room.rulesetId === "popular" ? "Popular" : (room.rulesetName ?? publicRulesetName(room.rulesetId))}</span>
+          </div>
+          <span className="text-xs text-stone-400">{room.seats.filter(s => s.occupant.type === "human").length} Πραγματικός · {room.seats.filter(s => s.occupant.type !== "human").length} Διαθέσιμες</span>
         </div>
-        <div className="grid grid-cols-4 gap-2 sm:gap-3.5 w-full" aria-label="Παίκτες">
+        <div className="grid grid-cols-4 gap-2.5 sm:gap-3.5 w-full" aria-label="Παίκτες">
           {room.seats.map(seat=><LobbySeat key={seat.index} seat={seat} hostId={room.hostId}
             manageable={isHost&&room.status==="lobby"&&seat.occupant.type!=="human"}
             onManage={()=>setBotSeatIndex(seat.index)}/>)}
         </div>
         {error&&<p role="alert" className="text-center text-xs sm:text-sm text-negative">{error}</p>}
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
-          {room.status==="lobby"&&<JButton size="sm" variant="outlineGold" className="rounded-full px-5 py-2" onClick={()=>void leave()}>Έξοδος</JButton>}
-          {room.status==="lobby"?<JButton size="sm" className="rounded-full px-6 py-2 pregame-primary-button shadow-lg" disabled={!isHost||starting||botBusy} onClick={start}>Έναρξη παιχνιδιού</JButton>:
-            room.gameId?<Link to="/table" search={{code:room.code,gameId:room.gameId}} className={jButton({size:"sm", className: "rounded-full px-6 py-2"})}>Μετάβαση στο τραπέζι</Link>:
+        <div className="flex items-center justify-between w-full pt-2 border-t border-white/10">
+          {room.status==="lobby"&&<JButton size="sm" variant="outlineGold" className="rounded-xl px-4 py-2 border-white/20 text-stone-300 hover:bg-white/5" onClick={()=>void leave()}>Έξοδος</JButton>}
+          <span className="text-[11px] text-stone-400 hidden sm:inline">Οι κενές θέσεις συμπληρώνονται αυτόματα.</span>
+          {room.status==="lobby"?<JButton size="sm" className="rounded-2xl px-6 py-2.5 pregame-primary-button shadow-lg font-bold text-xs uppercase tracking-wider" disabled={!isHost||starting||botBusy} onClick={start}>Έναρξη παιχνιδιού</JButton>:
+            room.gameId?<Link to="/table" search={{code:room.code,gameId:room.gameId}} className={jButton({size:"sm", className: "rounded-2xl px-6 py-2.5 pregame-primary-button font-bold text-xs uppercase tracking-wider"})}>Μετάβαση στο τραπέζι</Link>:
             <span className="text-xs">{t.gameStarting}</span>}
         </div>
-        <p className="text-[11px] text-muted-foreground/80 text-center max-w-md">
-          Περίμενε φίλους από τη «Συμμετοχή» ή επίλεξε bot πατώντας μια κενή θέση.
-        </p>
       </section>
       {botSeatIndex != null && selectedSeat && (
         <div className="pregame-modal-backdrop" role="presentation" onMouseDown={(event) => {

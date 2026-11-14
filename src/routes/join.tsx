@@ -132,46 +132,56 @@ function AvailableRooms({ player, activeLookup }: { player: PublicPlayer; active
     );
   }
   return (
-    <div className="panel mx-auto w-full max-w-2xl space-y-3 p-3 sm:p-4 rounded-3xl shadow-xl">
-      <div className="flex items-center justify-between gap-3 border-b border-border/40 pb-2.5">
+    <div className="panel mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-5 rounded-3xl bg-[#1e2024] border border-white/10 shadow-xl">
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
         <div className="min-w-0">
-          <h2 className="text-base sm:text-lg font-display font-bold text-primary">Διαθέσιμα παιχνίδια</h2>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-display font-bold text-white">Διαθέσιμα παιχνίδια</h2>
+            <span className="text-[10px] text-[#f5c15d] bg-[#f5c15d]/10 px-2 py-0.5 rounded-full border border-[#f5c15d]/20 font-medium">Ανοιχτά τραπέζια</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-stone-400 mt-0.5">
             <span>Συνδεδεμένος:</span>
-            <span className="font-semibold text-foreground">{player.displayName}</span>
+            <span className="font-semibold text-white">{player.displayName}</span>
           </div>
         </div>
         <button
           type="button"
           disabled={busy || refreshing}
           onClick={() => void refreshList()}
-          className="inline-flex items-center gap-1.5 rounded-full border border-primary/35 bg-white/[0.04] hover:bg-white/[0.08] hover:border-primary px-3 py-1.5 text-xs font-semibold text-primary transition active:scale-95 disabled:opacity-60 shrink-0"
+          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#292a2f] hover:border-[#f5c15d] px-3.5 py-1.5 text-xs font-semibold text-[#f5c15d] transition active:scale-95 disabled:opacity-60 shrink-0 shadow-sm"
         >
-          <RotateCw className={cn("h-3.5 w-3.5", refreshing ? "animate-spin text-primary" : "text-primary/70")} />
+          <RotateCw className={cn("h-3.5 w-3.5", refreshing ? "animate-spin text-[#f5c15d]" : "text-[#f5c15d]/80")} />
           <span>{refreshing ? "Ανανέωση…" : "Ανανέωση λίστας"}</span>
         </button>
       </div>
 
-      {loading && <p role="status" className="text-center text-sm py-4 text-muted-foreground">Φόρτωση δωματίων…</p>}
+      {loading && <p role="status" className="text-center text-sm py-4 text-stone-400">Φόρτωση δωματίων…</p>}
 
       {!loading && rooms.length === 0 && !error && (
-        <div className="rounded-2xl border border-dashed border-border/60 bg-black/20 p-5 text-center text-sm text-muted-foreground">
-          <p>Δεν υπάρχουν διαθέσιμα παιχνίδια αυτή τη στιγμή.</p>
+        <div className="rounded-2xl border border-dashed border-white/15 bg-[#151619] p-6 text-center space-y-1">
+          <p className="text-sm text-stone-300 font-medium">Δεν υπάρχουν διαθέσιμα παιχνίδια αυτή τη στιγμή.</p>
+          <p className="text-xs text-[#f5c15d]">Πάτησε «Ανανέωση λίστας» ή δημιούργησε ένα δικό σου τραπέζι!</p>
         </div>
       )}
 
-      <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+      <div className="space-y-2.5 max-h-48 overflow-y-auto pr-0.5">
         {rooms.map((room) => (
-          <div key={room.code} className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-black/30 p-2.5 sm:p-3 hover:border-primary/40 transition">
-            <div className="min-w-0">
-              <strong className="text-sm font-semibold text-foreground block truncate">Παιχνίδι του {room.hostName}</strong>
-              <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                <span className="uppercase text-[10px] tracking-wider font-semibold text-primary/80">{room.rulesetId}</span>
-                <span>·</span>
-                <span>{room.occupied}/4 θέσεις</span>
-              </p>
+          <div key={room.code} className="p-3 sm:p-3.5 rounded-2xl bg-[#292a2f] border border-white/10 hover:border-[#f5c15d]/50 flex items-center justify-between gap-3 shadow-sm transition">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-[#f5c15d]/15 border border-[#f5c15d]/30 flex items-center justify-center font-bold text-[#f5c15d] text-base shrink-0">
+                ♠
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <strong className="text-sm font-bold text-white truncate block">Παιχνίδι του {room.hostName}</strong>
+                  <span className="px-2 py-0.5 rounded-md bg-[#1f2024] text-[10px] font-mono text-stone-300 border border-white/10">#{room.code}</span>
+                </div>
+                <p className="text-xs text-stone-400 mt-0.5">
+                  <span className="capitalize">{room.rulesetId}</span> · {room.occupied}/4 θέσεις
+                </p>
+              </div>
             </div>
-            <JButton size="sm" className="pregame-primary-button rounded-xl px-4 py-1.5 text-xs shrink-0" disabled={busy} onClick={() => void join(room.code)}>
+            <JButton size="sm" className="pregame-primary-button rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider shrink-0" disabled={busy} onClick={() => void join(room.code)}>
               Συμμετοχή
             </JButton>
           </div>
@@ -180,8 +190,8 @@ function AvailableRooms({ player, activeLookup }: { player: PublicPlayer; active
 
       {error && <p role="alert" className="text-center text-xs text-negative">{error}</p>}
 
-      <div className="flex justify-center pt-1 border-t border-border/30">
-        <JButton size="sm" variant="outlineGold" className="rounded-full px-5 py-1.5 text-xs" onClick={() => void navigate({ to: "/" })}>
+      <div className="flex justify-center pt-2 border-t border-white/10">
+        <JButton size="sm" variant="outlineGold" className="rounded-xl px-5 py-1.5 text-xs border-white/20 text-stone-300 hover:bg-white/5" onClick={() => void navigate({ to: "/" })}>
           Αρχική οθόνη
         </JButton>
       </div>
