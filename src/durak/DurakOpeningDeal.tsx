@@ -39,15 +39,19 @@ export function DurakOpeningDeal({
     const table = layer.closest(".durak-fullscreen");
     const bounds = layer.getBoundingClientRect();
     const timing = durakDealTiming(initial.handSizes.length);
+    const remainingTime = id - (initial.dealServerNow ?? id);
     const isLateArrival = Boolean(
       initial.dealServerNow &&
-        initial.dealStartedAt &&
-        initial.dealServerNow > initial.dealStartedAt,
+        initial.dealReadyAt &&
+        remainingTime > 0 &&
+        remainingTime <= 1200,
     );
     const elapsed = isLateArrival
-      ? Math.max(0, timing.duration - (id - (initial.dealServerNow ?? id)))
+      ? Math.max(0, timing.duration - remainingTime)
       : 0;
-    const lead = Math.max(0, (initial.dealStartedAt ?? 0) - (initial.dealServerNow ?? id));
+    const lead = isLateArrival
+      ? 0
+      : Math.max(0, (initial.dealStartedAt ?? 0) - (initial.dealServerNow ?? id));
     const animations: Animation[] = [];
     const timeouts: ReturnType<typeof setTimeout>[] = [];
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
