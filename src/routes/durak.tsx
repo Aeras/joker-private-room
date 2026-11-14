@@ -265,7 +265,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => void run("get", room.code)}
+                    onClick={() => void run("get",room.code)}
                     className="rounded-xl border border-border/80 bg-black/40 hover:bg-black/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition"
                   >
                     Ανανέωση
@@ -273,7 +273,7 @@ function DurakAuthenticatedHome({ player }: { player: PublicPlayer }) {
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => void run("leave", room.code)}
+                    onClick={() => void run("leave",room.code)}
                     className="rounded-xl border border-destructive/40 bg-destructive/10 hover:bg-destructive/20 px-2.5 py-1.5 text-xs font-medium text-destructive-foreground transition"
                   >
                     Έξοδος

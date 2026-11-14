@@ -7,6 +7,7 @@ import { t } from "@/i18n/el";
 import { useCurrentActiveGame } from "@/hooks/useCurrentActiveGame";
 import { BotLabEntry } from "@/components/joker/BotLabEntry";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
+import { logoutPlayer } from "@/services/authFunctions";
 
 export const Route = createFileRoute("/joker")({
   head: () => ({
@@ -40,7 +41,27 @@ function JokerHome() {
         </section>
 
         <section className="home-menu" aria-label="Κύριο μενού">
-          <PlayerSessionGate allowLogout={activeLookup.status !== "active" && activeLookup.status !== "waiting"} onAuthenticated={() => { void activeLookup.refresh(); }}>{() => <>
+          <PlayerSessionGate
+            allowLogout={activeLookup.status !== "active" && activeLookup.status !== "waiting"}
+            hideConnectedBanner={true}
+            onAuthenticated={() => { void activeLookup.refresh(); }}
+          >{(player) => <>
+          <div className="flex items-center justify-end gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-black/40 px-3 py-1 font-medium text-foreground/90 backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="max-w-[10rem] truncate">{player.displayName}</span>
+            </span>
+            {activeLookup.status !== "active" && activeLookup.status !== "waiting" && (
+              <button
+                className="text-xs text-muted-foreground underline hover:text-foreground transition ml-1"
+                type="button"
+                onClick={() => void logoutPlayer()}
+              >
+                Αποσύνδεση
+              </button>
+            )}
+          </div>
+
           {activeLookup.status === "waiting" ? (
             <Link to="/lobby" search={{ code: activeLookup.roomCode }} className={jButton({ size: "lg", className: "pregame-primary-button home-main-action" })}>
               Επιστροφή στο παιχνίδι

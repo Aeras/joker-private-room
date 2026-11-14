@@ -25,12 +25,19 @@ export const Route = createFileRoute("/create")({
 
 function Toggle({ checked, disabled, onChange, label }: { checked: boolean; disabled?: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <label className={cn("flex min-h-10 cursor-pointer items-center gap-3", disabled && "cursor-not-allowed opacity-40")}>
-      <input type="checkbox" className="peer sr-only" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
-      <span className="flex h-5 w-5 items-center justify-center rounded-md border border-primary/50 bg-secondary peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
-        {checked && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
-      </span>
-      <span className="text-sm text-foreground">{label}</span>
+    <label className={cn("flex min-h-8 cursor-pointer items-center justify-between gap-3 select-none py-0.5", disabled && "cursor-not-allowed opacity-40")}>
+      <span className="text-xs sm:text-sm text-foreground font-medium">{label}</span>
+      <div className="relative inline-flex items-center shrink-0">
+        <input type="checkbox" className="peer sr-only" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+        <div className={cn(
+          "w-9 h-5 sm:w-10 sm:h-5 rounded-full transition-colors border",
+          checked ? "bg-primary border-primary" : "bg-black/50 border-white/20"
+        )} />
+        <div className={cn(
+          "absolute top-0.5 left-0.5 h-4 w-4 rounded-full transition-transform",
+          checked ? "translate-x-4 sm:translate-x-5 bg-background shadow-sm" : "translate-x-0 bg-muted-foreground/70"
+        )} />
+      </div>
     </label>
   );
 }
@@ -226,33 +233,51 @@ export function CreateGame() {
     <ScreenShell
       title={t.createGame}
       variant="pregame"
-      contentClassName="pregame-form-content"
+      fixedViewport={true}
+      contentClassName="pregame-form-content !py-1 sm:!py-2"
       footer={
-        <div className="pregame-create-footer">
-          {roomError && <p className="flex-1 text-sm text-negative">{roomError}</p>}
+        <div className="pregame-create-footer !py-0">
+          {roomError && <p className="flex-1 text-xs sm:text-sm text-negative truncate">{roomError}</p>}
           <JButton size="lg" className="pregame-primary-button pregame-create-cta" onClick={createRoom} disabled={busy}>{t.createRoom}</JButton>
         </div>
       }
     >
       <div className="pregame-create-grid">
-        <section>
+        <section className="flex flex-col">
           <SectionLabel>{t.chooseGame}</SectionLabel>
           <div role="radiogroup" className="pregame-rules-list">
             {options.map((r) => {
               const active = r.id === rulesetId;
               return (
-                <button key={r.id} role="radio" aria-checked={active} onClick={() => setRulesetId(r.id)} className={cn("panel pregame-rule-card w-full text-left transition-all active:scale-[0.99]", active && "ring-gold")}>
-                  <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", active ? "border-primary" : "border-muted-foreground")}>{active && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}</span>
-                  <span className="min-w-0"><span className="pregame-rule-title block font-display text-foreground">{r.name}</span><span className="pregame-rule-description block text-muted-foreground">{r.description}</span></span>
+                <button
+                  key={r.id}
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setRulesetId(r.id)}
+                  className={cn(
+                    "panel pregame-rule-card w-full text-left transition-all active:scale-[0.99] rounded-2xl",
+                    active ? "ring-gold border-primary/80 bg-primary/10 shadow-[0_0_15px_rgba(214,175,96,0.15)]" : "border-border/40 hover:border-border/80"
+                  )}
+                >
+                  <span className={cn(
+                    "flex h-4 w-4 sm:h-5 sm:w-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+                    active ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/60"
+                  )}>
+                    {active && <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-background" />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="pregame-rule-title block font-display font-semibold text-foreground text-xs sm:text-sm">{r.name}</span>
+                    <span className="pregame-rule-description block text-[10px] sm:text-xs text-muted-foreground line-clamp-1">{r.description}</span>
+                  </span>
                 </button>
               );
             })}
           </div>
         </section>
 
-        <section>
+        <section className="flex flex-col">
           <SectionLabel>{t.botBehavior}</SectionLabel>
-          <div className="panel pregame-bot-panel h-full">
+          <div className="panel pregame-bot-panel flex flex-col justify-between h-full rounded-2xl">
             <Toggle checked={botsTalk} onChange={(v) => {
               setBotsTalk(v);
               if (!v) {
@@ -263,7 +288,7 @@ export function CreateGame() {
               }
             }} label={t.botsTalk} />
             {botsTalk ? (
-              <div className="space-y-1 border-t border-border pt-1">
+              <div className="space-y-1 border-t border-border/40 pt-1">
                 <Toggle checked={allowProfanity} onChange={setAllowProfanity} label={t.allowProfanity} />
                 {verifiedHost.id === AI_BANTER_CREATOR_PLAYER_ID && (
                   <div>
@@ -272,7 +297,7 @@ export function CreateGame() {
                       onChange={setAiEnabled}
                       label={t.useAiBanter}
                     />
-                    <div className="ml-8 space-y-1">
+                    <div className="ml-6 space-y-0.5">
                       <Toggle
                         checked={ttsEnabled}
                         onChange={(value) => {
@@ -291,11 +316,11 @@ export function CreateGame() {
                     </div>
                   </div>
                 )}
-                <div className="pt-1">
-                  <p className="mb-2 text-xs text-muted-foreground">{t.banterIntensity}</p>
-                  <div role="radiogroup" className="grid grid-cols-3 gap-2">
+                <div className="pt-0.5">
+                  <p className="mb-1 text-[11px] text-muted-foreground">{t.banterIntensity}</p>
+                  <div role="radiogroup" className="grid grid-cols-3 gap-1.5">
                     {DIALOGUE_INTENSITIES.map((value) => (
-                      <button key={value} type="button" role="radio" aria-checked={intensity === value} onClick={() => setIntensity(value)} className={cn("min-h-10 rounded-lg border px-2 text-xs transition-all active:scale-[0.98]", intensity === value ? "border-primary bg-gold-soft text-primary" : "border-border text-muted-foreground")}>
+                      <button key={value} type="button" role="radio" aria-checked={intensity === value} onClick={() => setIntensity(value)} className={cn("min-h-8 rounded-lg border px-1.5 py-1 text-[11px] font-medium transition-all active:scale-[0.98]", intensity === value ? "border-primary bg-gold-soft text-primary font-semibold" : "border-border/60 text-muted-foreground hover:text-foreground")}>
                         {intensityLabels[value]}
                       </button>
                     ))}
@@ -303,7 +328,7 @@ export function CreateGame() {
                 </div>
               </div>
             ) : (
-              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{t.botsNote}</p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t.botsNote}</p>
             )}
           </div>
         </section>

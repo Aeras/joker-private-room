@@ -123,23 +123,53 @@
 .home-choice-card {
   position: relative;
   display: flex;
-  min-height: clamp(8rem, 25vh, 11rem);
+  min-height: clamp(7.5rem, 23vh, 10.5rem);
   flex-direction: column;
   justify-content: flex-end;
   overflow: hidden;
   border: 1px solid rgba(214,175,96,.28);
-  border-radius: 1.15rem;
-  background: linear-gradient(155deg, rgba(55,18,24,.94), rgba(20,8,11,.96));
-  padding: clamp(1rem, 2.5vw, 1.5rem);
-  box-shadow: 0 24px 55px -30px rgba(0,0,0,.95), inset 0 1px 0 rgba(255,255,255,.04);
-  transition: transform 130ms ease, border-color 130ms ease, filter 130ms ease;
+  border-radius: 1.5rem;
+  background: linear-gradient(155deg, rgba(58,19,26,.94), rgba(22,9,12,.97));
+  padding: clamp(.9rem, 2.2vw, 1.4rem);
+  box-shadow: 0 20px 50px -25px rgba(0,0,0,.92), inset 0 1px 0 rgba(255,255,255,.05);
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, filter 140ms ease;
 }
 
-.home-choice-card:hover { border-color: rgba(214,175,96,.58); filter: brightness(1.05); }
-.home-choice-card:active { transform: translateY(2px) scale(.975); }
-.home-choice-card strong { font-family: var(--font-display); font-size: clamp(1.05rem, 2.2vw, 1.45rem); color: #f6e6c6; }
-.home-choice-card small { margin-top: .25rem; color: rgba(245,234,213,.56); }
-.home-choice-card__number { position: absolute; top: .9rem; right: 1rem; font-size: 2rem; font-weight: 800; color: rgba(214,175,96,.13); }
+.home-choice-card:hover {
+  border-color: rgba(214,175,96,.65);
+  filter: brightness(1.06);
+  box-shadow: 0 24px 60px -20px rgba(214,175,96,.2), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.home-choice-card:active {
+  transform: translateY(2px) scale(.98);
+}
+.home-choice-card strong {
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 2.1vw, 1.35rem);
+  color: #f6e6c6;
+  letter-spacing: .02em;
+}
+.home-choice-card small {
+  margin-top: .2rem;
+  color: rgba(245,234,213,.58);
+  font-size: clamp(.72rem, 1.2vw, .82rem);
+}
+.home-choice-card__number {
+  position: absolute;
+  top: .75rem;
+  right: .9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .15rem .55rem;
+  border-radius: 9999px;
+  background: rgba(214,175,96,.12);
+  border: 1px solid rgba(214,175,96,.25);
+  font-size: .85rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  color: rgba(232,206,150,.9);
+}
 
 .home-main-action { min-height: 4rem; width: 100%; }
 .home-secondary-actions { display: flex; justify-content: center; gap: .55rem; }
@@ -147,13 +177,24 @@
   display: inline-flex;
   align-items: center;
   gap: .4rem;
-  border: 1px solid rgba(214,175,96,.2);
-  border-radius: .75rem;
-  padding: .55rem .9rem;
-  color: rgba(245,234,213,.68);
+  border: 1px solid rgba(214,175,96,.22);
+  border-radius: 9999px;
+  background: rgba(255,255,255,.03);
+  padding: .45rem .85rem;
+  color: rgba(245,234,213,.7);
   font-size: .78rem;
+  font-weight: 500;
+  transition: all 140ms ease;
 }
-.home-secondary-actions a:hover { border-color: rgba(214,175,96,.45); color: #f5ead5; }
+.home-secondary-actions a:hover {
+  border-color: rgba(214,175,96,.5);
+  background: rgba(214,175,96,.1);
+  color: #f5ead5;
+  transform: translateY(-1px);
+}
+.home-secondary-actions a:active {
+  transform: scale(.97);
+}
 
 .pregame-shell {
   position: relative;
@@ -277,24 +318,27 @@
 
 .pregame-rule-card {
   display: flex;
-  min-height: clamp(3.45rem, 10.5vh, 4.1rem);
+  min-height: clamp(3rem, 9.5vh, 3.8rem);
   align-items: center;
-  gap: .8rem;
-  padding: .65rem .8rem;
+  gap: .75rem;
+  border-radius: 1rem!important;
+  padding: .5rem .75rem;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
 }
 
 .pregame-rule-title {
-  font-size: clamp(.92rem, 1.8vw, 1.05rem);
+  font-size: clamp(.88rem, 1.7vw, 1rem);
   line-height: 1.15;
 }
 
 .pregame-rule-description {
   margin-top: .12rem;
-  font-size: clamp(.68rem, 1.25vw, .78rem);
-  line-height: 1.25;
+  font-size: clamp(.65rem, 1.2vw, .75rem);
+  line-height: 1.2;
 }
 
 .pregame-bot-panel {
+  border-radius: 1rem!important;
   padding: .55rem .8rem;
 }
 
@@ -309,8 +353,11 @@
 
 .pregame-create-cta {
   min-width: 12rem;
-  height: 3.2rem;
-  padding-inline: 1.25rem!important;
+  height: 2.9rem;
+  border-radius: 9999px!important;
+  padding-inline: 1.5rem!important;
+  font-weight: 700!important;
+  letter-spacing: .06em!important;
 }
 
 .pregame-join-card {
@@ -409,28 +456,38 @@
 }
 
 @media (orientation: landscape) and (max-height: 520px) {
-  .home-topbar { height: 3rem; }
-  .home-landscape__content { height: calc(100dvh - 3rem); width: min(94vw,72rem); gap: 1.2rem; }
-  .home-hero h1 { font-size: clamp(3rem,8vw,5rem); }
-  .home-choice-card { min-height: 7.2rem; padding: .85rem; }
-  .home-secondary-actions a { padding: .4rem .7rem; }
+  .home-topbar { height: 2.8rem; }
+  .home-landscape__content { height: calc(100dvh - 2.8rem); width: min(94vw,72rem); gap: 1rem; padding-bottom: .35rem; }
+  .home-hero h1 { font-size: clamp(2.8rem,7vw,4.5rem); }
+  .home-choice-card { min-height: 6rem; padding: .65rem .85rem; border-radius: 1.25rem; }
+  .home-secondary-actions a { padding: .35rem .65rem; font-size: .74rem; }
 
-  .pregame-shell header { padding-top: max(.35rem, env(safe-area-inset-top)); }
-  .pregame-shell main { padding-top: .45rem; padding-bottom: .45rem; }
-  .pregame-auth-card { gap: .65rem; }
-  .pregame-auth-control { height: 3.55rem; min-height: 3.55rem; }
-  .pregame-create-grid { width: min(100%, 64rem); gap: .8rem; }
-  .pregame-rules-list { gap: .38rem; }
-  .pregame-rule-card { min-height: 3rem; padding: .48rem .68rem; gap: .65rem; }
-  .pregame-rule-title { font-size: .9rem; }
-  .pregame-rule-description { font-size: .67rem; line-height: 1.18; }
-  .pregame-bot-panel { padding: .42rem .65rem; }
-  .pregame-create-cta { height: 2.85rem; min-width: 11rem; }
+  .pregame-shell header { padding-top: max(.25rem, env(safe-area-inset-top)); }
+  .pregame-shell main { padding-top: .3rem; padding-bottom: .3rem; }
+  .pregame-auth-card { gap: .6rem; }
+  .pregame-auth-control { height: 3.35rem; min-height: 3.35rem; }
+  .pregame-create-grid { width: min(100%, 64rem); gap: .7rem; }
+  .pregame-rules-list { gap: .32rem; }
+  .pregame-rule-card { min-height: 2.65rem; padding: .38rem .65rem; gap: .6rem; }
+  .pregame-rule-title { font-size: .88rem; }
+  .pregame-rule-description { font-size: .64rem; line-height: 1.15; }
+  .pregame-bot-panel { padding: .38rem .65rem; }
+  .pregame-create-cta { height: 2.65rem; min-width: 10.5rem; }
   .pregame-create-footer { width: min(100%, 64rem); }
-  .pregame-join-card { gap: .65rem; }
-  .pregame-lobby-grid { gap: 1rem; }
-  .pregame-bot-option { min-height: 5.5rem; }
-  .pregame-bot-option img { width: 2.4rem; height: 2.4rem; }
+  .pregame-join-card { gap: .6rem; }
+  .pregame-lobby-grid { gap: .8rem; }
+  .pregame-bot-option { min-height: 5rem; }
+  .pregame-bot-option img { width: 2.2rem; height: 2.2rem; }
+}
+
+@media (orientation: landscape) and (max-height: 420px) {
+  .home-topbar { height: 2.5rem; }
+  .home-landscape__content { height: calc(100dvh - 2.5rem); }
+  .home-hero h1 { font-size: 2.6rem; }
+  .home-choice-card { min-height: 5.4rem; padding: .5rem .75rem; }
+  .pregame-rule-card { min-height: 2.45rem; padding: .3rem .55rem; }
+  .pregame-bot-panel { padding: .3rem .55rem; }
+  .pregame-create-cta { height: 2.45rem; min-width: 9.5rem; }
 }
 
 @media (min-width: 1200px) {

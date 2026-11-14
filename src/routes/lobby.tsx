@@ -192,22 +192,36 @@ function Lobby() {
     <ScreenShell
       title={t.lobby}
       variant="pregame"
-      contentClassName="!overflow-y-auto !min-h-0"
+      fixedViewport={true}
+      headerActions={
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs font-bold text-primary px-2.5 py-1 rounded-full bg-primary/10 border border-primary/25">
+            #{room.code}
+          </span>
+        </div>
+      }
+      contentClassName="flex flex-col items-center justify-center !py-2 sm:!py-3"
     >
-      <section className="pregame-lobby-grid mx-auto flex w-full max-w-6xl flex-col gap-3 px-2 py-2">
-        <h2 className="text-center text-sm font-semibold text-primary">Δωμάτιο αναμονής — {room.rulesetId === "popular" ? "Popular" : (room.rulesetName ?? publicRulesetName(room.rulesetId))}</h2>
-        <div className="grid grid-cols-4 gap-2 sm:gap-3" aria-label="Παίκτες">
+      <section className="pregame-lobby-grid mx-auto flex w-full max-w-4xl flex-col items-center justify-center gap-3 sm:gap-4 px-2 my-auto">
+        <div className="flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">Δωμάτιο αναμονής:</span>
+          <span className="text-xs sm:text-sm font-semibold text-primary">{room.rulesetId === "popular" ? "Popular" : (room.rulesetName ?? publicRulesetName(room.rulesetId))}</span>
+        </div>
+        <div className="grid grid-cols-4 gap-2 sm:gap-3.5 w-full" aria-label="Παίκτες">
           {room.seats.map(seat=><LobbySeat key={seat.index} seat={seat} hostId={room.hostId}
             manageable={isHost&&room.status==="lobby"&&seat.occupant.type!=="human"}
             onManage={()=>setBotSeatIndex(seat.index)}/>)}
         </div>
-        {error&&<p role="alert" className="text-center text-sm text-negative">{error}</p>}
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {room.status==="lobby"&&<JButton size="sm" variant="outlineGold" onClick={()=>void leave()}>Έξοδος</JButton>}
-          {room.status==="lobby"?<JButton size="sm" disabled={!isHost||starting||botBusy} onClick={start}>Έναρξη παιχνιδιού</JButton>:
-            room.gameId?<Link to="/table" search={{code:room.code,gameId:room.gameId}} className={jButton({size:"sm"})}>Μετάβαση στο τραπέζι</Link>:
+        {error&&<p role="alert" className="text-center text-xs sm:text-sm text-negative">{error}</p>}
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+          {room.status==="lobby"&&<JButton size="sm" variant="outlineGold" className="rounded-full px-5 py-2" onClick={()=>void leave()}>Έξοδος</JButton>}
+          {room.status==="lobby"?<JButton size="sm" className="rounded-full px-6 py-2 pregame-primary-button shadow-lg" disabled={!isHost||starting||botBusy} onClick={start}>Έναρξη παιχνιδιού</JButton>:
+            room.gameId?<Link to="/table" search={{code:room.code,gameId:room.gameId}} className={jButton({size:"sm", className: "rounded-full px-6 py-2"})}>Μετάβαση στο τραπέζι</Link>:
             <span className="text-xs">{t.gameStarting}</span>}
         </div>
+        <p className="text-[11px] text-muted-foreground/80 text-center max-w-md">
+          Περίμενε φίλους από τη «Συμμετοχή» ή επίλεξε bot πατώντας μια κενή θέση.
+        </p>
       </section>
       {botSeatIndex != null && selectedSeat && (
         <div className="pregame-modal-backdrop" role="presentation" onMouseDown={(event) => {
