@@ -22,9 +22,8 @@ describe("DURAK compact table menu", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: text.refresh }));
     expect(onRefresh).toHaveBeenCalledOnce();
   });
-  it("confirms and executes host termination", async () => {
+  it("confirms and executes host termination via the in-app dialog", async () => {
     const onEndGame = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     render(
       <DurakTableMenu
         onBack={() => {}}
@@ -35,12 +34,12 @@ describe("DURAK compact table menu", () => {
     );
     await openMenu();
     fireEvent.click(screen.getByRole("menuitem", { name: text.endGame }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Επιβεβαίωση" }));
     await vi.waitFor(() => expect(onEndGame).toHaveBeenCalledOnce());
-    expect(window.confirm).toHaveBeenCalledWith(text.confirmEnd);
   });
-  it("preserves the game when confirmation is cancelled", async () => {
+  it("preserves the game when in-app confirmation is cancelled", async () => {
     const onEndGame = vi.fn();
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     render(
       <DurakTableMenu
         onBack={() => {}}
@@ -51,11 +50,13 @@ describe("DURAK compact table menu", () => {
     );
     await openMenu();
     fireEvent.click(screen.getByRole("menuitem", { name: text.endGame }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ακύρωση" }));
     expect(onEndGame).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
   it("reports a failed termination without pretending it succeeded", async () => {
     const onError = vi.fn();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     render(
       <DurakTableMenu
         onBack={() => {}}
@@ -68,7 +69,9 @@ describe("DURAK compact table menu", () => {
     );
     await openMenu();
     fireEvent.click(screen.getByRole("menuitem", { name: text.endGame }));
+    fireEvent.click(screen.getByRole("button", { name: "Επιβεβαίωση" }));
     await vi.waitFor(() => expect(onError).toHaveBeenCalledWith(text.endFailed));
+    expect(screen.getByRole("alert")).toHaveTextContent(text.endFailed);
   });
   it("requests fullscreen on a user action and follows fullscreenchange", async () => {
     const request = vi.fn().mockResolvedValue(undefined);

@@ -1,10 +1,36 @@
-import { endDurakGame } from "./end-game.ts";
 import { recordDurakPlay, publicDurakEvents } from "./presentation.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { beginDurak, applyDurakMove, legalDurakMoves, sameDurakMove, durakAttackSeats, type DurakMatch, type DurakMove } from "./engine.ts";
 import { advanceDurakBot, scheduleDurakBot, startDurakDeal } from "./bot-turn.ts";
 import { CANONICAL_BOTS, deterministicBotOrder } from "../_shared/bot-catalog.ts";
+
+async function endDurakGame(admin: any, sessionToken: string, code: string) {
+  const { data: players, error: authError } = await admin.rpc("validate_player_session_internal", {
+    p_session_token: sessionToken,
+  });
+  if (authError) {
+    console.error("endDurakGame: auth error", authError);
+    return { ok: false, code: "SERVICE_UNAVAILABLE" } as const;
+  }
+  const id = Array.isArray(players) && typeof players[0]?.id === "string" ? players[0].id : null;
+  if (!id) return { ok: false, code: "NOT_AUTHENTICATED" } as const;
+  const { data, error } = await admin
+    .from("durak_rooms")
+    .delete()
+    .eq("code", code)
+    .eq("host_player_id", id)
+    .select("id");
+  if (error) {
+    console.error("endDurakGame: delete error", error);
+    return { ok: false, code: "SERVICE_UNAVAILABLE" } as const;
+  }
+  if (!Array.isArray(data) || data.length !== 1) {
+    console.warn("endDurakGame: delete count not 1", data);
+    return { ok: false, code: "HOST_ONLY" } as const;
+  }
+  return { ok: true, cancelled: true } as const;
+}
 
 const respond=(data:unknown,status=200)=>new Response(JSON.stringify(data),{
   status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}

@@ -12,17 +12,29 @@ export async function endDurakGame(admin: EndGameClient, sessionToken: string, c
   const { data: players, error: authError } = await admin.rpc("validate_player_session_internal", {
     p_session_token: sessionToken,
   });
-  if (authError) return { ok: false, code: "SERVICE_UNAVAILABLE" } as const;
+  if (authError) {
+    console.error("endDurakGame: authError", authError);
+    return { ok: false, code: "SERVICE_UNAVAILABLE" } as const;
+  }
   const id = Array.isArray(players) && typeof players[0]?.id === "string" ? players[0].id : null;
-  if (!id) return { ok: false, code: "NOT_AUTHENTICATED" } as const;
+  if (!id) {
+    console.error("endDurakGame: player not authenticated");
+    return { ok: false, code: "NOT_AUTHENTICATED" } as const;
+  }
   const { data, error } = await admin
     .from("durak_rooms")
     .delete()
     .eq("code", code)
     .eq("host_player_id", id)
     .select("id");
-  if (error) return { ok: false, code: "SERVICE_UNAVAILABLE" } as const;
-  if (!Array.isArray(data) || data.length !== 1) return { ok: false, code: "HOST_ONLY" } as const;
+  if (error) {
+    console.error("endDurakGame: delete error", error);
+    return { ok: false, code: "SERVICE_UNAVAILABLE" } as const;
+  }
+  if (!Array.isArray(data) || data.length !== 1) {
+    console.warn("endDurakGame: delete did not return 1 row. data:", data);
+    return { ok: false, code: "HOST_ONLY" } as const;
+  }
   // Existing DURAK foreign keys cascade to seats and private match state only.
   return { ok: true, cancelled: true } as const;
 }
