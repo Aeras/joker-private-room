@@ -86,23 +86,33 @@ export function DurakOpeningDeal({
           : target
             ? target.top - bounds.top + (position.startsWith("top") ? 45 : 0)
             : 100;
-      const tilt = [-2.5, 3.2, -1.8, 2.2, -3.0, 1.5][index % 6]!;
-      const targetRotation = seat === initial.seat ? (index - 2.5) * 2.2 + tilt : tilt;
-      const dx = x - source.x + (index - 2.5) * (seat === initial.seat ? 10 : 6);
-      const dy = y - source.y;
+      const STACK_SCATTER_OFFSET = [
+        { x: 0, y: 0 },
+        { x: -3, y: -2 },
+        { x: 3, y: 1 },
+        { x: -1, y: 3 },
+        { x: 2, y: -2 },
+        { x: -2, y: 2 },
+      ];
+      const STACK_SCATTER_TILT = [-2.5, 3.2, -1.8, 2.2, -3.0, 1.5];
+      const scatter = STACK_SCATTER_OFFSET[index % STACK_SCATTER_OFFSET.length]!;
+      const tilt = STACK_SCATTER_TILT[index % STACK_SCATTER_TILT.length]!;
+      const targetRotation = tilt;
+      const dx = x - source.x + scatter.x;
+      const dy = y - source.y + scatter.y;
       const startAt = beat * DURAK_DEAL_STAGGER_MS;
       const duration = timing.handAt - startAt;
       const exitX =
         position === "left"
-          ? -origin.width - source.x
+          ? -origin.width - source.x + scatter.x
           : position === "right"
-            ? bounds.width + origin.width - source.x
+            ? bounds.width + origin.width - source.x + scatter.x
             : dx;
       const exitY =
         position === "bottom"
-          ? bounds.height + origin.height - source.y
+          ? bounds.height + origin.height - source.y + scatter.y
           : position.startsWith("top")
-            ? -origin.height - source.y
+            ? -origin.height - source.y + scatter.y
             : dy;
       const finalTransform = `translate(${dx}px, ${dy}px) rotate(${targetRotation}deg)`;
 
@@ -129,7 +139,7 @@ export function DurakOpeningDeal({
                 opacity: 1,
                 offset: (timing.exitAt - startAt) / duration,
               },
-              { transform: `translate(${exitX}px, ${exitY}px) rotate(0deg)`, opacity: 1 },
+              { transform: `translate(${exitX}px, ${exitY}px) rotate(${targetRotation}deg)`, opacity: 1 },
             ]
           : [
               {
@@ -167,10 +177,10 @@ export function DurakOpeningDeal({
                 filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.32))",
                 opacity: 1,
                 offset: (timing.exitAt - startAt) / duration,
-                easing: "cubic-bezier(.4,0,.2,1)",
+                easing: "cubic-bezier(0.22, 1, 0.36, 1)",
               },
               {
-                transform: `translate(${exitX}px, ${exitY}px) rotate(0deg)`,
+                transform: `translate(${exitX}px, ${exitY}px) rotate(${targetRotation}deg)`,
                 filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.2))",
                 opacity: 1,
               },
@@ -201,7 +211,7 @@ export function DurakOpeningDeal({
       ],
       DURAK_HAND_ENTRANCE_MS,
       timing.handAt,
-      "cubic-bezier(0.16, 1, 0.3, 1)",
+      "cubic-bezier(0.22, 1, 0.36, 1)",
     );
     table?.querySelectorAll<HTMLElement>(".durak-fullscreen-opponent-backs").forEach((element) => {
       const position = element.closest("[data-position]")?.getAttribute("data-position") ?? "top";
@@ -221,7 +231,7 @@ export function DurakOpeningDeal({
         ],
         DURAK_HAND_ENTRANCE_MS,
         timing.handAt,
-        "cubic-bezier(0.16, 1, 0.3, 1)",
+        "cubic-bezier(0.22, 1, 0.36, 1)",
       );
     });
     const stock = table?.querySelector("[data-durak-stock-trump] > *")?.getBoundingClientRect();
