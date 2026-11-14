@@ -13,7 +13,7 @@ export function PlayerSessionGate({
   hideConnectedBanner = false,
   className,
 }: {
-  children: (player: PublicPlayer) => React.ReactNode;
+  children: (player: PublicPlayer, logout: () => Promise<void>) => React.ReactNode;
   onAuthenticated?: () => void;
   allowLogout?: boolean;
   hideConnectedBanner?: boolean;
@@ -78,7 +78,7 @@ export function PlayerSessionGate({
       <span>Συνδεδεμένος: <strong>{player.displayName}</strong></span>
       {allowLogout && <button className="underline text-muted-foreground" type="button" disabled={busy} onClick={() => void disconnect()}>Αποσύνδεση</button>}
     </div>}
-    {children(player)}
+    {children(player, disconnect)}
   </div>;
   return <form onSubmit={connect} className="panel mx-auto max-w-sm space-y-3 p-4">
     <h2 className="text-lg font-semibold text-foreground">Σύνδεση παίκτη</h2>

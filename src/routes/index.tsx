@@ -129,7 +129,7 @@ function GameSelection() {
       hideConnectedBanner
       className="flex flex-col flex-1 min-h-0 h-full w-full"
     >
-      {(player) => (
+      {(player, logout) => (
         <div className="home-landscape game-selection-screen">
           <div className="home-topbar">
             <div className="flex items-center gap-2.5">
@@ -141,23 +141,21 @@ function GameSelection() {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <FullscreenButton />
+              <RefreshButton />
               <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-[#1e2024] pl-2.5 pr-1.5 py-1 text-xs font-medium text-stone-300 shadow-sm">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 <span className="max-w-[7.5rem] sm:max-w-[11rem] truncate">{player.displayName}</span>
-                {!active && (
-                  <button
-                    className="p-1 rounded-full text-stone-400 hover:text-red-400 hover:bg-white/5 transition flex items-center justify-center"
-                    type="button"
-                    onClick={() => void logoutPlayer()}
-                    aria-label="Αποσύνδεση"
-                    title="Αποσύνδεση"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                <button
+                  className="p-1 rounded-full text-stone-400 hover:text-red-400 hover:bg-white/5 transition flex items-center justify-center"
+                  type="button"
+                  onClick={() => void logout()}
+                  aria-label="Αποσύνδεση"
+                  title="Αποσύνδεση"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                </button>
               </div>
-              <FullscreenButton />
-              <RefreshButton />
             </div>
           </div>
 
