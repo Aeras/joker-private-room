@@ -256,14 +256,14 @@ export function CreateGame() {
                   onClick={() => setRulesetId(r.id)}
                   className={cn(
                     "panel pregame-rule-card w-full text-left transition-all active:scale-[0.99] rounded-2xl",
-                    active ? "ring-gold border-primary/80 bg-primary/10 shadow-[0_0_15px_rgba(214,175,96,0.15)]" : "border-border/40 hover:border-border/80"
+                    active ? "!border-[#f5c15d] !bg-[#f5c15d]/10 ring-2 ring-[#f5c15d]/50 shadow-[0_4px_20px_rgba(245,193,93,0.18)]" : "border-white/10 bg-white/[0.03] hover:border-white/20"
                   )}
                 >
                   <span className={cn(
                     "flex h-4 w-4 sm:h-5 sm:w-5 shrink-0 items-center justify-center rounded-full border transition-colors",
-                    active ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/60"
+                    active ? "border-[#f5c15d] bg-[#f5c15d]" : "border-stone-500/60"
                   )}>
-                    {active && <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-background" />}
+                    {active && <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-[#1a1202]" />}
                   </span>
                   <span className="min-w-0">
                     <span className="pregame-rule-title block font-display font-semibold text-foreground text-xs sm:text-sm">{r.name}</span>

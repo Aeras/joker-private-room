@@ -1,10 +1,10 @@
 .home-landscape,
 .pregame-shell {
   background:
-    radial-gradient(circle at 18% 10%, rgba(139, 29, 50, 0.18), transparent 25%),
-    radial-gradient(circle at 82% 22%, rgba(154, 93, 33, 0.09), transparent 24%),
-    linear-gradient(145deg, #16080b 0%, #090607 66%, #050404 100%);
-  color: #f5ead5;
+    radial-gradient(circle at 18% 12%, rgba(245, 193, 93, 0.08), transparent 30%),
+    radial-gradient(circle at 82% 20%, rgba(214, 175, 96, 0.06), transparent 28%),
+    linear-gradient(145deg, #121316 0%, #0d0e11 65%, #08090b 100%);
+  color: #e4e1e6;
 }
 
 .home-landscape {
@@ -127,18 +127,18 @@
   flex-direction: column;
   justify-content: flex-end;
   overflow: hidden;
-  border: 1px solid rgba(214,175,96,.28);
+  border: 1px solid rgba(245, 193, 93, 0.25);
   border-radius: 1.5rem;
-  background: linear-gradient(155deg, rgba(58,19,26,.94), rgba(22,9,12,.97));
+  background: linear-gradient(155deg, #24252a 0%, #17181c 100%);
   padding: clamp(.9rem, 2.2vw, 1.4rem);
-  box-shadow: 0 20px 50px -25px rgba(0,0,0,.92), inset 0 1px 0 rgba(255,255,255,.05);
+  box-shadow: 0 20px 50px -25px rgba(0,0,0,.92), inset 0 1px 0 rgba(255,255,255,.06);
   transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, filter 140ms ease;
 }
 
 .home-choice-card:hover {
-  border-color: rgba(214,175,96,.65);
-  filter: brightness(1.06);
-  box-shadow: 0 24px 60px -20px rgba(214,175,96,.2), inset 0 1px 0 rgba(255,255,255,.08);
+  border-color: rgba(245, 193, 93, 0.65);
+  filter: brightness(1.08);
+  box-shadow: 0 24px 60px -20px rgba(245, 193, 93, 0.25), inset 0 1px 0 rgba(255,255,255,.1);
 }
 .home-choice-card:active {
   transform: translateY(2px) scale(.98);
@@ -146,12 +146,12 @@
 .home-choice-card strong {
   font-family: var(--font-display);
   font-size: clamp(1rem, 2.1vw, 1.35rem);
-  color: #f6e6c6;
+  color: #ffeed2;
   letter-spacing: .02em;
 }
 .home-choice-card small {
   margin-top: .2rem;
-  color: rgba(245,234,213,.58);
+  color: rgba(228, 225, 230, 0.65);
   font-size: clamp(.72rem, 1.2vw, .82rem);
 }
 .home-choice-card__number {
@@ -163,12 +163,12 @@
   justify-content: center;
   padding: .15rem .55rem;
   border-radius: 9999px;
-  background: rgba(214,175,96,.12);
-  border: 1px solid rgba(214,175,96,.25);
+  background: rgba(245, 193, 93, 0.15);
+  border: 1px solid rgba(245, 193, 93, 0.35);
   font-size: .85rem;
   font-weight: 800;
   letter-spacing: .05em;
-  color: rgba(232,206,150,.9);
+  color: #f5c15d;
 }
 
 .home-main-action { min-height: 4rem; width: 100%; }
@@ -205,32 +205,34 @@
 
 .pregame-shell .panel,
 .pregame-glass-panel {
-  border: 1px solid rgba(214,175,96,.22);
-  background: linear-gradient(180deg, rgba(48,17,23,.94), rgba(22,9,12,.97));
-  box-shadow: 0 20px 48px -25px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.035);
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 1.5rem;
+  background: linear-gradient(180deg, #1f2024 0%, #16171b 100%);
+  box-shadow: 0 20px 48px -25px rgba(0,0,0,.92), inset 0 1px 0 rgba(255,255,255,.05);
 }
 
 .pregame-shell input,
 .pregame-shell select {
-  border-color: rgba(214,175,96,.22)!important;
-  background: rgba(10,6,7,.58)!important;
+  border-color: rgba(255,255,255,.12)!important;
+  background: rgba(14,15,18,.75)!important;
 }
 
 .pregame-shell input:focus,
-.pregame-shell select:focus { border-color: rgba(214,175,96,.7)!important; }
+.pregame-shell select:focus { border-color: #f5c15d!important; }
 
 .pregame-fullscreen-button {
-  border-color: rgba(214,175,96,.28);
-  background: rgba(20,9,11,.92);
-  color: #e8ce96;
+  border-color: rgba(245,193,93,.3);
+  background: #1b1c20;
+  color: #f5c15d;
 }
-.pregame-fullscreen-button:hover { border-color: rgba(214,175,96,.55); background: rgba(40,16,21,.86); }
+.pregame-fullscreen-button:hover { border-color: rgba(245,193,93,.6); background: #26272c; }
 
 .pregame-primary-button {
-  border: 1px solid rgba(255,187,153,.18)!important;
-  background: linear-gradient(180deg,#a71f35 0%,#781225 100%)!important;
-  color: #fff5ed!important;
-  box-shadow: 0 14px 30px -15px rgba(159,13,38,.9), inset 0 1px 0 rgba(255,255,255,.13)!important;
+  border: 1px solid rgba(245,193,93,.5)!important;
+  background: linear-gradient(135deg, #f5c15d 0%, #d49f30 100%)!important;
+  color: #1a1202!important;
+  font-weight: 700!important;
+  box-shadow: 0 10px 24px -6px rgba(245,193,93,.35), inset 0 1px 0 rgba(255,255,255,.35)!important;
 }
 .pregame-primary-button:hover { filter: brightness(1.08); }
 .pregame-primary-button:active {
@@ -240,9 +242,9 @@
 }
 
 .pregame-secondary-button {
-  border-color: rgba(214,175,96,.42)!important;
-  background: rgba(26,12,15,.74)!important;
-  color: #e8ce96!important;
+  border-color: rgba(245,193,93,.35)!important;
+  background: rgba(255,255,255,.05)!important;
+  color: #f5c15d!important;
 }
 .pregame-secondary-button:active { transform: translateY(2px) scale(.98)!important; }
 
@@ -323,7 +325,14 @@
   gap: .75rem;
   border-radius: 1rem!important;
   padding: .5rem .75rem;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
   transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.pregame-rule-card:hover {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(245,193,93,.4);
 }
 
 .pregame-rule-title {
@@ -340,6 +349,8 @@
 .pregame-bot-panel {
   border-radius: 1rem!important;
   padding: .55rem .8rem;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
 }
 
 .pregame-create-footer {
