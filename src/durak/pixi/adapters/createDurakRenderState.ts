@@ -1,6 +1,7 @@
 import type { DurakGameView } from "@/services/durakRoomFunctions";
 import type { DurakRenderState, DurakPlayerRenderState } from "../types/renderState";
 import { assets } from "@/assets/registry";
+import { CANONICAL_BOTS } from "../../../../supabase/functions/_shared/bot-catalog";
 
 export function createDurakRenderState(
   game: DurakGameView,
@@ -18,7 +19,14 @@ export function createDurakRenderState(
     const relativeSeat = (seatIndex - localSeat + playerCount) % playerCount;
     const seatInfo = seats.find((s) => s.index === seatIndex);
     const displayName = seatInfo?.name || `Παίκτης ${seatIndex + 1}`;
-    const avatarUrl = seatInfo?.name ? assets.avatar(seatInfo.occupant, seatInfo.name) : undefined;
+
+    const knownBot = CANONICAL_BOTS.find(
+      (bot) => bot.displayName.toLowerCase() === displayName.trim().toLowerCase()
+    );
+    const avatarUrl =
+      seatInfo?.occupant === "bot"
+        ? (knownBot ?? CANONICAL_BOTS[seatIndex % CANONICAL_BOTS.length])?.avatarUrl
+        : (assets.avatar("", displayName) ?? knownBot?.avatarUrl);
 
     let role: "attacker" | "defender" | "idle" = "idle";
     if (seatIndex === game.attacker) role = "attacker";

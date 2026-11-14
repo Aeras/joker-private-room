@@ -128,6 +128,7 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame,onNewGame}:{
       <div className="durak-fullscreen-field relative w-full h-full">
         {renderState && (
           <DurakPixiHost
+            className="absolute inset-0 w-full h-full"
             renderState={renderState}
             onPlayCard={clickCard}
             onDropCard={(card, pairIdx) => {
@@ -268,28 +269,30 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame,onNewGame}:{
           )}
         </div>
       </div>
-      {dealing && game.dealReadyAt && (
-        <DurakOpeningDeal
-          key={game.dealReadyAt}
-          game={game}
-          onComplete={setDealComplete}
-          onHandEntrance={() => setHandRevealed(true)}
+      <div className="opacity-0 pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+        {dealing && game.dealReadyAt && (
+          <DurakOpeningDeal
+            key={game.dealReadyAt}
+            game={game}
+            onComplete={setDealComplete}
+            onHandEntrance={() => setHandRevealed(true)}
+          />
+        )}
+        <DurakDiscardFlight collection={collection} onLand={landDiscard} onComplete={finishDiscard} />
+        <DurakFullscreenHand
+          cards={game.myHand}
+          arriving={collection?.kind === "take" && collection.receiver === game.seat ? collection.cards : []}
+          concealed={dealing && !handRevealed}
+          revealing={dealing && handRevealed}
+          busy={loading || presenting || dealing}
+          canPlay={(card) => playable(card).length > 0}
+          onPlay={clickCard}
+          onDrop={game.defender === game.seat ? (card,pair)=>{const action=durakDropMove(card,actions,pair);if(action)void send(action);} : undefined}
+          canDrop={(card,pair)=>Boolean(durakDropMove(card,actions,pair))}
+          onDragTarget={setDragTarget}
         />
-      )}
-      <DurakDiscardFlight collection={collection} onLand={landDiscard} onComplete={finishDiscard} />
+      </div>
       <DurakResults key={code} game={game} playerName={playerName} onNewGame={onNewGame} />
-      <DurakFullscreenHand
-        cards={game.myHand}
-        arriving={collection?.kind === "take" && collection.receiver === game.seat ? collection.cards : []}
-        concealed={dealing && !handRevealed}
-        revealing={dealing && handRevealed}
-        busy={loading || presenting || dealing}
-        canPlay={(card) => playable(card).length > 0}
-        onPlay={clickCard}
-        onDrop={game.defender === game.seat ? (card,pair)=>{const action=durakDropMove(card,actions,pair);if(action)void send(action);} : undefined}
-        canDrop={(card,pair)=>Boolean(durakDropMove(card,actions,pair))}
-        onDragTarget={setDragTarget}
-      />
       {error && (
         <div
           role="alert"

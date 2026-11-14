@@ -19,32 +19,32 @@ export type DurakLayoutEngine = {
 
 export const layoutEngine: DurakLayoutEngine = {
   getStockPose: () => ({
-    x: 240,
+    x: 440,
     y: 520,
   }),
 
   getDiscardPose: () => ({
-    x: 1680,
+    x: 1480,
     y: 520,
   }),
 
   getSeatPose: (position: string) => {
     switch (position) {
       case "bottom":
-        return { x: 340, y: 960 };
+        return { x: 340, y: 920 };
       case "left":
-        return { x: 220, y: 320 };
+        return { x: 320, y: 380 };
       case "top-left":
-        return { x: 580, y: 150 };
+        return { x: 640, y: 190 };
       case "top":
       case "top-center":
-        return { x: 960, y: 140 };
+        return { x: 960, y: 170 };
       case "top-right":
-        return { x: 1340, y: 150 };
+        return { x: 1280, y: 190 };
       case "right":
-        return { x: 1700, y: 320 };
+        return { x: 1600, y: 380 };
       default:
-        return { x: 960, y: 140 };
+        return { x: 960, y: 170 };
     }
   },
 
@@ -55,13 +55,13 @@ export const layoutEngine: DurakLayoutEngine = {
     const startX = LOGICAL_WIDTH / 2 - ((count - 1) * pairSpacing) / 2;
     return {
       x: startX + pairIndex * pairSpacing,
-      y: 510,
+      y: 520,
     };
   },
 
   getLocalHandPose: (cardIndex: number, totalCards: number, isSelected = false): CardLayoutPose => {
     if (totalCards <= 0) {
-      return { x: LOGICAL_WIDTH / 2, y: 940, rotation: 0, scale: 1, zIndex: 0 };
+      return { x: LOGICAL_WIDTH / 2, y: 910, rotation: 0, scale: 1, zIndex: 0 };
     }
 
     const maxSpreadWidth = 1100;
@@ -74,8 +74,8 @@ export const layoutEngine: DurakLayoutEngine = {
 
     // Natural subtle fan arc
     const arcLift = Math.abs(normalizedOffset) * 15;
-    const baseY = 940 + arcLift;
-    const y = isSelected ? baseY - 35 : baseY;
+    const baseY = 910 + arcLift;
+    const y = isSelected ? baseY - 40 : baseY;
     const rotation = normalizedOffset * 0.12; // in radians (~7 degrees max)
 
     return {

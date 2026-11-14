@@ -19,8 +19,8 @@ export function calculateViewport(
   const w = Math.max(320, containerWidth);
   const h = Math.max(180, containerHeight);
 
-  // Uniform scale fitting the container
-  const scale = Math.min(w / LOGICAL_WIDTH, h / LOGICAL_HEIGHT);
+  // Responsive scale: Cover whole screen while preserving logical ratio for game objects
+  const scale = Math.max(w / LOGICAL_WIDTH, h / LOGICAL_HEIGHT);
   const dpr = Math.min(window.devicePixelRatio || 1, 2.5); // Cap DPR to 2.5 for mobile performance
 
   return {

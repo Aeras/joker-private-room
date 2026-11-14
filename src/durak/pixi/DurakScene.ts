@@ -68,6 +68,12 @@ export class DurakScene {
     this.tableBackgroundSprite.texture = this.textureManager.getTableTexture();
   }
 
+  resizeBackground(width: number, height: number, x: number, y: number): void {
+    this.tableBackgroundSprite.position.set(x, y);
+    this.tableBackgroundSprite.width = width;
+    this.tableBackgroundSprite.height = height;
+  }
+
   render(state: DurakRenderState): void {
     this.pointerController.setLocked(state.isBusy || state.isDealing);
 

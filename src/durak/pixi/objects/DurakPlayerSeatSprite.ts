@@ -24,10 +24,30 @@ export class DurakPlayerSeatSprite extends Container {
 
     // Avatar
     this.avatarContainer = new Container();
-    this.avatarSprite = new Sprite(Texture.WHITE);
+
+    // Dark circular background badge
+    const bgCircle = new Graphics();
+    bgCircle.circle(0, 0, 32);
+    bgCircle.fill({ color: 0x1e293b, alpha: 0.95 });
+    this.avatarContainer.addChild(bgCircle);
+
+    // Initial letter fallback text
+    const initialStyle = new TextStyle({
+      fontFamily: "sans-serif",
+      fontSize: 22,
+      fontWeight: "bold",
+      fill: 0xf5c15d,
+    });
+    const initialText = new Text({ text: "?", style: initialStyle });
+    initialText.anchor.set(0.5);
+    (this as any).initialText = initialText;
+    this.avatarContainer.addChild(initialText);
+
+    this.avatarSprite = new Sprite();
     this.avatarSprite.anchor.set(0.5);
     this.avatarSprite.width = 64;
     this.avatarSprite.height = 64;
+    this.avatarSprite.visible = false;
 
     this.avatarMask = new Graphics();
     this.avatarMask.circle(0, 0, 32);
@@ -38,7 +58,8 @@ export class DurakPlayerSeatSprite extends Container {
     this.border.circle(0, 0, 33);
     this.border.stroke({ color: 0xffffff, width: 2, alpha: 0.6 });
 
-    this.avatarContainer.addChild(this.avatarMask, this.avatarSprite, this.border);
+    // Note: Do NOT add avatarMask to container, otherwise Pixi draws it as a solid white circle!
+    this.avatarContainer.addChild(this.avatarSprite, this.border);
     this.addChild(this.avatarContainer);
 
     // Name text
@@ -146,14 +167,23 @@ export class DurakPlayerSeatSprite extends Container {
       this.handCountBadge.visible = false;
     }
 
+    // Set initial fallback letter
+    if ((this as any).initialText) {
+      (this as any).initialText.text = player.displayName ? player.displayName.charAt(0).toUpperCase() : "?";
+    }
+
     // Lazy load avatar image if URL is provided
     if (player.avatarUrl) {
       Assets.load<Texture>(player.avatarUrl)
         .then((tex) => {
-          if (tex) this.avatarSprite.texture = tex;
+          if (tex) {
+            this.avatarSprite.texture = tex;
+            this.avatarSprite.visible = true;
+            if ((this as any).initialText) (this as any).initialText.visible = false;
+          }
         })
         .catch(() => {
-          // Keep white fallback
+          // Keep letter initial fallback
         });
     }
   }

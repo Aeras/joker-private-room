@@ -41,7 +41,7 @@ export class DurakPixiRuntime {
       resolution: initialViewport.dpr,
       autoDensity: true,
       antialias: true,
-      backgroundColor: 0x0f172a, // Rich dark table background
+      backgroundColor: 0x10261c, // Match deep casino green table felt
       powerPreference: "high-performance",
     });
 
@@ -82,13 +82,21 @@ export class DurakPixiRuntime {
 
     this.app.renderer.resize(vp.screenWidth, vp.screenHeight);
 
-    // Scale root stage to fit logical 16:9 space within screen
+    // Scale root stage so content scales proportionally
     this.scene.stage.scale.set(vp.scale);
 
     // Center logical stage within screen
     const offsetX = (vp.screenWidth - LOGICAL_WIDTH * vp.scale) / 2;
     const offsetY = (vp.screenHeight - LOGICAL_HEIGHT * vp.scale) / 2;
     this.scene.stage.position.set(offsetX, offsetY);
+
+    // Table background expands to cover 100% of the screen edge to edge
+    this.scene.resizeBackground(
+      vp.screenWidth / vp.scale,
+      vp.screenHeight / vp.scale,
+      -offsetX / vp.scale,
+      -offsetY / vp.scale
+    );
   }
 
   updateState(state: DurakRenderState): void {
