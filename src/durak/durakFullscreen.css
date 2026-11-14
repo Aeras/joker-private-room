@@ -56,12 +56,16 @@
 }
 .durak-fullscreen-local-seat {
   position: absolute;
-  left: calc(env(safe-area-inset-left) + 14px);
-  bottom: calc(var(--durak-hand-visible-h) + 12px);
+  left: calc(env(safe-area-inset-left) + 12px);
+  bottom: calc(env(safe-area-inset-bottom) + 8px);
   z-index: 25;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.durak-fullscreen-local-seat .durak-fullscreen-avatar {
+  width: clamp(48px, 13.5vh, 68px);
+  height: clamp(48px, 13.5vh, 68px);
 }
 .durak-fullscreen-opponent-info {
   width: 100%;
@@ -71,10 +75,10 @@
 .durak-fullscreen-opponent-backs {
   display: flex;
   justify-content: center;
-  --card-w: clamp(15px, 4.6vh, 25px);
+  --card-w: clamp(24px, 6.5vh, 38px);
 }
 .durak-fullscreen-opponent-backs > * + * {
-  margin-left: -10px;
+  margin-left: -16px;
 }
 .durak-fullscreen-center {
   position: absolute;
@@ -364,7 +368,14 @@
 .durak-fullscreen[data-player-count="5"] .durak-discard-pile,.durak-fullscreen[data-player-count="6"] .durak-discard-pile {top:34%;right:19%;}
 /* Opening deal overlay owns only closed backs and the already-public trump. */
 .durak-opening-deal { position:absolute; inset:0; z-index:50; pointer-events:none; --card-w:clamp(38px, 14vh, 70px); perspective:800px; }
-.durak-deal-origin { position:absolute; left:clamp(86px, 14vw, 168px); top:calc(env(safe-area-inset-top) + clamp(105px, 34vh, 148px) + 36px); width:var(--card-w); height:calc(var(--card-w) * 1.4); margin-left:calc(var(--card-w) * -.5); margin-top:calc(var(--card-w) * -.7); }
+.durak-deal-origin {
+  position: absolute;
+  left: calc(env(safe-area-inset-left) + clamp(88px, 15vw, 140px));
+  bottom: calc(env(safe-area-inset-bottom) - calc(var(--card-w) * 1.4 * 0.35));
+  width: var(--card-w);
+  height: calc(var(--card-w) * 1.4);
+  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.65));
+}
 .durak-deal-card, .durak-deal-trump, .durak-deal-stock { position:absolute; inset:0; }
 .durak-deal-card { z-index:4; will-change:transform, filter; }
 .durak-deal-trump { z-index:5; }

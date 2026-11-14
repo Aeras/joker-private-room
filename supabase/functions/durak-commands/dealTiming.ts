@@ -2,8 +2,8 @@
  * Elegant human deal cadence matching Joker: rhythmic overlapping flight,
  * single neat stack per player, smooth edge handoff, and 3D card flips.
  */
-export const DURAK_DEAL_STAGGER_MS = 180;
-export const DURAK_DEAL_FLIGHT_MS = 350;
+export const DURAK_DEAL_STAGGER_MS = 250;
+export const DURAK_DEAL_FLIGHT_MS = 360;
 export const DURAK_TRUMP_FLIP_MS = 650;
 export const DURAK_TRUMP_PLACE_MS = 600;
 export const DURAK_STOCK_PLACE_MS = 500;

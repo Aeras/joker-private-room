@@ -86,16 +86,10 @@ export function DurakOpeningDeal({
     }
     // Measure the actual corner anchor, including safe responsive sizing.
     const origin = layer.querySelector(".durak-deal-origin")!.getBoundingClientRect();
-    const stockBox = table?.querySelector("[data-durak-stock]")?.getBoundingClientRect();
-    const source = stockBox && stockBox.width > 0 && stockBox.left > 0
-      ? {
-          x: stockBox.left + stockBox.width / 2 - bounds.left,
-          y: stockBox.top + stockBox.height / 2 - bounds.top,
-        }
-      : {
-          x: origin.left + origin.width / 2 - bounds.left,
-          y: origin.top + origin.height / 2 - bounds.top,
-        };
+    const source = {
+      x: origin.left + origin.width / 2 - bounds.left,
+      y: origin.top + origin.height / 2 - bounds.top,
+    };
     layer.querySelectorAll<HTMLElement>("[data-deal-card]").forEach((element) => {
       const beat = Number(element.dataset["dealCard"]);
       const seat = beat % initial.handSizes.length;
