@@ -50,7 +50,7 @@ export function DurakFullscreenHand({
     if (revealing) {
       setFaceUp(false);
       // Synchronously schedule 3D card flip while rising from below the table
-      const timer = setTimeout(() => setFaceUp(true), 120);
+      const timer = setTimeout(() => setFaceUp(true), 60);
       return () => clearTimeout(timer);
     }
     if (!concealed) {
@@ -179,8 +179,8 @@ export function DurakFullscreenHand({
                   className="relative w-full h-full transition-transform [transform-style:preserve-3d]"
                   style={{
                     transform: `rotateY(${faceUp ? 0 : 180}deg)`,
-                    transitionDuration: "450ms",
-                    transitionDelay: `${index * 40}ms`,
+                    transitionDuration: "400ms",
+                    transitionDelay: `${index * 25}ms`,
                     transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
                   }}
                 >

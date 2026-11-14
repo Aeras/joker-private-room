@@ -81,10 +81,16 @@ export function DurakOpeningDeal({
     }
     // Measure the actual corner anchor, including safe responsive sizing.
     const origin = layer.querySelector(".durak-deal-origin")!.getBoundingClientRect();
-    const source = {
-      x: origin.left + origin.width / 2 - bounds.left,
-      y: origin.top + origin.height / 2 - bounds.top,
-    };
+    const stockBox = table?.querySelector("[data-durak-stock]")?.getBoundingClientRect();
+    const source = stockBox && stockBox.width > 0 && stockBox.left > 0
+      ? {
+          x: stockBox.left + stockBox.width / 2 - bounds.left,
+          y: stockBox.top + stockBox.height / 2 - bounds.top,
+        }
+      : {
+          x: origin.left + origin.width / 2 - bounds.left,
+          y: origin.top + origin.height / 2 - bounds.top,
+        };
     layer.querySelectorAll<HTMLElement>("[data-deal-card]").forEach((element) => {
       const beat = Number(element.dataset["dealCard"]);
       const seat = beat % initial.handSizes.length;
@@ -93,24 +99,50 @@ export function DurakOpeningDeal({
         DURAK_SEAT_POSITIONS[initial.handSizes.length]?.[
           (seat - initial.seat + initial.handSizes.length) % initial.handSizes.length
         ] ?? "top";
-      const target = table
-        ?.querySelector(`[data-durak-opponent-seat="${seat}"] .durak-fullscreen-opponent-backs`)
-        ?.getBoundingClientRect();
-      const x =
-        seat === initial.seat
-          ? bounds.width * 0.5
-          : target
-            ? target.left +
-              target.width / 2 -
-              bounds.left +
-              (position === "left" ? 50 : position === "right" ? -50 : 0)
-            : bounds.width * 0.5;
-      const y =
-        seat === initial.seat
-          ? bounds.height - 110
-          : target
-            ? target.top - bounds.top + (position.startsWith("top") ? 45 : 0)
-            : 100;
+      const oppElement = table?.querySelector(`[data-durak-opponent-seat="${seat}"]`);
+      const oppRing =
+        oppElement?.querySelector(".durak-opponent-ring") ??
+        oppElement?.querySelector(".durak-fullscreen-avatar") ??
+        oppElement;
+      const target = oppRing?.getBoundingClientRect();
+
+      let x = bounds.width * 0.5;
+      let y = bounds.height - 40;
+
+      if (seat !== initial.seat) {
+        if (target && target.width > 0) {
+          if (position === "left") {
+            x = target.right - bounds.left + 35;
+            y = target.top + target.height / 2 - bounds.top;
+          } else if (position === "right") {
+            x = target.left - bounds.left - 35;
+            y = target.top + target.height / 2 - bounds.top;
+          } else if (position.startsWith("top")) {
+            x = target.left + target.width / 2 - bounds.left;
+            y = target.bottom - bounds.top + 34;
+          } else {
+            x = target.left + target.width / 2 - bounds.left;
+            y = target.top + target.height / 2 - bounds.top;
+          }
+        } else {
+          if (position === "left") {
+            x = bounds.width * 0.16;
+            y = bounds.height * 0.38;
+          } else if (position === "right") {
+            x = bounds.width * 0.84;
+            y = bounds.height * 0.38;
+          } else if (position === "top-left") {
+            x = bounds.width * 0.28;
+            y = 110;
+          } else if (position === "top-right") {
+            x = bounds.width * 0.72;
+            y = 110;
+          } else {
+            x = bounds.width * 0.5;
+            y = 110;
+          }
+        }
+      }
       const STACK_SCATTER_OFFSET = [
         { x: 0, y: 0 },
         { x: -3, y: -2 },
@@ -254,12 +286,20 @@ export function DurakOpeningDeal({
     });
     const stock = table?.querySelector("[data-durak-stock-trump] > *")?.getBoundingClientRect();
     const back = table?.querySelector("[data-durak-stock-back] > *")?.getBoundingClientRect();
-    const dx = stock ? stock.left + stock.width / 2 - bounds.left - source.x : -80;
-    const dy = stock ? stock.top + stock.height / 2 - bounds.top - source.y : 0;
-    const scale = stock ? stock.width / origin.height : 0.7;
-    const bx = back ? back.left + back.width / 2 - bounds.left - source.x : dx + 20;
-    const by = back ? back.top + back.height / 2 - bounds.top - source.y : dy - 12;
-    const backScale = back ? back.width / origin.width : 0.7;
+    const dx = stock && stock.width > 0 ? stock.left + stock.width / 2 - bounds.left - source.x : -24;
+    const dy = stock && stock.height > 0 ? stock.top + stock.height / 2 - bounds.top - source.y : 6;
+    const scale = stock && stock.width > 0 ? stock.width / origin.height : 0.75;
+    const bx = back && back.width > 0 ? back.left + back.width / 2 - bounds.left - source.x : dx + 20;
+    const by = back && back.height > 0 ? back.top + back.height / 2 - bounds.top - source.y : dy - 10;
+    const backScale = back && back.width > 0 ? back.width / origin.width : 0.75;
+    const caption = layer.querySelector<HTMLElement>(".durak-deal-caption");
+    animate(
+      caption,
+      [{ opacity: 1 }, { opacity: 0 }],
+      250,
+      timing.handAt,
+      "ease-out",
+    );
     const flip = layer.querySelector<HTMLElement>(".durak-deal-trump-flip");
     animate(
       flip,

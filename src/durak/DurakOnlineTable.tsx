@@ -97,7 +97,13 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame,onNewGame}:{
   const roleText = (seat: number) => roleFor(seat) === "defend" ? text.defense : roleFor(seat) === "attack" ? (game.pairs.length === 0 ? text.starts : text.attack) : "";
   const pairColumns = Math.max(1, Math.min(game.pairs.length > 12 ? 6 : game.pairs.length > 6 ? 4 : 3, game.pairs.length));
   return (
-    <div className="durak-fullscreen" data-player-count={n} data-durak-dealing={dealing || undefined} aria-label="Online τραπέζι DURAK">
+    <div
+      className="durak-fullscreen"
+      data-player-count={n}
+      data-durak-dealing={dealing || undefined}
+      data-durak-hand-revealed={handRevealed || undefined}
+      aria-label="Online τραπέζι DURAK"
+    >
       <DurakTableMenu onBack={()=>onBack(game.ended?"finished":undefined)} onRefresh={()=>void fetchState()} onEndGame={onEndGame} onError={setError}/>
       <div className="durak-fullscreen-field">
         <DurakTableSurface>
