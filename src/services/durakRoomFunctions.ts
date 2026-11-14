@@ -31,7 +31,7 @@ export type DurakRoomResponse = { ok: true; room: DurakRoomView } | { ok: true; 
 export const durakRoomCommand = createServerFn({ method: "POST" })
   .validator(requestSchema)
   .handler(async ({ data }): Promise<DurakRoomResponse> => {
-    const sessionToken = getCookie("__Host-joker_session");
+    const sessionToken = getCookie("__Host-joker_session") ?? getCookie("joker_session");
     if (!sessionToken) return { ok: false, code: "NOT_AUTHENTICATED" };
     try {
       const response = await fetch(`${EXTERNAL_SUPABASE_URL}/functions/v1/durak-commands`, {

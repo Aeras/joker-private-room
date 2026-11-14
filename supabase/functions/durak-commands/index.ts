@@ -98,6 +98,7 @@ Deno.serve(async(req:Request)=>{
   let state=loaded.state as DurakMatch;
   const seat=loaded.seat as number;
   const revision=loaded.revision as number;
+  const seats=((loaded.seats as Array<{index:number;occupant:string}>) ?? []);
   if(action==="move"){
     if(Date.now()<(state.dealReadyAt??0))return respond({ok:false,code:"DEALING"},409);
     if(!isMove(body?.move))return respond({ok:false,code:"INVALID_MOVE"},400);
@@ -107,17 +108,26 @@ Deno.serve(async(req:Request)=>{
   }
   // Every bot move is made server-side. Never send nonlocal human hands to the client.
   if(!state.ended&&action==="get_game"&&Date.now()>=(state.nextBotAt??0)){
-    const {data:roomData,error:roomError}=await roomRpc("get");
-    if(roomError||!roomData?.ok)return respond({ok:false,code:"SERVICE_UNAVAILABLE"},503);
-    const seats=roomData.room.seats as Array<{index:number;occupant:string}>;
     state=advanceDurakBot(state,seats,Date.now());
   }
   const changed=action==="move"||JSON.stringify(state)!==JSON.stringify(loaded.state);
   let version=revision;
   if(changed){
     const {data:saved,error:saveError}=await gameRpc("save",revision,state);
-    if(saveError||!saved?.ok)return respond(saved??{ok:false,code:"SERVICE_UNAVAILABLE"},errors(saved??{}));
-    version=saved.revision as number;
+    if(saveError||!saved?.ok){
+      if(action==="get_game"){
+        // Concurrent update won the race; reload the latest state instead of failing!
+        const {data:reloaded}=await gameRpc("load");
+        if(reloaded?.ok&&reloaded.state){
+          state=reloaded.state as DurakMatch;
+          version=reloaded.revision as number;
+        }
+      } else {
+        return respond(saved??{ok:false,code:"SERVICE_UNAVAILABLE"},errors(saved??{}));
+      }
+    } else {
+      version=saved.revision as number;
+    }
   }
   const ownCards=state.hands[seat]??[];
   const view={

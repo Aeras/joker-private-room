@@ -42,9 +42,9 @@ export function DurakOnlineTable({code,seats,onBack,onEndGame,onNewGame}:{
    polling.current=true;
    try{
      const r=await durakRoomCommand({data:{action:"get_game",code}});
-     if(r.ok&&"game" in r)setGame(r.game);
+     if(r.ok&&"game" in r){setGame(r.game);setError("");}
      else if(!r.ok&&(r.code==="ROOM_NOT_FOUND"||r.code==="NOT_STARTED")){setClosed(true);}
-     else if(!r.ok&&r.code!=="STATE_CHANGED")setError("Δεν ήταν δυνατή η ενημέρωση της παρτίδας.");
+     else if(!r.ok&&r.code!=="STATE_CHANGED"&&r.code!=="DEALING")setError(r.code==="NOT_AUTHENTICATED"?"Η σύνδεση έληξε. Συνδέσου ξανά.":"Δεν ήταν δυνατή η ενημέρωση της παρτίδας.");
    }catch{setError("Η σύνδεση διακόπηκε. Περιμένουμε επανασύνδεση.");}
    finally{polling.current=false;}
  },[code,setGame]);
