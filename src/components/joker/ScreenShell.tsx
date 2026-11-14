@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 import { ArrowLeft, RotateCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { FullscreenButton } from "@/components/joker/FullscreenButton";
@@ -14,6 +14,8 @@ export function ScreenShell({
   headerActions,
   hideNavigation = false,
   fixedViewport = false,
+  onBack,
+  backTo,
 }: {
   title: string;
   children: ReactNode;
@@ -23,8 +25,21 @@ export function ScreenShell({
   headerActions?: ReactNode;
   hideNavigation?: boolean;
   fixedViewport?: boolean;
+  onBack?: () => void;
+  backTo?: string;
 }) {
+  const router = useRouter();
   const pregame = variant === "pregame";
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else if (typeof window !== "undefined" && window.history.length > 1) {
+      router.history.back();
+    } else {
+      void router.navigate({ to: backTo ?? "/joker" });
+    }
+  };
 
   return (
     <div className={cn(
@@ -36,16 +51,19 @@ export function ScreenShell({
         "relative z-20 mx-auto flex w-full items-center gap-3 px-4 pt-[max(.65rem,env(safe-area-inset-top))]",
         pregame ? "max-w-7xl" : "max-w-xl",
       )}>
-        {!hideNavigation && <Link
-          to="/"
-          aria-label={t.back}
-          className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-95",
-            pregame && "border border-primary/20 bg-black/20 backdrop-blur-sm hover:border-primary/45 hover:bg-black/35",
-          )}
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>}
+        {!hideNavigation && (
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label={t.back}
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-95",
+              pregame && "border border-primary/20 bg-black/20 backdrop-blur-sm hover:border-primary/45 hover:bg-black/35",
+            )}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
         <h1 className={cn(
           "min-w-0 flex-1 truncate font-display text-xl text-foreground",
           pregame && "tracking-[0.08em] text-primary",

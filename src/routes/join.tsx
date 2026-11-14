@@ -139,10 +139,7 @@ function AvailableRooms({ player, activeLookup }: { player: PublicPlayer; active
             <h2 className="text-base sm:text-lg font-display font-bold text-white">Διαθέσιμα παιχνίδια</h2>
             <span className="text-[10px] text-[#f5c15d] bg-[#f5c15d]/10 px-2 py-0.5 rounded-full border border-[#f5c15d]/20 font-medium">Ανοιχτά τραπέζια</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-stone-400 mt-0.5">
-            <span>Συνδεδεμένος:</span>
-            <span className="font-semibold text-white">{player.displayName}</span>
-          </div>
+          <span className="sr-only">{player.displayName}</span>
         </div>
         <button
           type="button"
