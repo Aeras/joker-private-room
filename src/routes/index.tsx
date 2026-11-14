@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef } from "react";
-import { RotateCw, Play, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { RotateCw, Play, X, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 import { RefreshButton } from "@/components/joker/RefreshButton";
 import { FullscreenButton } from "@/components/joker/FullscreenButton";
 import { PlayerSessionGate } from "@/components/joker/PlayerSessionGate";
 import { useGlobalActiveGame } from "@/hooks/useGlobalActiveGame";
+import { logoutPlayer } from "@/services/authFunctions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -120,40 +121,50 @@ function GameSelection() {
   ];
 
   return (
-    <div className="home-landscape game-selection-screen">
-      <div className="home-topbar">
-        <div className="flex items-center gap-2.5">
-          <div className="home-wordmark text-[#e8ce96] tracking-widest font-extrabold text-sm sm:text-base">
-            JOKER CLUB
+    <PlayerSessionGate
+      allowLogout={!active}
+      onAuthenticated={() => {
+        void globalActive.refresh();
+      }}
+      hideConnectedBanner
+      className="flex flex-col flex-1 min-h-0 h-full w-full"
+    >
+      {(player) => (
+        <div className="home-landscape game-selection-screen">
+          <div className="home-topbar">
+            <div className="flex items-center gap-2.5">
+              <div className="home-wordmark text-[#e8ce96] tracking-widest font-extrabold text-sm sm:text-base">
+                JOKER CLUB
+              </div>
+              <span className="hidden sm:inline-block rounded-full border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.08)] px-2 py-0.5 text-[0.65rem] font-semibold text-[#f6e27a] tracking-wide uppercase">
+                Private Club
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-[#1e2024] pl-2.5 pr-1.5 py-1 text-xs font-medium text-stone-300 shadow-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="max-w-[7.5rem] sm:max-w-[11rem] truncate">{player.displayName}</span>
+                {!active && (
+                  <button
+                    className="p-1 rounded-full text-stone-400 hover:text-red-400 hover:bg-white/5 transition flex items-center justify-center"
+                    type="button"
+                    onClick={() => void logoutPlayer()}
+                    aria-label="Αποσύνδεση"
+                    title="Αποσύνδεση"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <FullscreenButton />
+              <RefreshButton />
+            </div>
           </div>
-          <span className="hidden sm:inline-block rounded-full border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.08)] px-2 py-0.5 text-[0.65rem] font-semibold text-[#f6e27a] tracking-wide uppercase">
-            Private Club
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <FullscreenButton />
-          <RefreshButton />
-        </div>
-      </div>
 
-      <main className="home-landscape__content">
-        <PlayerSessionGate
-          allowLogout={!active}
-          onAuthenticated={() => {
-            void globalActive.refresh();
-          }}
-          hideConnectedBanner
-          className="flex flex-col flex-1 min-h-0 h-full w-full"
-        >
-          {(player) => (
+          <main className="home-landscape__content">
             <div className="game-selection-container">
-              <header className="game-selection-heading flex items-center justify-between px-1">
-                <div className="hidden sm:block w-20" />
+              <header className="game-selection-heading flex items-center justify-center px-1 text-center">
                 <h1>Επιλέξτε το παιχνίδι</h1>
-                <div className="text-right text-[0.72rem] text-[rgba(245,234,213,0.7)] truncate max-w-[14rem]">
-                  <span className="hidden sm:inline">Συνδεδεμένος: </span>
-                  <strong className="text-[#f6e27a] font-semibold">{player.displayName}</strong>
-                </div>
               </header>
 
               {active && (
@@ -260,17 +271,17 @@ function GameSelection() {
 
               {/* Default routes: href="/joker" href="/biriba" */}
             </div>
-          )}
-        </PlayerSessionGate>
-      </main>
+          </main>
 
-      <div className="pregame-portrait-gate" role="status" aria-live="polite">
-        <RefreshButton className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(.55rem,env(safe-area-inset-top))]" />
-        <RotateCw className="h-10 w-10" />
-        <strong>Γύρισε τη συσκευή οριζόντια</strong>
-        <span>Πάτησε Full screen και συνέχισε σε landscape.</span>
-        <FullscreenButton className="mt-2" />
-      </div>
-    </div>
+          <div className="pregame-portrait-gate" role="status" aria-live="polite">
+            <RefreshButton className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(.55rem,env(safe-area-inset-top))]" />
+            <RotateCw className="h-10 w-10" />
+            <strong>Γύρισε τη συσκευή οριζόντια</strong>
+            <span>Πάτησε Full screen και συνέχισε σε landscape.</span>
+            <FullscreenButton className="mt-2" />
+          </div>
+        </div>
+      )}
+    </PlayerSessionGate>
   );
 }
