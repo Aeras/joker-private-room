@@ -27,7 +27,11 @@ export function ScreenShell({
   const pregame = variant === "pregame";
 
   return (
-    <div className={cn("surface-room flex min-h-dvh flex-col", pregame && "pregame-shell", fixedViewport && "h-dvh !min-h-0 overflow-hidden")}>
+    <div className={cn(
+      "flex min-h-dvh flex-col",
+      pregame ? "pregame-shell bg-[#111215] text-[#e4e1e6]" : "surface-room",
+      fixedViewport && "h-dvh !min-h-0 overflow-hidden"
+    )}>
       <header className={cn(
         "relative z-20 mx-auto flex w-full items-center gap-3 px-4 pt-[max(.65rem,env(safe-area-inset-top))]",
         pregame ? "max-w-7xl" : "max-w-xl",
