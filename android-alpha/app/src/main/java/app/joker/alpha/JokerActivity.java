@@ -90,6 +90,7 @@ public final class JokerActivity extends Activity {
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
+        settings.setUserAgentString(settings.getUserAgentString() + " JokerAndroidApp/1.0");
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);

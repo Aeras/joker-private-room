@@ -1,9 +1,11 @@
 import { Maximize2, Minimize2, RotateCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { enterGameDisplayMode } from "@/lib/gameDisplayMode";
+import { useIsAndroidApp } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
 export function FullscreenButton({ className }: { className?: string }) {
+  const isApp = useIsAndroidApp();
   const [fullscreen, setFullscreen] = useState(false);
   const [landscape, setLandscape] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth > window.innerHeight : true,
@@ -24,6 +26,8 @@ export function FullscreenButton({ className }: { className?: string }) {
       window.removeEventListener("orientationchange", sync);
     };
   }, []);
+
+  if (isApp) return null;
 
   const toggle = async () => {
     if (document.fullscreenElement) {

@@ -219,6 +219,10 @@
   box-shadow: 0 5px 13px -8px rgba(0,0,0,.85), inset 0 2px 5px rgba(0,0,0,.2)!important;
 }
 
+.is-android-app .pregame-fullscreen-button {
+  display: none !important;
+}
+
 .pregame-secondary-button {
   border-color: rgba(245,193,93,.35)!important;
   background: rgba(255,255,255,.05)!important;

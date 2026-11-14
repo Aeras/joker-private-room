@@ -1,11 +1,16 @@
 import { RefreshCw } from "lucide-react";
 import { useRef, useState } from "react";
 import { t } from "@/i18n/el";
+import { useIsAndroidApp } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
 export function RefreshButton({ className }: { className?: string }) {
+  const isApp = useIsAndroidApp();
   const navigating = useRef(false);
   const [busy, setBusy] = useState(false);
+
+  if (isApp) return null;
+
   const refresh = () => {
     if (navigating.current) return;
     const url = new URL(window.location.href);
